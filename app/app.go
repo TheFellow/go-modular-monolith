@@ -5,7 +5,7 @@ import (
 )
 
 type App struct {
-	drinks *DrinksAccessor
+	drinks *Drinks
 }
 
 type options struct {
@@ -28,16 +28,16 @@ func New(opts ...Option) (*App, error) {
 		opt(&o)
 	}
 
-	drinksAccessor, err := NewDrinksAccessor(o.drinksDataPath)
+	drinks, err := NewDrinks(o.drinksDataPath)
 	if err != nil {
 		return nil, err
 	}
 
 	return &App{
-		drinks: drinksAccessor,
+		drinks: drinks,
 	}, nil
 }
 
-func (a *App) Drinks() *DrinksAccessor {
+func (a *App) Drinks() *Drinks {
 	return a.drinks
 }

@@ -3,7 +3,7 @@
 ## Current Status
 
 **Phase:** Planning Complete
-**Next Sprint:** 004 - Get Query
+**Next Sprint:** 005 - Middleware Infrastructure
 
 ## What We're Building
 
@@ -34,7 +34,7 @@ A modular monolith demonstrating DDD/CQRS patterns with Cedar-based authorizatio
 | 001 | Catalog read model + file DAO | Completed |
 | 002 | Seed data + list query | Completed |
 | 003 | CLI skeleton + list command | Completed |
-| 004 | Get query | Pending |
+| 004 | Get query | Completed |
 | 005 | Middleware infrastructure | Pending |
 | 006 | First write use case + AuthZ | Pending |
 
@@ -48,3 +48,4 @@ A modular monolith demonstrating DDD/CQRS patterns with Cedar-based authorizatio
 - Implemented minimal `Drink` domain model + file-backed DAO.
 - Implemented `List` query + unit test.
 - Added CLI `list` command wired to app facade/accessor.
+- Added `Get` query + CLI `get` command.

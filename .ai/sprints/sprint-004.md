@@ -6,10 +6,10 @@ Implement the Get query use case for fetching a single drink by ID.
 
 ## Tasks
 
-- [ ] Create `app/drinks/queries/get.go` with Get use case struct
-- [ ] Update `app/drinks_accessor.go` with Get method and use case
-- [ ] Add `get` subcommand to CLI
-- [ ] Write unit test for Get query
+- [x] Create `app/drinks/queries/get.go` with `Queries.Get(...)`
+- [x] Update `app/drinks_accessor.go` with `Get(...)` method
+- [x] Add `get` subcommand to CLI
+- [x] Write unit test for Get query
 
 ## Success Criteria
 
