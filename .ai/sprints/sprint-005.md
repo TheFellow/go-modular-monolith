@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build the middleware chain infrastructure without authz (stub).
+Build the middleware chain infrastructure with stub implementations.
 
 ## Tasks
 
@@ -13,7 +13,7 @@ Build the middleware chain infrastructure without authz (stub).
 - [ ] Create `pkg/uow/uow.go` with no-op UnitOfWork Manager stub
 - [ ] Create stub middleware: `authz.go` (pass-through), `uow.go`, `dispatcher.go`
 - [ ] Update `app/app.go` to compose query and command chains
-- [ ] Update `app/drinks.go` to use middleware.Run for List
+- [ ] Update `app/drinks_accessor.go` to use middleware.Run for List/Get
 
 ## Success Criteria
 
@@ -22,4 +22,4 @@ Build the middleware chain infrastructure without authz (stub).
 
 ## Dependencies
 
-- Sprint 003 (app.go, drinks.go)
+- Sprint 004 (Get query)

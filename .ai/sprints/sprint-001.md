@@ -6,29 +6,22 @@ Establish the foundational drinks module with a Drink model and file-based persi
 
 ## Tasks
 
-- [x] Create `app/drinks/models/drink.go` with Drink struct (domain model, no JSON tags)
-- [x] Create `app/drinks/internal/dao/drink.go` with persistence Drink record model (JSON tags + `deleted_at`)
-- [x] Create `app/drinks/internal/dao/dao.go` with file-based `FileDrinkDAO`
-- [x] Create `pkg/data/drinks.json` with initial drink data (ID + Name)
+- [x] Create `app/drinks/models/drink.go` with Drink struct (domain model)
+- [x] Create `app/drinks/internal/dao/drink.go` with persistence `dao.Drink` record (JSON serialization)
+- [x] Create `app/drinks/internal/dao/dao.go` with file-based `dao.FileDrinkDAO`
+- [x] Create `app/drinks/get.go` with GetRequest/GetResponse
+- [x] Create `app/drinks/list.go` with ListRequest/ListResponse
+- [x] Create `app/drinks/create.go` with CreateRequest/CreateResponse
 
 ## Notes
 
-Request/response types live in the module root as the public API:
-- `app/drinks/get.go` defines `GetRequest` and `GetResponse`
-- `app/drinks/list.go` defines `ListRequest` and `ListResponse`
-- `app/drinks/create.go` defines `CreateRequest` and `CreateResponse`
-
-The module root delegates to internal implementations, transforming requests as needed. For example, `Module.Get(ctx, GetRequest)` calls `queries.Get.Execute(ctx, req.ID)`. The internal implementations have whatever signature makes sense for them.
+Request/response types live in the module root as the public API. The module root delegates to internal implementations, transforming requests as needed.
 
 ## Success Criteria
 
 - `go build ./...` passes
-- DAO can read/write drinks to JSON file
+- DrinkDAO can read/write drinks to JSON file
 
 ## Dependencies
-
-- None
-
-## Open Items
 
 - None

@@ -1,21 +1,22 @@
-# Sprint 004: Seed Command (Idempotent)
+# Sprint 004: Get Query
 
 ## Goal
 
-Add CLI command to seed/reset drink data from the bundled seed file.
+Implement the Get query use case for fetching a single drink by ID.
 
 ## Tasks
 
-- [ ] Add `seed` subcommand to CLI
-- [ ] Implement idempotent seed logic (overwrites existing data)
-- [ ] Ensure seed data path is configurable or uses sensible default
+- [ ] Create `app/drinks/queries/get.go` with Get use case struct
+- [ ] Update `app/drinks/drinks.go` to expose Get use case
+- [ ] Update `app/drinks_accessor.go` with Get method
+- [ ] Add `get` subcommand to CLI
+- [ ] Write unit test for Get query
 
 ## Success Criteria
 
-- `go run ./main/cli seed` loads drinks from `pkg/data/drinks.json`
-- Running `seed` twice produces the same result
-- `go run ./main/cli list` shows seeded drinks after seed
+- `go run ./main/cli get <id>` prints drink details
+- `go test ./...` passes
 
 ## Dependencies
 
-- Sprint 003 (CLI skeleton, list command)
+- Sprint 003 (CLI skeleton, module surface)

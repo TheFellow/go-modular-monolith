@@ -6,7 +6,7 @@ Wire up the CLI entry point and expose the list command.
 
 ## Tasks
 
-- [ ] Initialize go.mod with urfave/cli/v3 dependency
+- [ ] Add urfave/cli/v3 dependency
 - [ ] Create `main/cli/main.go` with CLI skeleton
 - [ ] Create `app/drinks/drinks.go` module surface exposing use cases
 - [ ] Create `app/app.go` composition root (minimal, no middleware yet)
@@ -15,9 +15,9 @@ Wire up the CLI entry point and expose the list command.
 
 ## Success Criteria
 
-- `go run ./main/cli list` prints seeded drinks
+- `go run ./main/cli list` prints drinks
 - `go build ./...` passes
 
 ## Dependencies
 
-- Sprint 002 (List query, seed data)
+- Sprint 002 (List query)

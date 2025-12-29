@@ -1,19 +1,17 @@
-# Sprint 002: Seed Data + List Query
+# Sprint 002: List Query
 
 ## Goal
 
-Load seed data and implement the List query use case.
+Implement the List query use case.
 
 ## Tasks
 
-- [ ] Populate `pkg/data/drinks.json` with drink seed data
 - [ ] Create `app/drinks/authz/actions.go` with action EntityUIDs
 - [ ] Create `app/drinks/queries/list.go` with List use case struct
-- [ ] Write unit test that loads and parses seed data
+- [ ] Write unit test for List query
 
 ## Success Criteria
 
-- Unit test loads and parses seed data successfully
 - `go test ./...` passes
 
 ## Dependencies
