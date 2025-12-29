@@ -6,11 +6,11 @@ Wire up the CLI entry point and expose the list command.
 
 ## Tasks
 
-- [ ] Add urfave/cli/v3 dependency
-- [ ] Create `main/cli/main.go` with CLI skeleton
-- [ ] Create `app/app.go` facade that instantiates and exposes accessors
-- [ ] Create `app/drinks_accessor.go` DrinksAccessor that owns use cases
-- [ ] Wire `list` subcommand to DrinksAccessor.List
+- [x] Add urfave/cli/v3 dependency
+- [x] Create `main/cli/main.go` with CLI skeleton
+- [x] Create `app/app.go` facade that instantiates and exposes accessors
+- [x] Create `app/drinks_accessor.go` DrinksAccessor that owns use cases
+- [x] Wire `list` subcommand to DrinksAccessor.List
 
 ## Notes
 

@@ -20,6 +20,9 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
+# github.com/urfave/cli/v3 v3.6.1
+## explicit; go 1.22
+github.com/urfave/cli/v3
 # golang.org/x/exp v0.0.0-20220921023135-46d9e7742f1e
 ## explicit; go 1.18
 golang.org/x/exp/constraints

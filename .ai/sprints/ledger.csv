@@ -1,7 +1,7 @@
 sprint,status,started,completed,notes
 sprint-001,completed,2025-12-29,2025-12-29,Drinks read model + file DAO + request/response types
 sprint-002,completed,2025-12-29,2025-12-29,List query
-sprint-003,pending,,,CLI skeleton + list command
+sprint-003,completed,2025-12-29,2025-12-29,CLI skeleton + list command
 sprint-004,pending,,,Get query
 sprint-005,pending,,,Middleware infrastructure
 sprint-006,pending,,,First write use case + AuthZ
