@@ -1,0 +1,7 @@
+sprint,status,started,completed,notes
+sprint-001,pending,,,Catalog read model + file DAO
+sprint-002,pending,,,Seed data + list query
+sprint-003,pending,,,CLI skeleton + list command
+sprint-004,pending,,,Seed command (idempotent)
+sprint-005,pending,,,Middleware infrastructure
+sprint-006,pending,,,First write use case + AuthZ
