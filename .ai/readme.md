@@ -11,9 +11,8 @@ A cocktail/drink management system demonstrating modular monolith architecture w
   /cli                    # CLI entry point (urfave/cli v3)
   /server                 # Future HTTP server entry point
 /app                      # Bounded contexts (domain modules)
-  app.go                  # Application facade - composition root
-  drinks.go               # DrinksAccessor - fluent API for drink operations
-  auth.go                 # AuthAccessor - fluent API for auth operations
+  app.go                  # Application facade - instantiates accessors
+  drinks_accessor.go      # DrinksAccessor - owns use cases, uses middleware.Query/Command
   /drinks                 # Drink definitions, categories, recipes
     /authz                # Module-owned authorization definitions
       actions.go          # Cedar action entity UIDs (shared by use cases/tests)
@@ -21,17 +20,15 @@ A cocktail/drink management system demonstrating modular monolith architecture w
     /events               # Domain events for this module
     /handlers             # Event handlers
     /models               # Public domain models (Drink, etc.)
-    drinks.go             # Module surface (exposes use cases)
-    get.go                # GetRequest/GetResponse + delegates to queries.Get
-    list.go               # ListRequest/ListResponse + delegates to queries.List
-    create.go             # CreateRequest/CreateResponse + delegates to commands.Create
+    get.go                # GetRequest/GetResponse types
+    list.go               # ListRequest/ListResponse types
+    create.go             # CreateRequest/CreateResponse types
     /queries              # Read-side use cases (query chain)
       get.go              # Get query implementation
       list.go             # List query implementation
     /internal
       /commands           # Write use cases (Action, Resource, Execute)
         create.go         # Create command implementation
-      /effects            # Optional: shared side-effect logic
       /dao                # Data access (file-based initially)
   /inventory              # Ingredient stock levels
     ...
@@ -46,7 +43,7 @@ A cocktail/drink management system demonstrating modular monolith architecture w
     policies_gen.go       # Generated: embeds all .cedar files
   /middleware             # Middleware chain and context
     context.go            # Context with event collection
-    middleware.go         # Chain, Middleware types
+    middleware.go         # Chain, Middleware types, package-level Query/Command chains
     run.go                # Runs a use case through chain
     authz.go              # AuthZ middleware
     uow.go                # Unit of work middleware
@@ -138,11 +135,11 @@ This keeps authorization metadata colocated with the business logic it protects.
 
 ### Middleware (Single Source of Truth)
 
-Middleware wraps use case execution with cross-cutting concerns. The chain is non-generic (middleware generally shouldn’t care about the concrete response type), and `middleware.Run` bridges typed `Execute` functions into the chain.
+Middleware wraps use case execution with cross-cutting concerns. The chain is non-generic (middleware generally shouldn't care about the concrete response type), and `middleware.Run` bridges typed `Execute` functions into the chain.
 
-There are two chains:
-- **Query chain** (read pipeline): `AuthZ` (+ future read access injection)
-- **Command chain** (write pipeline): `AuthZ`, `UnitOfWork`, `Dispatcher`
+There are two package-level chains (no need to dynamically build these):
+- **`middleware.Query`** (read pipeline): `AuthZ` (+ future read access injection)
+- **`middleware.Command`** (write pipeline): `AuthZ`, `UnitOfWork`, `Dispatcher`
 
 ```go
 // pkg/middleware/context.go
@@ -234,6 +231,20 @@ func (c *Chain) Execute(ctx *Context, action types.EntityUID, resource types.Ent
     }
     return handler(ctx)
 }
+
+// Package-level middleware chains - used by all accessors
+var (
+    Query = NewChain(
+        AuthZ(),
+        // future: SQLReader(...)
+    )
+
+    Command = NewChain(
+        AuthZ(),
+        UnitOfWork(uow.NewManager()),
+        Dispatcher(dispatcher.New()),
+    )
+)
 ```
 
 ```go
@@ -410,127 +421,57 @@ func (c *Create) Execute(ctx *middleware.Context, name, category string, ingredi
 }
 ```
 
-### Module Surface
-
-The module surface (`drinks.go`) holds the use case implementations and provides the public API methods that transform requests and delegate.
-
-```go
-// app/drinks/drinks.go
-
-type Module struct {
-    create *commands.Create
-    get    *queries.Get
-    list   *queries.List
-}
-
-func New(dao *dao.DrinkDAO) *Module {
-    return &Module{
-        create: commands.NewCreate(dao),
-        get:    queries.NewGet(dao),
-        list:   queries.NewList(dao),
-    }
-}
-
-// Get transforms the public request and delegates to the query
-func (m *Module) Get(ctx *middleware.Context, req GetRequest) (GetResponse, error) {
-    return m.get.Execute(ctx, req.ID)
-}
-
-// Create transforms the public request and delegates to the command
-func (m *Module) Create(ctx *middleware.Context, req CreateRequest) (CreateResponse, error) {
-    return m.create.Execute(ctx, req.Name, req.Category, req.Ingredients)
-}
-
-// Expose Action/Resource for middleware - used by accessors
-func (m *Module) GetAction() types.EntityUID    { return m.get.Action }
-func (m *Module) GetResource(req GetRequest) types.EntityUID { return m.get.Resource(req.ID) }
-
-func (m *Module) CreateAction() types.EntityUID    { return m.create.Action }
-func (m *Module) CreateResource(req CreateRequest) types.EntityUID { return m.create.Resource() }
-```
-
 ### Application Facade
 
-`app/app.go` is the composition root. It composes all dependencies internally and exposes fluent accessors that wrap use cases in the middleware chain.
+`app/app.go` is the composition root. It instantiates accessors and exposes them as methods. Accessors own their use cases and pull middleware from package-level `middleware.Query` and `middleware.Command` chains.
 
 ```go
 // app/app.go
 
 type App struct {
-    drinks     *drinks.Module
-    auth       *auth.Module
-    queries    *middleware.Chain
-    commands   *middleware.Chain
+    drinks *DrinksAccessor
 }
 
 func New() *App {
-    // Compose all dependencies internally
-    drinkDAO := dao.NewDrinkDAO("data/drinks.json")
-
-    queries := middleware.NewChain(
-        middleware.AuthZ(),
-        // future: middleware.SQLReader(...)
-    )
-
-    commands := middleware.NewChain(
-        middleware.AuthZ(),
-        middleware.UnitOfWork(uow.NewManager()),
-        middleware.Dispatcher(dispatcher.New()),
-    )
-
     return &App{
-        drinks:     drinks.New(drinkDAO),
-        auth:       auth.New(),
-        queries:    queries,
-        commands:   commands,
+        drinks: NewDrinksAccessor(),
     }
 }
 
-// Drinks returns a fluent accessor for drink operations
 func (a *App) Drinks() *DrinksAccessor {
-    return &DrinksAccessor{app: a}
-}
-
-// Auth returns a fluent accessor for auth operations
-func (a *App) Auth() *AuthAccessor {
-    return &AuthAccessor{app: a}
+    return a.drinks
 }
 ```
 
 ```go
-// app/drinks.go
+// app/drinks_accessor.go
 
 type DrinksAccessor struct {
-    app *App
+    list *queries.List
+    get  *queries.Get
+    // create *commands.Create  // added later
 }
 
-func (d *DrinksAccessor) Create(ctx context.Context, req drinks.CreateRequest) (drinks.CreateResponse, error) {
-    uc := d.app.drinks.Create
-    return middleware.Run(ctx, d.app.commands, uc.Action, uc.Resource(req), uc.Execute, req)
-}
-
-func (d *DrinksAccessor) Get(ctx context.Context, req drinks.GetRequest) (drinks.GetResponse, error) {
-    uc := d.app.drinks.Get
-    return middleware.Run(ctx, d.app.queries, uc.Action, uc.Resource(req), uc.Execute, req)
+func NewDrinksAccessor() *DrinksAccessor {
+    dao := dao.NewFileDrinkDAO("pkg/data/drinks.json")
+    return &DrinksAccessor{
+        list: queries.NewList(dao),
+        get:  queries.NewGet(dao),
+    }
 }
 
 func (d *DrinksAccessor) List(ctx context.Context, req drinks.ListRequest) (drinks.ListResponse, error) {
-    uc := d.app.drinks.List
-    return middleware.Run(ctx, d.app.queries, uc.Action, uc.Resource(req), uc.Execute, req)
-}
-```
-
-```go
-// app/auth.go
-
-type AuthAccessor struct {
-    app *App
+    return middleware.Run(ctx, middleware.Query, d.list.Action, d.list.Resource(), d.list.Execute, req)
 }
 
-func (a *AuthAccessor) Login(ctx context.Context, req models.LoginRequest) (*models.Session, error) {
-    uc := a.app.auth.Login
-    return middleware.Run(ctx, a.app.commands, uc.Action, uc.Resource(req), uc.Execute, req)
+func (d *DrinksAccessor) Get(ctx context.Context, req drinks.GetRequest) (drinks.GetResponse, error) {
+    return middleware.Run(ctx, middleware.Query, d.get.Action, d.get.Resource(req.ID), d.get.Execute, req)
 }
+
+// Create added in Sprint 006:
+// func (d *DrinksAccessor) Create(ctx context.Context, req drinks.CreateRequest) (drinks.CreateResponse, error) {
+//     return middleware.Run(ctx, middleware.Command, d.create.Action, d.create.Resource(), d.create.Execute, req)
+// }
 ```
 
 ### Application Bootstrap
@@ -539,15 +480,13 @@ func (a *AuthAccessor) Login(ctx context.Context, req models.LoginRequest) (*mod
 // main/cli/main.go
 
 import (
+    "github.com/TheFellow/go-modular-monolith/app"
     "github.com/TheFellow/go-modular-monolith/app/drinks"
-    "github.com/TheFellow/go-modular-monolith/app/auth"
 )
 
 func main() {
-    // App composes its own dependencies
     application := app.New()
 
-    // CLI commands use the app
     cmd := &cli.Command{
         Commands: []*cli.Command{
             {
@@ -558,24 +497,15 @@ func main() {
                 },
             },
             {
-                Name: "create",
+                Name: "get",
                 Action: func(c *cli.Context) error {
-                    result, err := application.Drinks().Create(c.Context, drinks.CreateRequest{
-                        Name: c.Args().First(),
+                    result, err := application.Drinks().Get(c.Context, drinks.GetRequest{
+                        ID: c.Args().First(),
                     })
                     // ...
                 },
             },
-            {
-                Name: "login",
-                Action: func(c *cli.Context) error {
-                    session, err := application.Auth().Login(c.Context, auth.LoginRequest{
-                        Username: c.String("user"),
-                        Password: c.String("pass"),
-                    })
-                    // ...
-                },
-            },
+            // create added in Sprint 006
         },
     }
 }
@@ -649,39 +579,40 @@ permit(
 
 ## First Steps
 
-1. **Define drinks read model and file DAO**
+1. **Define drinks read model and file DAO** (Sprint 001)
    - Create `app/drinks/models/drink.go` with Drink struct
    - Create `app/drinks/internal/dao/drink.go` with persistence record model
    - Create `app/drinks/internal/dao/dao.go` with file-based storage
+   - Create request/response types in module root
    - Success: `go build ./...` passes
 
-2. **Seed drink data**
-   - Create `pkg/data/drinks.json` with initial drink data
-   - Create `app/drinks/queries/list.go` to load from DAO
-   - Success: Unit test loads and parses seed data
-
-3. **Wire CLI list command**
-   - Create `main/cli/main.go` with urfave/cli v3
-   - Add `list` subcommand that calls drinks queries
-   - Success: `go run ./main/cli list` prints seeded drinks
-
-4. **Add seed command (idempotent)**
-   - Add `seed` subcommand to CLI
-   - Loads `pkg/data/drinks.json` into DAO storage location
-   - Success: Running `seed` twice produces same result; `list` shows drinks
-
-5. **Stub dispatcher and middleware**
-   - Create `pkg/dispatcher` with no-op event dispatch
-   - Create `pkg/middleware` with `Chain` and `Run` (no authz yet)
+2. **Implement List query** (Sprint 002)
+   - Create `app/drinks/authz/actions.go` with action EntityUIDs
+   - Create `app/drinks/queries/list.go` with List use case struct
    - Success: `go test ./...` passes
 
-6. **Add first write use case**
-   - Implement `CreateDrink` command through middleware chain
-   - Add authz infrastructure (authn fake, policy gen, Cedar eval)
+3. **Wire CLI list command** (Sprint 003)
+   - Create `main/cli/main.go` with urfave/cli v3
+   - Create `app/app.go` facade and `app/drinks_accessor.go`
+   - Wire `list` subcommand to DrinksAccessor.List
+   - Success: `go run ./main/cli list` prints drinks
+
+4. **Implement Get query** (Sprint 004)
+   - Create `app/drinks/queries/get.go` with Get use case struct
+   - Add `get` subcommand to CLI
+   - Success: `go run ./main/cli get <id>` prints drink details
+
+5. **Stub middleware infrastructure** (Sprint 005)
+   - Create `pkg/middleware` with Context, Chain, Run
+   - Create stub middleware (authz pass-through, uow, dispatcher)
+   - Wire accessors through middleware chains
+   - Success: `go run ./main/cli list` works through middleware
+
+6. **Add first write use case + AuthZ** (Sprint 006)
+   - Add cedar-go and implement real AuthZ
+   - Create `CreateDrink` command through command chain
    - Success: `go run ./main/cli create "Margarita"` works with owner principal
-   - Future: add SQL-backed UoW so command chain provides `SQLReadWriter()` and query chain provides `SQLReader()`
 
 ## Open Questions
 
-- Drink data format: ID + Name (for now)
 - Testing approach: Table-driven tests, acceptance tests, or both?

@@ -8,10 +8,13 @@ Wire up the CLI entry point and expose the list command.
 
 - [ ] Add urfave/cli/v3 dependency
 - [ ] Create `main/cli/main.go` with CLI skeleton
-- [ ] Create `app/drinks/drinks.go` module surface exposing use cases
-- [ ] Create `app/app.go` composition root (minimal, no middleware yet)
-- [ ] Create `app/drinks_accessor.go` DrinksAccessor with List method
+- [ ] Create `app/app.go` facade that instantiates and exposes accessors
+- [ ] Create `app/drinks_accessor.go` DrinksAccessor that owns use cases
 - [ ] Wire `list` subcommand to DrinksAccessor.List
+
+## Notes
+
+Accessors own their use cases directly (not via a module surface). They pull middleware from package-level `middleware.Query` and `middleware.Command` chains. Initially we skip middleware entirely - it's added in Sprint 005.
 
 ## Success Criteria
 
