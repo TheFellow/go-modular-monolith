@@ -1,0 +1,25 @@
+# github.com/cedar-policy/cedar-go v1.3.1
+## explicit; go 1.23.0
+github.com/cedar-policy/cedar-go
+github.com/cedar-policy/cedar-go/ast
+github.com/cedar-policy/cedar-go/internal
+github.com/cedar-policy/cedar-go/internal/consts
+github.com/cedar-policy/cedar-go/internal/eval
+github.com/cedar-policy/cedar-go/internal/extensions
+github.com/cedar-policy/cedar-go/internal/json
+github.com/cedar-policy/cedar-go/internal/mapset
+github.com/cedar-policy/cedar-go/internal/parser
+github.com/cedar-policy/cedar-go/internal/rust
+github.com/cedar-policy/cedar-go/types
+github.com/cedar-policy/cedar-go/x/exp/ast
+# github.com/google/go-cmp v0.7.0
+## explicit; go 1.21
+github.com/google/go-cmp/cmp
+github.com/google/go-cmp/cmp/cmpopts
+github.com/google/go-cmp/cmp/internal/diff
+github.com/google/go-cmp/cmp/internal/flags
+github.com/google/go-cmp/cmp/internal/function
+github.com/google/go-cmp/cmp/internal/value
+# golang.org/x/exp v0.0.0-20220921023135-46d9e7742f1e
+## explicit; go 1.18
+golang.org/x/exp/constraints

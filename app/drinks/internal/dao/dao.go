@@ -9,39 +9,52 @@ import (
 )
 
 type FileDrinkDAO struct {
-	path string
+	path   string
+	drinks []Drink
+	loaded bool
 }
 
 func NewFileDrinkDAO(path string) *FileDrinkDAO {
 	return &FileDrinkDAO{path: path}
 }
 
-func (d *FileDrinkDAO) Load(ctx context.Context) ([]Drink, error) {
+func (d *FileDrinkDAO) Load(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return err
 	}
 
 	b, err := os.ReadFile(d.path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return []Drink{}, nil
+			d.drinks = []Drink{}
+			d.loaded = true
+			return nil
 		}
-		return nil, err
+		return err
 	}
 	if len(b) == 0 {
-		return []Drink{}, nil
+		d.drinks = []Drink{}
+		d.loaded = true
+		return nil
 	}
 
 	var drinks []Drink
 	if err := json.Unmarshal(b, &drinks); err != nil {
-		return nil, fmt.Errorf("parse drinks json %q: %w", d.path, err)
+		return fmt.Errorf("parse drinks json %q: %w", d.path, err)
 	}
-	return drinks, nil
+
+	d.drinks = drinks
+	d.loaded = true
+	return nil
 }
 
-func (d *FileDrinkDAO) Save(ctx context.Context, drinks []Drink) error {
+func (d *FileDrinkDAO) Save(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
+	}
+
+	if !d.loaded {
+		return fmt.Errorf("dao not loaded")
 	}
 
 	dir := filepath.Dir(d.path)
@@ -49,7 +62,7 @@ func (d *FileDrinkDAO) Save(ctx context.Context, drinks []Drink) error {
 		return err
 	}
 
-	b, err := json.MarshalIndent(drinks, "", "  ")
+	b, err := json.MarshalIndent(d.drinks, "", "  ")
 	if err != nil {
 		return err
 	}
