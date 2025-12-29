@@ -651,7 +651,8 @@ permit(
 
 1. **Define drinks read model and file DAO**
    - Create `app/drinks/models/drink.go` with Drink struct
-   - Create `app/drinks/internal/dao/drink.go` with file-based storage
+   - Create `app/drinks/internal/dao/drink.go` with persistence record model
+   - Create `app/drinks/internal/dao/dao.go` with file-based storage
    - Success: `go build ./...` passes
 
 2. **Seed drink data**
@@ -682,5 +683,5 @@ permit(
 
 ## Open Questions
 
-- Drink data format: What fields does your seed data include?
+- Drink data format: ID + Name (for now)
 - Testing approach: Table-driven tests, acceptance tests, or both?

@@ -6,9 +6,10 @@ Establish the foundational drinks module with a Drink model and file-based persi
 
 ## Tasks
 
-- [ ] Create `app/drinks/models/drink.go` with Drink struct (domain model)
-- [ ] Create `app/drinks/internal/dao/drink.go` with file-based DrinkDAO
-- [ ] Create `pkg/data/drinks.json` with initial seed data (pending data format)
+- [x] Create `app/drinks/models/drink.go` with Drink struct (domain model, no JSON tags)
+- [x] Create `app/drinks/internal/dao/drink.go` with persistence Drink record model (JSON tags + `deleted_at`)
+- [x] Create `app/drinks/internal/dao/dao.go` with file-based `FileDrinkDAO`
+- [x] Create `pkg/data/drinks.json` with initial drink data (ID + Name)
 
 ## Notes
 
@@ -22,7 +23,7 @@ The module root delegates to internal implementations, transforming requests as 
 ## Success Criteria
 
 - `go build ./...` passes
-- DrinkDAO can read/write drinks to JSON file
+- DAO can read/write drinks to JSON file
 
 ## Dependencies
 
@@ -30,4 +31,4 @@ The module root delegates to internal implementations, transforming requests as 
 
 ## Open Items
 
-- Drink data format: What fields does your seed data include?
+- None

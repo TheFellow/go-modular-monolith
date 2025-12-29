@@ -3,7 +3,7 @@
 ## Current Status
 
 **Phase:** Planning Complete
-**Next Sprint:** 001 - Catalog Read Model + File DAO
+**Next Sprint:** 002 - Seed Data + List Query
 
 ## What We're Building
 
@@ -31,7 +31,7 @@ A modular monolith demonstrating DDD/CQRS patterns with Cedar-based authorizatio
 
 | Sprint | Description | Status |
 |--------|-------------|--------|
-| 001 | Catalog read model + file DAO | Pending |
+| 001 | Catalog read model + file DAO | Completed |
 | 002 | Seed data + list query | Pending |
 | 003 | CLI skeleton + list command | Pending |
 | 004 | Seed command (idempotent) | Pending |
@@ -40,9 +40,9 @@ A modular monolith demonstrating DDD/CQRS patterns with Cedar-based authorizatio
 
 ## Open Items
 
-- [ ] Drink data format (waiting on seed data fields)
+- [x] Drink data format (ID + Name)
 - [ ] Testing approach (table-driven vs acceptance)
 
 ## Recent Changes
 
-_No implementation changes yet._
+- Implemented minimal `Drink` domain model + file-backed DAO.
