@@ -2,18 +2,26 @@
 
 ## Goal
 
-Build the middleware chain infrastructure with stub implementations.
+Build the middleware chain infrastructure with stub implementations. Query and Command pipelines have distinct type signatures.
 
 ## Tasks
 
-- [ ] Create `pkg/middleware/context.go` with Context, WithPrincipal, etc.
-- [ ] Create `pkg/middleware/middleware.go` with Chain, Middleware, Next types
-- [ ] Create `pkg/middleware/middleware.go` package-level Query and Command chain vars
-- [ ] Create `pkg/middleware/run.go` with generic Run function
-- [ ] Create `pkg/dispatcher/dispatcher.go` with no-op Dispatcher stub
-- [ ] Create `pkg/uow/uow.go` with no-op UnitOfWork Manager stub
-- [ ] Create stub middleware: `authz.go` (pass-through), `uow.go`, `dispatcher.go`
-- [ ] Update `app/drinks_accessor.go` to use middleware.Run with middleware.Query
+- [x] Create `pkg/middleware/context.go` with Context, WithPrincipal, etc.
+- [x] Create `pkg/middleware/query.go` with QueryChain, QueryMiddleware, QueryNext types
+- [x] Create `pkg/middleware/command.go` with CommandChain, CommandMiddleware, CommandNext types
+- [x] Create `pkg/middleware/run.go` with RunQuery and RunCommand functions
+- [x] Create package-level chains: `middleware.Query` and `middleware.Command`
+- [x] Create `pkg/dispatcher/dispatcher.go` with no-op Dispatcher stub
+- [x] Create `pkg/uow/uow.go` with UnitOfWork Manager temp impl
+- [x] Create stub middleware: `QueryAuthZ` (pass-through), `CommandAuthZ`, `UnitOfWork`, `Dispatcher`
+- [x] Update drinks accessor to use `middleware.RunQuery`
+
+## Notes
+
+- **Query pipeline**: Takes `cedar.EntityUID` as resource (just identity for authz)
+- **Command pipeline**: Takes `cedar.Entity` as resource (full entity with attributes)
+
+This split makes the semantics explicit - queries only need to identify what's being read, commands need the full entity for policy evaluation and mutation.
 
 ## Success Criteria
 

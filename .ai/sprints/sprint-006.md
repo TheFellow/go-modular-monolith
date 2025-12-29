@@ -13,7 +13,7 @@ Implement CreateDrink command with full authz infrastructure.
 - [ ] Create policy embedding codegen (`policies_gen.go`)
 - [ ] Create `app/drinks/internal/commands/create.go` with Create use case
 - [ ] Create `app/drinks/events/drink_created.go` domain event
-- [ ] Update `app/drinks_accessor.go` with Create use case and method (using middleware.Command)
+- [ ] Update `app/drinks.go` with Create use case and method (using middleware.Command)
 - [ ] Add `create` subcommand to CLI
 - [ ] Implement real AuthZ middleware (replace stub)
 - [ ] Create `pkg/authn/authn.go` with fake principal helpers

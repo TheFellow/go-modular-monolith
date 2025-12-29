@@ -135,11 +135,10 @@ This keeps authorization metadata colocated with the business logic it protects.
 
 ### Middleware (Single Source of Truth)
 
-Middleware wraps use case execution with cross-cutting concerns. The chain is non-generic (middleware generally shouldn't care about the concrete response type), and `middleware.Run` bridges typed `Execute` functions into the chain.
+Middleware wraps use case execution with cross-cutting concerns. There are two distinct pipelines with different type signatures:
 
-There are two package-level chains (no need to dynamically build these):
-- **`middleware.Query`** (read pipeline): `AuthZ` (+ future read access injection)
-- **`middleware.Command`** (write pipeline): `AuthZ`, `UnitOfWork`, `Dispatcher`
+- **Query pipeline**: For read operations. Takes `cedar.EntityUID` as resource (just identity for authz check).
+- **Command pipeline**: For write operations. Takes `cedar.Entity` as resource (full entity with attributes for authz and mutation).
 
 ```go
 // pkg/middleware/context.go
@@ -153,14 +152,14 @@ type ContextOpt func(*Context)
 
 type principalKey struct{}
 
-func WithPrincipal(p types.EntityUID) ContextOpt {
+func WithPrincipal(p cedar.EntityUID) ContextOpt {
     return func(c *Context) {
         c.Context = context.WithValue(c.Context, principalKey{}, p)
     }
 }
 
 func WithAnonymousPrincipal() ContextOpt {
-    return WithPrincipal(types.NewEntityUID("Mixology::Actor", "anonymous"))
+    return WithPrincipal(cedar.NewEntityUID("Mixology::Actor", "anonymous"))
 }
 
 func NewContext(parent context.Context, opts ...ContextOpt) *Context {
@@ -168,18 +167,14 @@ func NewContext(parent context.Context, opts ...ContextOpt) *Context {
         parent = context.Background()
     }
 
-    c := &Context{
-        Context: parent,
-    }
-
+    c := &Context{Context: parent}
     for _, opt := range opts {
         opt(c)
     }
 
-    if _, ok := c.Context.Value(principalKey{}).(types.EntityUID); !ok {
+    if _, ok := c.Context.Value(principalKey{}).(cedar.EntityUID); !ok {
         WithAnonymousPrincipal()(c)
     }
-
     return c
 }
 
@@ -191,77 +186,57 @@ func (c *Context) Events() []any {
     return c.events
 }
 
-func (c *Context) Principal() types.EntityUID {
-    if p, ok := c.Context.Value(principalKey{}).(types.EntityUID); ok {
+func (c *Context) Principal() cedar.EntityUID {
+    if p, ok := c.Context.Value(principalKey{}).(cedar.EntityUID); ok {
         return p
     }
-    return types.NewEntityUID("Mixology::Actor", "anonymous")
+    return cedar.NewEntityUID("Mixology::Actor", "anonymous")
 }
-
-// Future:
-// - Query chain enriches context with read access: SQLReader()
-// - Command chain enriches context with write access: SQLReadWriter()
 ```
 
 ```go
-// pkg/middleware/middleware.go
+// pkg/middleware/query.go
 
-type Next func(*Context) error
+type QueryNext func(*Context) error
 
-type Middleware func(ctx *Context, action types.EntityUID, resource types.EntityUID, next Next) error
+type QueryMiddleware func(ctx *Context, action cedar.EntityUID, next QueryNext) error
 
-type Chain struct {
-    middlewares []Middleware
+type QueryChain struct {
+    middlewares []QueryMiddleware
 }
 
-func NewChain(middlewares ...Middleware) *Chain {
-    return &Chain{middlewares: middlewares}
+func NewQueryChain(middlewares ...QueryMiddleware) *QueryChain {
+    return &QueryChain{middlewares: middlewares}
 }
 
-// Middlewares are applied in the order provided:
-// NewChain(A, B, C) executes as A -> B -> C -> execute (and unwinds in reverse on return).
-func (c *Chain) Execute(ctx *Context, action types.EntityUID, resource types.EntityUID, execute Next) error {
-    handler := execute
+func (c *QueryChain) Execute(ctx *Context, action cedar.EntityUID, final QueryNext) error {
+    next := final
     for i := len(c.middlewares) - 1; i >= 0; i-- {
-        mw := c.middlewares[i]
-        next := handler
-        handler = func(inner *Context) error {
-            return mw(inner, action, resource, next)
+        m := c.middlewares[i]
+        prev := next
+        next = func(inner *Context) error {
+            return m(inner, action, prev)
         }
     }
-    return handler(ctx)
+    return next(ctx)
 }
 
-// Package-level middleware chains - used by all accessors
-var (
-    Query = NewChain(
-        AuthZ(),
-        // future: SQLReader(...)
-    )
-
-    Command = NewChain(
-        AuthZ(),
-        UnitOfWork(uow.NewManager()),
-        Dispatcher(dispatcher.New()),
-    )
+// Package-level query chain
+var Query = NewQueryChain(
+    QueryAuthZ(),
+    // future: SQLReader(...)
 )
-```
 
-```go
-// pkg/middleware/run.go
-
-func Run[Req, Res any](
+func RunQuery[Req, Res any](
     ctx context.Context,
-    chain *Chain,
-    action types.EntityUID,
-    resource types.EntityUID,
+    action cedar.EntityUID,
     execute func(*Context, Req) (Res, error),
     req Req,
 ) (Res, error) {
     mctx := NewContext(ctx)
     var out Res
 
-    err := chain.Execute(mctx, action, resource, func(c *Context) error {
+    err := Query.Execute(mctx, action, func(c *Context) error {
         res, err := execute(c, req)
         if err != nil {
             return err
@@ -269,7 +244,62 @@ func Run[Req, Res any](
         out = res
         return nil
     })
+    return out, err
+}
+```
 
+```go
+// pkg/middleware/command.go
+
+type CommandNext func(*Context) error
+
+type CommandMiddleware func(ctx *Context, action cedar.EntityUID, resource cedar.Entity, next CommandNext) error
+
+type CommandChain struct {
+    middlewares []CommandMiddleware
+}
+
+func NewCommandChain(middlewares ...CommandMiddleware) *CommandChain {
+    return &CommandChain{middlewares: middlewares}
+}
+
+func (c *CommandChain) Execute(ctx *Context, action cedar.EntityUID, resource cedar.Entity, final CommandNext) error {
+    next := final
+    for i := len(c.middlewares) - 1; i >= 0; i-- {
+        m := c.middlewares[i]
+        prev := next
+        next = func(inner *Context) error {
+            return m(inner, action, resource, prev)
+        }
+    }
+    return next(ctx)
+}
+
+// Package-level command chain
+var Command = NewCommandChain(
+    CommandAuthZ(),
+    UnitOfWork(uow.NewManager()),
+    Dispatcher(dispatcher.New()),
+)
+
+func RunCommand[Req, Res any](
+    ctx context.Context,
+    action cedar.EntityUID,
+    resource cedar.Entity,
+    execute func(*Context, Req) (Res, error),
+    req Req,
+) (Res, error) {
+    mctx := NewContext(ctx)
+    var out Res
+
+    err := Command.Execute(mctx, action, resource, func(c *Context) error {
+        res, err := execute(c, req)
+        if err != nil {
+            return err
+        }
+        out = res
+        return nil
+    })
     return out, err
 }
 ```
@@ -279,9 +309,18 @@ func Run[Req, Res any](
 ```go
 // pkg/middleware/authz.go
 
-func AuthZ() Middleware {
-    return func(ctx *Context, action types.EntityUID, resource types.EntityUID, next Next) error {
-        if err := authz.Authorize(ctx, ctx.Principal(), action, resource); err != nil {
+func QueryAuthZ() QueryMiddleware {
+    return func(ctx *Context, action cedar.EntityUID, next QueryNext) error {
+        if err := authz.Authorize(ctx, ctx.Principal(), action); err != nil {
+            return err
+        }
+        return next(ctx)
+    }
+}
+
+func CommandAuthZ() CommandMiddleware {
+    return func(ctx *Context, action cedar.EntityUID, resource cedar.Entity, next CommandNext) error {
+        if err := authz.AuthorizeWithEntity(ctx, ctx.Principal(), action, resource); err != nil {
             return err
         }
         return next(ctx)
@@ -292,8 +331,8 @@ func AuthZ() Middleware {
 ```go
 // pkg/middleware/uow.go
 
-func UnitOfWork(m *uow.Manager) Middleware {
-    return func(ctx *Context, _ types.EntityUID, _ types.EntityUID, next Next) error {
+func UnitOfWork(m *uow.Manager) CommandMiddleware {
+    return func(ctx *Context, _ cedar.EntityUID, _ cedar.Entity, next CommandNext) error {
         tx, err := m.Begin(ctx)
         if err != nil {
             return err
@@ -312,8 +351,8 @@ func UnitOfWork(m *uow.Manager) Middleware {
 ```go
 // pkg/middleware/dispatcher.go
 
-func Dispatcher(d *dispatcher.Dispatcher) Middleware {
-    return func(ctx *Context, _ types.EntityUID, _ types.EntityUID, next Next) error {
+func Dispatcher(d *dispatcher.Dispatcher) CommandMiddleware {
+    return func(ctx *Context, _ cedar.EntityUID, _ cedar.Entity, next CommandNext) error {
         if err := next(ctx); err != nil {
             return err
         }
@@ -367,20 +406,20 @@ type CreateResponse = *models.Drink
 // app/drinks/queries/get.go - Query implementation (public, importable by other modules)
 
 type Get struct {
-    Action types.EntityUID
+    Action cedar.EntityUID
     dao    *dao.DrinkDAO
 }
 
 func NewGet(dao *dao.DrinkDAO) *Get {
     return &Get{
-        Action: drinksauthz.ActionRead,
+        Action: drinksauthz.ActionGet,
         dao:    dao,
     }
 }
 
 // Resource builds the Cedar resource UID from the ID
-func (g *Get) Resource(id string) types.EntityUID {
-    return types.NewEntityUID("Mixology::Drinks::Drink", id)
+func (g *Get) Resource(id string) cedar.EntityUID {
+    return cedar.NewEntityUID("Mixology::Drinks::Drink", id)
 }
 
 // Execute takes whatever params make sense internally
@@ -393,7 +432,7 @@ func (g *Get) Execute(ctx *middleware.Context, id string) (*models.Drink, error)
 // app/drinks/internal/commands/create.go - Command implementation
 
 type Create struct {
-    Action types.EntityUID
+    Action cedar.EntityUID
     dao    *dao.DrinkDAO
 }
 
@@ -404,9 +443,11 @@ func NewCreate(dao *dao.DrinkDAO) *Create {
     }
 }
 
-// Resource for new drinks has no ID
-func (c *Create) Resource() types.EntityUID {
-    return types.NewEntityUID("Mixology::Drinks::Drink", "")
+// Resource returns a new (empty) Entity for creation
+func (c *Create) Resource() cedar.Entity {
+    return cedar.Entity{
+        UID: cedar.NewEntityUID("Mixology::Drinks::Drink", ""),
+    }
 }
 
 // Execute takes whatever params make sense internally
@@ -449,7 +490,7 @@ func (a *App) Drinks() *DrinksAccessor {
 type DrinksAccessor struct {
     list *queries.List
     get  *queries.Get
-    // create *commands.Create  // added later
+    // create *commands.Create  // added in Sprint 006
 }
 
 func NewDrinksAccessor() *DrinksAccessor {
@@ -461,16 +502,16 @@ func NewDrinksAccessor() *DrinksAccessor {
 }
 
 func (d *DrinksAccessor) List(ctx context.Context, req drinks.ListRequest) (drinks.ListResponse, error) {
-    return middleware.Run(ctx, middleware.Query, d.list.Action, d.list.Resource(), d.list.Execute, req)
+    return middleware.RunQuery(ctx, d.list.Action, d.list.Execute, req)
 }
 
 func (d *DrinksAccessor) Get(ctx context.Context, req drinks.GetRequest) (drinks.GetResponse, error) {
-    return middleware.Run(ctx, middleware.Query, d.get.Action, d.get.Resource(req.ID), d.get.Execute, req)
+    return middleware.RunQuery(ctx, d.get.Action, d.get.Execute, req)
 }
 
 // Create added in Sprint 006:
 // func (d *DrinksAccessor) Create(ctx context.Context, req drinks.CreateRequest) (drinks.CreateResponse, error) {
-//     return middleware.Run(ctx, middleware.Command, d.create.Action, d.create.Resource(), d.create.Execute, req)
+//     return middleware.RunCommand(ctx, d.create.Action, d.create.Resource(), d.create.Execute, req)
 // }
 ```
 
