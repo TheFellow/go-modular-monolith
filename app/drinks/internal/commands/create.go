@@ -8,7 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/models"
-	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -23,20 +23,20 @@ func NewCreate(dao *dao.FileDrinkDAO) *Create {
 func (c *Create) Execute(ctx *middleware.Context, name string) (models.Drink, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return models.Drink{}, perrors.Invalidf("name is required")
+		return models.Drink{}, errors.Invalidf("name is required")
 	}
 
 	tx, ok := ctx.UnitOfWork()
 	if !ok {
-		return models.Drink{}, perrors.Internalf("missing unit of work")
+		return models.Drink{}, errors.Internalf("missing unit of work")
 	}
 	if err := tx.Register(c.dao); err != nil {
-		return models.Drink{}, perrors.Internalf("register dao: %w", err)
+		return models.Drink{}, errors.Internalf("register dao: %w", err)
 	}
 
 	id, err := newID()
 	if err != nil {
-		return models.Drink{}, perrors.Internalf("generate id: %w", err)
+		return models.Drink{}, errors.Internalf("generate id: %w", err)
 	}
 
 	record := dao.Drink{
