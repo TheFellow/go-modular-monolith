@@ -47,22 +47,17 @@ func getPolicySet() (*cedar.PolicySet, error) {
 		policiesSet = cedar.NewPolicySet()
 
 		docs := policyDocuments()
-		files := make([]string, 0, len(docs))
-		for file := range docs {
-			files = append(files, file)
-		}
-		sort.Strings(files)
+		sort.Slice(docs, func(i, j int) bool { return docs[i].Name < docs[j].Name })
 
-		for _, file := range files {
-			body := docs[file]
-			ps, err := cedar.NewPolicySetFromBytes(file, []byte(body))
+		for _, doc := range docs {
+			ps, err := cedar.NewPolicySetFromBytes(doc.Name, []byte(doc.Text))
 			if err != nil {
 				policiesErr = err
 				return
 			}
 
 			for id, p := range ps.All() {
-				_ = policiesSet.Add(cedar.PolicyID(file+":"+string(id)), p)
+				_ = policiesSet.Add(cedar.PolicyID(doc.Name+":"+string(id)), p)
 			}
 		}
 	})

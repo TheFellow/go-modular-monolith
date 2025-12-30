@@ -38,6 +38,7 @@ A modular monolith demonstrating DDD/CQRS patterns with Cedar-based authorizatio
 | 005 | Middleware infrastructure | Completed |
 | 006 | First write use case + AuthZ | Completed |
 | 007 | Uniform error handling | Completed |
+| 008 | Decentralized policy embedding | Completed |
 
 ## Open Items
 
@@ -53,3 +54,4 @@ A modular monolith demonstrating DDD/CQRS patterns with Cedar-based authorizatio
 - Added middleware chains + stubs (AuthZ/UoW/Dispatcher) and routed reads through `middleware.Query`.
 - Added Cedar policy codegen + real AuthZ middleware + `create` command (denies anonymous).
 - Added `pkg/errors` codegen + updated app to return `Invalid`/`NotFound`/`Internal` errors.
+- Decentralized policy embedding: modules embed their own `policies.cedar`; `pkg/authz` aggregates by reference.
