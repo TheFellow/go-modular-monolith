@@ -24,7 +24,7 @@ func TestAuthorizeWithEntity_DeniesAnonymousCreate(t *testing.T) {
 	t.Parallel()
 
 	resource := cedar.Entity{
-		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Drinks::Catalog"), cedar.String("default")),
+		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Drink::Catalog"), cedar.String("default")),
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),
@@ -40,7 +40,7 @@ func TestAuthorizeWithEntity_AllowsOwnerCreate(t *testing.T) {
 	t.Parallel()
 
 	resource := cedar.Entity{
-		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Drinks::Catalog"), cedar.String("default")),
+		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Drink::Catalog"), cedar.String("default")),
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),

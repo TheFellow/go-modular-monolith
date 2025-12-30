@@ -50,7 +50,7 @@ func (m *Module) Get(ctx context.Context, req GetRequest) (GetResponse, error) {
 
 func (m *Module) Create(ctx context.Context, req CreateRequest) (CreateResponse, error) {
 	resource := cedar.Entity{
-		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Drinks::Catalog"), cedar.String("default")),
+		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Drink::Catalog"), cedar.String("default")),
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),
