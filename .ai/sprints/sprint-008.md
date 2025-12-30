@@ -43,7 +43,7 @@ package authz
 import _ "embed"
 
 //go:embed base.cedar
-var basePolicies string
+var Policies string
 ```
 
 ```go
@@ -56,7 +56,7 @@ import (
 
 func policyDocuments() []PolicyDocument {
     return []PolicyDocument{
-        {Name: "pkg/authz/base.cedar", Text: basePolicies},
+        {Name: "pkg/authz/base.cedar", Text: Policies},
         {Name: "app/drinks/authz/policies.cedar", Text: drinksauthz.Policies},
     }
 }

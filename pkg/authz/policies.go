@@ -8,4 +8,4 @@ type PolicyDocument struct {
 }
 
 //go:embed base.cedar
-var basePolicies string
+var Policies string
