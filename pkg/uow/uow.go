@@ -2,7 +2,8 @@ package uow
 
 import (
 	"context"
-	"fmt"
+
+	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 type Saver interface {
@@ -28,7 +29,7 @@ type Tx struct {
 
 func (t *Tx) Register(s Saver) error {
 	if t.done {
-		return fmt.Errorf("transaction already finished")
+		return perrors.Internalf("transaction already finished")
 	}
 	t.savers = append(t.savers, s)
 	return nil
@@ -36,7 +37,7 @@ func (t *Tx) Register(s Saver) error {
 
 func (t *Tx) Commit() error {
 	if t.done {
-		return fmt.Errorf("transaction already finished")
+		return perrors.Internalf("transaction already finished")
 	}
 	t.done = true
 

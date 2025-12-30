@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -102,7 +103,7 @@ func Authorize(ctx context.Context, principal cedar.EntityUID, action cedar.Enti
 
 	decision, diagnostic := cedar.Authorize(ps, entities, req)
 	if len(diagnostic.Errors) > 0 {
-		return fmt.Errorf("authz evaluation error: %s", diagnostic.Errors[0].Message)
+		return perrors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
 	}
 	if decision == cedar.Deny {
 		return DeniedError{
@@ -142,7 +143,7 @@ func AuthorizeWithEntity(ctx context.Context, principal cedar.EntityUID, action 
 
 	decision, diagnostic := cedar.Authorize(ps, entities, req)
 	if len(diagnostic.Errors) > 0 {
-		return fmt.Errorf("authz evaluation error: %s", diagnostic.Errors[0].Message)
+		return perrors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
 	}
 	if decision == cedar.Deny {
 		return DeniedError{

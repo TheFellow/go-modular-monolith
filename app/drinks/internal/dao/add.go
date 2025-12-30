@@ -2,7 +2,8 @@ package dao
 
 import (
 	"context"
-	"fmt"
+
+	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 func (d *FileDrinkDAO) Add(ctx context.Context, drink Drink) error {
@@ -10,18 +11,18 @@ func (d *FileDrinkDAO) Add(ctx context.Context, drink Drink) error {
 		return err
 	}
 	if !d.loaded {
-		return fmt.Errorf("dao not loaded")
+		return perrors.Internalf("dao not loaded")
 	}
 	if drink.ID == "" {
-		return fmt.Errorf("drink id is required")
+		return perrors.Invalidf("drink id is required")
 	}
 	if drink.Name == "" {
-		return fmt.Errorf("drink name is required")
+		return perrors.Invalidf("drink name is required")
 	}
 
 	for _, existing := range d.drinks {
 		if existing.ID == drink.ID {
-			return fmt.Errorf("drink already exists: %s", drink.ID)
+			return perrors.Invalidf("drink already exists: %s", drink.ID)
 		}
 	}
 

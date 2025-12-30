@@ -37,6 +37,7 @@ A modular monolith demonstrating DDD/CQRS patterns with Cedar-based authorizatio
 | 004 | Get query | Completed |
 | 005 | Middleware infrastructure | Completed |
 | 006 | First write use case + AuthZ | Completed |
+| 007 | Uniform error handling | Completed |
 
 ## Open Items
 
@@ -51,3 +52,4 @@ A modular monolith demonstrating DDD/CQRS patterns with Cedar-based authorizatio
 - Added `Get` query + CLI `get` command.
 - Added middleware chains + stubs (AuthZ/UoW/Dispatcher) and routed reads through `middleware.Query`.
 - Added Cedar policy codegen + real AuthZ middleware + `create` command (denies anonymous).
+- Added `pkg/errors` codegen + updated app to return `Invalid`/`NotFound`/`Internal` errors.

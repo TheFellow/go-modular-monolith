@@ -3,9 +3,10 @@ package dao
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
+
+	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 type FileDrinkDAO struct {
@@ -30,7 +31,7 @@ func (d *FileDrinkDAO) Load(ctx context.Context) error {
 			d.loaded = true
 			return nil
 		}
-		return err
+		return perrors.Internalf("read drinks file: %w", err)
 	}
 	if len(b) == 0 {
 		d.drinks = []Drink{}
@@ -40,7 +41,7 @@ func (d *FileDrinkDAO) Load(ctx context.Context) error {
 
 	var drinks []Drink
 	if err := json.Unmarshal(b, &drinks); err != nil {
-		return fmt.Errorf("parse drinks json %q: %w", d.path, err)
+		return perrors.Internalf("parse drinks json %q: %w", d.path, err)
 	}
 
 	d.drinks = drinks
@@ -54,7 +55,7 @@ func (d *FileDrinkDAO) Save(ctx context.Context) error {
 	}
 
 	if !d.loaded {
-		return fmt.Errorf("dao not loaded")
+		return perrors.Internalf("dao not loaded")
 	}
 
 	dir := filepath.Dir(d.path)

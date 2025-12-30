@@ -2,13 +2,13 @@ package queries_test
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/queries"
+	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
@@ -52,7 +52,7 @@ func TestGet_NotFound(t *testing.T) {
 	testutil.ErrorIf(t, err != nil, "new queries: %v", err)
 
 	_, err = q.Get(context.Background(), "missing")
-	testutil.ErrorIf(t, !errors.Is(err, queries.ErrNotFound), "expected ErrNotFound, got %v", err)
+	testutil.ErrorIf(t, !perrors.IsNotFound(err), "expected NotFound error, got %v", err)
 }
 
 func TestGet_DeletedIsNotFound(t *testing.T) {
@@ -72,5 +72,5 @@ func TestGet_DeletedIsNotFound(t *testing.T) {
 	testutil.ErrorIf(t, err != nil, "new queries: %v", err)
 
 	_, err = q.Get(context.Background(), "old-fashioned")
-	testutil.ErrorIf(t, !errors.Is(err, queries.ErrNotFound), "expected ErrNotFound, got %v", err)
+	testutil.ErrorIf(t, !perrors.IsNotFound(err), "expected NotFound error, got %v", err)
 }

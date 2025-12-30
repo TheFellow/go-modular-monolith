@@ -1,0 +1,38 @@
+package errors_test
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+)
+
+func TestConstructorsAndCheckers(t *testing.T) {
+	t.Parallel()
+
+	inv := errors.Invalidf("name is required")
+	if !errors.IsInvalid(inv) || errors.IsNotFound(inv) || errors.IsInternal(inv) {
+		t.Fatalf("unexpected kind: %T %v", inv, inv)
+	}
+
+	wrapped := fmt.Errorf("outer: %w", inv)
+	if !errors.IsInvalid(wrapped) {
+		t.Fatalf("expected IsInvalid to match wrapped error")
+	}
+
+	var invErr *errors.InvalidError
+	if !errors.As(wrapped, &invErr) || invErr.HTTPCode() != 400 || invErr.GRPCCode() != 3 {
+		t.Fatalf("expected As(*InvalidError) with codes, got %+v", invErr)
+	}
+}
+
+func TestConstructorUnwrap(t *testing.T) {
+	t.Parallel()
+
+	cause := errors.New("root")
+	err := errors.Internalf("boom: %w", cause)
+
+	testutil.ErrorIf(t, !errors.IsInternal(err), "got %v, want %v", err, errors.ErrInternal)
+	testutil.ErrorIf(t, errors.Unwrap(err) != cause, "got %v, want %v", errors.Unwrap(err), cause)
+}
