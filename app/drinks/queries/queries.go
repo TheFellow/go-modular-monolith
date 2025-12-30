@@ -15,5 +15,9 @@ func New(drinksDataPath string) (*Queries, error) {
 	if err := d.Load(context.Background()); err != nil {
 		return nil, err
 	}
-	return &Queries{dao: d}, nil
+	return NewWithDAO(d), nil
+}
+
+func NewWithDAO(d *dao.FileDrinkDAO) *Queries {
+	return &Queries{dao: d}
 }

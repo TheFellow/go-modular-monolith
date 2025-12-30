@@ -23,6 +23,17 @@ func WithPrincipal(p cedar.EntityUID) ContextOpt {
 	}
 }
 
+func ContextWithPrincipal(ctx context.Context, p cedar.EntityUID) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, principalKey{}, p)
+}
+
+func ContextWithAnonymousPrincipal(ctx context.Context) context.Context {
+	return ContextWithPrincipal(ctx, cedar.NewEntityUID(cedar.EntityType("Mixology::Actor"), cedar.String("anonymous")))
+}
+
 func WithAnonymousPrincipal() ContextOpt {
 	return WithPrincipal(cedar.NewEntityUID(cedar.EntityType("Mixology::Actor"), cedar.String("anonymous")))
 }

@@ -11,8 +11,7 @@ A cocktail/drink management system demonstrating modular monolith architecture w
   /cli                    # CLI entry point (urfave/cli v3)
   /server                 # Future HTTP server entry point
 /app                      # Bounded contexts (domain modules)
-  app.go                  # Application facade - instantiates accessors
-  drinks_accessor.go      # DrinksAccessor - owns use cases, uses middleware.Query/Command
+  app.go                  # Application facade - instantiates modules
   /drinks                 # Drink definitions, categories, recipes
     /authz                # Module-owned authorization definitions
       actions.go          # Cedar action entity UIDs (shared by use cases/tests)
@@ -23,6 +22,7 @@ A cocktail/drink management system demonstrating modular monolith architecture w
     get.go                # GetRequest/GetResponse types
     list.go               # ListRequest/ListResponse types
     create.go             # CreateRequest/CreateResponse types
+    module.go             # Drinks module surface (delegates to queries/internal commands)
     /queries              # Read-side use cases (query chain)
       get.go              # Get query implementation
       list.go             # List query implementation
@@ -464,55 +464,29 @@ func (c *Create) Execute(ctx *middleware.Context, name, category string, ingredi
 
 ### Application Facade
 
-`app/app.go` is the composition root. It instantiates accessors and exposes them as methods. Accessors own their use cases and pull middleware from package-level `middleware.Query` and `middleware.Command` chains.
+`app/app.go` is the composition root. It instantiates modules and exposes them as methods. Modules own their use cases and pull middleware from package-level `middleware.Query` and `middleware.Command` chains.
 
 ```go
 // app/app.go
 
 type App struct {
-    drinks *DrinksAccessor
+    drinks *drinks.Module
 }
 
 func New() *App {
     return &App{
-        drinks: NewDrinksAccessor(),
+        drinks: drinks.NewModule(...),
     }
 }
 
-func (a *App) Drinks() *DrinksAccessor {
+func (a *App) Drinks() *drinks.Module {
     return a.drinks
 }
 ```
 
 ```go
-// app/drinks_accessor.go
-
-type DrinksAccessor struct {
-    list *queries.List
-    get  *queries.Get
-    // create *commands.Create  // added in Sprint 006
-}
-
-func NewDrinksAccessor() *DrinksAccessor {
-    dao := dao.NewFileDrinkDAO("pkg/data/drinks.json")
-    return &DrinksAccessor{
-        list: queries.NewList(dao),
-        get:  queries.NewGet(dao),
-    }
-}
-
-func (d *DrinksAccessor) List(ctx context.Context, req drinks.ListRequest) (drinks.ListResponse, error) {
-    return middleware.RunQuery(ctx, d.list.Action, d.list.Execute, req)
-}
-
-func (d *DrinksAccessor) Get(ctx context.Context, req drinks.GetRequest) (drinks.GetResponse, error) {
-    return middleware.RunQuery(ctx, d.get.Action, d.get.Execute, req)
-}
-
-// Create added in Sprint 006:
-// func (d *DrinksAccessor) Create(ctx context.Context, req drinks.CreateRequest) (drinks.CreateResponse, error) {
-//     return middleware.RunCommand(ctx, d.create.Action, d.create.Resource(), d.create.Execute, req)
-// }
+// app/drinks/module.go
+// Module exposes List/Get/Create and delegates to queries/internal commands.
 ```
 
 ### Application Bootstrap
@@ -634,8 +608,8 @@ permit(
 
 3. **Wire CLI list command** (Sprint 003)
    - Create `main/cli/main.go` with urfave/cli v3
-   - Create `app/app.go` facade and `app/drinks_accessor.go`
-   - Wire `list` subcommand to DrinksAccessor.List
+   - Create `app/app.go` facade and `app/drinks/module.go`
+   - Wire `list` subcommand to `drinks.Module.List`
    - Success: `go run ./main/cli list` prints drinks
 
 4. **Implement Get query** (Sprint 004)

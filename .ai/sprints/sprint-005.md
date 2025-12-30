@@ -30,4 +30,4 @@ This split makes the semantics explicit - queries only need to identify what's b
 
 ## Dependencies
 
-- Sprint 004 (Get query, accessor pattern)
+- Sprint 004 (Get query, module surface pattern)

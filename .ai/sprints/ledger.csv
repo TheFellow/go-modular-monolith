@@ -4,4 +4,5 @@ sprint-002,completed,2025-12-29,2025-12-29,List query
 sprint-003,completed,2025-12-29,2025-12-29,CLI skeleton + list command
 sprint-004,completed,2025-12-29,2025-12-29,Get query
 sprint-005,completed,2025-12-29,2025-12-29,Middleware infrastructure
-sprint-006,pending,,,First write use case + AuthZ
+sprint-006,completed,2025-12-29,2025-12-29,First write use case + AuthZ
+sprint-007,pending,,,Uniform error handling

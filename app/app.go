@@ -2,10 +2,12 @@ package app
 
 import (
 	"path/filepath"
+
+	"github.com/TheFellow/go-modular-monolith/app/drinks"
 )
 
 type App struct {
-	drinks *Drinks
+	drinks *drinks.Module
 }
 
 type options struct {
@@ -28,16 +30,16 @@ func New(opts ...Option) (*App, error) {
 		opt(&o)
 	}
 
-	drinks, err := NewDrinks(o.drinksDataPath)
+	m, err := drinks.NewModule(o.drinksDataPath)
 	if err != nil {
 		return nil, err
 	}
 
 	return &App{
-		drinks: drinks,
+		drinks: m,
 	}, nil
 }
 
-func (a *App) Drinks() *Drinks {
+func (a *App) Drinks() *drinks.Module {
 	return a.drinks
 }

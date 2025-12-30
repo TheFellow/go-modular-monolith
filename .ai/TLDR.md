@@ -3,7 +3,7 @@
 ## Current Status
 
 **Phase:** Planning Complete
-**Next Sprint:** 006 - First write use case + AuthZ
+**Next Sprint:** TBD
 
 ## What We're Building
 
@@ -36,7 +36,7 @@ A modular monolith demonstrating DDD/CQRS patterns with Cedar-based authorizatio
 | 003 | CLI skeleton + list command | Completed |
 | 004 | Get query | Completed |
 | 005 | Middleware infrastructure | Completed |
-| 006 | First write use case + AuthZ | Pending |
+| 006 | First write use case + AuthZ | Completed |
 
 ## Open Items
 
@@ -50,3 +50,4 @@ A modular monolith demonstrating DDD/CQRS patterns with Cedar-based authorizatio
 - Added CLI `list` command wired to app facade/accessor.
 - Added `Get` query + CLI `get` command.
 - Added middleware chains + stubs (AuthZ/UoW/Dispatcher) and routed reads through `middleware.Query`.
+- Added Cedar policy codegen + real AuthZ middleware + `create` command (denies anonymous).

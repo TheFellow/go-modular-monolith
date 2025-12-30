@@ -7,7 +7,7 @@ Implement the Get query use case for fetching a single drink by ID.
 ## Tasks
 
 - [x] Create `app/drinks/queries/get.go` with `Queries.Get(...)`
-- [x] Update `app/drinks_accessor.go` with `Get(...)` method
+- [x] Update `app/drinks/module.go` with `Get(...)` method
 - [x] Add `get` subcommand to CLI
 - [x] Write unit test for Get query
 
@@ -18,4 +18,4 @@ Implement the Get query use case for fetching a single drink by ID.
 
 ## Dependencies
 
-- Sprint 003 (CLI skeleton, accessor pattern)
+- Sprint 003 (CLI skeleton, module surface pattern)
