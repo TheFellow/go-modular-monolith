@@ -29,7 +29,7 @@ func TestCreate_PersistsOnCommit(t *testing.T) {
 	ctx := middleware.NewContext(context.Background())
 	tx, err := uow.NewManager().Begin(ctx)
 	testutil.ErrorIf(t, err != nil, "begin tx: %v", err)
-	ctx.SetUnitOfWork(tx)
+	ctx = middleware.NewContext(ctx, middleware.WithUnitOfWork(tx))
 
 	uc := commands.NewCreate(d)
 	created, err := uc.Execute(ctx, "Margarita")

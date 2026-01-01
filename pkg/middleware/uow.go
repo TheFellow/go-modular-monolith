@@ -11,7 +11,7 @@ func UnitOfWork(m *uow.Manager) CommandMiddleware {
 		if err != nil {
 			return err
 		}
-		ctx.SetUnitOfWork(tx)
+		ctx = NewContext(ctx, WithUnitOfWork(tx))
 
 		if err := next(ctx); err != nil {
 			tx.Rollback()

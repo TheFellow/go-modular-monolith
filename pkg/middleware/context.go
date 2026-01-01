@@ -23,6 +23,12 @@ func WithPrincipal(p cedar.EntityUID) ContextOpt {
 	}
 }
 
+func WithUnitOfWork(tx *uow.Tx) ContextOpt {
+	return func(c *Context) {
+		c.Context = context.WithValue(c.Context, uowKey{}, tx)
+	}
+}
+
 func ContextWithPrincipal(ctx context.Context, p cedar.EntityUID) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
@@ -68,10 +74,6 @@ func (c *Context) Principal() cedar.EntityUID {
 		return p
 	}
 	return cedar.NewEntityUID(cedar.EntityType("Mixology::Actor"), cedar.String("anonymous"))
-}
-
-func (c *Context) SetUnitOfWork(tx *uow.Tx) {
-	c.Context = context.WithValue(c.Context, uowKey{}, tx)
 }
 
 func (c *Context) UnitOfWork() (*uow.Tx, bool) {
