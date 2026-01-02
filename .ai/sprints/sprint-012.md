@@ -1,131 +1,128 @@
-# Sprint 012: Menu Curation Context
+# Sprint 012: Event Handlers & Validation
 
 ## Goal
 
-Create the Menu bounded context for curating drink menus with availability tracking.
+Wire up event handlers to validate the dispatcher pattern. Create handlers that react to inventory events, demonstrating cross-context communication without cascading.
 
 ## Tasks
 
-- [ ] Create `app/menu/models/menu.go` with Menu, MenuItem models
-- [ ] Create `app/menu/internal/dao/` with file-based DAO
-- [ ] Create `app/menu/authz/` with actions and policies
-- [ ] Create `app/menu/queries/` with ListMenus, GetMenu, GetAvailableDrinks queries
-- [ ] Create `app/menu/internal/commands/` with CreateMenu, AddDrink, RemoveDrink, Publish commands
-- [ ] Create `app/menu/events/` with menu-related events
-- [ ] Create `app/menu/module.go` exposing public API
-- [ ] Add menu subcommands to CLI
+- [ ] Create handler registration mechanism
+- [ ] Create `app/drinks/handlers/inventory_handlers.go` - react to ingredient events
+- [ ] Wire handlers in app initialization
+- [ ] Add integration tests for event flows
+- [ ] Verify no cascading (handlers don't emit events)
+- [ ] Test query cache consistency in handlers
 
-## Domain Model
+## Handler Pattern: Leaf Nodes Only
+
+**Critical design constraint**: Handlers do NOT emit new events. They are leaf nodes in the event tree.
+
+Handlers can:
+- Update their own context's state (via DAO)
+- Query other contexts for information (via query cache for consistency)
+- Write to logs/audit trails
+
+Handlers cannot:
+- Call commands (which would emit events)
+- Add events to the context
+- Trigger other handlers
+
+## Example Handler
 
 ```go
-type Menu struct {
-    ID          string
-    Name        string
-    Description string
-    Items       []MenuItem
-    Status      MenuStatus
-    CreatedAt   time.Time
-    PublishedAt *time.Time
-}
+// app/drinks/handlers/inventory_handlers.go
+package handlers
 
-type MenuItem struct {
-    DrinkID      string
-    DisplayName  string       // Optional override of drink name
-    Price        *Price       // Optional pricing
-    Featured     bool
-    Availability Availability // Calculated from inventory
-    SortOrder    int
-}
+import (
+    "log"
 
-type Availability string
-const (
-    AvailabilityAvailable    Availability = "available"     // All ingredients in stock
-    AvailabilityLimited      Availability = "limited"       // In stock but low
-    AvailabilitySubstitution Availability = "substitution"  // Available with substitutes
-    AvailabilityUnavailable  Availability = "unavailable"   // Missing required ingredients
+    "github.com/TheFellow/go-modular-monolith/app/inventory/events"
+    "github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
+    "github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-type MenuStatus string
-const (
-    MenuStatusDraft     MenuStatus = "draft"
-    MenuStatusPublished MenuStatus = "published"
-    MenuStatusArchived  MenuStatus = "archived"
-)
+func HandleIngredientDepleted() dispatcher.Handler {
+    return func(ctx *middleware.Context, event any) error {
+        e := event.(events.IngredientDepleted)
 
-type Price struct {
-    Amount   int    // In cents
-    Currency string // USD, EUR, etc.
+        // For now, just log - richer behavior comes with Menu context
+        log.Printf("ingredient depleted: %s", e.IngredientID)
+
+        return nil
+    }
+}
+
+func HandleIngredientRestocked() dispatcher.Handler {
+    return func(ctx *middleware.Context, event any) error {
+        e := event.(events.IngredientRestocked)
+
+        log.Printf("ingredient restocked: %s (qty: %.2f)", e.IngredientID, e.NewQty)
+
+        return nil
+    }
 }
 ```
 
-## Availability Calculation
-
-Menu queries both Drinks and Inventory to calculate availability:
+## Handler Registration
 
 ```go
-// app/menu/internal/availability.go
-func (s *AvailabilityService) CalculateForDrink(ctx context.Context, drinkID string) (Availability, error) {
-    // 1. Get drink recipe from Drinks context
-    drink, err := s.drinkQueries.Get(ctx, drinkID)
-    if err != nil {
-        return AvailabilityUnavailable, err
-    }
-
-    // 2. Check inventory for each required ingredient
-    ingredientIDs := extractIngredientIDs(drink.Recipe)
-    amounts := extractAmounts(drink.Recipe)
-
-    availability, err := s.inventoryQueries.CheckAvailability(ctx, inventory.AvailabilityRequest{
-        IngredientIDs: ingredientIDs,
-        Amounts:       amounts,
-    })
-    if err != nil {
-        return AvailabilityUnavailable, err
-    }
-
-    // 3. Determine availability status
-    if !availability.Available {
-        // Check if substitutes available for missing ingredients
-        if hasSubstitutes(drink.Recipe, availability.Missing) {
-            return AvailabilitySubstitution, nil
-        }
-        return AvailabilityUnavailable, nil
-    }
-
-    if len(availability.LowStock) > 0 {
-        return AvailabilityLimited, nil
-    }
-
-    return AvailabilityAvailable, nil
+// app/app.go or separate registration file
+func registerHandlers(d *dispatcher.Dispatcher) {
+    // Inventory events -> Drinks handlers
+    d.Register(inventory_events.IngredientDepleted{},
+        drinks_handlers.HandleIngredientDepleted())
+    d.Register(inventory_events.IngredientRestocked{},
+        drinks_handlers.HandleIngredientRestocked())
 }
 ```
 
-## Events
+## Query Cache Validation Test
 
-- `MenuCreated{MenuID, Name}` - new menu created
-- `MenuPublished{MenuID}` - menu made active
-- `MenuArchived{MenuID}` - menu deactivated
-- `DrinkAddedToMenu{MenuID, DrinkID}` - drink added to menu
-- `DrinkRemovedFromMenu{MenuID, DrinkID}` - drink removed from menu
-- `DrinkAvailabilityChanged{MenuID, DrinkID, OldStatus, NewStatus}` - availability recalculated
+```go
+func TestHandlerSeesCachedState(t *testing.T) {
+    // 1. Command queries ingredient
+    // 2. Command emits event
+    // 3. Handler queries same ingredient
+    // 4. Handler should see cached result from step 1
+}
+```
 
-## Notes
+## Event Flow Diagram
 
-Menu is a "downstream" context - it consumes data from Drinks and Inventory. It doesn't own drink or ingredient data, only the curation and availability status.
+```
+Command: AdjustStock(vodka, -10)
+         │
+         ├─► Queries ingredient (cached)
+         ├─► Updates stock
+         ├─► Emits StockAdjusted
+         ├─► Emits IngredientDepleted (if qty=0)
+         │
+         ▼
+    ┌─────────┐
+    │Dispatcher│  (after commit)
+    └─────────┘
+         │
+    ┌────┴────┐
+    ▼         ▼
+Handler A  Handler B
+    │         │
+    ▼         ▼
+ (leaf)    (leaf)
 
-Availability is recalculated:
-1. When a drink is added to a menu
-2. When inventory events indicate stock changes
-3. On-demand via explicit refresh
+No handler emits events.
+No chaining. No cycles.
+```
 
 ## Success Criteria
 
-- `go run ./main/cli menu create "Happy Hour"`
-- `go run ./main/cli menu add-drink happy-hour margarita`
-- Availability status calculated correctly based on inventory
-- `go test ./...` passes
+- Depleting vodka via `inventory adjust` triggers handler
+- Handler logs show events were processed
+- Handlers see cached query results from command
+- No cascading events in logs
+- Handler errors are logged but don't fail command
+- `go test ./...` passes with integration tests
 
 ## Dependencies
 
-- Sprint 010 (Rich drink recipes)
-- Sprint 011 (Inventory for availability checks)
+- Sprint 010 (Dispatcher & Query Cache)
+- Sprint 011 (Inventory context with events)

@@ -1,89 +1,170 @@
-# Sprint 010: Rich Drink Recipes
+# Sprint 010: Dispatcher & Query Cache Infrastructure
 
 ## Goal
 
-Evolve the Drinks context to have proper recipes with ingredient references, amounts, and preparation instructions.
+Implement the core event-driven infrastructure: the dispatcher for routing events to handlers, and the query cache for handler consistency. This validates the architectural pattern early.
 
 ## Tasks
 
-- [ ] Update `app/drinks/models/drink.go` with full recipe model
-- [ ] Create `app/drinks/models/recipe.go` with RecipeStep, RecipeIngredient
-- [ ] Update Drink DAO to persist recipe data
-- [ ] Add recipe validation (ingredients must exist in Ingredients context)
-- [ ] Create `DrinkRecipeUpdated` event
-- [ ] Update Create command to accept recipe
-- [ ] Add Update command for modifying recipes
-- [ ] Update CLI to support recipe input (JSON or flags)
+- [ ] Implement real `pkg/dispatcher` (replace stub)
+- [ ] Add `QueryCache` to `middleware.Context`
+- [ ] Create `middleware.Cached[T]` helper for cache-aware queries
+- [ ] Update dispatcher to pass `*middleware.Context` to handlers
+- [ ] Write tests for dispatcher and cache behavior
+- [ ] Wire dispatcher into command middleware (flush events on commit)
 
-## Domain Model
+## Dispatcher Implementation
 
 ```go
-type Drink struct {
-    ID           string
-    Name         string
-    Category     DrinkCategory  // Cocktail, Mocktail, Shot, Highball, etc.
-    Glass        GlassType      // Rocks, Highball, Coupe, Martini, etc.
-    Recipe       Recipe
-    Description  string
-}
+// pkg/dispatcher/dispatcher.go
+package dispatcher
 
-type Recipe struct {
-    Ingredients  []RecipeIngredient
-    Steps        []string           // Ordered preparation steps
-    Garnish      string             // Optional garnish description
-}
+import (
+    "reflect"
+    "log"
 
-type RecipeIngredient struct {
-    IngredientID string   // Reference to Ingredients context
-    Amount       float64
-    Unit         string   // May differ from ingredient's default unit
-    Optional     bool     // Can be omitted if unavailable
-    Substitutes  []string // Alternative ingredient IDs
-}
-
-type DrinkCategory string
-const (
-    DrinkCategoryCocktail  DrinkCategory = "cocktail"
-    DrinkCategoryMocktail  DrinkCategory = "mocktail"
-    DrinkCategoryShot      DrinkCategory = "shot"
-    DrinkCategoryHighball  DrinkCategory = "highball"
-    DrinkCategoryMartini   DrinkCategory = "martini"
-    DrinkCategorySour      DrinkCategory = "sour"
-    DrinkCategoryTiki      DrinkCategory = "tiki"
+    "github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
-```
 
-## Cross-Context Query
+type Handler func(ctx *middleware.Context, event any) error
 
-Drinks queries the Ingredients context to validate ingredient references:
+type Dispatcher struct {
+    handlers map[reflect.Type][]Handler
+}
 
-```go
-// app/drinks/internal/commands/create.go
-func (c *Create) Execute(ctx *middleware.Context, req CreateRequest) (*models.Drink, error) {
-    // Validate all ingredient IDs exist
-    for _, ri := range req.Recipe.Ingredients {
-        if _, err := c.ingredientQueries.Get(ctx, ri.IngredientID); err != nil {
-            return nil, errors.Invalidf("ingredient %s not found: %w", ri.IngredientID, err)
+func New() *Dispatcher {
+    return &Dispatcher{
+        handlers: make(map[reflect.Type][]Handler),
+    }
+}
+
+func (d *Dispatcher) Register(eventType any, handler Handler) {
+    t := reflect.TypeOf(eventType)
+    d.handlers[t] = append(d.handlers[t], handler)
+}
+
+func (d *Dispatcher) Flush(ctx *middleware.Context) error {
+    events := ctx.Events()
+    for _, event := range events {
+        handlers := d.handlers[reflect.TypeOf(event)]
+        for _, h := range handlers {
+            if err := h(ctx, event); err != nil {
+                // Log but don't fail - handlers are best-effort
+                log.Printf("handler error for %T: %v", event, err)
+            }
         }
     }
-    // ... create drink
+    return nil
 }
 ```
 
-## Events
+## Query Cache Implementation
 
-- `DrinkRecipeUpdated{DrinkID, AddedIngredients[], RemovedIngredients[]}` - recipe changed, may affect availability
+```go
+// pkg/middleware/cache.go
+package middleware
 
-## Notes
+type QueryKey string
 
-This sprint establishes the pattern for cross-context reads: modules can import and call another module's public queries directly. No need for events for reads.
+type QueryCache struct {
+    cache map[QueryKey]any
+}
+
+func newQueryCache() *QueryCache {
+    return &QueryCache{cache: make(map[QueryKey]any)}
+}
+
+func (qc *QueryCache) Get(key QueryKey) (any, bool) {
+    v, ok := qc.cache[key]
+    return v, ok
+}
+
+func (qc *QueryCache) Set(key QueryKey, value any) {
+    qc.cache[key] = value
+}
+
+// Cached wraps a query function with transparent caching
+func Cached[T any](ctx *Context, key string, query func() (T, error)) (T, error) {
+    var zero T
+
+    qkey := QueryKey(key)
+    if cached, ok := ctx.queryCache.Get(qkey); ok {
+        return cached.(T), nil
+    }
+
+    result, err := query()
+    if err == nil {
+        ctx.queryCache.Set(qkey, result)
+    }
+    return result, err
+}
+```
+
+## Context Updates
+
+```go
+// pkg/middleware/context.go additions
+type Context struct {
+    context.Context
+    events     []any
+    queryCache *QueryCache  // ADD THIS
+}
+
+func NewContext(parent context.Context, opts ...ContextOpt) *Context {
+    // ...
+    c := &Context{
+        Context:    parent,
+        events:     make([]any, 0, 4),
+        queryCache: newQueryCache(),  // ADD THIS
+    }
+    // ...
+}
+
+func (c *Context) QueryCache() *QueryCache {
+    return c.queryCache
+}
+```
+
+## Command Middleware Integration
+
+```go
+// pkg/middleware/uow.go - update to flush events
+func (m *UoWMiddleware) Execute(ctx *Context, next func(*Context) error) error {
+    tx, err := m.manager.Begin(ctx)
+    if err != nil {
+        return err
+    }
+
+    ctx = NewContext(ctx, WithUnitOfWork(tx))
+
+    if err := next(ctx); err != nil {
+        tx.Rollback()
+        return err
+    }
+
+    if err := tx.Commit(); err != nil {
+        return err
+    }
+
+    // Flush events after successful commit
+    return m.dispatcher.Flush(ctx)
+}
+```
+
+## Key Design Points
+
+1. **Handlers are leaf nodes** - they don't emit new events
+2. **Query cache is per-execution** - fresh cache for each command
+3. **Events flush after commit** - ensures data is persisted before handlers run
+4. **Handler errors are logged, not fatal** - best-effort processing
 
 ## Success Criteria
 
-- `go run ./main/cli drinks create "Margarita" --recipe=...` with full recipe
-- Invalid ingredient references are rejected
+- Dispatcher routes events to registered handlers
+- Query cache returns cached results for repeated queries
+- Handler errors are logged but don't fail the command
 - `go test ./...` passes
 
 ## Dependencies
 
-- Sprint 009 (Ingredients context)
+- Sprint 009 (Ingredients context - provides events to test with)

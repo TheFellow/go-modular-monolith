@@ -2,19 +2,19 @@
 
 ## Goal
 
-Create the Inventory bounded context to track stock levels for ingredients.
+Create the Inventory bounded context to track stock levels for ingredients. This provides meaningful events (depleted, restocked) to exercise the dispatcher.
 
 ## Tasks
 
 - [ ] Create `app/inventory/models/stock.go` with Stock model
 - [ ] Create `app/inventory/internal/dao/` with file-based DAO
 - [ ] Create `app/inventory/authz/` with actions and policies
-- [ ] Create `app/inventory/queries/` with GetStock, ListStock, CheckAvailability queries
+- [ ] Create `app/inventory/queries/` with GetStock, ListStock queries
 - [ ] Create `app/inventory/internal/commands/` with AdjustStock, SetStock commands
 - [ ] Create `app/inventory/events/` with stock-related events
 - [ ] Create `app/inventory/module.go` exposing public API
 - [ ] Add inventory subcommands to CLI
-- [ ] Seed initial stock data
+- [ ] Update app.go to include inventory module
 
 ## Domain Model
 
@@ -23,16 +23,7 @@ type Stock struct {
     IngredientID   string
     Quantity       float64
     Unit           string
-    LowThreshold   float64  // Warn when below this
-    ReorderPoint   float64  // Suggest reorder when below this
     LastUpdated    time.Time
-}
-
-type StockAdjustment struct {
-    IngredientID string
-    Delta        float64  // Positive = add, negative = remove
-    Reason       AdjustmentReason
-    Note         string
 }
 
 type AdjustmentReason string
@@ -50,43 +41,90 @@ const (
 These events drive cross-context behavior:
 
 - `StockAdjusted{IngredientID, PreviousQty, NewQty, Delta, Reason}` - any stock change
-- `IngredientDepleted{IngredientID}` - quantity reached zero (CRITICAL for menus)
+- `IngredientDepleted{IngredientID}` - quantity reached zero
 - `IngredientRestocked{IngredientID, NewQty}` - quantity went from zero to positive
-- `LowStockWarning{IngredientID, CurrentQty, Threshold}` - below warning threshold
-
-## Key Query: CheckAvailability
-
-Used by Menu context to determine drink availability:
 
 ```go
-// app/inventory/queries/availability.go
-type AvailabilityRequest struct {
-    IngredientIDs []string
-    Amounts       map[string]float64  // Required amounts per ingredient
+// app/inventory/events/events.go
+type StockAdjusted struct {
+    IngredientID string
+    PreviousQty  float64
+    NewQty       float64
+    Delta        float64
+    Reason       string
 }
 
-type AvailabilityResponse struct {
-    Available    bool
-    Missing      []string            // Ingredients with insufficient stock
-    LowStock     []string            // Ingredients that would go below threshold
+type IngredientDepleted struct {
+    IngredientID string
 }
 
-func (q *Queries) CheckAvailability(ctx context.Context, req AvailabilityRequest) (AvailabilityResponse, error)
+type IngredientRestocked struct {
+    IngredientID string
+    NewQty       float64
+}
 ```
 
-## Notes
+## Command Logic
 
-Inventory is the "truth" for what we physically have. It's queried by Menu to calculate drink availability and emits events that Menu handles to update availability status.
+```go
+// app/inventory/internal/commands/adjust.go
+func (c *AdjustStock) Execute(ctx *middleware.Context, req AdjustRequest) (*models.Stock, error) {
+    stock, err := c.dao.Get(ctx, req.IngredientID)
+    // ... handle not found, create if needed
 
-The `IngredientDepleted` event is the key driver: when fired, Menu context must mark affected drinks as unavailable.
+    previousQty := stock.Quantity
+    stock.Quantity += req.Delta
+    if stock.Quantity < 0 {
+        stock.Quantity = 0
+    }
+    stock.LastUpdated = time.Now()
+
+    if err := c.dao.Save(ctx, stock); err != nil {
+        return nil, err
+    }
+
+    // Always emit StockAdjusted
+    ctx.AddEvent(events.StockAdjusted{
+        IngredientID: req.IngredientID,
+        PreviousQty:  previousQty,
+        NewQty:       stock.Quantity,
+        Delta:        req.Delta,
+        Reason:       string(req.Reason),
+    })
+
+    // Emit threshold events
+    if previousQty > 0 && stock.Quantity == 0 {
+        ctx.AddEvent(events.IngredientDepleted{IngredientID: req.IngredientID})
+    }
+    if previousQty == 0 && stock.Quantity > 0 {
+        ctx.AddEvent(events.IngredientRestocked{
+            IngredientID: req.IngredientID,
+            NewQty:       stock.Quantity,
+        })
+    }
+
+    return stock, nil
+}
+```
+
+## CLI Commands
+
+```
+mixology inventory list
+mixology inventory get <ingredient-id>
+mixology inventory adjust <ingredient-id> <delta> --reason=<reason>
+mixology inventory set <ingredient-id> <quantity>
+```
 
 ## Success Criteria
 
 - `go run ./main/cli inventory list` shows stock levels
-- `go run ./main/cli inventory adjust vodka -2.0 --reason=used`
+- `go run ./main/cli inventory adjust <id> -2.0 --reason=used` adjusts stock
 - Depleted/Restocked events fire at correct thresholds
+- Events appear in context after command execution
 - `go test ./...` passes
 
 ## Dependencies
 
 - Sprint 009 (Ingredients context for validation)
+- Sprint 010 (Dispatcher infrastructure)

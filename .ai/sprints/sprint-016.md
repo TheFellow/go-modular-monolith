@@ -1,263 +1,138 @@
-# Sprint 016: Query Cache for Handler Consistency
+# Sprint 016: Orders & Inventory Consumption
 
 ## Goal
 
-Add a query cache to the middleware context so handlers see consistent "as-of-command" state without artificial pre-fetching.
-
-## Problem
-
-When a command emits events, handlers react. If handlers query state:
-1. They might see different state than what existed when the command ran
-2. Handler execution order could affect outcomes (inconsistent)
-3. Pre-fetching data in the command "just for handlers" feels artificial
-
-## Solution
-
-The execution context IS the world snapshot. Queries made during command execution are cached. Handlers receive the same context, so their queries return cached results.
-
-```
-Command executes
-    │
-    ├─► Queries menu (result cached)
-    ├─► Queries stock (result cached)
-    ├─► Emits OrderCompleted event
-    │
-    ▼
-Dispatcher runs with SAME context
-    │
-    ├─► Handler A queries menu → returns CACHED result
-    └─► Handler B queries stock → returns CACHED result
-
-All see the same world state. No artificial pre-fetching.
-```
+Create an Orders context that records drink orders. Handlers in other contexts react to order events but do not produce new events (no cascading).
 
 ## Tasks
 
-- [ ] Add `QueryCache` to `middleware.Context`
-- [ ] Create `QueryKey` type for cache keys
-- [ ] Create `Cached[T]` wrapper for query methods
-- [ ] Update dispatcher to pass context to handlers
-- [ ] Update existing queries to use cache-aware pattern
-- [ ] Write tests verifying cache consistency
+- [ ] Create `app/orders/models/order.go` with Order, OrderItem models
+- [ ] Create `app/orders/internal/dao/` with file-based DAO
+- [ ] Create `app/orders/authz/` with actions and policies
+- [ ] Create `app/orders/queries/` with ListOrders, GetOrder queries
+- [ ] Create `app/orders/internal/commands/` with PlaceOrder, CompleteOrder, CancelOrder
+- [ ] Create `app/orders/events/` with order events
+- [ ] Create `app/inventory/handlers/order_handlers.go` - updates stock directly (no events)
+- [ ] Create `app/menu/handlers/order_handlers.go` - recalculates availability directly (no events)
+- [ ] Add order subcommands to CLI
 
-## Implementation
-
-### Query Cache on Context
+## Domain Model
 
 ```go
-// pkg/middleware/context.go
-
-type QueryKey string
-
-type QueryCache struct {
-    cache map[QueryKey]any
+type Order struct {
+    ID          string
+    MenuID      string
+    Items       []OrderItem
+    Status      OrderStatus
+    CreatedAt   time.Time
+    CompletedAt *time.Time
+    Notes       string
 }
 
-func NewQueryCache() *QueryCache {
-    return &QueryCache{cache: make(map[QueryKey]any)}
+type OrderItem struct {
+    DrinkID       string
+    Quantity      int
+    Substitutions []AppliedSubstitution
+    Notes         string
 }
 
-func (qc *QueryCache) Get(key QueryKey) (any, bool) {
-    v, ok := qc.cache[key]
-    return v, ok
+type OrderStatus string
+const (
+    OrderStatusPending    OrderStatus = "pending"
+    OrderStatusPreparing  OrderStatus = "preparing"
+    OrderStatusCompleted  OrderStatus = "completed"
+    OrderStatusCancelled  OrderStatus = "cancelled"
+)
+```
+
+## Events
+
+```go
+type OrderCompleted struct {
+    OrderID string
+    MenuID  string
+    Items   []OrderItemCompleted
 }
 
-func (qc *QueryCache) Set(key QueryKey, value any) {
-    qc.cache[key] = value
-}
-
-type Context struct {
-    context.Context
-    events     []any
-    queryCache *QueryCache
-}
-
-func NewContext(parent context.Context, opts ...ContextOpt) *Context {
-    c := &Context{
-        Context:    parent,
-        queryCache: NewQueryCache(),
-    }
-    // ...
-}
-
-func (c *Context) QueryCache() *QueryCache {
-    return c.queryCache
+type OrderItemCompleted struct {
+    DrinkID  string
+    Quantity int
 }
 ```
 
-### Cache-Aware Queries
+Events carry minimal data. Handlers query what they need - the query cache ensures they see consistent "as-of-command" state.
 
-Queries transparently check the cache. No special API needed.
+## Handler Pattern: No Cascading Events
 
-```go
-// app/drinks/queries/get.go
-
-func (q *Queries) Get(ctx context.Context, id string) (models.Drink, error) {
-    // Check if we're in a middleware context with cache
-    if mctx, ok := ctx.(*middleware.Context); ok {
-        key := middleware.QueryKey(fmt.Sprintf("drinks:get:%s", id))
-        if cached, ok := mctx.QueryCache().Get(key); ok {
-            return cached.(models.Drink), nil
-        }
-
-        // Query and cache
-        result, err := q.dao.Get(ctx, id)
-        if err == nil {
-            mctx.QueryCache().Set(key, result)
-        }
-        return result, err
-    }
-
-    // Not in middleware context, just query
-    return q.dao.Get(ctx, id)
-}
-```
-
-### Helper for Cleaner Implementation
+Handlers react to events but **do not emit new events**. They update their own state directly.
 
 ```go
-// pkg/middleware/cache.go
-
-func Cached[T any](ctx context.Context, key string, query func() (T, error)) (T, error) {
-    var zero T
-
-    mctx, ok := ctx.(*Context)
-    if !ok {
-        return query()
-    }
-
-    qkey := QueryKey(key)
-    if cached, ok := mctx.QueryCache().Get(qkey); ok {
-        return cached.(T), nil
-    }
-
-    result, err := query()
-    if err == nil {
-        mctx.QueryCache().Set(qkey, result)
-    }
-    return result, err
-}
-```
-
-Usage in queries:
-
-```go
-func (q *Queries) Get(ctx context.Context, id string) (models.Drink, error) {
-    return middleware.Cached(ctx, fmt.Sprintf("drinks:get:%s", id), func() (models.Drink, error) {
-        return q.dao.Get(ctx, id)
-    })
-}
-```
-
-### Dispatcher Passes Context
-
-```go
-// pkg/dispatcher/dispatcher.go
-
-func (d *Dispatcher) Flush(ctx *middleware.Context, events []any) error {
-    for _, event := range events {
-        handlers := d.handlers[reflect.TypeOf(event)]
-        for _, h := range handlers {
-            // Pass the SAME context - handlers see cached state
-            if err := h(ctx, event); err != nil {
-                log.Printf("handler error for %T: %v", event, err)
-            }
-        }
-    }
-    return nil
-}
-```
-
-### Handler Signature
-
-```go
-// pkg/dispatcher/dispatcher.go
-
-type Handler func(ctx *middleware.Context, event any) error
-```
-
-Handlers receive the middleware context, not plain `context.Context`. Their queries use the cache.
-
-## Example Flow
-
-```go
-// Command execution
-func (c *CompleteOrder) Execute(ctx *middleware.Context, req Request) (*Order, error) {
-    // These queries are cached
-    menu, _ := c.menuQueries.Get(ctx, req.MenuID)
-
-    for _, item := range req.Items {
-        drink, _ := c.drinkQueries.Get(ctx, item.DrinkID)
-        // Calculate ingredients from drink.Recipe
-    }
-
-    // ... complete order ...
-
-    ctx.AddEvent(events.OrderCompleted{
-        OrderID: order.ID,
-        MenuID:  req.MenuID,
-        Items:   items,
-    })
-    return order, nil
-}
-
-// Handler execution (receives same ctx)
-func HandleOrderCompleted(drinkQueries *drinks.Queries, invQueries *inventory.Queries) Handler {
+// app/inventory/handlers/order_handlers.go
+func HandleOrderCompleted(stockDAO *dao.StockDAO, drinkQueries *drinks.Queries) dispatcher.Handler {
     return func(ctx *middleware.Context, event any) error {
         e := event.(orders.OrderCompleted)
 
-        // Returns CACHED drink from command execution
-        // No need for command to pre-fetch "for handlers"
         for _, item := range e.Items {
-            drink, _ := drinkQueries.Get(ctx, item.DrinkID)
-            // drink.Recipe has ingredients
-        }
+            // Query drink recipe - returns CACHED result from command execution
+            drink, err := drinkQueries.Get(ctx, item.DrinkID)
+            if err != nil {
+                return err
+            }
 
-        // Stock queries during handler are fresh (not cached by command)
-        // But that's fine - we're reading current stock to update it
-        for _, ingredientID := range ingredientIDs {
-            stock, _ := invQueries.GetStock(ctx, ingredientID)
-            // update stock...
+            // Calculate and deduct ingredients
+            for _, ri := range drink.Recipe.Ingredients {
+                amount := ri.Amount * float64(item.Quantity)
+
+                stock, err := stockDAO.Get(ctx, ri.IngredientID)
+                if err != nil {
+                    return err
+                }
+
+                stock.Quantity -= amount
+                stock.LastUpdated = time.Now()
+
+                if err := stockDAO.Save(ctx, stock); err != nil {
+                    return err
+                }
+
+                log.Printf("stock adjusted: %s -= %.2f (order %s)",
+                    ri.IngredientID, amount, e.OrderID)
+            }
         }
+        return nil
     }
 }
 ```
 
-## Key Insight
+## Why No Cascading?
 
-The cache makes queries **idempotent within an execution**. If the command queried it, handlers see the same result. If the command didn't query it, handlers get fresh data.
+The dispatcher explicitly does not support cascading events because:
 
-This is exactly what you want:
-- Shared data (menu, drinks, recipes) → cached, consistent
-- Handler-specific data (current stock to update) → fresh, current
+1. **Prevents cycles**: A → B → C → A would cause infinite loops
+2. **Explicit flow**: All reactions to a command are visible in the handler registrations
+3. **Simpler reasoning**: Each event has a fixed set of handlers, no hidden chains
+4. **Testability**: Handlers can be tested in isolation
 
-## Cache Key Strategy
+## CLI Commands
 
-Keys should be deterministic and unique per query:
-
-```go
-// Convention: "{module}:{query}:{params...}"
-"drinks:get:drk_123"
-"drinks:list"
-"inventory:stock:ing_456"
-"menu:get:menu_789"
 ```
-
-## Notes
-
-- Cache is per-execution, not global (each command gets fresh cache)
-- Cache is read-through (misses query and populate)
-- No cache invalidation needed (execution is short-lived)
-- Write operations don't use cache (they modify state)
+mixology order place <menu-id> <drink-id>:<qty> [<drink-id>:<qty>...]
+mixology order list
+mixology order get <order-id>
+mixology order complete <order-id>
+mixology order cancel <order-id>
+```
 
 ## Success Criteria
 
-- Queries during command execution are cached
-- Handler queries return cached results for same keys
-- Handler execution order doesn't affect query results
-- No artificial pre-fetching in commands
+- `go run ./main/cli order place happy-hour margarita:2` creates order
+- `go run ./main/cli order complete <id>` triggers handlers
+- Inventory stock is reduced (check via `inventory list`)
+- Menu availability is recalculated (check via `menu show`)
+- No cascading events in dispatcher logs
 - `go test ./...` passes
 
 ## Dependencies
 
-- Sprint 015 (Orders context)
+- Sprint 014 (Menu curation)
+- Sprint 015 (Cost/substitution logic)
