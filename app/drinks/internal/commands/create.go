@@ -1,14 +1,13 @@
 package commands
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/ids"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -34,7 +33,7 @@ func (c *Create) Execute(ctx *middleware.Context, name string) (models.Drink, er
 		return models.Drink{}, errors.Internalf("register dao: %w", err)
 	}
 
-	id, err := newID()
+	id, err := ids.New()
 	if err != nil {
 		return models.Drink{}, errors.Internalf("generate id: %w", err)
 	}
@@ -51,12 +50,4 @@ func (c *Create) Execute(ctx *middleware.Context, name string) (models.Drink, er
 	ctx.AddEvent(events.DrinkCreated{DrinkID: id, Name: name})
 
 	return record.ToDomain(), nil
-}
-
-func newID() (string, error) {
-	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b[:]), nil
 }

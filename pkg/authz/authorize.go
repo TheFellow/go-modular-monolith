@@ -2,17 +2,17 @@ package authz
 
 import (
 	"context"
-	"errors"
+	goerrors "errors"
 	"fmt"
 	"sort"
 	"strings"
 	"sync"
 
-	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-var ErrDenied = errors.New("authorization denied")
+var ErrDenied = goerrors.New("authorization denied")
 
 type DeniedError struct {
 	Principal  cedar.EntityUID
@@ -98,7 +98,7 @@ func Authorize(ctx context.Context, principal cedar.EntityUID, action cedar.Enti
 
 	decision, diagnostic := cedar.Authorize(ps, entities, req)
 	if len(diagnostic.Errors) > 0 {
-		return perrors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
+		return errors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
 	}
 	if decision == cedar.Deny {
 		return DeniedError{
@@ -138,7 +138,7 @@ func AuthorizeWithEntity(ctx context.Context, principal cedar.EntityUID, action 
 
 	decision, diagnostic := cedar.Authorize(ps, entities, req)
 	if len(diagnostic.Errors) > 0 {
-		return perrors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
+		return errors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
 	}
 	if decision == cedar.Deny {
 		return DeniedError{

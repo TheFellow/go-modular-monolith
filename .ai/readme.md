@@ -4,6 +4,134 @@
 
 A cocktail/drink management system demonstrating modular monolith architecture with DDD and CQRS patterns.
 
+## Bounded Contexts
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           Mixology Domain                                    │
+│                                                                             │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌───────────┐ │
+│  │ Ingredients │     │   Drinks    │     │  Inventory  │     │   Menu    │ │
+│  │  (Master)   │────▶│  (Recipes)  │     │  (Stock)    │────▶│ (Curation)│ │
+│  └─────────────┘     └─────────────┘     └─────────────┘     └───────────┘ │
+│        │                   │                   │                   │        │
+│        │                   │                   │                   │        │
+│        └───────────────────┴───────────────────┴───────────────────┘        │
+│                                    │                                        │
+│                                    ▼                                        │
+│                            ┌─────────────┐                                  │
+│                            │   Orders    │                                  │
+│                            │(Consumption)│                                  │
+│                            └─────────────┘                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Context Responsibilities
+
+| Context | Owns | Queries From | Produces Events |
+|---------|------|--------------|-----------------|
+| **Ingredients** | Ingredient catalog, categories, substitution rules | - | IngredientCreated, IngredientUpdated |
+| **Drinks** | Recipes, preparation steps, drink categories | Ingredients | DrinkCreated, DrinkRecipeUpdated |
+| **Inventory** | Stock levels, costs, thresholds | Ingredients | StockAdjusted, IngredientDepleted, IngredientRestocked, LowStockWarning |
+| **Menu** | Curated menus, pricing, availability | Drinks, Inventory | MenuPublished, DrinkAvailabilityChanged |
+| **Orders** | Order records, consumption tracking | Menu, Drinks | OrderPlaced, OrderCompleted, OrderCancelled |
+
+### Event Flow: No Cascading
+
+**Critical design constraint**: Handlers do NOT emit new events. They are leaf nodes.
+
+```
+Command
+    │
+    ▼
+Event(s) emitted
+    │
+    ▼
+┌─────────┐
+│Dispatcher│
+└─────────┘
+    │
+┌───┴───┐
+▼       ▼
+Handler Handler
+(leaf)  (leaf)
+
+No chaining. No cycles. Predictable.
+```
+
+**Example: Order Completion**
+
+```
+CompleteOrder command
+    │
+    ▼
+OrderCompleted event
+    │
+    ├──► Inventory handler: updates stock directly (no event)
+    │
+    └──► Menu handler: recalculates availability directly (no event)
+```
+
+Both handlers react to the same event independently. Neither emits new events.
+
+**Example: Inventory Adjustment**
+
+```
+AdjustStock command
+    │
+    ├──► StockAdjusted event
+    │
+    └──► (if qty=0) IngredientDepleted event
+              │
+              └──► Menu handler: marks affected drinks unavailable (no event)
+```
+
+The command emits events. Handlers react but don't chain.
+
+**Trade-off**: We lose granular event audit trail for handler-driven changes, but gain simplicity and prevent cycles.
+
+### Cross-Context Communication Patterns
+
+1. **Queries** (synchronous reads): Modules import and call other modules' public queries directly
+   - Menu queries Drinks for recipes
+   - Menu queries Inventory for stock levels
+   - Drinks queries Ingredients for validation
+
+2. **Events** (asynchronous reactions): Modules emit events that other modules handle
+   - Inventory emits IngredientDepleted → Menu recalculates availability
+   - Orders emits OrderCompleted → Inventory adjusts stock
+   - Drinks emits DrinkRecipeUpdated → Menu recalculates availability
+
+### Query Cache: Handler Consistency
+
+Handlers need to see consistent "as-of-command" state. The execution context provides this via query caching.
+
+```
+Command executes
+    │
+    ├─► Queries menu (result CACHED)
+    ├─► Queries drink (result CACHED)
+    ├─► Emits event
+    │
+    ▼
+Handlers run with SAME context
+    │
+    ├─► Handler A queries menu → CACHED result
+    └─► Handler B queries drink → CACHED result
+```
+
+**How it works**:
+- `middleware.Context` has a query cache
+- Queries transparently check/populate the cache
+- Dispatcher passes the same context to handlers
+- Handler queries return cached results
+
+**Key insight**: The cache makes queries idempotent within an execution:
+- If command queried it → handlers see same result (consistent)
+- If command didn't query it → handlers get fresh data (appropriate)
+
+No artificial pre-fetching. Commands query what they need. Handlers query what they need. Both see consistent state through natural caching.
+
 ## Directory Structure
 
 ```
@@ -14,43 +142,77 @@ A cocktail/drink management system demonstrating modular monolith architecture w
   app.go                  # Application facade - instantiates modules
   /drinks                 # Drink definitions, categories, recipes
     /authz                # Module-owned authorization definitions
-      actions.go          # Cedar action entity UIDs (shared by use cases/tests)
+      actions.go          # Cedar action entity UIDs
+      policies.go         # Embeds policies.cedar
       policies.cedar      # Cedar policies for this module
-    /events               # Domain events for this module
-    /handlers             # Event handlers
-    /models               # Public domain models (Drink, etc.)
+    /events               # Domain events (DrinkCreated, DrinkRecipeUpdated)
+    /handlers             # Event handlers (if any)
+    /models               # Public domain models (Drink, Recipe)
     get.go                # GetRequest/GetResponse types
     list.go               # ListRequest/ListResponse types
     create.go             # CreateRequest/CreateResponse types
-    module.go             # Drinks module surface (delegates to queries/internal commands)
-    /queries              # Read-side use cases (query chain)
-      get.go              # Get query implementation
-      list.go             # List query implementation
+    module.go             # Module surface (delegates to queries/internal commands)
+    /queries              # Read-side use cases
     /internal
-      /commands           # Write use cases (Action, Resource, Execute)
-        create.go         # Create command implementation
-      /dao                # Data access (file-based initially)
-  /inventory              # Ingredient stock levels
-    ...
+      /commands           # Write use cases
+      /dao                # Data access (file-based)
   /ingredients            # Ingredient master data
-    ...
+    /authz
+    /events               # IngredientCreated, IngredientUpdated
+    /models               # Ingredient, Category, Unit, SubstitutionRule
+    /queries
+    /internal
+      /commands
+      /dao
+  /inventory              # Ingredient stock levels
+    /authz
+    /events               # StockAdjusted, IngredientDepleted, IngredientRestocked, LowStockWarning
+    /handlers             # Handles OrderCompleted from Orders
+    /models               # Stock, StockAdjustment
+    /queries              # GetStock, ListStock, CheckAvailability
+    /internal
+      /commands           # AdjustStock, SetStock
+      /dao
   /menu                   # Curated drink menus
-    ...
+    /authz
+    /events               # MenuPublished, DrinkAvailabilityChanged
+    /handlers             # Handles IngredientDepleted, DrinkRecipeUpdated
+    /models               # Menu, MenuItem, Availability
+    /queries              # ListMenus, GetMenu, GetAvailableDrinks, Analytics
+    /internal
+      /commands           # CreateMenu, AddDrink, Publish
+      /availability       # Availability calculation service
+      /dao
+  /orders                 # Order tracking & consumption
+    /authz
+    /events               # OrderPlaced, OrderCompleted, OrderCancelled
+    /models               # Order, OrderItem
+    /queries              # ListOrders, GetOrder
+    /internal
+      /commands           # PlaceOrder, CompleteOrder, CancelOrder
+      /dao
 /pkg                      # Supporting infrastructure (non-domain)
   /authn                  # Fake AuthN middleware (sets context principal)
-  /authz                  # Cedar runtime (embeds generated policies)
-    base.cedar            # Base policies (anonymous login, etc.)
-    policies_gen.go       # Generated: embeds all .cedar files
+  /authz                  # Cedar runtime
+    base.cedar            # Base policies
+    policies.go           # PolicyDocument type, embeds base.cedar
+    policies_gen.go       # Generated: imports + aggregates module policies
+  /errors                 # Domain error types (generated)
+    errors.go             # ErrorKind definitions
+    errors_gen.go         # Generated: Invalidf, NotFoundf, Internalf, Is* functions
   /middleware             # Middleware chain and context
     context.go            # Context with event collection
-    middleware.go         # Chain, Middleware types, package-level Query/Command chains
-    run.go                # Runs a use case through chain
+    query.go              # QueryChain, QueryMiddleware, RunQuery
+    command.go            # CommandChain, CommandMiddleware, RunCommand
+    chains.go             # Package-level Query/Command chains
     authz.go              # AuthZ middleware
     uow.go                # Unit of work middleware
     dispatcher.go         # Event dispatcher middleware
-  /dispatcher             # Event dispatch infrastructure (stub initially)
+  /dispatcher             # Event dispatch infrastructure
+    dispatcher.go         # Handler registration and routing
+    handlers_gen.go       # Generated: RegisterAllHandlers
   /uow                    # Unit of work abstraction
-  /data                   # JSON seed files for drinks, ingredients
+  /data                   # JSON data files
 ```
 
 ## Module Rules

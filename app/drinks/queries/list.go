@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/TheFellow/go-modular-monolith/app/drinks/models"
-	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 func (q *Queries) List(ctx context.Context) ([]models.Drink, error) {
 	records, err := q.dao.List(ctx)
 	if err != nil {
-		return nil, perrors.Internalf("list drinks: %w", err)
+		return nil, errors.Internalf("list drinks: %w", err)
 	}
 
 	drinks := make([]models.Drink, 0, len(records))

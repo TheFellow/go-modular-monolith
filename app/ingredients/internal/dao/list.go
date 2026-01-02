@@ -6,7 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
-func (d *FileDrinkDAO) List(ctx context.Context) ([]Drink, error) {
+func (d *FileIngredientDAO) List(ctx context.Context) ([]Ingredient, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -15,12 +15,12 @@ func (d *FileDrinkDAO) List(ctx context.Context) ([]Drink, error) {
 		return nil, errors.Internalf("dao not loaded")
 	}
 
-	out := make([]Drink, 0, len(d.drinks))
-	for _, drink := range d.drinks {
-		if drink.DeletedAt != nil {
+	out := make([]Ingredient, 0, len(d.ingredients))
+	for _, ingredient := range d.ingredients {
+		if ingredient.DeletedAt != nil {
 			continue
 		}
-		out = append(out, drink)
+		out = append(out, ingredient)
 	}
 	return out, nil
 }

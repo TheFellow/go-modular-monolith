@@ -1,0 +1,47 @@
+package ingredients
+
+import (
+	"context"
+
+	"github.com/TheFellow/go-modular-monolith/app/ingredients/authz"
+	"github.com/TheFellow/go-modular-monolith/app/ingredients/internal/commands"
+	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/cedar-policy/cedar-go"
+)
+
+type UpdateRequest struct {
+	ID          string
+	Name        string
+	Category    models.Category
+	Unit        models.Unit
+	Description string
+}
+
+type UpdateResponse struct {
+	Ingredient models.Ingredient
+}
+
+func (m *Module) Update(ctx context.Context, req UpdateRequest) (UpdateResponse, error) {
+	resource := cedar.Entity{
+		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Ingredient"), cedar.String(req.ID)),
+		Parents:    cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(nil),
+	}
+
+	return middleware.RunCommand(ctx, authz.ActionUpdate, resource, func(mctx *middleware.Context, req UpdateRequest) (UpdateResponse, error) {
+		cmdReq := commands.UpdateRequest{
+			ID:          req.ID,
+			Name:        req.Name,
+			Category:    req.Category,
+			Unit:        req.Unit,
+			Description: req.Description,
+		}
+		i, err := m.update.Execute(mctx, cmdReq)
+		if err != nil {
+			return UpdateResponse{}, err
+		}
+		return UpdateResponse{Ingredient: i}, nil
+	}, req)
+}

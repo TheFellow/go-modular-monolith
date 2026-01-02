@@ -3,7 +3,7 @@ package uow
 import (
 	"context"
 
-	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 type Saver interface {
@@ -29,7 +29,7 @@ type Tx struct {
 
 func (t *Tx) Register(s Saver) error {
 	if t.done {
-		return perrors.Internalf("transaction already finished")
+		return errors.Internalf("transaction already finished")
 	}
 	t.savers = append(t.savers, s)
 	return nil
@@ -37,7 +37,7 @@ func (t *Tx) Register(s Saver) error {
 
 func (t *Tx) Commit() error {
 	if t.done {
-		return perrors.Internalf("transaction already finished")
+		return errors.Internalf("transaction already finished")
 	}
 	t.done = true
 

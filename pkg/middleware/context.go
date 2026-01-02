@@ -49,7 +49,10 @@ func NewContext(parent context.Context, opts ...ContextOpt) *Context {
 		parent = context.Background()
 	}
 
-	c := &Context{Context: parent}
+	c := &Context{
+		Context: parent,
+		events:  make([]any, 0, 4),
+	}
 	for _, opt := range opts {
 		opt(c)
 	}

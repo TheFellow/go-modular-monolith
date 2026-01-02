@@ -9,17 +9,17 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
-type FileDrinkDAO struct {
-	path   string
-	drinks []Drink
-	loaded bool
+type FileIngredientDAO struct {
+	path        string
+	ingredients []Ingredient
+	loaded      bool
 }
 
-func NewFileDrinkDAO(path string) *FileDrinkDAO {
-	return &FileDrinkDAO{path: path}
+func NewFileIngredientDAO(path string) *FileIngredientDAO {
+	return &FileIngredientDAO{path: path}
 }
 
-func (d *FileDrinkDAO) Load(ctx context.Context) error {
+func (d *FileIngredientDAO) Load(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -27,29 +27,29 @@ func (d *FileDrinkDAO) Load(ctx context.Context) error {
 	b, err := os.ReadFile(d.path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			d.drinks = []Drink{}
+			d.ingredients = []Ingredient{}
 			d.loaded = true
 			return nil
 		}
-		return errors.Internalf("read drinks file: %w", err)
+		return errors.Internalf("read ingredients file: %w", err)
 	}
 	if len(b) == 0 {
-		d.drinks = []Drink{}
+		d.ingredients = []Ingredient{}
 		d.loaded = true
 		return nil
 	}
 
-	var drinks []Drink
-	if err := json.Unmarshal(b, &drinks); err != nil {
-		return errors.Internalf("parse drinks json %q: %w", d.path, err)
+	var ingredients []Ingredient
+	if err := json.Unmarshal(b, &ingredients); err != nil {
+		return errors.Internalf("parse ingredients json %q: %w", d.path, err)
 	}
 
-	d.drinks = drinks
+	d.ingredients = ingredients
 	d.loaded = true
 	return nil
 }
 
-func (d *FileDrinkDAO) Save(ctx context.Context) error {
+func (d *FileIngredientDAO) Save(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -63,13 +63,13 @@ func (d *FileDrinkDAO) Save(ctx context.Context) error {
 		return err
 	}
 
-	b, err := json.MarshalIndent(d.drinks, "", "  ")
+	b, err := json.MarshalIndent(d.ingredients, "", "  ")
 	if err != nil {
 		return err
 	}
 	b = append(b, '\n')
 
-	tmp, err := os.CreateTemp(dir, ".drinks-*.json")
+	tmp, err := os.CreateTemp(dir, ".ingredients-*.json")
 	if err != nil {
 		return err
 	}

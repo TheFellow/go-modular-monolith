@@ -7,3 +7,11 @@ sprint-005,completed,2025-12-29,2025-12-29,Middleware infrastructure
 sprint-006,completed,2025-12-29,2025-12-29,First write use case + AuthZ
 sprint-007,completed,2025-12-30,2025-12-30,Uniform error handling
 sprint-008,completed,2025-12-30,2025-12-30,Decentralized policy embedding
+sprint-009,completed,2026-01-02,2026-01-02,Ingredients master data context
+sprint-010,pending,,,Rich drink recipes
+sprint-011,pending,,,Inventory management context
+sprint-012,pending,,,Menu curation context
+sprint-013,pending,,,Event-driven cross-context handlers
+sprint-014,pending,,,Advanced business rules & cost analysis
+sprint-015,pending,,,Orders & inventory consumption
+sprint-016,pending,,,Query cache for handler consistency
