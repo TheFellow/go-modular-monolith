@@ -6,10 +6,11 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type GetRequest struct {
-	ID string
+	ID cedar.EntityUID
 }
 
 type GetResponse struct {

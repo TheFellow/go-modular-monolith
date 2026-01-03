@@ -46,13 +46,13 @@ func (c *Create) Execute(ctx *middleware.Context, req CreateRequest) (models.Ing
 		return models.Ingredient{}, errors.Internalf("register dao: %w", err)
 	}
 
-	id, err := ids.New()
+	uid, err := ids.New(models.IngredientEntityType)
 	if err != nil {
 		return models.Ingredient{}, errors.Internalf("generate id: %w", err)
 	}
 
 	record := dao.Ingredient{
-		ID:          id,
+		ID:          string(uid.ID),
 		Name:        name,
 		Category:    string(req.Category),
 		Unit:        string(req.Unit),
@@ -64,7 +64,7 @@ func (c *Create) Execute(ctx *middleware.Context, req CreateRequest) (models.Ing
 	}
 
 	ctx.AddEvent(events.IngredientCreated{
-		IngredientID: id,
+		IngredientID: uid,
 		Name:         name,
 		Category:     req.Category,
 	})

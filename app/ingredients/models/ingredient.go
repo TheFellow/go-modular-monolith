@@ -1,11 +1,23 @@
 package models
 
+import cedar "github.com/cedar-policy/cedar-go"
+
+const IngredientEntityType = cedar.EntityType("Mixology::Ingredient")
+
+func NewIngredientID(id string) cedar.EntityUID {
+	return cedar.NewEntityUID(IngredientEntityType, cedar.String(id))
+}
+
 type Ingredient struct {
-	ID          string
+	ID          cedar.EntityUID
 	Name        string
 	Category    Category
 	Unit        Unit
 	Description string
+}
+
+func (i Ingredient) EntityUID() cedar.EntityUID {
+	return i.ID
 }
 
 type Category string

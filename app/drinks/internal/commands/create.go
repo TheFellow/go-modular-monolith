@@ -33,13 +33,13 @@ func (c *Create) Execute(ctx *middleware.Context, name string) (models.Drink, er
 		return models.Drink{}, errors.Internalf("register dao: %w", err)
 	}
 
-	id, err := ids.New()
+	uid, err := ids.New(models.DrinkEntityType)
 	if err != nil {
 		return models.Drink{}, errors.Internalf("generate id: %w", err)
 	}
 
 	record := dao.Drink{
-		ID:   id,
+		ID:   string(uid.ID),
 		Name: name,
 	}
 
@@ -47,7 +47,7 @@ func (c *Create) Execute(ctx *middleware.Context, name string) (models.Drink, er
 		return models.Drink{}, err
 	}
 
-	ctx.AddEvent(events.DrinkCreated{DrinkID: id, Name: name})
+	ctx.AddEvent(events.DrinkCreated{DrinkID: uid, Name: name})
 
 	return record.ToDomain(), nil
 }

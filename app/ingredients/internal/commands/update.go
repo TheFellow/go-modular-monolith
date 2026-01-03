@@ -65,7 +65,7 @@ func (c *Update) Execute(ctx *middleware.Context, req UpdateRequest) (models.Ing
 	}
 
 	ctx.AddEvent(events.IngredientUpdated{
-		IngredientID: existing.ID,
+		IngredientID: models.NewIngredientID(existing.ID),
 		Name:         existing.Name,
 		Category:     models.Category(existing.Category),
 	})

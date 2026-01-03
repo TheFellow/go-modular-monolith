@@ -3,12 +3,17 @@ package ids
 import (
 	"crypto/rand"
 	"encoding/hex"
+
+	"github.com/cedar-policy/cedar-go"
 )
 
-func New() (string, error) {
+var reader = rand.Reader
+
+func New(entityType cedar.EntityType) (cedar.EntityUID, error) {
 	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", err
+	if _, err := reader.Read(b[:]); err != nil {
+		return cedar.EntityUID{}, err
 	}
-	return hex.EncodeToString(b[:]), nil
+	idStr := hex.EncodeToString(b[:])
+	return cedar.NewEntityUID(entityType, cedar.String(idStr)), nil
 }

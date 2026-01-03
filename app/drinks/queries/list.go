@@ -9,16 +9,16 @@ import (
 )
 
 func (q *Queries) List(ctx context.Context) ([]models.Drink, error) {
-	return middleware.Cached(ctx, "drinks:list", func() ([]models.Drink, error) {
-		records, err := q.dao.List(ctx)
-		if err != nil {
-			return nil, errors.Internalf("list drinks: %w", err)
-		}
+	records, err := q.dao.List(ctx)
+	if err != nil {
+		return nil, errors.Internalf("list drinks: %w", err)
+	}
 
-		drinks := make([]models.Drink, 0, len(records))
-		for _, record := range records {
-			drinks = append(drinks, record.ToDomain())
-		}
-		return drinks, nil
-	})
+	drinks := make([]models.Drink, 0, len(records))
+	for _, record := range records {
+		drinks = append(drinks, record.ToDomain())
+	}
+
+	middleware.CacheSetAll(ctx, drinks)
+	return drinks, nil
 }

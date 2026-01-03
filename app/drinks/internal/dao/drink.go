@@ -4,6 +4,7 @@ import (
 	"time"
 
 	domain "github.com/TheFellow/go-modular-monolith/app/drinks/models"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type Drink struct {
@@ -14,14 +15,14 @@ type Drink struct {
 
 func (d Drink) ToDomain() domain.Drink {
 	return domain.Drink{
-		ID:   d.ID,
+		ID:   cedar.NewEntityUID(domain.DrinkEntityType, cedar.String(d.ID)),
 		Name: d.Name,
 	}
 }
 
 func FromDomain(d domain.Drink) Drink {
 	return Drink{
-		ID:   d.ID,
+		ID:   string(d.ID.ID),
 		Name: d.Name,
 	}
 }

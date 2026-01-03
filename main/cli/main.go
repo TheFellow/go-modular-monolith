@@ -8,6 +8,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/drinks"
+	drinksmodels "github.com/TheFellow/go-modular-monolith/app/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
@@ -65,7 +66,7 @@ func buildApp() *cli.Command {
 							}
 
 							for _, d := range res.Drinks {
-								fmt.Printf("%s\t%s\n", d.ID, d.Name)
+								fmt.Printf("%s\t%s\n", string(d.ID.ID), d.Name)
 							}
 							return nil
 						},
@@ -80,12 +81,12 @@ func buildApp() *cli.Command {
 								return fmt.Errorf("missing id")
 							}
 
-							res, err := a.Drinks().Get(ctx, drinks.GetRequest{ID: id})
+							res, err := a.Drinks().Get(ctx, drinks.GetRequest{ID: drinksmodels.NewDrinkID(id)})
 							if err != nil {
 								return err
 							}
 
-							fmt.Printf("%s\t%s\n", res.Drink.ID, res.Drink.Name)
+							fmt.Printf("%s\t%s\n", string(res.Drink.ID.ID), res.Drink.Name)
 							return nil
 						},
 					},
@@ -104,7 +105,7 @@ func buildApp() *cli.Command {
 								return err
 							}
 
-							fmt.Printf("%s\t%s\n", res.Drink.ID, res.Drink.Name)
+							fmt.Printf("%s\t%s\n", string(res.Drink.ID.ID), res.Drink.Name)
 							return nil
 						},
 					},
@@ -124,7 +125,7 @@ func buildApp() *cli.Command {
 							}
 
 							for _, i := range res.Ingredients {
-								fmt.Printf("%s\t%s\t%s\t%s\n", i.ID, i.Name, i.Category, i.Unit)
+								fmt.Printf("%s\t%s\t%s\t%s\n", string(i.ID.ID), i.Name, i.Category, i.Unit)
 							}
 							return nil
 						},
@@ -139,13 +140,13 @@ func buildApp() *cli.Command {
 								return fmt.Errorf("missing id")
 							}
 
-							res, err := a.Ingredients().Get(ctx, ingredients.GetRequest{ID: id})
+							res, err := a.Ingredients().Get(ctx, ingredients.GetRequest{ID: models.NewIngredientID(id)})
 							if err != nil {
 								return err
 							}
 
 							i := res.Ingredient
-							fmt.Printf("ID:          %s\n", i.ID)
+							fmt.Printf("ID:          %s\n", string(i.ID.ID))
 							fmt.Printf("Name:        %s\n", i.Name)
 							fmt.Printf("Category:    %s\n", i.Category)
 							fmt.Printf("Unit:        %s\n", i.Unit)
@@ -195,7 +196,7 @@ func buildApp() *cli.Command {
 							}
 
 							i := res.Ingredient
-							fmt.Printf("%s\t%s\t%s\t%s\n", i.ID, i.Name, i.Category, i.Unit)
+							fmt.Printf("%s\t%s\t%s\t%s\n", string(i.ID.ID), i.Name, i.Category, i.Unit)
 							return nil
 						},
 					},
@@ -232,7 +233,7 @@ func buildApp() *cli.Command {
 							}
 
 							res, err := a.Ingredients().Update(ctx, ingredients.UpdateRequest{
-								ID:          id,
+								ID:          models.NewIngredientID(id),
 								Name:        cmd.String("name"),
 								Category:    models.Category(cmd.String("category")),
 								Unit:        models.Unit(cmd.String("unit")),
@@ -243,7 +244,7 @@ func buildApp() *cli.Command {
 							}
 
 							i := res.Ingredient
-							fmt.Printf("%s\t%s\t%s\t%s\n", i.ID, i.Name, i.Category, i.Unit)
+							fmt.Printf("%s\t%s\t%s\t%s\n", string(i.ID.ID), i.Name, i.Category, i.Unit)
 							return nil
 						},
 					},

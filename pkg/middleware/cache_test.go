@@ -4,54 +4,92 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func TestCached_UsesQueryCache(t *testing.T) {
+type testEntity struct {
+	uid cedar.EntityUID
+	val int
+}
+
+func (e testEntity) EntityUID() cedar.EntityUID { return e.uid }
+
+type otherEntity struct {
+	uid cedar.EntityUID
+}
+
+func (e otherEntity) EntityUID() cedar.EntityUID { return e.uid }
+
+func TestCacheSetGet_ByUID(t *testing.T) {
 	t.Parallel()
 
 	ctx := NewContext(context.Background())
 
-	calls := 0
-	query := func() (int, error) {
-		calls++
-		return 123, nil
+	uid := cedar.NewEntityUID(cedar.EntityType("Test::Thing"), cedar.String("a"))
+	CacheSet(ctx, testEntity{uid: uid, val: 1})
+
+	got, ok := CacheGet[testEntity](ctx, uid)
+	if !ok {
+		t.Fatalf("expected cached entity")
+	}
+	if got.val != 1 {
+		t.Fatalf("expected val=1, got %d", got.val)
 	}
 
-	got1, err := Cached[int](ctx, "k", query)
-	if err != nil {
-		t.Fatalf("Cached (first): %v", err)
+	if _, ok := CacheGet[otherEntity](ctx, uid); ok {
+		t.Fatalf("expected entity type isolation")
 	}
-	got2, err := Cached[int](ctx, "k", query)
+}
+
+func TestCachedByUID_CachesSuccess(t *testing.T) {
+	t.Parallel()
+
+	ctx := NewContext(context.Background())
+
+	uid := cedar.NewEntityUID(cedar.EntityType("Test::Thing"), cedar.String("a"))
+
+	calls := 0
+	fetch := func() (testEntity, error) {
+		calls++
+		return testEntity{uid: uid, val: 123}, nil
+	}
+
+	_, err := CachedByUID(ctx, uid, fetch)
 	if err != nil {
-		t.Fatalf("Cached (second): %v", err)
+		t.Fatalf("CachedByUID (first): %v", err)
+	}
+
+	_, err = CachedByUID(ctx, uid, fetch)
+	if err != nil {
+		t.Fatalf("CachedByUID (second): %v", err)
 	}
 
 	if calls != 1 {
 		t.Fatalf("expected 1 call, got %d", calls)
 	}
-	if got1 != got2 {
-		t.Fatalf("expected cached result %v, got %v", got1, got2)
-	}
 }
 
-func TestCached_DoesNotCacheErrors(t *testing.T) {
+func TestCachedByUID_DoesNotCacheErrors(t *testing.T) {
 	t.Parallel()
 
 	ctx := NewContext(context.Background())
 
+	uid := cedar.NewEntityUID(cedar.EntityType("Test::Thing"), cedar.String("a"))
+
 	calls := 0
 	sentinel := errors.New("boom")
-	query := func() (int, error) {
+	fetch := func() (testEntity, error) {
 		calls++
-		return 0, sentinel
+		return testEntity{}, sentinel
 	}
 
-	_, err := Cached[int](ctx, "k", query)
+	_, err := CachedByUID(ctx, uid, fetch)
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("expected sentinel error, got %v", err)
 	}
 
-	_, err = Cached[int](ctx, "k", query)
+	_, err = CachedByUID(ctx, uid, fetch)
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("expected sentinel error, got %v", err)
 	}
@@ -61,19 +99,21 @@ func TestCached_DoesNotCacheErrors(t *testing.T) {
 	}
 }
 
-func TestCached_NoMiddlewareContext_NoCache(t *testing.T) {
+func TestCachedByUID_NoMiddlewareContext_NoCache(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 
+	uid := cedar.NewEntityUID(cedar.EntityType("Test::Thing"), cedar.String("a"))
+
 	calls := 0
-	query := func() (int, error) {
+	fetch := func() (testEntity, error) {
 		calls++
-		return 123, nil
+		return testEntity{uid: uid, val: 123}, nil
 	}
 
-	_, _ = Cached[int](ctx, "k", query)
-	_, _ = Cached[int](ctx, "k", query)
+	_, _ = CachedByUID(ctx, uid, fetch)
+	_, _ = CachedByUID(ctx, uid, fetch)
 
 	if calls != 2 {
 		t.Fatalf("expected 2 calls, got %d", calls)

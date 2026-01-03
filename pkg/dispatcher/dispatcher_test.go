@@ -6,6 +6,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/events"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/handlers"
+	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
 )
 
 func TestDispatcher_DispatchesToHandlers(t *testing.T) {
@@ -17,7 +18,7 @@ func TestDispatcher_DispatchesToHandlers(t *testing.T) {
 	d := New()
 
 	err := d.Dispatch(context.Background(), events.IngredientCreated{
-		IngredientID: "vodka",
+		IngredientID: models.NewIngredientID("vodka"),
 		Name:         "Vodka",
 	})
 	if err != nil {

@@ -1,50 +1,82 @@
 package middleware
 
-import "context"
+import (
+	"context"
 
-type QueryKey string
+	cedar "github.com/cedar-policy/cedar-go"
+)
 
-type QueryCache struct {
-	cache map[QueryKey]any
+type EntityCache struct {
+	entities map[string]any
 }
 
-func newQueryCache() *QueryCache {
-	return &QueryCache{cache: make(map[QueryKey]any)}
+func newEntityCache() *EntityCache {
+	return &EntityCache{entities: make(map[string]any)}
 }
 
-func (qc *QueryCache) Get(key QueryKey) (any, bool) {
-	v, ok := qc.cache[key]
-	return v, ok
-}
-
-func (qc *QueryCache) Set(key QueryKey, value any) {
-	qc.cache[key] = value
-}
-
-// Cached memoizes query results for the lifetime of a single execution context.
-//
-// When ctx is a *middleware.Context, results are stored in that context's
-// per-execution cache; otherwise, the query runs without caching.
-func Cached[T any](ctx context.Context, key string, query func() (T, error)) (T, error) {
+func cacheFromContext(ctx context.Context) *EntityCache {
 	if ctx == nil {
-		return query()
+		return nil
 	}
-
 	mctx, ok := ctx.(*Context)
-	if !ok || mctx.queryCache == nil {
-		return query()
+	if !ok || mctx.entityCache == nil {
+		return nil
+	}
+	return mctx.entityCache
+}
+
+type CedarEntity interface {
+	EntityUID() cedar.EntityUID
+}
+
+func entityKey(uid cedar.EntityUID) string {
+	return string(uid.Type) + "\x00" + string(uid.ID)
+}
+
+func CacheGet[T any](ctx context.Context, uid cedar.EntityUID) (T, bool) {
+	var zero T
+
+	cache := cacheFromContext(ctx)
+	if cache == nil {
+		return zero, false
 	}
 
-	qkey := QueryKey(key)
-	if cached, ok := mctx.queryCache.Get(qkey); ok {
-		if typed, ok := cached.(T); ok {
-			return typed, nil
-		}
+	v, ok := cache.entities[entityKey(uid)]
+	if !ok {
+		return zero, false
 	}
 
-	result, err := query()
-	if err == nil {
-		mctx.queryCache.Set(qkey, result)
+	typed, ok := v.(T)
+	if !ok {
+		return zero, false
 	}
-	return result, err
+	return typed, true
+}
+
+func CacheSet[T CedarEntity](ctx context.Context, entity T) {
+	cache := cacheFromContext(ctx)
+	if cache == nil {
+		return
+	}
+	cache.entities[entityKey(entity.EntityUID())] = entity
+}
+
+func CacheSetAll[T CedarEntity](ctx context.Context, entities []T) {
+	for _, entity := range entities {
+		CacheSet(ctx, entity)
+	}
+}
+
+func CachedByUID[T CedarEntity](ctx context.Context, uid cedar.EntityUID, fetch func() (T, error)) (T, error) {
+	if cached, ok := CacheGet[T](ctx, uid); ok {
+		return cached, nil
+	}
+
+	entity, err := fetch()
+	if err != nil {
+		return entity, err
+	}
+
+	CacheSet(ctx, entity)
+	return entity, nil
 }

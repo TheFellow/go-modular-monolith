@@ -1,6 +1,8 @@
 package events
 
+import cedar "github.com/cedar-policy/cedar-go"
+
 type DrinkCreated struct {
-	DrinkID string
+	DrinkID cedar.EntityUID
 	Name    string
 }

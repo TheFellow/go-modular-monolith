@@ -11,7 +11,7 @@ import (
 )
 
 type UpdateRequest struct {
-	ID          string
+	ID          cedar.EntityUID
 	Name        string
 	Category    models.Category
 	Unit        models.Unit
@@ -24,7 +24,7 @@ type UpdateResponse struct {
 
 func (m *Module) Update(ctx context.Context, req UpdateRequest) (UpdateResponse, error) {
 	resource := cedar.Entity{
-		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Ingredient"), cedar.String(req.ID)),
+		UID:        req.ID,
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),
@@ -32,7 +32,7 @@ func (m *Module) Update(ctx context.Context, req UpdateRequest) (UpdateResponse,
 
 	return middleware.RunCommand(ctx, authz.ActionUpdate, resource, func(mctx *middleware.Context, req UpdateRequest) (UpdateResponse, error) {
 		cmdReq := commands.UpdateRequest{
-			ID:          req.ID,
+			ID:          string(req.ID.ID),
 			Name:        req.Name,
 			Category:    req.Category,
 			Unit:        req.Unit,

@@ -9,8 +9,8 @@ import (
 
 type Context struct {
 	context.Context
-	events     []any
-	queryCache *QueryCache
+	events      []any
+	entityCache *EntityCache
 }
 
 type ContextOpt func(*Context)
@@ -37,10 +37,6 @@ func ContextWithPrincipal(ctx context.Context, p cedar.EntityUID) context.Contex
 	return context.WithValue(ctx, principalKey{}, p)
 }
 
-func ContextWithAnonymousPrincipal(ctx context.Context) context.Context {
-	return ContextWithPrincipal(ctx, cedar.NewEntityUID(cedar.EntityType("Mixology::Actor"), cedar.String("anonymous")))
-}
-
 func WithAnonymousPrincipal() ContextOpt {
 	return WithPrincipal(cedar.NewEntityUID(cedar.EntityType("Mixology::Actor"), cedar.String("anonymous")))
 }
@@ -51,9 +47,9 @@ func NewContext(parent context.Context, opts ...ContextOpt) *Context {
 	}
 
 	c := &Context{
-		Context:    parent,
-		events:     make([]any, 0, 4),
-		queryCache: newQueryCache(),
+		Context:     parent,
+		events:      make([]any, 0, 4),
+		entityCache: newEntityCache(),
 	}
 	for _, opt := range opts {
 		opt(c)

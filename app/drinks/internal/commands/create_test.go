@@ -34,7 +34,7 @@ func TestCreate_PersistsOnCommit(t *testing.T) {
 	uc := commands.NewCreate(d)
 	created, err := uc.Execute(ctx, "Margarita")
 	testutil.ErrorIf(t, err != nil, "execute: %v", err)
-	testutil.ErrorIf(t, created.ID == "", "expected id to be set")
+	testutil.ErrorIf(t, string(created.ID.ID) == "", "expected id to be set")
 
 	err = tx.Commit()
 	testutil.ErrorIf(t, err != nil, "commit: %v", err)

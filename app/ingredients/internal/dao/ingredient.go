@@ -4,6 +4,7 @@ import (
 	"time"
 
 	domain "github.com/TheFellow/go-modular-monolith/app/ingredients/models"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type Ingredient struct {
@@ -17,7 +18,7 @@ type Ingredient struct {
 
 func (i Ingredient) ToDomain() domain.Ingredient {
 	return domain.Ingredient{
-		ID:          i.ID,
+		ID:          cedar.NewEntityUID(domain.IngredientEntityType, cedar.String(i.ID)),
 		Name:        i.Name,
 		Category:    domain.Category(i.Category),
 		Unit:        domain.Unit(i.Unit),
@@ -27,7 +28,7 @@ func (i Ingredient) ToDomain() domain.Ingredient {
 
 func FromDomain(i domain.Ingredient) Ingredient {
 	return Ingredient{
-		ID:          i.ID,
+		ID:          string(i.ID.ID),
 		Name:        i.Name,
 		Category:    string(i.Category),
 		Unit:        string(i.Unit),
