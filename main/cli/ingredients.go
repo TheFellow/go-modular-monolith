@@ -1,17 +1,15 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"strings"
 
-	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
 
-func ingredientsCommands(a **app.App) *cli.Command {
+func (c *CLI) ingredientsCommands() *cli.Command {
 	return &cli.Command{
 		Name:  "ingredients",
 		Usage: "Manage ingredients",
@@ -19,16 +17,8 @@ func ingredientsCommands(a **app.App) *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List ingredients",
-				Action: func(ctx context.Context, _ *cli.Command) error {
-					mctx, err := requireMiddlewareContext(ctx)
-					if err != nil {
-						return err
-					}
-					if a == nil || *a == nil {
-						return fmt.Errorf("app not initialized")
-					}
-
-					res, err := (*a).Ingredients().List(mctx, ingredients.ListRequest{})
+				Action: c.action(func(ctx *middleware.Context, _ *cli.Command) error {
+					res, err := c.app.Ingredients().List(ctx, ingredients.ListRequest{})
 					if err != nil {
 						return err
 					}
@@ -37,27 +27,17 @@ func ingredientsCommands(a **app.App) *cli.Command {
 						fmt.Printf("%s\t%s\t%s\t%s\n", string(i.ID.ID), i.Name, i.Category, i.Unit)
 					}
 					return nil
-				},
+				}),
 			},
 			{
-				Name:      "get",
-				Usage:     "Get an ingredient by ID",
-				ArgsUsage: "<id>",
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					id := cmd.Args().First()
-					if id == "" {
-						return fmt.Errorf("missing id")
-					}
-
-					mctx, err := requireMiddlewareContext(ctx)
-					if err != nil {
-						return err
-					}
-					if a == nil || *a == nil {
-						return fmt.Errorf("app not initialized")
-					}
-
-					res, err := (*a).Ingredients().Get(mctx, ingredients.GetRequest{ID: models.NewIngredientID(id)})
+				Name:  "get",
+				Usage: "Get an ingredient by ID",
+				Arguments: []cli.Argument{
+					&cli.StringArg{Name: "id", UsageText: "Ingredient ID"},
+				},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					id := cmd.StringArgs("id")[0]
+					res, err := c.app.Ingredients().Get(ctx, ingredients.GetRequest{ID: models.NewIngredientID(id)})
 					if err != nil {
 						return err
 					}
@@ -71,24 +51,32 @@ func ingredientsCommands(a **app.App) *cli.Command {
 						fmt.Printf("Description: %s\n", i.Description)
 					}
 					return nil
-				},
+				}),
 			},
 			{
-				Name:      "create",
-				Usage:     "Create a new ingredient",
-				ArgsUsage: "<name>",
+				Name:  "create",
+				Usage: "Create a new ingredient",
+				Arguments: []cli.Argument{
+					&cli.StringArgs{Name: "name", UsageText: "Ingredient name", Min: 1, Max: 1},
+				},
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "category",
 						Aliases:  []string{"c"},
 						Usage:    "Category (spirit|mixer|garnish|bitter|syrup|juice|other)",
 						Required: true,
+						Validator: func(s string) error {
+							return validateIngredientCategory(s, true)
+						},
 					},
 					&cli.StringFlag{
 						Name:     "unit",
 						Aliases:  []string{"u"},
 						Usage:    "Unit (oz|ml|dash|piece|splash)",
 						Required: true,
+						Validator: func(s string) error {
+							return validateIngredientUnit(s, true)
+						},
 					},
 					&cli.StringFlag{
 						Name:    "description",
@@ -96,21 +84,9 @@ func ingredientsCommands(a **app.App) *cli.Command {
 						Usage:   "Description",
 					},
 				},
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					name := strings.TrimSpace(strings.Join(cmd.Args().Slice(), " "))
-					if name == "" {
-						return fmt.Errorf("missing name")
-					}
-
-					mctx, err := requireMiddlewareContext(ctx)
-					if err != nil {
-						return err
-					}
-					if a == nil || *a == nil {
-						return fmt.Errorf("app not initialized")
-					}
-
-					res, err := (*a).Ingredients().Create(mctx, ingredients.CreateRequest{
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					name := cmd.StringArgs("name")[0]
+					res, err := c.app.Ingredients().Create(ctx, ingredients.CreateRequest{
 						Name:        name,
 						Category:    models.Category(cmd.String("category")),
 						Unit:        models.Unit(cmd.String("unit")),
@@ -123,12 +99,14 @@ func ingredientsCommands(a **app.App) *cli.Command {
 					i := res.Ingredient
 					fmt.Printf("%s\t%s\t%s\t%s\n", string(i.ID.ID), i.Name, i.Category, i.Unit)
 					return nil
-				},
+				}),
 			},
 			{
-				Name:      "update",
-				Usage:     "Update an ingredient",
-				ArgsUsage: "<id>",
+				Name:  "update",
+				Usage: "Update an ingredient",
+				Arguments: []cli.Argument{
+					&cli.StringArgs{Name: "id", UsageText: "Ingredient ID", Min: 1, Max: 1},
+				},
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:    "name",
@@ -139,11 +117,17 @@ func ingredientsCommands(a **app.App) *cli.Command {
 						Name:    "category",
 						Aliases: []string{"c"},
 						Usage:   "Category (spirit|mixer|garnish|bitter|syrup|juice|other)",
+						Validator: func(s string) error {
+							return validateIngredientCategory(s, false)
+						},
 					},
 					&cli.StringFlag{
 						Name:    "unit",
 						Aliases: []string{"u"},
 						Usage:   "Unit (oz|ml|dash|piece|splash)",
+						Validator: func(s string) error {
+							return validateIngredientUnit(s, false)
+						},
 					},
 					&cli.StringFlag{
 						Name:    "description",
@@ -151,22 +135,9 @@ func ingredientsCommands(a **app.App) *cli.Command {
 						Usage:   "Description",
 					},
 				},
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					id := cmd.Args().First()
-					if id == "" {
-						return fmt.Errorf("missing id")
-					}
-
-					mctx, err := requireMiddlewareContext(ctx)
-					if err != nil {
-						return err
-					}
-					if a == nil || *a == nil {
-						return fmt.Errorf("app not initialized")
-					}
-
-					res, err := (*a).Ingredients().Update(mctx, ingredients.UpdateRequest{
-						ID:          models.NewIngredientID(id),
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					res, err := c.app.Ingredients().Update(ctx, ingredients.UpdateRequest{
+						ID:          models.NewIngredientID(cmd.StringArgs("id")[0]),
 						Name:        cmd.String("name"),
 						Category:    models.Category(cmd.String("category")),
 						Unit:        models.Unit(cmd.String("unit")),
@@ -179,8 +150,34 @@ func ingredientsCommands(a **app.App) *cli.Command {
 					i := res.Ingredient
 					fmt.Printf("%s\t%s\t%s\t%s\n", string(i.ID.ID), i.Name, i.Category, i.Unit)
 					return nil
-				},
+				}),
 			},
 		},
+	}
+}
+
+func validateIngredientCategory(s string, required bool) error {
+	if s == "" && !required {
+		return nil
+	}
+
+	switch models.Category(s) {
+	case models.CategorySpirit, models.CategoryMixer, models.CategoryGarnish, models.CategoryBitter, models.CategorySyrup, models.CategoryJuice, models.CategoryOther:
+		return nil
+	default:
+		return fmt.Errorf("invalid category: %s", s)
+	}
+}
+
+func validateIngredientUnit(s string, required bool) error {
+	if s == "" && !required {
+		return nil
+	}
+
+	switch models.Unit(s) {
+	case models.UnitOz, models.UnitMl, models.UnitDash, models.UnitPiece, models.UnitSplash:
+		return nil
+	default:
+		return fmt.Errorf("invalid unit: %s", s)
 	}
 }

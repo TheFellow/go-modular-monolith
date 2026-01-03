@@ -1,18 +1,16 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"strconv"
 
-	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/inventory"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
 
-func inventoryCommands(a **app.App) *cli.Command {
+func (c *CLI) inventoryCommands() *cli.Command {
 	return &cli.Command{
 		Name:  "inventory",
 		Usage: "Manage ingredient stock",
@@ -20,16 +18,8 @@ func inventoryCommands(a **app.App) *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List stock levels",
-				Action: func(ctx context.Context, _ *cli.Command) error {
-					mctx, err := requireMiddlewareContext(ctx)
-					if err != nil {
-						return err
-					}
-					if a == nil || *a == nil {
-						return fmt.Errorf("app not initialized")
-					}
-
-					res, err := (*a).Inventory().List(mctx, inventory.ListRequest{})
+				Action: c.action(func(ctx *middleware.Context, _ *cli.Command) error {
+					res, err := c.app.Inventory().List(ctx, inventory.ListRequest{})
 					if err != nil {
 						return err
 					}
@@ -38,27 +28,17 @@ func inventoryCommands(a **app.App) *cli.Command {
 						fmt.Printf("%s\t%.2f\t%s\n", string(s.IngredientID.ID), s.Quantity, s.Unit)
 					}
 					return nil
-				},
+				}),
 			},
 			{
-				Name:      "get",
-				Usage:     "Get stock for an ingredient",
-				ArgsUsage: "<ingredient-id>",
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					id := cmd.Args().First()
-					if id == "" {
-						return fmt.Errorf("missing ingredient-id")
-					}
-
-					mctx, err := requireMiddlewareContext(ctx)
-					if err != nil {
-						return err
-					}
-					if a == nil || *a == nil {
-						return fmt.Errorf("app not initialized")
-					}
-
-					res, err := (*a).Inventory().Get(mctx, inventory.GetRequest{IngredientID: models.NewIngredientID(id)})
+				Name:  "get",
+				Usage: "Get stock for an ingredient",
+				Arguments: []cli.Argument{
+					&cli.StringArgs{Name: "ingredient_id", UsageText: "Ingredient ID", Min: 1, Max: 1},
+				},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					id := cmd.StringArgs("ingredient_id")[0]
+					res, err := c.app.Inventory().Get(ctx, inventory.GetRequest{IngredientID: models.NewIngredientID(id)})
 					if err != nil {
 						return err
 					}
@@ -66,41 +46,36 @@ func inventoryCommands(a **app.App) *cli.Command {
 					s := res.Stock
 					fmt.Printf("%s\t%.2f\t%s\n", string(s.IngredientID.ID), s.Quantity, s.Unit)
 					return nil
-				},
+				}),
 			},
 			{
-				Name:      "adjust",
-				Usage:     "Adjust stock by delta",
-				ArgsUsage: "<ingredient-id> <delta>",
+				Name:  "adjust",
+				Usage: "Adjust stock by delta",
+				Arguments: []cli.Argument{
+					&cli.StringArgs{Name: "ingredient_id", UsageText: "Ingredient ID", Min: 1, Max: 1},
+					&cli.Float64Args{Name: "delta", UsageText: "Delta (+/-)", Min: 1, Max: 1},
+				},
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "reason",
 						Aliases:  []string{"r"},
 						Usage:    "Reason (received|used|spilled|expired|corrected)",
 						Required: true,
+						Validator: func(s string) error {
+							switch inventorymodels.AdjustmentReason(s) {
+							case inventorymodels.ReasonReceived, inventorymodels.ReasonUsed, inventorymodels.ReasonSpilled, inventorymodels.ReasonExpired, inventorymodels.ReasonCorrected:
+								return nil
+							default:
+								return fmt.Errorf("invalid reason: %s", s)
+							}
+						},
 					},
 				},
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					ingredientID := cmd.Args().Get(0)
-					deltaStr := cmd.Args().Get(1)
-					if ingredientID == "" || deltaStr == "" {
-						return fmt.Errorf("usage: inventory adjust <ingredient-id> <delta> --reason=<reason>")
-					}
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					ingredientID := cmd.StringArgs("ingredient_id")[0]
+					delta := cmd.Float64Args("delta")[0]
 
-					delta, err := strconv.ParseFloat(deltaStr, 64)
-					if err != nil {
-						return fmt.Errorf("invalid delta: %w", err)
-					}
-
-					mctx, err := requireMiddlewareContext(ctx)
-					if err != nil {
-						return err
-					}
-					if a == nil || *a == nil {
-						return fmt.Errorf("app not initialized")
-					}
-
-					res, err := (*a).Inventory().Adjust(mctx, inventory.AdjustRequest{
+					res, err := c.app.Inventory().Adjust(ctx, inventory.AdjustRequest{
 						IngredientID: models.NewIngredientID(ingredientID),
 						Delta:        delta,
 						Reason:       inventorymodels.AdjustmentReason(cmd.String("reason")),
@@ -112,33 +87,20 @@ func inventoryCommands(a **app.App) *cli.Command {
 					s := res.Stock
 					fmt.Printf("%s\t%.2f\t%s\n", string(s.IngredientID.ID), s.Quantity, s.Unit)
 					return nil
-				},
+				}),
 			},
 			{
-				Name:      "set",
-				Usage:     "Set stock quantity",
-				ArgsUsage: "<ingredient-id> <quantity>",
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					ingredientID := cmd.Args().Get(0)
-					qtyStr := cmd.Args().Get(1)
-					if ingredientID == "" || qtyStr == "" {
-						return fmt.Errorf("usage: inventory set <ingredient-id> <quantity>")
-					}
+				Name:  "set",
+				Usage: "Set stock quantity",
+				Arguments: []cli.Argument{
+					&cli.StringArgs{Name: "ingredient_id", UsageText: "Ingredient ID", Min: 1, Max: 1},
+					&cli.Float64Args{Name: "quantity", UsageText: "Quantity", Min: 1, Max: 1},
+				},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					ingredientID := cmd.StringArgs("ingredient_id")[0]
+					qty := cmd.Float64Args("quantity")[0]
 
-					qty, err := strconv.ParseFloat(qtyStr, 64)
-					if err != nil {
-						return fmt.Errorf("invalid quantity: %w", err)
-					}
-
-					mctx, err := requireMiddlewareContext(ctx)
-					if err != nil {
-						return err
-					}
-					if a == nil || *a == nil {
-						return fmt.Errorf("app not initialized")
-					}
-
-					res, err := (*a).Inventory().Set(mctx, inventory.SetRequest{
+					res, err := c.app.Inventory().Set(ctx, inventory.SetRequest{
 						IngredientID: models.NewIngredientID(ingredientID),
 						Quantity:     qty,
 					})
@@ -149,7 +111,7 @@ func inventoryCommands(a **app.App) *cli.Command {
 					s := res.Stock
 					fmt.Printf("%s\t%.2f\t%s\n", string(s.IngredientID.ID), s.Quantity, s.Unit)
 					return nil
-				},
+				}),
 			},
 		},
 	}

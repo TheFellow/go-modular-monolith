@@ -2,20 +2,19 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
-	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/drinks"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/drinks/models"
 	drinkscli "github.com/TheFellow/go-modular-monolith/app/drinks/surfaces/cli"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
 
-func drinksCommands(a **app.App) *cli.Command {
+func (c *CLI) drinksCommands() *cli.Command {
 	return &cli.Command{
 		Name:  "drinks",
 		Usage: "Manage drinks",
@@ -24,16 +23,8 @@ func drinksCommands(a **app.App) *cli.Command {
 				Name:  "list",
 				Usage: "List drinks",
 				Flags: []cli.Flag{JSONFlag},
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					mctx, err := requireMiddlewareContext(ctx)
-					if err != nil {
-						return err
-					}
-					if a == nil || *a == nil {
-						return fmt.Errorf("app not initialized")
-					}
-
-					res, err := (*a).Drinks().List(mctx, drinks.ListRequest{})
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					res, err := c.app.Drinks().List(ctx, drinks.ListRequest{})
 					if err != nil {
 						return err
 					}
@@ -50,28 +41,18 @@ func drinksCommands(a **app.App) *cli.Command {
 						fmt.Printf("%s\t%s\n", string(d.ID.ID), d.Name)
 					}
 					return nil
-				},
+				}),
 			},
 			{
-				Name:      "get",
-				Usage:     "Get a drink by ID",
-				ArgsUsage: "<id>",
-				Flags:     []cli.Flag{JSONFlag},
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					id := cmd.Args().First()
-					if id == "" {
-						return fmt.Errorf("missing id")
-					}
-
-					mctx, err := requireMiddlewareContext(ctx)
-					if err != nil {
-						return err
-					}
-					if a == nil || *a == nil {
-						return fmt.Errorf("app not initialized")
-					}
-
-					res, err := (*a).Drinks().Get(mctx, drinks.GetRequest{ID: drinksmodels.NewDrinkID(id)})
+				Name:  "get",
+				Usage: "Get a drink by ID",
+				Flags: []cli.Flag{JSONFlag},
+				Arguments: []cli.Argument{
+					&cli.StringArgs{Name: "id", UsageText: "Drink ID", Min: 1, Max: 1},
+				},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					id := cmd.StringArgs("id")[0]
+					res, err := c.app.Drinks().Get(ctx, drinks.GetRequest{ID: drinksmodels.NewDrinkID(id)})
 					if err != nil {
 						return err
 					}
@@ -82,32 +63,23 @@ func drinksCommands(a **app.App) *cli.Command {
 
 					fmt.Printf("%s\t%s\n", string(res.Drink.ID.ID), res.Drink.Name)
 					return nil
-				},
+				}),
 			},
 			{
 				Name:  "create",
 				Usage: "Create a new drink",
+				Arguments: []cli.Argument{
+					&cli.StringArgs{Name: "args", Max: 0},
+				},
 				Flags: []cli.Flag{
 					TemplateFlag,
 					StdinFlag,
 					FileFlag,
 					JSONFlag,
 				},
-				Action: func(ctx context.Context, cmd *cli.Command) error {
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
 						return writeJSON(cmd.Writer, drinkscli.TemplateCreateDrink())
-					}
-
-					if cmd.Args().Len() > 0 {
-						return fmt.Errorf("drinks create takes no args; provide JSON via --stdin or --file")
-					}
-
-					mctx, err := requireMiddlewareContext(ctx)
-					if err != nil {
-						return err
-					}
-					if a == nil || *a == nil {
-						return fmt.Errorf("app not initialized")
 					}
 
 					created, err := readDrinkCreateInput(cmd)
@@ -115,7 +87,7 @@ func drinksCommands(a **app.App) *cli.Command {
 						return err
 					}
 
-					res, err := (*a).Drinks().Create(mctx, drinks.CreateRequest{
+					res, err := c.app.Drinks().Create(ctx, drinks.CreateRequest{
 						Name:        created.Name,
 						Category:    created.Category,
 						Glass:       created.Glass,
@@ -132,34 +104,23 @@ func drinksCommands(a **app.App) *cli.Command {
 
 					fmt.Printf("%s\t%s\n", string(res.Drink.ID.ID), res.Drink.Name)
 					return nil
-				},
+				}),
 			},
 			{
-				Name:      "update-recipe",
-				Usage:     "Update a drink's recipe",
-				ArgsUsage: "<id>",
+				Name:  "update-recipe",
+				Usage: "Update a drink's recipe",
+				Arguments: []cli.Argument{
+					&cli.StringArgs{Name: "id", UsageText: "Drink ID", Min: 1, Max: 1},
+				},
 				Flags: []cli.Flag{
 					TemplateFlag,
 					StdinFlag,
 					FileFlag,
 					JSONFlag,
 				},
-				Action: func(ctx context.Context, cmd *cli.Command) error {
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
 						return writeJSON(cmd.Writer, drinkscli.TemplateRecipe())
-					}
-
-					id := cmd.Args().First()
-					if id == "" {
-						return fmt.Errorf("missing id")
-					}
-
-					mctx, err := requireMiddlewareContext(ctx)
-					if err != nil {
-						return err
-					}
-					if a == nil || *a == nil {
-						return fmt.Errorf("app not initialized")
 					}
 
 					recipe, err := readRecipeInput(cmd)
@@ -167,8 +128,8 @@ func drinksCommands(a **app.App) *cli.Command {
 						return err
 					}
 
-					res, err := (*a).Drinks().UpdateRecipe(mctx, drinks.UpdateRecipeRequest{
-						ID:     drinksmodels.NewDrinkID(id),
+					res, err := c.app.Drinks().UpdateRecipe(ctx, drinks.UpdateRecipeRequest{
+						ID:     drinksmodels.NewDrinkID(cmd.StringArgs("id")[0]),
 						Recipe: recipe,
 					})
 					if err != nil {
@@ -181,7 +142,7 @@ func drinksCommands(a **app.App) *cli.Command {
 
 					fmt.Printf("%s\t%s\n", string(res.Drink.ID.ID), res.Drink.Name)
 					return nil
-				},
+				}),
 			},
 		},
 	}
