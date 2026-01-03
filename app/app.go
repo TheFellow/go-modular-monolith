@@ -59,12 +59,12 @@ func New(opts ...Option) (*App, error) {
 		opt(&o)
 	}
 
-	dm, err := drinks.NewModule(o.drinksDataPath)
+	im, err := ingredients.NewModule(o.ingredientsDataPath)
 	if err != nil {
 		return nil, err
 	}
 
-	im, err := ingredients.NewModule(o.ingredientsDataPath)
+	dm, err := drinks.NewModule(o.drinksDataPath, im)
 	if err != nil {
 		return nil, err
 	}

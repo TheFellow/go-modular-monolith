@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -16,8 +17,70 @@ import (
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/urfave/cli/v3"
 )
+
+type recipeJSON struct {
+	Ingredients []recipeIngredientJSON `json:"ingredients"`
+	Steps       []string               `json:"steps"`
+	Garnish     string                 `json:"garnish,omitempty"`
+}
+
+type recipeIngredientJSON struct {
+	IngredientID string   `json:"ingredient_id"`
+	Amount       float64  `json:"amount"`
+	Unit         string   `json:"unit"`
+	Optional     bool     `json:"optional,omitempty"`
+	Substitutes  []string `json:"substitutes,omitempty"`
+}
+
+func parseRecipeFromFlags(cmd *cli.Command) (drinksmodels.Recipe, error) {
+	recipeStr := strings.TrimSpace(cmd.String("recipe"))
+	recipeFile := strings.TrimSpace(cmd.String("recipe-file"))
+
+	if recipeStr == "" && recipeFile == "" {
+		return drinksmodels.Recipe{}, fmt.Errorf("missing recipe: set --recipe or --recipe-file")
+	}
+	if recipeStr != "" && recipeFile != "" {
+		return drinksmodels.Recipe{}, fmt.Errorf("set only one of --recipe or --recipe-file")
+	}
+
+	if recipeFile != "" {
+		b, err := os.ReadFile(recipeFile)
+		if err != nil {
+			return drinksmodels.Recipe{}, err
+		}
+		recipeStr = string(b)
+	}
+
+	var rj recipeJSON
+	if err := json.Unmarshal([]byte(recipeStr), &rj); err != nil {
+		return drinksmodels.Recipe{}, fmt.Errorf("parse recipe json: %w", err)
+	}
+
+	ingredients := make([]drinksmodels.RecipeIngredient, 0, len(rj.Ingredients))
+	for _, ing := range rj.Ingredients {
+		subs := make([]cedar.EntityUID, 0, len(ing.Substitutes))
+		for _, sub := range ing.Substitutes {
+			subs = append(subs, models.NewIngredientID(sub))
+		}
+
+		ingredients = append(ingredients, drinksmodels.RecipeIngredient{
+			IngredientID: models.NewIngredientID(ing.IngredientID),
+			Amount:       ing.Amount,
+			Unit:         models.Unit(ing.Unit),
+			Optional:     ing.Optional,
+			Substitutes:  subs,
+		})
+	}
+
+	return drinksmodels.Recipe{
+		Ingredients: ingredients,
+		Steps:       rj.Steps,
+		Garnish:     rj.Garnish,
+	}, nil
+}
 
 func buildApp() *cli.Command {
 	var a *app.App
@@ -102,6 +165,31 @@ func buildApp() *cli.Command {
 						Name:      "create",
 						Usage:     "Create a new drink",
 						ArgsUsage: "<name>",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:    "category",
+								Aliases: []string{"c"},
+								Usage:   "Category (cocktail|mocktail|shot|highball|martini|sour|tiki)",
+							},
+							&cli.StringFlag{
+								Name:    "glass",
+								Aliases: []string{"g"},
+								Usage:   "Glass (rocks|highball|coupe|martini)",
+							},
+							&cli.StringFlag{
+								Name:    "description",
+								Aliases: []string{"d"},
+								Usage:   "Description",
+							},
+							&cli.StringFlag{
+								Name:  "recipe",
+								Usage: "Recipe JSON string (see --recipe-file to avoid quoting)",
+							},
+							&cli.StringFlag{
+								Name:  "recipe-file",
+								Usage: "Path to JSON file containing the recipe",
+							},
+						},
 						Action: func(ctx context.Context, cmd *cli.Command) error {
 							name := strings.TrimSpace(strings.Join(cmd.Args().Slice(), " "))
 							if name == "" {
@@ -113,7 +201,60 @@ func buildApp() *cli.Command {
 								return fmt.Errorf("expected middleware context")
 							}
 
-							res, err := a.Drinks().Create(mctx, drinks.CreateRequest{Name: name})
+							recipe, err := parseRecipeFromFlags(cmd)
+							if err != nil {
+								return err
+							}
+
+							res, err := a.Drinks().Create(mctx, drinks.CreateRequest{
+								Name:        name,
+								Category:    drinksmodels.DrinkCategory(cmd.String("category")),
+								Glass:       drinksmodels.GlassType(cmd.String("glass")),
+								Recipe:      recipe,
+								Description: cmd.String("description"),
+							})
+							if err != nil {
+								return err
+							}
+
+							fmt.Printf("%s\t%s\n", string(res.Drink.ID.ID), res.Drink.Name)
+							return nil
+						},
+					},
+					{
+						Name:      "update-recipe",
+						Usage:     "Update a drink's recipe",
+						ArgsUsage: "<id>",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:  "recipe",
+								Usage: "Recipe JSON string (see --recipe-file to avoid quoting)",
+							},
+							&cli.StringFlag{
+								Name:  "recipe-file",
+								Usage: "Path to JSON file containing the recipe",
+							},
+						},
+						Action: func(ctx context.Context, cmd *cli.Command) error {
+							id := cmd.Args().First()
+							if id == "" {
+								return fmt.Errorf("missing id")
+							}
+
+							mctx, ok := ctx.(*middleware.Context)
+							if !ok {
+								return fmt.Errorf("expected middleware context")
+							}
+
+							recipe, err := parseRecipeFromFlags(cmd)
+							if err != nil {
+								return err
+							}
+
+							res, err := a.Drinks().UpdateRecipe(mctx, drinks.UpdateRecipeRequest{
+								ID:     drinksmodels.NewDrinkID(id),
+								Recipe: recipe,
+							})
 							if err != nil {
 								return err
 							}

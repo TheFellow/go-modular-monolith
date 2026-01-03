@@ -6,14 +6,14 @@ Evolve the Drinks context to have proper recipes with ingredient references, amo
 
 ## Tasks
 
-- [ ] Update `app/drinks/models/drink.go` with full recipe model
-- [ ] Create `app/drinks/models/recipe.go` with RecipeStep, RecipeIngredient
-- [ ] Update Drink DAO to persist recipe data
-- [ ] Add recipe validation (ingredients must exist in Ingredients context)
-- [ ] Create `DrinkRecipeUpdated` event
-- [ ] Update Create command to accept recipe
-- [ ] Add Update command for modifying recipes
-- [ ] Update CLI to support recipe input (JSON or flags)
+- [x] Update `app/drinks/models/drink.go` with full recipe model
+- [x] Create `app/drinks/models/recipe.go` with RecipeStep, RecipeIngredient
+- [x] Update Drink DAO to persist recipe data
+- [x] Add recipe validation (ingredients must exist in Ingredients context)
+- [x] Create `DrinkRecipeUpdated` event
+- [x] Update Create command to accept recipe
+- [x] Add Update command for modifying recipes
+- [x] Update CLI to support recipe input (JSON or flags)
 
 ## Domain Model
 

@@ -19,3 +19,9 @@ permit(
     action == Mixology::Drink::Action::"create",
     resource
 );
+
+permit(
+    principal == Mixology::Actor::"owner",
+    action == Mixology::Drink::Action::"update_recipe",
+    resource
+);

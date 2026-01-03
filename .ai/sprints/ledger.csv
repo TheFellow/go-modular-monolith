@@ -12,7 +12,7 @@ sprint-010,completed,2026-01-02,2026-01-03,Dispatcher generation + middleware Co
 sprint-010b,completed,2026-01-03,2026-01-03,Fat events decision + remove entity cache + derive thresholds from StockAdjusted
 sprint-011,completed,2026-01-03,2026-01-03,Inventory management context (file DAO + authz + CLI + events)
 sprint-012,completed,2026-01-03,2026-01-03,Menu reacts to StockAdjusted + dispatcher integration test
-sprint-013,pending,,,Rich drink recipes
+sprint-013,completed,2026-01-03,2026-01-03,Rich drink recipes + recipe validation + update command + CLI recipe json
 sprint-014,pending,,,Menu curation context
 sprint-015,pending,,,Advanced business rules & cost analysis
 sprint-016,pending,,,Orders & inventory consumption

@@ -9,8 +9,12 @@ func NewDrinkID(id string) cedar.EntityUID {
 }
 
 type Drink struct {
-	ID   cedar.EntityUID
-	Name string
+	ID          cedar.EntityUID
+	Name        string
+	Category    DrinkCategory
+	Glass       GlassType
+	Recipe      Recipe
+	Description string
 }
 
 func (d Drink) EntityUID() cedar.EntityUID {
