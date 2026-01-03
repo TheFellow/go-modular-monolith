@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"context"
 	"sync/atomic"
 
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/events"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
 var (
@@ -18,7 +18,7 @@ func NewIngredientCreatedCounter() *IngredientCreatedCounter {
 	return &IngredientCreatedCounter{}
 }
 
-func (h *IngredientCreatedCounter) Handle(_ context.Context, _ events.IngredientCreated) error {
+func (h *IngredientCreatedCounter) Handle(_ *middleware.Context, _ events.IngredientCreated) error {
 	IngredientCreatedCount.Add(1)
 	return nil
 }
@@ -29,7 +29,7 @@ func NewIngredientCreatedAudit() *IngredientCreatedAudit {
 	return &IngredientCreatedAudit{}
 }
 
-func (h *IngredientCreatedAudit) Handle(_ context.Context, _ events.IngredientCreated) error {
+func (h *IngredientCreatedAudit) Handle(_ *middleware.Context, _ events.IngredientCreated) error {
 	IngredientCreatedAuditCount.Add(1)
 	return nil
 }

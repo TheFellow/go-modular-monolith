@@ -5,6 +5,9 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients"
+	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/uow"
 )
 
 type App struct {
@@ -32,6 +35,12 @@ func WithIngredientsDataPath(path string) Option {
 }
 
 func New(opts ...Option) (*App, error) {
+	middleware.Command = middleware.NewCommandChain(
+		middleware.CommandAuthZ(),
+		middleware.UnitOfWork(uow.NewManager()),
+		middleware.Dispatcher(dispatcher.New()),
+	)
+
 	o := options{
 		drinksDataPath:      filepath.Join("pkg", "data", "drinks.json"),
 		ingredientsDataPath: filepath.Join("pkg", "data", "ingredients.json"),

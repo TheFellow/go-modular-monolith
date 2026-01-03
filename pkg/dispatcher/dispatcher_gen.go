@@ -3,12 +3,12 @@
 package dispatcher
 
 import (
-	context "context"
 	ingredients_events "github.com/TheFellow/go-modular-monolith/app/ingredients/events"
 	ingredients_handlers "github.com/TheFellow/go-modular-monolith/app/ingredients/handlers"
+	middleware "github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (d *Dispatcher) Dispatch(ctx context.Context, event any) error {
+func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	switch e := event.(type) {
 	case ingredients_events.IngredientCreated:
 		if err := ingredients_handlers.NewIngredientCreatedAudit().Handle(ctx, e); err != nil {

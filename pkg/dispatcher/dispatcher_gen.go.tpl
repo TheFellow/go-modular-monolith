@@ -8,7 +8,7 @@ import (
 {{- end }}
 )
 
-func (d *Dispatcher) Dispatch(ctx context.Context, event any) error {
+func (d *Dispatcher) Dispatch(ctx *{{ .MiddlewareAlias }}.Context, event any) error {
 	switch e := event.(type) {
 {{- range .Groups }}
 	case {{ index $.ImportAlias .Event.PkgPath }}.{{ .Event.Name }}:

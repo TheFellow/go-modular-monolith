@@ -7,6 +7,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/events"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/handlers"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
 func TestDispatcher_DispatchesToHandlers(t *testing.T) {
@@ -16,8 +17,9 @@ func TestDispatcher_DispatchesToHandlers(t *testing.T) {
 	handlers.IngredientCreatedAuditCount.Store(0)
 
 	d := New()
+	ctx := middleware.NewContext(context.Background())
 
-	err := d.Dispatch(context.Background(), events.IngredientCreated{
+	err := d.Dispatch(ctx, events.IngredientCreated{
 		IngredientID: models.NewIngredientID("vodka"),
 		Name:         "Vodka",
 	})
@@ -40,7 +42,8 @@ func TestDispatcher_IgnoresUnknownEvents(t *testing.T) {
 	handlers.IngredientCreatedAuditCount.Store(0)
 
 	d := New()
-	if err := d.Dispatch(context.Background(), struct{}{}); err != nil {
+	ctx := middleware.NewContext(context.Background())
+	if err := d.Dispatch(ctx, struct{}{}); err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
 

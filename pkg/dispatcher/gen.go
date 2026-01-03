@@ -146,8 +146,8 @@ func main() {
 		return alias
 	}
 
-	// Always import context for handler invocation.
-	addImport("context")
+	middlewareImportPath := modulePath + "/pkg/middleware"
+	middlewareAlias := addImport(middlewareImportPath)
 
 	// Add event + handler package imports.
 	for _, g := range groups {
@@ -172,9 +172,10 @@ func main() {
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, map[string]any{
-		"Imports":     imports,
-		"Groups":      groups,
-		"ImportAlias": importAlias,
+		"Imports":         imports,
+		"Groups":          groups,
+		"ImportAlias":     importAlias,
+		"MiddlewareAlias": middlewareAlias,
 	}); err != nil {
 		fatalf("execute template: %v", err)
 	}
@@ -277,6 +278,7 @@ func scanHandlers(repoRoot, modulePath string) ([]handlerType, error) {
 
 	appRoot := filepath.Join(repoRoot, "app")
 	fset := token.NewFileSet()
+	middlewareImportPath := modulePath + "/pkg/middleware"
 
 	err := filepath.WalkDir(appRoot, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -335,8 +337,8 @@ func scanHandlers(repoRoot, modulePath string) ([]handlerType, error) {
 				continue
 			}
 
-			// Require context.Context as the first parameter to avoid import cycles.
-			if !isContextContext(fn.Type.Params.List[0].Type) {
+			// Require *middleware.Context as the first parameter.
+			if !isMiddlewareContext(fn.Type.Params.List[0].Type, imports, middlewareImportPath) {
 				continue
 			}
 
@@ -393,9 +395,16 @@ func receiverIdent(fl *ast.FieldList) string {
 	return ""
 }
 
-func isContextContext(expr ast.Expr) bool {
-	pkg, name, ok := selectorType(expr)
-	return ok && pkg == "context" && name == "Context"
+func isMiddlewareContext(expr ast.Expr, imports map[string]string, middlewareImportPath string) bool {
+	star, ok := expr.(*ast.StarExpr)
+	if !ok {
+		return false
+	}
+	pkg, name, ok := selectorType(star.X)
+	if !ok || name != "Context" {
+		return false
+	}
+	return imports[pkg] == middlewareImportPath
 }
 
 func selectorType(expr ast.Expr) (pkg string, name string, ok bool) {
@@ -411,8 +420,8 @@ func selectorType(expr ast.Expr) (pkg string, name string, ok bool) {
 }
 
 func defaultAlias(modulePath, importPath string) string {
-	if importPath == "context" {
-		return "context"
+	if importPath == modulePath+"/pkg/middleware" {
+		return "middleware"
 	}
 
 	rel := strings.TrimPrefix(importPath, modulePath+"/")
