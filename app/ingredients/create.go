@@ -1,8 +1,6 @@
 package ingredients
 
 import (
-	"context"
-
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/internal/commands"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
@@ -21,7 +19,7 @@ type CreateResponse struct {
 	Ingredient models.Ingredient
 }
 
-func (m *Module) Create(ctx context.Context, req CreateRequest) (CreateResponse, error) {
+func (m *Module) Create(ctx *middleware.Context, req CreateRequest) (CreateResponse, error) {
 	resource := cedar.Entity{
 		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Ingredient"), cedar.String("")),
 		Parents:    cedar.NewEntityUIDSet(),

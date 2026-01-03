@@ -1,8 +1,6 @@
 package ingredients
 
 import (
-	"context"
-
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/internal/commands"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
@@ -22,7 +20,7 @@ type UpdateResponse struct {
 	Ingredient models.Ingredient
 }
 
-func (m *Module) Update(ctx context.Context, req UpdateRequest) (UpdateResponse, error) {
+func (m *Module) Update(ctx *middleware.Context, req UpdateRequest) (UpdateResponse, error) {
 	resource := cedar.Entity{
 		UID:        req.ID,
 		Parents:    cedar.NewEntityUIDSet(),

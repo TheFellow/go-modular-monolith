@@ -32,24 +32,19 @@ func buildApp() *cli.Command {
 			},
 		},
 		Before: func(ctx context.Context, _ *cli.Command) (context.Context, error) {
-			if a != nil {
-				p, err := authn.ParseActor(actor)
+			var err error
+			if a == nil {
+				a, err = app.New()
 				if err != nil {
 					return ctx, err
 				}
-				return middleware.ContextWithPrincipal(ctx, p), nil
-			}
-			var err error
-			a, err = app.New()
-			if err != nil {
-				return ctx, err
 			}
 
 			p, err := authn.ParseActor(actor)
 			if err != nil {
 				return ctx, err
 			}
-			return middleware.ContextWithPrincipal(ctx, p), nil
+			return middleware.NewContext(ctx, middleware.WithPrincipal(p)), nil
 		},
 		Commands: []*cli.Command{
 			{
@@ -60,7 +55,12 @@ func buildApp() *cli.Command {
 						Name:  "list",
 						Usage: "List drinks",
 						Action: func(ctx context.Context, _ *cli.Command) error {
-							res, err := a.Drinks().List(ctx, drinks.ListRequest{})
+							mctx, ok := ctx.(*middleware.Context)
+							if !ok {
+								return fmt.Errorf("expected middleware context")
+							}
+
+							res, err := a.Drinks().List(mctx, drinks.ListRequest{})
 							if err != nil {
 								return err
 							}
@@ -81,7 +81,12 @@ func buildApp() *cli.Command {
 								return fmt.Errorf("missing id")
 							}
 
-							res, err := a.Drinks().Get(ctx, drinks.GetRequest{ID: drinksmodels.NewDrinkID(id)})
+							mctx, ok := ctx.(*middleware.Context)
+							if !ok {
+								return fmt.Errorf("expected middleware context")
+							}
+
+							res, err := a.Drinks().Get(mctx, drinks.GetRequest{ID: drinksmodels.NewDrinkID(id)})
 							if err != nil {
 								return err
 							}
@@ -100,7 +105,12 @@ func buildApp() *cli.Command {
 								return fmt.Errorf("missing name")
 							}
 
-							res, err := a.Drinks().Create(ctx, drinks.CreateRequest{Name: name})
+							mctx, ok := ctx.(*middleware.Context)
+							if !ok {
+								return fmt.Errorf("expected middleware context")
+							}
+
+							res, err := a.Drinks().Create(mctx, drinks.CreateRequest{Name: name})
 							if err != nil {
 								return err
 							}
@@ -119,7 +129,12 @@ func buildApp() *cli.Command {
 						Name:  "list",
 						Usage: "List ingredients",
 						Action: func(ctx context.Context, _ *cli.Command) error {
-							res, err := a.Ingredients().List(ctx, ingredients.ListRequest{})
+							mctx, ok := ctx.(*middleware.Context)
+							if !ok {
+								return fmt.Errorf("expected middleware context")
+							}
+
+							res, err := a.Ingredients().List(mctx, ingredients.ListRequest{})
 							if err != nil {
 								return err
 							}
@@ -140,7 +155,12 @@ func buildApp() *cli.Command {
 								return fmt.Errorf("missing id")
 							}
 
-							res, err := a.Ingredients().Get(ctx, ingredients.GetRequest{ID: models.NewIngredientID(id)})
+							mctx, ok := ctx.(*middleware.Context)
+							if !ok {
+								return fmt.Errorf("expected middleware context")
+							}
+
+							res, err := a.Ingredients().Get(mctx, ingredients.GetRequest{ID: models.NewIngredientID(id)})
 							if err != nil {
 								return err
 							}
@@ -185,7 +205,12 @@ func buildApp() *cli.Command {
 								return fmt.Errorf("missing name")
 							}
 
-							res, err := a.Ingredients().Create(ctx, ingredients.CreateRequest{
+							mctx, ok := ctx.(*middleware.Context)
+							if !ok {
+								return fmt.Errorf("expected middleware context")
+							}
+
+							res, err := a.Ingredients().Create(mctx, ingredients.CreateRequest{
 								Name:        name,
 								Category:    models.Category(cmd.String("category")),
 								Unit:        models.Unit(cmd.String("unit")),
@@ -232,7 +257,12 @@ func buildApp() *cli.Command {
 								return fmt.Errorf("missing id")
 							}
 
-							res, err := a.Ingredients().Update(ctx, ingredients.UpdateRequest{
+							mctx, ok := ctx.(*middleware.Context)
+							if !ok {
+								return fmt.Errorf("expected middleware context")
+							}
+
+							res, err := a.Ingredients().Update(mctx, ingredients.UpdateRequest{
 								ID:          models.NewIngredientID(id),
 								Name:        cmd.String("name"),
 								Category:    models.Category(cmd.String("category")),
