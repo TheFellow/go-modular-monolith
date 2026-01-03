@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func ingredientsCommands(a *app.App) *cli.Command {
+func ingredientsCommands(a **app.App) *cli.Command {
 	return &cli.Command{
 		Name:  "ingredients",
 		Usage: "Manage ingredients",
@@ -24,11 +24,11 @@ func ingredientsCommands(a *app.App) *cli.Command {
 					if err != nil {
 						return err
 					}
-					if a == nil {
+					if a == nil || *a == nil {
 						return fmt.Errorf("app not initialized")
 					}
 
-					res, err := a.Ingredients().List(mctx, ingredients.ListRequest{})
+					res, err := (*a).Ingredients().List(mctx, ingredients.ListRequest{})
 					if err != nil {
 						return err
 					}
@@ -53,11 +53,11 @@ func ingredientsCommands(a *app.App) *cli.Command {
 					if err != nil {
 						return err
 					}
-					if a == nil {
+					if a == nil || *a == nil {
 						return fmt.Errorf("app not initialized")
 					}
 
-					res, err := a.Ingredients().Get(mctx, ingredients.GetRequest{ID: models.NewIngredientID(id)})
+					res, err := (*a).Ingredients().Get(mctx, ingredients.GetRequest{ID: models.NewIngredientID(id)})
 					if err != nil {
 						return err
 					}
@@ -106,11 +106,11 @@ func ingredientsCommands(a *app.App) *cli.Command {
 					if err != nil {
 						return err
 					}
-					if a == nil {
+					if a == nil || *a == nil {
 						return fmt.Errorf("app not initialized")
 					}
 
-					res, err := a.Ingredients().Create(mctx, ingredients.CreateRequest{
+					res, err := (*a).Ingredients().Create(mctx, ingredients.CreateRequest{
 						Name:        name,
 						Category:    models.Category(cmd.String("category")),
 						Unit:        models.Unit(cmd.String("unit")),
@@ -161,11 +161,11 @@ func ingredientsCommands(a *app.App) *cli.Command {
 					if err != nil {
 						return err
 					}
-					if a == nil {
+					if a == nil || *a == nil {
 						return fmt.Errorf("app not initialized")
 					}
 
-					res, err := a.Ingredients().Update(mctx, ingredients.UpdateRequest{
+					res, err := (*a).Ingredients().Update(mctx, ingredients.UpdateRequest{
 						ID:          models.NewIngredientID(id),
 						Name:        cmd.String("name"),
 						Category:    models.Category(cmd.String("category")),

@@ -43,9 +43,9 @@ func buildApp() *cli.Command {
 			return middleware.NewContext(ctx, middleware.WithPrincipal(p)), nil
 		},
 		Commands: []*cli.Command{
-			drinksCommands(a),
-			ingredientsCommands(a),
-			inventoryCommands(a),
+			drinksCommands(&a),
+			ingredientsCommands(&a),
+			inventoryCommands(&a),
 		},
 	}
 

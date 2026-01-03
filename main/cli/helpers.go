@@ -7,6 +7,14 @@ import (
 	"io"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/urfave/cli/v3"
+)
+
+var (
+	JSONFlag     cli.Flag = &cli.BoolFlag{Name: "json", Usage: "Output JSON"}
+	TemplateFlag cli.Flag = &cli.BoolFlag{Name: "template", Usage: "Print JSON template and exit"}
+	StdinFlag    cli.Flag = &cli.BoolFlag{Name: "stdin", Usage: "Read JSON from stdin"}
+	FileFlag     cli.Flag = &cli.StringFlag{Name: "file", Usage: "Read JSON from file"}
 )
 
 func requireMiddlewareContext(ctx context.Context) (*middleware.Context, error) {

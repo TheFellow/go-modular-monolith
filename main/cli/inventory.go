@@ -12,7 +12,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func inventoryCommands(a *app.App) *cli.Command {
+func inventoryCommands(a **app.App) *cli.Command {
 	return &cli.Command{
 		Name:  "inventory",
 		Usage: "Manage ingredient stock",
@@ -25,11 +25,11 @@ func inventoryCommands(a *app.App) *cli.Command {
 					if err != nil {
 						return err
 					}
-					if a == nil {
+					if a == nil || *a == nil {
 						return fmt.Errorf("app not initialized")
 					}
 
-					res, err := a.Inventory().List(mctx, inventory.ListRequest{})
+					res, err := (*a).Inventory().List(mctx, inventory.ListRequest{})
 					if err != nil {
 						return err
 					}
@@ -54,11 +54,11 @@ func inventoryCommands(a *app.App) *cli.Command {
 					if err != nil {
 						return err
 					}
-					if a == nil {
+					if a == nil || *a == nil {
 						return fmt.Errorf("app not initialized")
 					}
 
-					res, err := a.Inventory().Get(mctx, inventory.GetRequest{IngredientID: models.NewIngredientID(id)})
+					res, err := (*a).Inventory().Get(mctx, inventory.GetRequest{IngredientID: models.NewIngredientID(id)})
 					if err != nil {
 						return err
 					}
@@ -96,11 +96,11 @@ func inventoryCommands(a *app.App) *cli.Command {
 					if err != nil {
 						return err
 					}
-					if a == nil {
+					if a == nil || *a == nil {
 						return fmt.Errorf("app not initialized")
 					}
 
-					res, err := a.Inventory().Adjust(mctx, inventory.AdjustRequest{
+					res, err := (*a).Inventory().Adjust(mctx, inventory.AdjustRequest{
 						IngredientID: models.NewIngredientID(ingredientID),
 						Delta:        delta,
 						Reason:       inventorymodels.AdjustmentReason(cmd.String("reason")),
@@ -134,11 +134,11 @@ func inventoryCommands(a *app.App) *cli.Command {
 					if err != nil {
 						return err
 					}
-					if a == nil {
+					if a == nil || *a == nil {
 						return fmt.Errorf("app not initialized")
 					}
 
-					res, err := a.Inventory().Set(mctx, inventory.SetRequest{
+					res, err := (*a).Inventory().Set(mctx, inventory.SetRequest{
 						IngredientID: models.NewIngredientID(ingredientID),
 						Quantity:     qty,
 					})
