@@ -16,7 +16,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/uow"
 )
 
-func TestAdjust_EmitsRestockedButNotDepletedForReasonUsed(t *testing.T) {
+func TestAdjust_EmitsStockAdjusted(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -41,7 +41,6 @@ func TestAdjust_EmitsRestockedButNotDepletedForReasonUsed(t *testing.T) {
 	uc := commands.NewAdjust(d)
 	ingredientID := ingredientsmodels.NewIngredientID("vodka")
 
-	// Deplete
 	_, err = uc.Execute(ctx, commands.AdjustRequest{
 		IngredientID: ingredientID,
 		Delta:        -2.0,
@@ -50,25 +49,16 @@ func TestAdjust_EmitsRestockedButNotDepletedForReasonUsed(t *testing.T) {
 	})
 	testutil.ErrorIf(t, err != nil, "execute: %v", err)
 
-	// Restock
-	_, err = uc.Execute(ctx, commands.AdjustRequest{
-		IngredientID: ingredientID,
-		Delta:        5.0,
-		Unit:         ingredientsmodels.UnitOz,
-		Reason:       models.ReasonReceived,
-	})
-	testutil.ErrorIf(t, err != nil, "execute: %v", err)
-
-	var sawDepleted bool
-	var sawRestocked bool
+	var sawAdjusted bool
 	for _, e := range ctx.Events() {
-		switch e.(type) {
-		case events.IngredientDepleted:
-			sawDepleted = true
-		case events.IngredientRestocked:
-			sawRestocked = true
+		switch got := e.(type) {
+		case events.StockAdjusted:
+			sawAdjusted = true
+			testutil.ErrorIf(t, got.IngredientID != ingredientID, "unexpected ingredient id: %v", got.IngredientID)
+			testutil.ErrorIf(t, got.PreviousQty != 1.0, "unexpected previous qty: %v", got.PreviousQty)
+			testutil.ErrorIf(t, got.NewQty != 0.0, "unexpected new qty: %v", got.NewQty)
+			testutil.ErrorIf(t, got.Delta != -1.0, "unexpected delta: %v", got.Delta)
 		}
 	}
-	testutil.ErrorIf(t, sawDepleted, "did not expect IngredientDepleted event for reason=used")
-	testutil.ErrorIf(t, !sawRestocked, "expected IngredientRestocked event")
+	testutil.ErrorIf(t, !sawAdjusted, "expected StockAdjusted event")
 }

@@ -6,11 +6,11 @@ Wire up event handlers to validate the dispatcher pattern. Create handlers that 
 
 ## Tasks
 
-- [ ] Create `app/menu/handlers/stock_adjusted.go` - update menu availability
-- [ ] Run `go generate ./pkg/dispatcher` to pick up new handlers
-- [ ] Add integration tests for event flows
-- [ ] Verify no cascading (handlers don't emit events)
-- [ ] Verify handlers only read from events (fat event pattern)
+- [x] Create `app/menu/handlers/stock_adjusted.go` - update menu availability
+- [x] Run `go generate ./pkg/dispatcher` to pick up new handlers
+- [x] Add integration tests for event flows
+- [x] Verify no cascading (handlers don't emit events)
+- [x] Verify handlers only read from events (fat event pattern)
 
 ## Handler Pattern: Leaf Nodes Only
 
@@ -28,7 +28,7 @@ Handlers cannot:
 
 ## Example Handler
 
-Handlers derive threshold states from `StockAdjusted` rather than subscribing to separate events:
+Handlers derive threshold states from `StockAdjusted` rather than subscribing to separate events. It is, after all, the business logic of that module to do the thing it needs to do.
 
 ```go
 // app/menu/handlers/stock_adjusted.go

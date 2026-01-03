@@ -79,15 +79,5 @@ func (c *Set) Execute(ctx *middleware.Context, req SetRequest) (models.Stock, er
 		Reason:       "set",
 	})
 
-	if previousQty > 0 && newQty == 0 {
-		ctx.AddEvent(events.IngredientDepleted{IngredientID: req.IngredientID})
-	}
-	if previousQty == 0 && newQty > 0 {
-		ctx.AddEvent(events.IngredientRestocked{
-			IngredientID: req.IngredientID,
-			NewQty:       newQty,
-		})
-	}
-
 	return existing.ToDomain(), nil
 }

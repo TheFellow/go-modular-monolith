@@ -83,18 +83,5 @@ func (c *Adjust) Execute(ctx *middleware.Context, req AdjustRequest) (models.Sto
 		Reason:       string(req.Reason),
 	})
 
-	emitThresholdEvents := req.Reason != models.ReasonUsed
-	if emitThresholdEvents {
-		if previousQty > 0 && newQty == 0 {
-			ctx.AddEvent(events.IngredientDepleted{IngredientID: req.IngredientID})
-		}
-		if previousQty == 0 && newQty > 0 {
-			ctx.AddEvent(events.IngredientRestocked{
-				IngredientID: req.IngredientID,
-				NewQty:       newQty,
-			})
-		}
-	}
-
 	return existing.ToDomain(), nil
 }

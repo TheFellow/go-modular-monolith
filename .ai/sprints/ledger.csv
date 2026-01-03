@@ -9,9 +9,9 @@ sprint-007,completed,2025-12-30,2025-12-30,Uniform error handling
 sprint-008,completed,2025-12-30,2025-12-30,Decentralized policy embedding
 sprint-009,completed,2026-01-02,2026-01-02,Ingredients master data context
 sprint-010,completed,2026-01-02,2026-01-03,Dispatcher generation + middleware Context boundary (cache removed in sprint-010b)
-sprint-010b,completed,2026-01-03,2026-01-03,Fat events decision + remove entity cache + operator-only threshold events
+sprint-010b,completed,2026-01-03,2026-01-03,Fat events decision + remove entity cache + derive thresholds from StockAdjusted
 sprint-011,completed,2026-01-03,2026-01-03,Inventory management context (file DAO + authz + CLI + events)
-sprint-012,pending,,,Event handlers & validation
+sprint-012,completed,2026-01-03,2026-01-03,Menu reacts to StockAdjusted + dispatcher integration test
 sprint-013,pending,,,Rich drink recipes
 sprint-014,pending,,,Menu curation context
 sprint-015,pending,,,Advanced business rules & cost analysis

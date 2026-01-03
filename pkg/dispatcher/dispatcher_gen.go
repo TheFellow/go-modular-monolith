@@ -5,6 +5,8 @@ package dispatcher
 import (
 	ingredients_events "github.com/TheFellow/go-modular-monolith/app/ingredients/events"
 	ingredients_handlers "github.com/TheFellow/go-modular-monolith/app/ingredients/handlers"
+	inventory_events "github.com/TheFellow/go-modular-monolith/app/inventory/events"
+	menu_handlers "github.com/TheFellow/go-modular-monolith/app/menu/handlers"
 	middleware "github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -17,6 +19,12 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 			}
 		}
 		if err := ingredients_handlers.NewIngredientCreatedCounter().Handle(ctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+	case inventory_events.StockAdjusted:
+		if err := menu_handlers.NewStockAdjustedMenuUpdater().Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
