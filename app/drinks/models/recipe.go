@@ -23,6 +23,13 @@ type RecipeIngredient struct {
 }
 
 func (r Recipe) Validate() error {
+	if len(r.Ingredients) == 0 {
+		return errors.Invalidf("recipe must have at least 1 ingredient")
+	}
+	if len(r.Steps) == 0 {
+		return errors.Invalidf("recipe must have at least 1 step")
+	}
+
 	for i, ing := range r.Ingredients {
 		if string(ing.IngredientID.ID) == "" {
 			return errors.Invalidf("recipe ingredient %d: ingredient id is required", i)
