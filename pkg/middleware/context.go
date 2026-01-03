@@ -70,6 +70,10 @@ func (c *Context) Events() []any {
 	return c.events
 }
 
+func (c *Context) Cache() *EntityCache {
+	return c.entityCache
+}
+
 func (c *Context) Principal() cedar.EntityUID {
 	if p, ok := c.Context.Value(principalKey{}).(cedar.EntityUID); ok {
 		return p

@@ -14,6 +14,21 @@ func newEntityCache() *EntityCache {
 	return &EntityCache{entities: make(map[string]any)}
 }
 
+func (c *EntityCache) Get(uid cedar.EntityUID) (any, bool) {
+	if c == nil {
+		return nil, false
+	}
+	v, ok := c.entities[entityKey(uid)]
+	return v, ok
+}
+
+func (c *EntityCache) Set(entity CedarEntity) {
+	if c == nil {
+		return
+	}
+	c.entities[entityKey(entity.EntityUID())] = entity
+}
+
 func cacheFromContext(ctx context.Context) *EntityCache {
 	if ctx == nil {
 		return nil
@@ -41,7 +56,7 @@ func CacheGet[T any](ctx context.Context, uid cedar.EntityUID) (T, bool) {
 		return zero, false
 	}
 
-	v, ok := cache.entities[entityKey(uid)]
+	v, ok := cache.Get(uid)
 	if !ok {
 		return zero, false
 	}
@@ -58,7 +73,7 @@ func CacheSet[T CedarEntity](ctx context.Context, entity T) {
 	if cache == nil {
 		return
 	}
-	cache.entities[entityKey(entity.EntityUID())] = entity
+	cache.Set(entity)
 }
 
 func CacheSetAll[T CedarEntity](ctx context.Context, entities []T) {
