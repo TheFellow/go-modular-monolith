@@ -16,7 +16,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/uow"
 )
 
-func TestAdjust_EmitsDepletedAndRestocked(t *testing.T) {
+func TestAdjust_EmitsRestockedButNotDepletedForReasonUsed(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -69,6 +69,6 @@ func TestAdjust_EmitsDepletedAndRestocked(t *testing.T) {
 			sawRestocked = true
 		}
 	}
-	testutil.ErrorIf(t, !sawDepleted, "expected IngredientDepleted event")
+	testutil.ErrorIf(t, sawDepleted, "did not expect IngredientDepleted event for reason=used")
 	testutil.ErrorIf(t, !sawRestocked, "expected IngredientRestocked event")
 }

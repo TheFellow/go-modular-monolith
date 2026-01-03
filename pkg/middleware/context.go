@@ -9,8 +9,7 @@ import (
 
 type Context struct {
 	context.Context
-	events      []any
-	entityCache *EntityCache
+	events []any
 }
 
 type ContextOpt func(*Context)
@@ -47,9 +46,8 @@ func NewContext(parent context.Context, opts ...ContextOpt) *Context {
 	}
 
 	c := &Context{
-		Context:     parent,
-		events:      make([]any, 0, 4),
-		entityCache: newEntityCache(),
+		Context: parent,
+		events:  make([]any, 0, 4),
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -68,10 +66,6 @@ func (c *Context) AddEvent(event any) {
 
 func (c *Context) Events() []any {
 	return c.events
-}
-
-func (c *Context) Cache() *EntityCache {
-	return c.entityCache
 }
 
 func (c *Context) Principal() cedar.EntityUID {

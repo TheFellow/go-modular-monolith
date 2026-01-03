@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
 func (d *FileIngredientDAO) Add(ctx context.Context, ingredient Ingredient) error {
@@ -28,6 +27,5 @@ func (d *FileIngredientDAO) Add(ctx context.Context, ingredient Ingredient) erro
 	}
 
 	d.ingredients = append(d.ingredients, ingredient)
-	middleware.CacheSet(ctx, ingredient)
 	return nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
 func (d *FileStockDAO) Set(ctx context.Context, stock Stock) error {
@@ -21,16 +20,10 @@ func (d *FileStockDAO) Set(ctx context.Context, stock Stock) error {
 	for i, existing := range d.stock {
 		if existing.IngredientID == stock.IngredientID {
 			d.stock[i] = stock
-			if mctx, ok := ctx.(*middleware.Context); ok {
-				mctx.Cache().Set(stock)
-			}
 			return nil
 		}
 	}
 
 	d.stock = append(d.stock, stock)
-	if mctx, ok := ctx.(*middleware.Context); ok {
-		mctx.Cache().Set(stock)
-	}
 	return nil
 }

@@ -6,15 +6,15 @@ Create the Inventory bounded context to track stock levels for ingredients. This
 
 ## Tasks
 
-- [ ] Create `app/inventory/models/stock.go` with Stock model
-- [ ] Create `app/inventory/internal/dao/` with file-based DAO
-- [ ] Create `app/inventory/authz/` with actions and policies
-- [ ] Create `app/inventory/queries/` with GetStock, ListStock queries
-- [ ] Create `app/inventory/internal/commands/` with AdjustStock, SetStock commands
-- [ ] Create `app/inventory/events/` with stock-related events
-- [ ] Create `app/inventory/module.go` exposing public API
-- [ ] Add inventory subcommands to CLI
-- [ ] Update app.go to include inventory module
+- [x] Create `app/inventory/models/stock.go` with Stock model
+- [x] Create `app/inventory/internal/dao/` with file-based DAO
+- [x] Create `app/inventory/authz/` with actions and policies
+- [x] Create `app/inventory/queries/` with GetStock, ListStock queries
+- [x] Create `app/inventory/internal/commands/` with AdjustStock, SetStock commands
+- [x] Create `app/inventory/events/` with stock-related events
+- [x] Create `app/inventory/module.go` exposing public API
+- [x] Add inventory subcommands to CLI
+- [x] Update app.go to include inventory module
 
 ## Domain Model
 

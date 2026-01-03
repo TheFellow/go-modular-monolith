@@ -49,18 +49,30 @@ const (
 
 ```go
 type OrderCompleted struct {
-    OrderID string
-    MenuID  string
+    OrderID cedar.EntityUID
+    MenuID  cedar.EntityUID
     Items   []OrderItemCompleted
+
+    // Enrichment computed by the command at completion time.
+    IngredientUsage     []IngredientUsage
+    DepletedIngredients []cedar.EntityUID
 }
 
 type OrderItemCompleted struct {
-    DrinkID  string
+    DrinkID  cedar.EntityUID
+    Name     string
     Quantity int
+}
+
+type IngredientUsage struct {
+    IngredientID cedar.EntityUID
+    Name         string
+    Amount       float64
+    Unit         string
 }
 ```
 
-Events carry minimal data. Handlers query what they need - the query cache ensures they see consistent "as-of-command" state.
+Events are intentionally fat: handlers only read from the event and never query/compute business logic.
 
 ## Handler Pattern: No Cascading Events
 
@@ -68,35 +80,21 @@ Handlers react to events but **do not emit new events**. They update their own s
 
 ```go
 // app/inventory/handlers/order_handlers.go
-func HandleOrderCompleted(stockDAO *dao.StockDAO, drinkQueries *drinks.Queries) dispatcher.Handler {
+func HandleOrderCompleted(stockDAO *dao.StockDAO) dispatcher.Handler {
     return func(ctx *middleware.Context, event any) error {
         e := event.(orders.OrderCompleted)
 
-        for _, item := range e.Items {
-            // Query drink recipe - returns CACHED result from command execution
-            drink, err := drinkQueries.Get(ctx, item.DrinkID)
+        for _, usage := range e.IngredientUsage {
+            stock, err := stockDAO.Get(ctx, string(usage.IngredientID.ID))
             if err != nil {
                 return err
             }
 
-            // Calculate and deduct ingredients
-            for _, ri := range drink.Recipe.Ingredients {
-                amount := ri.Amount * float64(item.Quantity)
+            stock.Quantity -= usage.Amount
+            stock.LastUpdated = time.Now()
 
-                stock, err := stockDAO.Get(ctx, ri.IngredientID)
-                if err != nil {
-                    return err
-                }
-
-                stock.Quantity -= amount
-                stock.LastUpdated = time.Now()
-
-                if err := stockDAO.Save(ctx, stock); err != nil {
-                    return err
-                }
-
-                log.Printf("stock adjusted: %s -= %.2f (order %s)",
-                    ri.IngredientID, amount, e.OrderID)
+            if err := stockDAO.Save(ctx, stock); err != nil {
+                return err
             }
         }
         return nil

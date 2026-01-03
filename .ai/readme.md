@@ -102,35 +102,11 @@ The command emits events. Handlers react but don't chain.
    - Orders emits OrderCompleted → Inventory adjusts stock
    - Drinks emits DrinkRecipeUpdated → Menu recalculates availability
 
-### Query Cache: Handler Consistency
+### Fat Events: Handler Simplicity & No Cascading
 
-Handlers need to see consistent "as-of-command" state. The execution context provides this via query caching.
+Handlers are leaf nodes: they must not call queries/commands or emit events. To keep handlers simple and deterministic, commands emit **fat events** that already include the computed facts handlers need (denormalized names, ingredient usage, depletion lists, etc.).
 
-```
-Command executes
-    │
-    ├─► Queries menu (result CACHED)
-    ├─► Queries drink (result CACHED)
-    ├─► Emits event
-    │
-    ▼
-Handlers run with SAME context
-    │
-    ├─► Handler A queries menu → CACHED result
-    └─► Handler B queries drink → CACHED result
-```
-
-**How it works**:
-- `middleware.Context` has a query cache
-- Queries transparently check/populate the cache
-- Dispatcher passes the same context to handlers
-- Handler queries return cached results
-
-**Key insight**: The cache makes queries idempotent within an execution:
-- If command queried it → handlers see same result (consistent)
-- If command didn't query it → handlers get fresh data (appropriate)
-
-No artificial pre-fetching. Commands query what they need. Handlers query what they need. Both see consistent state through natural caching.
+This avoids needing an entity/query cache for correctness and prevents accidental cascading when a handler updates state directly via DAOs.
 
 ## Directory Structure
 

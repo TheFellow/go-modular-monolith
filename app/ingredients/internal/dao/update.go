@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
 func (d *FileIngredientDAO) Update(ctx context.Context, ingredient Ingredient) error {
@@ -24,7 +23,6 @@ func (d *FileIngredientDAO) Update(ctx context.Context, ingredient Ingredient) e
 				return errors.NotFoundf("ingredient %s not found", ingredient.ID)
 			}
 			d.ingredients[i] = ingredient
-			middleware.CacheSet(ctx, ingredient)
 			return nil
 		}
 	}

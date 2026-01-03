@@ -4,13 +4,15 @@
 
 Implement the core event-driven infrastructure: a code-generated dispatcher that routes events to handlers, and per-execution caching so handlers see consistent read results within a command execution.
 
+**Update**: The per-execution entity cache was removed in Sprint 010b in favor of fat events (handlers read only from events; no query/cache coupling).
+
 ## Tasks
 
 - [x] Create `pkg/dispatcher/gen.go` - generator that scans events and handlers
 - [x] Add `//go:generate` directive to `pkg/dispatcher/dispatcher.go`
-- [x] Add per-execution entity cache to `middleware.Context` (`ctx.Cache()`)
-- [x] Provide cache primitives keyed by `cedar.EntityUID` (`Get`/`Set`)
-- [x] Write tests for dispatcher and cache behavior
+- [x] Add per-execution entity cache to `middleware.Context` (removed in Sprint 010b)
+- [x] Provide cache primitives keyed by `cedar.EntityUID` (removed in Sprint 010b)
+- [x] Write tests for dispatcher and cache behavior (removed in Sprint 010b)
 - [x] Create example handler to validate the pattern
 
 ## Generated Dispatcher Design
@@ -113,6 +115,8 @@ func main() {
 ```
 
 ## Entity Cache Implementation
+
+**Deprecated**: This cache was removed in Sprint 010b; the current architecture uses fat events instead.
 
 ```go
 // pkg/middleware/cache.go

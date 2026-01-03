@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
 func (d *FileStockDAO) List(ctx context.Context) ([]Stock, error) {
@@ -16,14 +15,7 @@ func (d *FileStockDAO) List(ctx context.Context) ([]Stock, error) {
 	}
 
 	out := make([]Stock, 0, len(d.stock))
-	var cache *middleware.EntityCache
-	if mctx, ok := ctx.(*middleware.Context); ok {
-		cache = mctx.Cache()
-	}
 	for _, s := range d.stock {
-		if cache != nil {
-			cache.Set(s)
-		}
 		out = append(out, s)
 	}
 	return out, nil
