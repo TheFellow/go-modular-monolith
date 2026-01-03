@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
 func (d *FileDrinkDAO) List(ctx context.Context) ([]Drink, error) {
@@ -20,6 +21,7 @@ func (d *FileDrinkDAO) List(ctx context.Context) ([]Drink, error) {
 		if drink.DeletedAt != nil {
 			continue
 		}
+		middleware.CacheSet(ctx, drink)
 		out = append(out, drink)
 	}
 	return out, nil

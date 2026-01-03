@@ -3,7 +3,7 @@ package dao
 import (
 	"time"
 
-	domain "github.com/TheFellow/go-modular-monolith/app/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -16,17 +16,17 @@ type Ingredient struct {
 	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
 }
 
-func (i Ingredient) ToDomain() domain.Ingredient {
-	return domain.Ingredient{
-		ID:          cedar.NewEntityUID(domain.IngredientEntityType, cedar.String(i.ID)),
+func (i Ingredient) ToDomain() models.Ingredient {
+	return models.Ingredient{
+		ID:          cedar.NewEntityUID(models.IngredientEntityType, cedar.String(i.ID)),
 		Name:        i.Name,
-		Category:    domain.Category(i.Category),
-		Unit:        domain.Unit(i.Unit),
+		Category:    models.Category(i.Category),
+		Unit:        models.Unit(i.Unit),
 		Description: i.Description,
 	}
 }
 
-func FromDomain(i domain.Ingredient) Ingredient {
+func FromDomain(i models.Ingredient) Ingredient {
 	return Ingredient{
 		ID:          string(i.ID.ID),
 		Name:        i.Name,
@@ -34,4 +34,8 @@ func FromDomain(i domain.Ingredient) Ingredient {
 		Unit:        string(i.Unit),
 		Description: i.Description,
 	}
+}
+
+func (i Ingredient) EntityUID() cedar.EntityUID {
+	return models.NewIngredientID(i.ID)
 }

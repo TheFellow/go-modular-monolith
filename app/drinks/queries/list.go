@@ -5,7 +5,6 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
 func (q *Queries) List(ctx context.Context) ([]models.Drink, error) {
@@ -19,6 +18,5 @@ func (q *Queries) List(ctx context.Context) ([]models.Drink, error) {
 		drinks = append(drinks, record.ToDomain())
 	}
 
-	middleware.CacheSetAll(ctx, drinks)
 	return drinks, nil
 }
