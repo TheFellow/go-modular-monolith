@@ -17,14 +17,14 @@ Wire up event handlers to validate the dispatcher pattern. Create handlers that 
 **Critical design constraint**: Handlers do NOT emit new events. They are leaf nodes in the event tree.
 
 Handlers can:
-- Update their own context's state (via DAO)
+- Read from the event
+- Query other modules via their public queries (cross-context reads allowed)
+- Update their own module's state (via DAO)
 - Write to logs/audit trails
 
 Handlers cannot:
 - Call commands (which would emit events)
-- Add events to the context
-- Trigger other handlers
-- Query other contexts (fat events carry required data)
+- Emit new events (no cascading)
 
 ## Example Handler
 
