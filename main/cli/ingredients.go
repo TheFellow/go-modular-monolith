@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
+	ingredientscli "github.com/TheFellow/go-modular-monolith/app/ingredients/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -63,19 +64,19 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					&cli.StringFlag{
 						Name:     "category",
 						Aliases:  []string{"c"},
-						Usage:    "Category (spirit|mixer|garnish|bitter|syrup|juice|other)",
+						Usage:    ingredientscli.CategoryUsage(),
 						Required: true,
 						Validator: func(s string) error {
-							return validateIngredientCategory(s, true)
+							return ingredientscli.ValidateCategory(s)
 						},
 					},
 					&cli.StringFlag{
 						Name:     "unit",
 						Aliases:  []string{"u"},
-						Usage:    "Unit (oz|ml|dash|piece|splash)",
+						Usage:    ingredientscli.UnitUsage(),
 						Required: true,
 						Validator: func(s string) error {
-							return validateIngredientUnit(s, true)
+							return ingredientscli.ValidateUnit(s)
 						},
 					},
 					&cli.StringFlag{
@@ -116,17 +117,17 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					&cli.StringFlag{
 						Name:    "category",
 						Aliases: []string{"c"},
-						Usage:   "Category (spirit|mixer|garnish|bitter|syrup|juice|other)",
+						Usage:   ingredientscli.CategoryUsage(),
 						Validator: func(s string) error {
-							return validateIngredientCategory(s, false)
+							return ingredientscli.ValidateCategory(s)
 						},
 					},
 					&cli.StringFlag{
 						Name:    "unit",
 						Aliases: []string{"u"},
-						Usage:   "Unit (oz|ml|dash|piece|splash)",
+						Usage:   ingredientscli.UnitUsage(),
 						Validator: func(s string) error {
-							return validateIngredientUnit(s, false)
+							return ingredientscli.ValidateUnit(s)
 						},
 					},
 					&cli.StringFlag{
@@ -153,31 +154,5 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				}),
 			},
 		},
-	}
-}
-
-func validateIngredientCategory(s string, required bool) error {
-	if s == "" && !required {
-		return nil
-	}
-
-	switch models.Category(s) {
-	case models.CategorySpirit, models.CategoryMixer, models.CategoryGarnish, models.CategoryBitter, models.CategorySyrup, models.CategoryJuice, models.CategoryOther:
-		return nil
-	default:
-		return fmt.Errorf("invalid category: %s", s)
-	}
-}
-
-func validateIngredientUnit(s string, required bool) error {
-	if s == "" && !required {
-		return nil
-	}
-
-	switch models.Unit(s) {
-	case models.UnitOz, models.UnitMl, models.UnitDash, models.UnitPiece, models.UnitSplash:
-		return nil
-	default:
-		return fmt.Errorf("invalid unit: %s", s)
 	}
 }
