@@ -31,3 +31,6 @@ go.work.sum
 # .idea/
 # .vscode/
 /.claude/settings.local.json
+
+# Local tool caches
+.cache/

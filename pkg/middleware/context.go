@@ -9,7 +9,8 @@ import (
 
 type Context struct {
 	context.Context
-	events []any
+	events     []any
+	queryCache *QueryCache
 }
 
 type ContextOpt func(*Context)
@@ -50,8 +51,9 @@ func NewContext(parent context.Context, opts ...ContextOpt) *Context {
 	}
 
 	c := &Context{
-		Context: parent,
-		events:  make([]any, 0, 4),
+		Context:    parent,
+		events:     make([]any, 0, 4),
+		queryCache: newQueryCache(),
 	}
 	for _, opt := range opts {
 		opt(c)

@@ -1,4 +1,8 @@
+//go:generate go run gen.go
+
 package dispatcher
+
+import "context"
 
 type Dispatcher struct{}
 
@@ -6,4 +10,13 @@ func New() *Dispatcher {
 	return &Dispatcher{}
 }
 
-func (d *Dispatcher) Dispatch(_ []any) {}
+// handlerError is called when a handler returns an error.
+// Return a non-nil error to stop dispatch immediately.
+func (d *Dispatcher) handlerError(_ context.Context, _ any, err error) error {
+	return err
+}
+
+// unhandledEvent is called when an event is emitted but no handler exists for it.
+func (d *Dispatcher) unhandledEvent(_ context.Context, _ any) error {
+	return nil
+}
