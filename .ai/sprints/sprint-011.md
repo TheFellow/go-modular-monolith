@@ -38,31 +38,24 @@ const (
 
 ## Events
 
-These events drive cross-context behavior:
+One event drives cross-context behavior:
 
 - `StockAdjusted{IngredientID, PreviousQty, NewQty, Delta, Reason}` - any stock change
-- `IngredientDepleted{IngredientID}` - quantity reached zero
-- `IngredientRestocked{IngredientID, NewQty}` - quantity went from zero to positive
 
 ```go
-// app/inventory/events/events.go
+// app/inventory/events/stock_adjusted.go
 type StockAdjusted struct {
-    IngredientID string
+    IngredientID cedar.EntityUID
     PreviousQty  float64
     NewQty       float64
     Delta        float64
     Reason       string
 }
-
-type IngredientDepleted struct {
-    IngredientID string
-}
-
-type IngredientRestocked struct {
-    IngredientID string
-    NewQty       float64
-}
 ```
+
+> **Note**: Earlier designs included separate `IngredientDepleted` and `IngredientRestocked` events. These were removed as redundant - handlers can derive threshold states from `StockAdjusted`:
+> - Depleted: `NewQty == 0`
+> - Restocked: `PreviousQty == 0 && NewQty > 0`
 
 ## Command Logic
 
@@ -83,7 +76,6 @@ func (c *AdjustStock) Execute(ctx *middleware.Context, req AdjustRequest) (*mode
         return nil, err
     }
 
-    // Always emit StockAdjusted
     ctx.AddEvent(events.StockAdjusted{
         IngredientID: req.IngredientID,
         PreviousQty:  previousQty,
@@ -91,17 +83,6 @@ func (c *AdjustStock) Execute(ctx *middleware.Context, req AdjustRequest) (*mode
         Delta:        req.Delta,
         Reason:       string(req.Reason),
     })
-
-    // Emit threshold events
-    if previousQty > 0 && stock.Quantity == 0 {
-        ctx.AddEvent(events.IngredientDepleted{IngredientID: req.IngredientID})
-    }
-    if previousQty == 0 && stock.Quantity > 0 {
-        ctx.AddEvent(events.IngredientRestocked{
-            IngredientID: req.IngredientID,
-            NewQty:       stock.Quantity,
-        })
-    }
 
     return stock, nil
 }
@@ -120,8 +101,7 @@ mixology inventory set <ingredient-id> <quantity>
 
 - `go run ./main/cli inventory list` shows stock levels
 - `go run ./main/cli inventory adjust <id> -2.0 --reason=used` adjusts stock
-- Depleted/Restocked events fire at correct thresholds
-- Events appear in context after command execution
+- `StockAdjusted` event appears in context after command execution
 - `go test ./...` passes
 
 ## Dependencies
