@@ -54,8 +54,8 @@ func TestUpdateRecipe_PersistsAndEmitsEvent(t *testing.T) {
 	testutil.ErrorIf(t, err != nil, "begin tx: %v", err)
 	ctx = middleware.NewContext(ctx, middleware.WithUnitOfWork(tx))
 
-	uc := commands.NewUpdateRecipeWithDependencies(d, fakeIngredientsOK{})
-	updated, err := uc.Execute(ctx, commands.UpdateRecipeRequest{
+	cmds := commands.NewWithDependencies(d, fakeIngredientsOK{})
+	updated, err := cmds.UpdateRecipe(ctx, commands.UpdateRecipeRequest{
 		DrinkID: drinksmodels.NewDrinkID("margarita"),
 		Recipe: drinksmodels.Recipe{
 			Ingredients: []drinksmodels.RecipeIngredient{

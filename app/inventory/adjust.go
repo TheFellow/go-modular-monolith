@@ -19,11 +19,6 @@ type AdjustResponse struct {
 }
 
 func (m *Module) Adjust(ctx *middleware.Context, req AdjustRequest) (AdjustResponse, error) {
-	ingredient, err := m.ingredientsQueries.Get(ctx, req.IngredientID)
-	if err != nil {
-		return AdjustResponse{}, err
-	}
-
 	resource := cedar.Entity{
 		UID:        models.NewStockID(req.IngredientID),
 		Parents:    cedar.NewEntityUIDSet(),
@@ -32,10 +27,9 @@ func (m *Module) Adjust(ctx *middleware.Context, req AdjustRequest) (AdjustRespo
 	}
 
 	return middleware.RunCommand(ctx, authz.ActionAdjust, resource, func(mctx *middleware.Context, req AdjustRequest) (AdjustResponse, error) {
-		stock, err := m.adjust.Execute(mctx, commands.AdjustRequest{
+		stock, err := m.commands.Adjust(mctx, commands.AdjustRequest{
 			IngredientID: req.IngredientID,
 			Delta:        req.Delta,
-			Unit:         ingredient.Unit,
 			Reason:       req.Reason,
 		})
 		if err != nil {

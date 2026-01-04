@@ -40,8 +40,8 @@ func TestCreate_PersistsOnCommit(t *testing.T) {
 	testutil.ErrorIf(t, err != nil, "begin tx: %v", err)
 	ctx = middleware.NewContext(ctx, middleware.WithUnitOfWork(tx))
 
-	uc := commands.NewCreateWithDependencies(d, fakeIngredients{})
-	created, err := uc.Execute(ctx, commands.CreateRequest{
+	cmds := commands.NewWithDependencies(d, fakeIngredients{})
+	created, err := cmds.Create(ctx, commands.CreateRequest{
 		Name:     "Margarita",
 		Category: drinksmodels.DrinkCategoryCocktail,
 		Glass:    drinksmodels.GlassTypeCoupe,

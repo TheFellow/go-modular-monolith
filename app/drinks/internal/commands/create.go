@@ -1,39 +1,15 @@
 package commands
 
 import (
-	"context"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/models"
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/ingredients/models"
-	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/ingredients/queries"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/ids"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	cedar "github.com/cedar-policy/cedar-go"
 )
-
-type Create struct {
-	dao         *dao.FileDrinkDAO
-	ingredients ingredientReader
-}
-
-type ingredientReader interface {
-	Get(ctx context.Context, id cedar.EntityUID) (ingredientsmodels.Ingredient, error)
-}
-
-func NewCreate() *Create {
-	return &Create{
-		dao:         dao.New(),
-		ingredients: ingredientsqueries.New(),
-	}
-}
-
-func NewCreateWithDependencies(d *dao.FileDrinkDAO, ingredients ingredientReader) *Create {
-	return &Create{dao: d, ingredients: ingredients}
-}
 
 type CreateRequest struct {
 	Name        string
@@ -43,7 +19,7 @@ type CreateRequest struct {
 	Description string
 }
 
-func (c *Create) Execute(ctx *middleware.Context, req CreateRequest) (models.Drink, error) {
+func (c *Commands) Create(ctx *middleware.Context, req CreateRequest) (models.Drink, error) {
 	req.Name = strings.TrimSpace(req.Name)
 	if req.Name == "" {
 		return models.Drink{}, errors.Invalidf("name is required")

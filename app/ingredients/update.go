@@ -36,7 +36,7 @@ func (m *Module) Update(ctx *middleware.Context, req UpdateRequest) (UpdateRespo
 			Unit:        req.Unit,
 			Description: req.Description,
 		}
-		i, err := m.update.Execute(mctx, cmdReq)
+		i, err := m.commands.Update(mctx, cmdReq)
 		if err != nil {
 			return UpdateResponse{}, err
 		}

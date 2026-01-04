@@ -18,11 +18,6 @@ type SetResponse struct {
 }
 
 func (m *Module) Set(ctx *middleware.Context, req SetRequest) (SetResponse, error) {
-	ingredient, err := m.ingredientsQueries.Get(ctx, req.IngredientID)
-	if err != nil {
-		return SetResponse{}, err
-	}
-
 	resource := cedar.Entity{
 		UID:        models.NewStockID(req.IngredientID),
 		Parents:    cedar.NewEntityUIDSet(),
@@ -31,10 +26,9 @@ func (m *Module) Set(ctx *middleware.Context, req SetRequest) (SetResponse, erro
 	}
 
 	return middleware.RunCommand(ctx, authz.ActionSet, resource, func(mctx *middleware.Context, req SetRequest) (SetResponse, error) {
-		stock, err := m.set.Execute(mctx, commands.SetRequest{
+		stock, err := m.commands.Set(mctx, commands.SetRequest{
 			IngredientID: req.IngredientID,
 			Quantity:     req.Quantity,
-			Unit:         ingredient.Unit,
 		})
 		if err != nil {
 			return SetResponse{}, err

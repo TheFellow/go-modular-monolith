@@ -26,7 +26,7 @@ func (m *Module) UpdateRecipe(ctx *middleware.Context, req UpdateRecipeRequest) 
 	}
 
 	return middleware.RunCommand(ctx, authz.ActionUpdateRecipe, resource, func(mctx *middleware.Context, req UpdateRecipeRequest) (UpdateRecipeResponse, error) {
-		d, err := m.updateRecipe.Execute(mctx, commands.UpdateRecipeRequest{DrinkID: req.ID, Recipe: req.Recipe})
+		d, err := m.commands.UpdateRecipe(mctx, commands.UpdateRecipeRequest{DrinkID: req.ID, Recipe: req.Recipe})
 		if err != nil {
 			return UpdateRecipeResponse{}, err
 		}

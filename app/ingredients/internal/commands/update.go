@@ -4,23 +4,10 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/events"
-	"github.com/TheFellow/go-modular-monolith/app/ingredients/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
-
-type Update struct {
-	dao *dao.FileIngredientDAO
-}
-
-func NewUpdate() *Update {
-	return &Update{dao: dao.New()}
-}
-
-func NewUpdateWithDAO(d *dao.FileIngredientDAO) *Update {
-	return &Update{dao: d}
-}
 
 type UpdateRequest struct {
 	ID          string
@@ -30,7 +17,7 @@ type UpdateRequest struct {
 	Description string
 }
 
-func (c *Update) Execute(ctx *middleware.Context, req UpdateRequest) (models.Ingredient, error) {
+func (c *Commands) Update(ctx *middleware.Context, req UpdateRequest) (models.Ingredient, error) {
 	if req.ID == "" {
 		return models.Ingredient{}, errors.Invalidf("id is required")
 	}

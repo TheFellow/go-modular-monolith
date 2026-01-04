@@ -6,15 +6,13 @@ import (
 )
 
 type Module struct {
-	queries *queries.Queries
-	create  *commands.Create
-	update  *commands.Update
+	queries  *queries.Queries
+	commands *commands.Commands
 }
 
 func NewModule() *Module {
 	return &Module{
-		queries: queries.New(),
-		create:  commands.NewCreate(),
-		update:  commands.NewUpdate(),
+		queries:  queries.New(),
+		commands: commands.New(),
 	}
 }

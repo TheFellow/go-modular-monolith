@@ -6,34 +6,17 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/models"
-	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/ingredients/queries"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	cedar "github.com/cedar-policy/cedar-go"
 )
-
-type UpdateRecipe struct {
-	dao         *dao.FileDrinkDAO
-	ingredients ingredientReader
-}
-
-func NewUpdateRecipe() *UpdateRecipe {
-	return &UpdateRecipe{
-		dao:         dao.New(),
-		ingredients: ingredientsqueries.New(),
-	}
-}
-
-func NewUpdateRecipeWithDependencies(d *dao.FileDrinkDAO, ingredients ingredientReader) *UpdateRecipe {
-	return &UpdateRecipe{dao: d, ingredients: ingredients}
-}
 
 type UpdateRecipeRequest struct {
 	DrinkID cedar.EntityUID
 	Recipe  models.Recipe
 }
 
-func (c *UpdateRecipe) Execute(ctx *middleware.Context, req UpdateRecipeRequest) (models.Drink, error) {
+func (c *Commands) UpdateRecipe(ctx *middleware.Context, req UpdateRecipeRequest) (models.Drink, error) {
 	if string(req.DrinkID.ID) == "" {
 		return models.Drink{}, errors.Invalidf("drink id is required")
 	}

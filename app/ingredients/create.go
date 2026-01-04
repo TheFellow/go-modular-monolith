@@ -34,7 +34,7 @@ func (m *Module) Create(ctx *middleware.Context, req CreateRequest) (CreateRespo
 			Unit:        req.Unit,
 			Description: req.Description,
 		}
-		i, err := m.create.Execute(mctx, cmdReq)
+		i, err := m.commands.Create(mctx, cmdReq)
 		if err != nil {
 			return CreateResponse{}, err
 		}

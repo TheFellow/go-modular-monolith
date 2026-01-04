@@ -14,7 +14,14 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/uow"
+	cedar "github.com/cedar-policy/cedar-go"
 )
+
+type fakeIngredients struct{}
+
+func (fakeIngredients) Get(_ context.Context, _ cedar.EntityUID) (ingredientsmodels.Ingredient, error) {
+	return ingredientsmodels.Ingredient{Unit: ingredientsmodels.UnitOz}, nil
+}
 
 func TestAdjust_EmitsStockAdjusted(t *testing.T) {
 	t.Parallel()
@@ -38,13 +45,12 @@ func TestAdjust_EmitsStockAdjusted(t *testing.T) {
 	testutil.ErrorIf(t, err != nil, "begin tx: %v", err)
 	ctx = middleware.NewContext(ctx, middleware.WithUnitOfWork(tx))
 
-	uc := commands.NewAdjustWithDAO(d)
+	cmds := commands.NewWithDependencies(d, fakeIngredients{})
 	ingredientID := ingredientsmodels.NewIngredientID("vodka")
 
-	_, err = uc.Execute(ctx, commands.AdjustRequest{
+	_, err = cmds.Adjust(ctx, commands.AdjustRequest{
 		IngredientID: ingredientID,
 		Delta:        -2.0,
-		Unit:         ingredientsmodels.UnitOz,
 		Reason:       models.ReasonUsed,
 	})
 	testutil.ErrorIf(t, err != nil, "execute: %v", err)

@@ -29,7 +29,7 @@ func (m *Module) Create(ctx *middleware.Context, req CreateRequest) (CreateRespo
 	}
 
 	return middleware.RunCommand(ctx, authz.ActionCreate, resource, func(mctx *middleware.Context, req CreateRequest) (CreateResponse, error) {
-		d, err := m.create.Execute(mctx, commands.CreateRequest{
+		d, err := m.commands.Create(mctx, commands.CreateRequest{
 			Name:        req.Name,
 			Category:    req.Category,
 			Glass:       req.Glass,

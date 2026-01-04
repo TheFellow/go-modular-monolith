@@ -16,6 +16,7 @@ sprint-012b,completed,2026-01-03,2026-01-03,CLI idioms cleanup (typed args + val
 sprint-013,completed,2026-01-03,2026-01-03,Rich drink recipes + recipe validation + update command + CLI recipe json
 sprint-013b,completed,2026-01-03,2026-01-03,Arch-lint rules + CI workflow to enforce architecture
 sprint-013c,completed,2026-01-04,2026-01-04,Simplified DI: parameterless constructors + hardcoded DAO paths
+sprint-013d,completed,2026-01-04,2026-01-04,Unified Commands object per module (single DAO + methods)
 sprint-014,pending,,,Menu curation context
 sprint-015,pending,,,Advanced business rules & cost analysis
 sprint-016,pending,,,Orders & inventory consumption

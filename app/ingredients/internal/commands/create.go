@@ -11,18 +11,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-type Create struct {
-	dao *dao.FileIngredientDAO
-}
-
-func NewCreate() *Create {
-	return &Create{dao: dao.New()}
-}
-
-func NewCreateWithDAO(d *dao.FileIngredientDAO) *Create {
-	return &Create{dao: d}
-}
-
 type CreateRequest struct {
 	Name        string
 	Category    models.Category
@@ -30,7 +18,7 @@ type CreateRequest struct {
 	Description string
 }
 
-func (c *Create) Execute(ctx *middleware.Context, req CreateRequest) (models.Ingredient, error) {
+func (c *Commands) Create(ctx *middleware.Context, req CreateRequest) (models.Ingredient, error) {
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
 		return models.Ingredient{}, errors.Invalidf("name is required")

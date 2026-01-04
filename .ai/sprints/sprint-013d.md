@@ -68,7 +68,7 @@ func New() *Commands {
 // app/drinks/internal/commands/create.go
 package commands
 
-func (c *Commands) Create(ctx *middleware.Context, req CreateRequest) (CreateResponse, error) {
+func (c *Commands) Create(ctx *middleware.Context, drink models.Drink) (models.Drink, error) {
     // implementation
 }
 ```
@@ -77,18 +77,18 @@ func (c *Commands) Create(ctx *middleware.Context, req CreateRequest) (CreateRes
 // app/drinks/internal/commands/update_recipe.go
 package commands
 
-func (c *Commands) UpdateRecipe(ctx *middleware.Context, req UpdateRecipeRequest) error {
+func (c *Commands) UpdateRecipe(ctx *middleware.Context, drinkID string, recipe models.Recipe) error {
     // implementation
 }
 ```
 
 ## Tasks
 
-- [ ] Create `commands/commands.go` with `Commands` struct and `New()` for each module
-- [ ] Update individual command files to define methods on `Commands` instead of separate structs
-- [ ] Update modules to use single `commands.New()`
-- [ ] Remove individual command constructors (keep methods in their own files)
-- [ ] Verify `go test ./...` passes
+- [x] Create `commands/commands.go` with `Commands` struct and `New()` for each module
+- [x] Update individual command files to define methods on `Commands` instead of separate structs
+- [x] Update modules to use single `commands.New()`
+- [x] Remove individual command constructors (keep methods in their own files)
+- [x] Verify `go test ./...` passes
 
 ## Before/After Comparison
 
@@ -127,14 +127,14 @@ func NewModule() *Module {
     }
 }
 
-func (m *Module) Create(ctx *middleware.Context, req CreateRequest) (CreateResponse, error) {
+func (m *Module) Create(ctx *middleware.Context, drink models.Drink) (models.Drink, error) {
     // AuthZ check
-    return m.commands.Create(ctx, req)
+    return m.commands.Create(ctx, drink)
 }
 
-func (m *Module) UpdateRecipe(ctx *middleware.Context, req UpdateRecipeRequest) error {
+func (m *Module) UpdateRecipe(ctx *middleware.Context, drinkID string, recipe models.Recipe) error {
     // AuthZ check
-    return m.commands.UpdateRecipe(ctx, req)
+    return m.commands.UpdateRecipe(ctx, drinkID, recipe)
 }
 ```
 
@@ -191,35 +191,20 @@ func New() *Commands {
 // app/drinks/internal/commands/create.go
 package commands
 
-type CreateRequest struct {
-    Name        string
-    Description string
-    Glass       string
-    Recipe      models.Recipe
-}
+// Note: Uses public models directly, no Request/Response wrappers (see sprint-013e)
 
-type CreateResponse struct {
-    Drink models.Drink
-}
-
-func (c *Commands) Create(ctx *middleware.Context, req CreateRequest) (CreateResponse, error) {
+func (c *Commands) Create(ctx *middleware.Context, drink models.Drink) (models.Drink, error) {
     // Validate ingredients exist
-    for _, ri := range req.Recipe.Ingredients {
+    for _, ri := range drink.Recipe.Ingredients {
         if _, err := c.ingredients.Get(ctx, string(ri.IngredientID.ID)); err != nil {
-            return CreateResponse{}, errors.Wrap(err, "invalid ingredient")
+            return models.Drink{}, errors.Wrap(err, "invalid ingredient")
         }
     }
 
-    drink := models.Drink{
-        ID:          uuid.New().String(),
-        Name:        req.Name,
-        Description: req.Description,
-        Glass:       req.Glass,
-        Recipe:      req.Recipe,
-    }
+    drink.ID = uuid.New().String()
 
     if err := c.dao.Save(ctx, drink); err != nil {
-        return CreateResponse{}, err
+        return models.Drink{}, err
     }
 
     ctx.AddEvent(events.DrinkCreated{
@@ -227,7 +212,7 @@ func (c *Commands) Create(ctx *middleware.Context, req CreateRequest) (CreateRes
         Name:    drink.Name,
     })
 
-    return CreateResponse{Drink: drink}, nil
+    return drink, nil
 }
 ```
 
@@ -235,12 +220,7 @@ func (c *Commands) Create(ctx *middleware.Context, req CreateRequest) (CreateRes
 // app/drinks/internal/commands/update_recipe.go
 package commands
 
-type UpdateRecipeRequest struct {
-    DrinkID string
-    Recipe  models.Recipe
-}
-
-func (c *Commands) UpdateRecipe(ctx *middleware.Context, req UpdateRecipeRequest) error {
+func (c *Commands) UpdateRecipe(ctx *middleware.Context, drinkID string, recipe models.Recipe) error {
     // implementation
 }
 ```

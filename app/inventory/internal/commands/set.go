@@ -3,7 +3,6 @@ package commands
 import (
 	"time"
 
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/inventory/events"
 	"github.com/TheFellow/go-modular-monolith/app/inventory/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/inventory/models"
@@ -12,33 +11,28 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type Set struct {
-	dao *dao.FileStockDAO
-}
-
-func NewSet() *Set {
-	return &Set{dao: dao.New()}
-}
-
-func NewSetWithDAO(d *dao.FileStockDAO) *Set {
-	return &Set{dao: d}
-}
-
 type SetRequest struct {
 	IngredientID cedar.EntityUID
 	Quantity     float64
-	Unit         ingredientsmodels.Unit
 }
 
-func (c *Set) Execute(ctx *middleware.Context, req SetRequest) (models.Stock, error) {
+func (c *Commands) Set(ctx *middleware.Context, req SetRequest) (models.Stock, error) {
 	if string(req.IngredientID.ID) == "" {
 		return models.Stock{}, errors.Invalidf("ingredient id is required")
 	}
-	if req.Unit == "" {
-		return models.Stock{}, errors.Invalidf("unit is required")
-	}
 	if req.Quantity < 0 {
 		req.Quantity = 0
+	}
+	if c.ingredients == nil {
+		return models.Stock{}, errors.Internalf("missing ingredients dependency")
+	}
+
+	ingredient, err := c.ingredients.Get(ctx, req.IngredientID)
+	if err != nil {
+		return models.Stock{}, err
+	}
+	if ingredient.Unit == "" {
+		return models.Stock{}, errors.Invalidf("ingredient unit is required")
 	}
 
 	tx, ok := ctx.UnitOfWork()
@@ -58,7 +52,7 @@ func (c *Set) Execute(ctx *middleware.Context, req SetRequest) (models.Stock, er
 		existing = dao.Stock{
 			IngredientID: ingredientID,
 			Quantity:     0,
-			Unit:         string(req.Unit),
+			Unit:         string(ingredient.Unit),
 			LastUpdated:  time.Time{},
 		}
 	}
@@ -68,7 +62,7 @@ func (c *Set) Execute(ctx *middleware.Context, req SetRequest) (models.Stock, er
 	delta := newQty - previousQty
 
 	existing.Quantity = newQty
-	existing.Unit = string(req.Unit)
+	existing.Unit = string(ingredient.Unit)
 	existing.LastUpdated = time.Now().UTC()
 
 	if err := c.dao.Set(ctx, existing); err != nil {
