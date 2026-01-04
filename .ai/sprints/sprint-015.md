@@ -83,14 +83,34 @@ type Stock struct {
 
 ```go
 // app/menu/queries/cost.go
+package queries
+
+import (
+    drinksq "github.com/TheFellow/go-modular-monolith/app/drinks/queries"
+    inventoryq "github.com/TheFellow/go-modular-monolith/app/inventory/queries"
+    "github.com/TheFellow/go-modular-monolith/pkg/middleware"
+)
+
+type CostCalculator struct {
+    drinks    *drinksq.Queries
+    inventory *inventoryq.Queries
+}
+
+func NewCostCalculator() *CostCalculator {
+    return &CostCalculator{
+        drinks:    drinksq.New(),
+        inventory: inventoryq.New(),
+    }
+}
+
 type DrinkCost struct {
     DrinkID        string
     IngredientCost Price
     Breakdown      []IngredientCost
-    SuggestedPrice Price  // Based on target margin
+    SuggestedPrice Price // Based on target margin
 }
 
-func (q *Queries) CalculateDrinkCost(ctx context.Context, drinkID string, targetMargin float64) (DrinkCost, error)
+func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID string, targetMargin float64) (DrinkCost, error)
 ```
 
 ## CLI Output Example
@@ -123,4 +143,5 @@ Analytics:
 
 ## Dependencies
 
+- Sprint 013c (Simplified constructors)
 - Sprint 014 (Menu curation)

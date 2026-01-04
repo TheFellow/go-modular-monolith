@@ -79,26 +79,42 @@ Events are intentionally fat: handlers only read from the event and never query/
 Handlers react to events but **do not emit new events**. They update their own state directly.
 
 ```go
-// app/inventory/handlers/order_handlers.go
-func HandleOrderCompleted(stockDAO *dao.StockDAO) dispatcher.Handler {
-    return func(ctx *middleware.Context, event any) error {
-        e := event.(orders.OrderCompleted)
+// app/inventory/handlers/order_completed.go
+package handlers
 
-        for _, usage := range e.IngredientUsage {
-            stock, err := stockDAO.Get(ctx, string(usage.IngredientID.ID))
-            if err != nil {
-                return err
-            }
+import (
+    "time"
 
-            stock.Quantity -= usage.Amount
-            stock.LastUpdated = time.Now()
+    "github.com/TheFellow/go-modular-monolith/app/inventory/internal/dao"
+    "github.com/TheFellow/go-modular-monolith/app/orders/events"
+    "github.com/TheFellow/go-modular-monolith/pkg/middleware"
+)
 
-            if err := stockDAO.Save(ctx, stock); err != nil {
-                return err
-            }
-        }
-        return nil
+type OrderCompletedStockUpdater struct {
+    stockDAO *dao.DAO
+}
+
+func New() *OrderCompletedStockUpdater {
+    return &OrderCompletedStockUpdater{
+        stockDAO: dao.New(),
     }
+}
+
+func (h *OrderCompletedStockUpdater) Handle(ctx *middleware.Context, e events.OrderCompleted) error {
+    for _, usage := range e.IngredientUsage {
+        stock, err := h.stockDAO.Get(ctx, string(usage.IngredientID.ID))
+        if err != nil {
+            return err
+        }
+
+        stock.Quantity -= usage.Amount
+        stock.LastUpdated = time.Now()
+
+        if err := h.stockDAO.Save(ctx, stock); err != nil {
+            return err
+        }
+    }
+    return nil
 }
 ```
 
@@ -132,5 +148,6 @@ mixology order cancel <order-id>
 
 ## Dependencies
 
+- Sprint 013c (Simplified constructors)
 - Sprint 014 (Menu curation)
 - Sprint 015 (Cost/substitution logic)

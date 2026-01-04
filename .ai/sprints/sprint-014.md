@@ -62,9 +62,11 @@ type Price struct {
 
 Menu context handles `StockAdjusted` from Inventory. Handlers:
 - Read from the event
-- Query other modules via their public queries (cross-context reads are allowed)
+- Query other modules via their **queries package** (not Module - no AuthZ re-check)
 - Update their own module's state via DAO
 - Do NOT emit events or call commands
+
+**Important:** Handlers import queries packages directly, not Module types. Modules enforce AuthZ at the surface boundary (CLI, API). Handlers execute within an already-authorized context.
 
 ```go
 // app/menu/handlers/stock_adjusted.go
@@ -73,7 +75,7 @@ package handlers
 import (
     "log"
 
-    "github.com/TheFellow/go-modular-monolith/app/drinks"
+    drinksq "github.com/TheFellow/go-modular-monolith/app/drinks/queries"
     "github.com/TheFellow/go-modular-monolith/app/inventory/events"
     "github.com/TheFellow/go-modular-monolith/app/menu/internal/dao"
     "github.com/TheFellow/go-modular-monolith/app/menu/models"
@@ -81,14 +83,14 @@ import (
 )
 
 type StockAdjustedMenuUpdater struct {
-    menuDAO      *dao.MenuDAO
-    drinkQueries *drinks.Module  // Cross-context queries allowed
+    menuDAO      *dao.DAO
+    drinkQueries *drinksq.Queries
 }
 
-func NewStockAdjustedMenuUpdater(menuDAO *dao.MenuDAO, drinkQueries *drinks.Module) *StockAdjustedMenuUpdater {
+func New() *StockAdjustedMenuUpdater {
     return &StockAdjustedMenuUpdater{
-        menuDAO:      menuDAO,
-        drinkQueries: drinkQueries,
+        menuDAO:      dao.New(),
+        drinkQueries: drinksq.New(),
     }
 }
 
@@ -113,7 +115,7 @@ func (h *StockAdjustedMenuUpdater) Handle(ctx *middleware.Context, e events.Stoc
 
         changed := false
         for i, item := range menu.Items {
-            // Query Drinks module to check if this drink uses the ingredient
+            // Query drinks queries package directly
             if !h.drinkUsesIngredient(ctx, item.DrinkID, ingredientID) {
                 continue
             }
@@ -143,11 +145,11 @@ func (h *StockAdjustedMenuUpdater) Handle(ctx *middleware.Context, e events.Stoc
 }
 
 func (h *StockAdjustedMenuUpdater) drinkUsesIngredient(ctx *middleware.Context, drinkID, ingredientID string) bool {
-    drink, err := h.drinkQueries.Get(ctx, drinks.GetRequest{ID: drinkID})
+    drink, err := h.drinkQueries.Get(ctx, drinkID)
     if err != nil {
         return false
     }
-    for _, ri := range drink.Drink.Recipe.Ingredients {
+    for _, ri := range drink.Recipe.Ingredients {
         if string(ri.IngredientID.ID) == ingredientID {
             return true
         }
@@ -165,27 +167,47 @@ func (h *StockAdjustedMenuUpdater) drinkUsesIngredient(ctx *middleware.Context, 
 
 ## Availability Calculation
 
-Used when adding drinks or showing menus:
+Used when adding drinks or showing menus. Uses queries packages directly:
 
 ```go
-func calculateAvailability(ctx context.Context, drinkID string,
-    inventoryQueries *inventory.Module, drinkQueries *drinks.Module) Availability {
+// app/menu/internal/availability.go
+package internal
 
-    drink, err := drinkQueries.Get(ctx, drinks.GetRequest{ID: drinkID})
+import (
+    drinksq "github.com/TheFellow/go-modular-monolith/app/drinks/queries"
+    inventoryq "github.com/TheFellow/go-modular-monolith/app/inventory/queries"
+    "github.com/TheFellow/go-modular-monolith/app/menu/models"
+    "github.com/TheFellow/go-modular-monolith/pkg/middleware"
+)
+
+type AvailabilityCalculator struct {
+    drinks    *drinksq.Queries
+    inventory *inventoryq.Queries
+}
+
+func NewAvailabilityCalculator() *AvailabilityCalculator {
+    return &AvailabilityCalculator{
+        drinks:    drinksq.New(),
+        inventory: inventoryq.New(),
+    }
+}
+
+func (c *AvailabilityCalculator) Calculate(ctx *middleware.Context, drinkID string) models.Availability {
+    drink, err := c.drinks.Get(ctx, drinkID)
     if err != nil {
-        return AvailabilityUnavailable
+        return models.AvailabilityUnavailable
     }
 
-    for _, ri := range drink.Drink.Recipe.Ingredients {
-        stock, err := inventoryQueries.Get(ctx, inventory.GetRequest{IngredientID: ri.IngredientID})
-        if err != nil || stock.Stock.Quantity < ri.Amount {
-            return AvailabilityUnavailable
+    for _, ri := range drink.Recipe.Ingredients {
+        stock, err := c.inventory.Get(ctx, string(ri.IngredientID.ID))
+        if err != nil || stock.Quantity < ri.Amount {
+            return models.AvailabilityUnavailable
         }
-        if stock.Stock.Quantity < ri.Amount * 3 {  // Low threshold
-            return AvailabilityLimited
+        if stock.Quantity < ri.Amount*3 { // Low threshold
+            return models.AvailabilityLimited
         }
     }
-    return AvailabilityAvailable
+    return models.AvailabilityAvailable
 }
 ```
 
@@ -213,3 +235,4 @@ mixology menu show <menu-id>
 - Sprint 011 (Inventory for availability)
 - Sprint 012 (Event handlers pattern)
 - Sprint 013 (Rich drink recipes)
+- Sprint 013c (Simplified constructors)
