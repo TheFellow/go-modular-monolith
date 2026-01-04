@@ -7,10 +7,10 @@ Create the Menu bounded context for curating drink menus with availability track
 ## Tasks
 
 - [ ] Create `app/menu/models/menu.go` with Menu, MenuItem models
-- [ ] Create `app/menu/internal/dao/` with file-based DAO
+- [ ] Create `app/menu/internal/dao/dao.go` with file-based DAO
 - [ ] Create `app/menu/authz/` with actions and policies
-- [ ] Create `app/menu/queries/` with ListMenus, GetMenu queries
-- [ ] Create `app/menu/internal/commands/` with CreateMenu, AddDrink, RemoveDrink, Publish commands
+- [ ] Create `app/menu/queries/queries.go` with Get, List methods
+- [ ] Create `app/menu/internal/commands/commands.go` with Create, AddDrink, RemoveDrink, Publish methods
 - [ ] Create `app/menu/handlers/stock_adjusted.go` for inventory events
 - [ ] Create `app/menu/events/` with menu-related events
 - [ ] Create `app/menu/module.go` exposing public API
@@ -236,3 +236,4 @@ mixology menu show <menu-id>
 - Sprint 012 (Event handlers pattern)
 - Sprint 013 (Rich drink recipes)
 - Sprint 013c (Simplified constructors)
+- Sprint 013d (Unified Commands object)

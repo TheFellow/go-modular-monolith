@@ -7,13 +7,13 @@ Create an Orders context that records drink orders. Handlers in other contexts r
 ## Tasks
 
 - [ ] Create `app/orders/models/order.go` with Order, OrderItem models
-- [ ] Create `app/orders/internal/dao/` with file-based DAO
+- [ ] Create `app/orders/internal/dao/dao.go` with file-based DAO
 - [ ] Create `app/orders/authz/` with actions and policies
-- [ ] Create `app/orders/queries/` with ListOrders, GetOrder queries
-- [ ] Create `app/orders/internal/commands/` with PlaceOrder, CompleteOrder, CancelOrder
+- [ ] Create `app/orders/queries/queries.go` with Get, List methods
+- [ ] Create `app/orders/internal/commands/commands.go` with Place, Complete, Cancel methods
 - [ ] Create `app/orders/events/` with order events
-- [ ] Create `app/inventory/handlers/order_handlers.go` - updates stock directly (no events)
-- [ ] Create `app/menu/handlers/order_handlers.go` - recalculates availability directly (no events)
+- [ ] Create `app/inventory/handlers/order_completed.go` - updates stock directly (no events)
+- [ ] Create `app/menu/handlers/order_completed.go` - recalculates availability directly (no events)
 - [ ] Add order subcommands to CLI
 
 ## Domain Model
@@ -149,5 +149,6 @@ mixology order cancel <order-id>
 ## Dependencies
 
 - Sprint 013c (Simplified constructors)
+- Sprint 013d (Unified Commands object)
 - Sprint 014 (Menu curation)
 - Sprint 015 (Cost/substitution logic)
