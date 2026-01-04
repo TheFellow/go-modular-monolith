@@ -10,6 +10,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/ids"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
 func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (models.Menu, error) {
@@ -43,7 +44,7 @@ func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (models.Men
 		Items:       nil,
 		Status:      models.MenuStatusDraft,
 		CreatedAt:   now,
-		PublishedAt: nil,
+		PublishedAt: optional.NewNone[time.Time](),
 	})
 
 	if err := c.dao.Add(ctx, record); err != nil {

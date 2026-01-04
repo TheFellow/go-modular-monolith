@@ -6,6 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/menu/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
 func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChange) (models.Menu, error) {
@@ -54,6 +55,8 @@ func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChan
 
 	menu.Items = append(menu.Items, models.MenuItem{
 		DrinkID:      change.DrinkID,
+		DisplayName:  optional.NewNone[string](),
+		Price:        optional.NewNone[models.Price](),
 		Availability: c.availability.Calculate(ctx, change.DrinkID),
 		SortOrder:    nextSort,
 	})

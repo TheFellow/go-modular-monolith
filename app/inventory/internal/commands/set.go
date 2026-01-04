@@ -29,8 +29,10 @@ func (c *Commands) Set(ctx *middleware.Context, stock models.Stock) (models.Stoc
 		return models.Stock{}, errors.Invalidf("ingredient unit is required")
 	}
 	if stock.CostPerUnit != nil {
-		if err := stock.CostPerUnit.Validate(); err != nil {
-			return models.Stock{}, err
+		if v, ok := stock.CostPerUnit.Unwrap(); ok {
+			if err := v.Validate(); err != nil {
+				return models.Stock{}, err
+			}
 		}
 	}
 
@@ -63,7 +65,9 @@ func (c *Commands) Set(ctx *middleware.Context, stock models.Stock) (models.Stoc
 	existing.Quantity = newQty
 	existing.Unit = string(ingredient.Unit)
 	if stock.CostPerUnit != nil {
-		existing.CostPerUnit = stock.CostPerUnit
+		if v, ok := stock.CostPerUnit.Unwrap(); ok {
+			existing.CostPerUnit = &v
+		}
 	}
 	existing.LastUpdated = time.Now().UTC()
 

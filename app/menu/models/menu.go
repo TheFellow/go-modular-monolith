@@ -6,6 +6,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/money"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -22,7 +23,7 @@ type Menu struct {
 	Items       []MenuItem
 	Status      MenuStatus
 	CreatedAt   time.Time
-	PublishedAt *time.Time
+	PublishedAt optional.Value[time.Time]
 }
 
 func (m Menu) EntityUID() cedar.EntityUID {
@@ -60,8 +61,8 @@ func (m Menu) Validate() error {
 
 type MenuItem struct {
 	DrinkID      cedar.EntityUID
-	DisplayName  string
-	Price        *Price
+	DisplayName  optional.Value[string]
+	Price        optional.Value[Price]
 	Featured     bool
 	Availability Availability
 	SortOrder    int
@@ -75,8 +76,10 @@ func (i MenuItem) Validate() error {
 		return err
 	}
 	if i.Price != nil {
-		if err := i.Price.Validate(); err != nil {
-			return err
+		if p, ok := i.Price.Unwrap(); ok {
+			if err := p.Validate(); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/menu/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
 func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (models.Menu, error) {
@@ -38,7 +39,7 @@ func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (models.Me
 
 	now := time.Now().UTC()
 	menu.Status = models.MenuStatusPublished
-	menu.PublishedAt = &now
+	menu.PublishedAt = optional.NewSome(now)
 	for i := range menu.Items {
 		menu.Items[i].Availability = c.availability.Calculate(ctx, menu.Items[i].DrinkID)
 	}

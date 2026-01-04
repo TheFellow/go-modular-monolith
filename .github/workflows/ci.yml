@@ -25,6 +25,8 @@ jobs:
       - name: Arch Lint
         run: go tool arch-lint -config=.arch-lint.yaml
 
+      - name: Sumtype Lint
+        run: go tool go-check-sumtype ./...
+
       - name: Test
         run: go test ./...
-

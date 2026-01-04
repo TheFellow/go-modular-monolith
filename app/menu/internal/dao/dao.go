@@ -119,12 +119,12 @@ type Menu struct {
 }
 
 type MenuItem struct {
-	DrinkID      string `json:"drink_id"`
-	DisplayName  string `json:"display_name,omitempty"`
-	Price        *Price `json:"price,omitempty"`
-	Featured     bool   `json:"featured,omitempty"`
-	Availability string `json:"availability"`
-	SortOrder    int    `json:"sort_order,omitempty"`
+	DrinkID      string  `json:"drink_id"`
+	DisplayName  *string `json:"display_name,omitempty"`
+	Price        *Price  `json:"price,omitempty"`
+	Featured     bool    `json:"featured,omitempty"`
+	Availability string  `json:"availability"`
+	SortOrder    int     `json:"sort_order,omitempty"`
 }
 
 type Price struct {

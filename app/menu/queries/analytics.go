@@ -56,8 +56,12 @@ func (a *AnalyticsCalculator) Analyze(ctx *middleware.Context, menu models.Menu,
 	)
 
 	for _, item := range menu.Items {
-		name := item.DisplayName
-		if name == "" {
+		name := ""
+		ok := false
+		if item.DisplayName != nil {
+			name, ok = item.DisplayName.Unwrap()
+		}
+		if !ok || name == "" {
 			if d, err := a.drinks.Get(ctx, item.DrinkID); err == nil {
 				name = d.Name
 			}
@@ -77,9 +81,17 @@ func (a *AnalyticsCalculator) Analyze(ctx *middleware.Context, menu models.Menu,
 			cost = DrinkCost{DrinkID: item.DrinkID, UnknownCost: true}
 		}
 
+		var menuPrice *money.Price
+		if item.Price != nil {
+			if p, ok := item.Price.Unwrap(); ok {
+				v := money.Price(p)
+				menuPrice = &v
+			}
+		}
+
 		var margin *float64
-		if item.Price != nil && cost.IngredientCost != nil && !cost.UnknownCost && item.Price.Amount > 0 {
-			m := float64(item.Price.Amount-cost.IngredientCost.Amount) / float64(item.Price.Amount)
+		if menuPrice != nil && cost.IngredientCost != nil && !cost.UnknownCost && menuPrice.Amount > 0 {
+			m := float64(menuPrice.Amount-cost.IngredientCost.Amount) / float64(menuPrice.Amount)
 			margin = &m
 			marginSum += m
 			marginN++
@@ -92,7 +104,7 @@ func (a *AnalyticsCalculator) Analyze(ctx *middleware.Context, menu models.Menu,
 			Substitutions:  detail.Substitutions,
 			Cost:           cost.IngredientCost,
 			CostUnknown:    cost.UnknownCost,
-			MenuPrice:      item.Price,
+			MenuPrice:      menuPrice,
 			Margin:         margin,
 			SuggestedPrice: cost.SuggestedPrice,
 		})

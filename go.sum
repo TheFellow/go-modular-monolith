@@ -1,5 +1,7 @@
 github.com/TheFellow/arch-lint v0.0.12 h1:vS9fSLqGoyf1JScHYUYKEp0CVqWpzXMSWOIHC4Qhszo=
 github.com/TheFellow/arch-lint v0.0.12/go.mod h1:xqWm4xKkd3zfEmzwcN7kPIZJdWbi6QpkDRZW3BVnrzE=
+github.com/alecthomas/go-check-sumtype v0.3.1 h1:u9aUvbGINJxLVXiFvHUlPEaD7VDULsrxJb4Aq31NLkU=
+github.com/alecthomas/go-check-sumtype v0.3.1/go.mod h1:A8TSiN3UPRw3laIgWEUOHHLPa6/r9MtoigdlP5h3K/E=
 github.com/bmatcuk/doublestar/v4 v4.8.1 h1:54Bopc5c2cAvhLRAzqOGCYHYyhcDHsFF4wWIR5wKP38=
 github.com/bmatcuk/doublestar/v4 v4.8.1/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=
 github.com/cedar-policy/cedar-go v1.3.1 h1:JK1aRFnLUpJrA2dnF/h2UAA4X5GazDUNgLfOZExTMZk=

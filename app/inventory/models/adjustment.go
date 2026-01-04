@@ -2,6 +2,7 @@ package models
 
 import (
 	"github.com/TheFellow/go-modular-monolith/pkg/money"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -9,7 +10,7 @@ type StockAdjustment struct {
 	IngredientID cedar.EntityUID
 	Delta        float64
 	Reason       AdjustmentReason
-	CostPerUnit  *money.Price
+	CostPerUnit  optional.Value[money.Price]
 }
 
 func (a StockAdjustment) EntityUID() cedar.EntityUID {

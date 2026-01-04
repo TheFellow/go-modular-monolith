@@ -6,6 +6,7 @@ import (
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/money"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -18,21 +19,31 @@ type Stock struct {
 }
 
 func (s Stock) ToDomain() models.Stock {
+	var cost optional.Value[money.Price] = optional.NewNone[money.Price]()
+	if s.CostPerUnit != nil {
+		cost = optional.NewSome(*s.CostPerUnit)
+	}
 	return models.Stock{
 		IngredientID: ingredientsmodels.NewIngredientID(s.IngredientID),
 		Quantity:     s.Quantity,
 		Unit:         ingredientsmodels.Unit(s.Unit),
-		CostPerUnit:  s.CostPerUnit,
+		CostPerUnit:  cost,
 		LastUpdated:  s.LastUpdated,
 	}
 }
 
 func FromDomain(s models.Stock) Stock {
+	var cost *money.Price
+	if s.CostPerUnit != nil {
+		if v, ok := s.CostPerUnit.Unwrap(); ok {
+			cost = &v
+		}
+	}
 	return Stock{
 		IngredientID: string(s.IngredientID.ID),
 		Quantity:     s.Quantity,
 		Unit:         string(s.Unit),
-		CostPerUnit:  s.CostPerUnit,
+		CostPerUnit:  cost,
 		LastUpdated:  s.LastUpdated,
 	}
 }

@@ -79,7 +79,6 @@ func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID cedar.Entity
 			OriginalIngredientID: req.IngredientID,
 			UsedIngredientID:     pick.IngredientID,
 			RequiredQty:          pick.RequiredQty,
-			CostPerUnit:          stock.CostPerUnit,
 			Substitution:         pick.UsedSubstitution,
 		}
 
@@ -89,11 +88,18 @@ func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID cedar.Entity
 			continue
 		}
 
-		if err := stock.CostPerUnit.Validate(); err != nil {
+		cpu, ok := stock.CostPerUnit.Unwrap()
+		if !ok {
+			unknown = true
+			out = append(out, entry)
+			continue
+		}
+		entry.CostPerUnit = &cpu
+		if err := cpu.Validate(); err != nil {
 			return DrinkCost{}, err
 		}
 
-		ingredientCost, err := stock.CostPerUnit.MulFloat(pick.RequiredQty)
+		ingredientCost, err := cpu.MulFloat(pick.RequiredQty)
 		if err != nil {
 			return DrinkCost{}, err
 		}

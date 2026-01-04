@@ -5,6 +5,7 @@ import (
 
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/money"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -18,7 +19,7 @@ type Stock struct {
 	IngredientID cedar.EntityUID
 	Quantity     float64
 	Unit         ingredientsmodels.Unit
-	CostPerUnit  *money.Price
+	CostPerUnit  optional.Value[money.Price]
 	LastUpdated  time.Time
 }
 

@@ -154,3 +154,4 @@ mixology order cancel <order-id>
 - Sprint 013g (CedarEntity interface)
 - Sprint 014 (Menu curation)
 - Sprint 015 (Cost/substitution logic)
+- Sprint 015b (Optional package)

@@ -22,4 +22,5 @@ sprint-013f,completed,2026-01-04,2026-01-04,CLI exit codes via ErrorKind.CLICode
 sprint-014,completed,2026-01-04,2026-01-04,Menu curation context
 sprint-014b,completed,2026-01-04,2026-01-04,Simplified middleware signatures (CedarEntity + params structs)
 sprint-015,completed,2026-01-04,2026-01-04,Advanced business rules & cost analysis
+sprint-015b,completed,2026-01-04,2026-01-04,Optional value sum type + model optional refactor
 sprint-016,pending,,,Orders & inventory consumption
