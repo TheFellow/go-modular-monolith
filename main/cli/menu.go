@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	drinksmodels "github.com/TheFellow/go-modular-monolith/app/drinks/models"
-	"github.com/TheFellow/go-modular-monolith/app/menu"
-	menumodels "github.com/TheFellow/go-modular-monolith/app/menu/models"
-	menuqueries "github.com/TheFellow/go-modular-monolith/app/menu/queries"
-	menucli "github.com/TheFellow/go-modular-monolith/app/menu/surfaces/cli"
+	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/menu"
+	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	menuqueries "github.com/TheFellow/go-modular-monolith/app/domains/menu/queries"
+	menucli "github.com/TheFellow/go-modular-monolith/app/domains/menu/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )

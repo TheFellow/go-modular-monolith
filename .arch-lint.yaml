@@ -1,56 +1,71 @@
 specs:
-  # Handlers cannot call commands (prevents cascading events)
+  # Shared types cannot import domains.
+  - name: shared-no-domains
+    packages:
+      include:
+        - "app/*"
+      exclude:
+        - "app/domains/**"
+    rules:
+      forbid:
+        - "app/domains/**"
+
+  # Cross-domain internal access forbidden.
+  - name: no-cross-domain-internal
+    packages:
+      include:
+        - "app/domains/{module}/**"
+    rules:
+      forbid:
+        - "app/domains/{!module}/internal/**"
+
+  # Handlers cannot import commands.
   - name: handlers-no-commands
     packages:
       include:
-        - "app/*/handlers/**"
+        - "app/domains/*/handlers/**"
     rules:
       forbid:
-        - "app/*/internal/commands"
-        - "app/*/internal/commands/**"
+        - "app/domains/*/internal/commands"
+        - "app/domains/*/internal/commands/**"
 
-  # Handlers cannot import module root packages (e.g. "app/inventory").
-  # Handlers may import subpackages (events/models/queries) as needed.
-  - name: handlers-no-modules
-    packages:
-      include:
-        - "app/*/handlers/**"
-    rules:
-      forbid:
-        - "app/*"
-
-  # Internal packages are module-private
-  - name: no-cross-module-internal
-    packages:
-      include:
-        - "app/{module}/**"
-    rules:
-      forbid:
-        - "app/{!module}/internal/**"
-
-  # Events are public contracts - no internal dependencies
+  # Events are public contracts - no internal dependencies.
   - name: events-no-internal
     packages:
       include:
-        - "app/*/events/**"
+        - "app/domains/*/events/**"
     rules:
       forbid:
-        - "app/*/internal/**"
+        - "app/domains/*/internal/**"
 
-  # Queries are read-only - no command imports
+  # Queries are read-only - no command imports.
   - name: queries-no-commands
     packages:
       include:
-        - "app/*/queries/**"
+        - "app/domains/*/queries/**"
     rules:
       forbid:
-        - "app/*/internal/commands/**"
+        - "app/domains/*/internal/commands/**"
 
-  # Models are dependency-free within module
+  # Models are dependency-free within module.
   - name: models-no-internal
     packages:
       include:
-        - "app/*/models/**"
+        - "app/domains/*/models/**"
     rules:
       forbid:
-        - "app/*/internal/**"
+        - "app/domains/*/internal/**"
+
+  # Handlers use queries, not modules.
+  - name: handlers-no-modules
+    packages:
+      include:
+        - "app/domains/*/handlers/**"
+    rules:
+      forbid:
+        - "app/domains/*"
+      except:
+        - "app/domains/*/events"
+        - "app/domains/*/queries"
+        - "app/domains/*/models"
+        - "app/domains/*/internal/**"

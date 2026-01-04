@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	drinksauthz "github.com/TheFellow/go-modular-monolith/app/drinks/authz"
+	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/authz"
 	cedar "github.com/cedar-policy/cedar-go"

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/ingredients/models"
-	"github.com/TheFellow/go-modular-monolith/app/inventory/events"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/uow"

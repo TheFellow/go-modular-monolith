@@ -1,10 +1,10 @@
 package app
 
 import (
-	"github.com/TheFellow/go-modular-monolith/app/drinks"
-	"github.com/TheFellow/go-modular-monolith/app/ingredients"
-	"github.com/TheFellow/go-modular-monolith/app/inventory"
-	"github.com/TheFellow/go-modular-monolith/app/menu"
+	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
+	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
+	"github.com/TheFellow/go-modular-monolith/app/domains/menu"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/uow"

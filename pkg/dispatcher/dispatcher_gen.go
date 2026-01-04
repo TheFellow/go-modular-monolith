@@ -3,28 +3,28 @@
 package dispatcher
 
 import (
-	ingredients_events "github.com/TheFellow/go-modular-monolith/app/ingredients/events"
-	ingredients_handlers "github.com/TheFellow/go-modular-monolith/app/ingredients/handlers"
-	inventory_events "github.com/TheFellow/go-modular-monolith/app/inventory/events"
-	menu_handlers "github.com/TheFellow/go-modular-monolith/app/menu/handlers"
+	domains_events "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
+	domains_handlers "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/handlers"
+	domains_events2 "github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
+	domains_handlers2 "github.com/TheFellow/go-modular-monolith/app/domains/menu/handlers"
 	middleware "github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
 func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	switch e := event.(type) {
-	case ingredients_events.IngredientCreated:
-		if err := ingredients_handlers.NewIngredientCreatedAudit().Handle(ctx, e); err != nil {
+	case domains_events.IngredientCreated:
+		if err := domains_handlers.NewIngredientCreatedAudit().Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-		if err := ingredients_handlers.NewIngredientCreatedCounter().Handle(ctx, e); err != nil {
+		if err := domains_handlers.NewIngredientCreatedCounter().Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-	case inventory_events.StockAdjusted:
-		if err := menu_handlers.NewStockAdjustedMenuUpdater().Handle(ctx, e); err != nil {
+	case domains_events2.StockAdjusted:
+		if err := domains_handlers2.NewStockAdjustedMenuUpdater().Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}

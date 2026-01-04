@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/TheFellow/go-modular-monolith/app/drinks"
-	drinksmodels "github.com/TheFellow/go-modular-monolith/app/drinks/models"
-	drinkscli "github.com/TheFellow/go-modular-monolith/app/drinks/surfaces/cli"
+	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
+	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	drinkscli "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )

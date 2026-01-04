@@ -114,59 +114,61 @@ This avoids needing an entity/query cache for correctness and prevents accidenta
 /main
   /cli                    # CLI entry point (urfave/cli v3)
   /server                 # Future HTTP server entry point
-/app                      # Bounded contexts (domain modules)
+/app                      # Shared domain + bounded contexts
   app.go                  # Application facade - instantiates modules
-  /drinks                 # Drink definitions, categories, recipes
-    /authz                # Module-owned authorization definitions
-      actions.go          # Cedar action entity UIDs
-      policies.go         # Embeds policies.cedar
-      policies.cedar      # Cedar policies for this module
-    /events               # Domain events (DrinkCreated, DrinkRecipeUpdated)
-    /handlers             # Event handlers (if any)
-    /models               # Public domain models (Drink, Recipe)
-    get.go                # GetRequest/GetResponse types
-    list.go               # ListRequest/ListResponse types
-    create.go             # CreateRequest/CreateResponse types
-    module.go             # Module surface (delegates to queries/internal commands)
-    /queries              # Read-side use cases
-    /internal
-      /commands           # Write use cases
-      /dao                # Data access (file-based)
-  /ingredients            # Ingredient master data
-    /authz
-    /events               # IngredientCreated, IngredientUpdated
-    /models               # Ingredient, Category, Unit, SubstitutionRule
-    /queries
-    /internal
-      /commands
-      /dao
-  /inventory              # Ingredient stock levels
-    /authz
-    /events               # StockAdjusted, IngredientDepleted, IngredientRestocked, LowStockWarning
-    /handlers             # Handles OrderCompleted from Orders
-    /models               # Stock, StockAdjustment
-    /queries              # GetStock, ListStock, CheckAvailability
-    /internal
-      /commands           # AdjustStock, SetStock
-      /dao
-  /menu                   # Curated drink menus
-    /authz
-    /events               # MenuPublished, DrinkAvailabilityChanged
-    /handlers             # Handles IngredientDepleted, DrinkRecipeUpdated
-    /models               # Menu, MenuItem, Availability
-    /queries              # ListMenus, GetMenu, GetAvailableDrinks, Analytics
-    /internal
-      /commands           # CreateMenu, AddDrink, Publish
-      /availability       # Availability calculation service
-      /dao
-  /orders                 # Order tracking & consumption
-    /authz
-    /events               # OrderPlaced, OrderCompleted, OrderCancelled
-    /models               # Order, OrderItem
-    /queries              # ListOrders, GetOrder
-    /internal
-      /commands           # PlaceOrder, CompleteOrder, CancelOrder
-      /dao
+  /domains                # Bounded contexts
+    /drinks               # Drink definitions, categories, recipes
+      /authz              # Module-owned authorization definitions
+        actions.go        # Cedar action entity UIDs
+        policies.go       # Embeds policies.cedar
+        policies.cedar    # Cedar policies for this module
+      /events             # Domain events (DrinkCreated, DrinkRecipeUpdated)
+      /handlers           # Event handlers (if any)
+      /models             # Public domain models (Drink, Recipe)
+      get.go              # GetRequest/GetResponse types
+      list.go             # ListRequest/ListResponse types
+      create.go           # CreateRequest/CreateResponse types
+      module.go           # Module surface (delegates to queries/internal commands)
+      /queries            # Read-side use cases
+      /internal
+        /commands         # Write use cases
+        /dao              # Data access (file-based)
+    /ingredients          # Ingredient master data
+      /authz
+      /events             # IngredientCreated, IngredientUpdated
+      /models             # Ingredient, Category, Unit, SubstitutionRule
+      /queries
+      /internal
+        /commands
+        /dao
+    /inventory            # Ingredient stock levels
+      /authz
+      /events             # StockAdjusted, IngredientDepleted, IngredientRestocked, LowStockWarning
+      /handlers           # Handles OrderCompleted from Orders
+      /models             # Stock, StockPatch, StockUpdate
+      /queries            # GetStock, ListStock, CheckAvailability
+      /internal
+        /commands         # AdjustStock, SetStock
+        /dao
+    /menu                 # Curated drink menus
+      /authz
+      /events             # MenuPublished, DrinkAvailabilityChanged
+      /handlers           # Handles IngredientDepleted, DrinkRecipeUpdated
+      /models             # Menu, MenuItem, Availability
+      /queries            # ListMenus, GetMenu, GetAvailableDrinks, Analytics
+      /internal
+        /commands         # CreateMenu, AddDrink, Publish
+        /availability     # Availability calculation service
+        /dao
+    /orders               # Order tracking & consumption (future)
+      /authz
+      /events             # OrderPlaced, OrderCompleted, OrderCancelled
+      /models             # Order, OrderItem
+      /queries            # ListOrders, GetOrder
+      /internal
+        /commands         # PlaceOrder, CompleteOrder, CancelOrder
+        /dao
+  /money                  # Shared domain value objects
 /pkg                      # Supporting infrastructure (non-domain)
   /authn                  # Fake AuthN middleware (sets context principal)
   /authz                  # Cedar runtime
@@ -683,7 +685,7 @@ var (
 Use cases should reference these action UIDs (e.g., `drinksauthz.ActionCreate`) rather than re-declaring `types.NewEntityUID(...)` literals, so Cedar policies, tests, and use cases all stay aligned.
 
 ```cedar
-// app/drinks/authz/policies.cedar
+// app/domains/drinks/authz/policies.cedar
 
 permit(
     principal == Mixology::Actor::"owner",
@@ -705,7 +707,7 @@ permit(
 ### AuthZ Runtime
 
 `pkg/authz` provides the Cedar runtime:
-- `policies_gen.go`: Generated file that embeds all `app/*/authz/*.cedar` and `pkg/authz/*.cedar` files
+- `policies_gen.go`: Generated file that aggregates `app/domains/*/authz/policies.cedar` and `pkg/authz/*.cedar` policies
 - `go generate` collects and embeds policies at build time
 - Provides `Resource` type, helper constructors, and `Authorize()` function
 
@@ -733,9 +735,9 @@ permit(
 ## First Steps
 
 1. **Define drinks read model and file DAO** (Sprint 001)
-   - Create `app/drinks/models/drink.go` with Drink struct
-   - Create `app/drinks/internal/dao/drink.go` with persistence record model
-   - Create `app/drinks/internal/dao/dao.go` with file-based storage
+   - Create `app/domains/drinks/models/drink.go` with Drink struct
+   - Create `app/domains/drinks/internal/dao/drink.go` with persistence record model
+   - Create `app/domains/drinks/internal/dao/dao.go` with file-based storage
    - Create request/response types in module root
    - Success: `go build ./...` passes
 

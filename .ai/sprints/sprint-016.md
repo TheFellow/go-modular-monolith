@@ -6,14 +6,14 @@ Create an Orders context that records drink orders. Handlers in other contexts r
 
 ## Tasks
 
-- [ ] Create `app/orders/models/order.go` with Order, OrderItem models
-- [ ] Create `app/orders/internal/dao/dao.go` with file-based DAO
-- [ ] Create `app/orders/authz/` with actions and policies
-- [ ] Create `app/orders/queries/queries.go` with Get, List methods
-- [ ] Create `app/orders/internal/commands/commands.go` with Place, Complete, Cancel methods
-- [ ] Create `app/orders/events/` with order events
-- [ ] Create `app/inventory/handlers/order_completed.go` - updates stock directly (no events)
-- [ ] Create `app/menu/handlers/order_completed.go` - recalculates availability directly (no events)
+- [ ] Create `app/domains/orders/models/order.go` with Order, OrderItem models
+- [ ] Create `app/domains/orders/internal/dao/dao.go` with file-based DAO
+- [ ] Create `app/domains/orders/authz/` with actions and policies
+- [ ] Create `app/domains/orders/queries/queries.go` with Get, List methods
+- [ ] Create `app/domains/orders/internal/commands/commands.go` with Place, Complete, Cancel methods
+- [ ] Create `app/domains/orders/events/` with order events
+- [ ] Create `app/domains/inventory/handlers/order_completed.go` - updates stock directly (no events)
+- [ ] Create `app/domains/menu/handlers/order_completed.go` - recalculates availability directly (no events)
 - [ ] Add order subcommands to CLI
 
 ## Domain Model
@@ -79,14 +79,14 @@ Events are intentionally fat: handlers only read from the event and never query/
 Handlers react to events but **do not emit new events**. They update their own state directly.
 
 ```go
-// app/inventory/handlers/order_completed.go
+// app/domains/inventory/handlers/order_completed.go
 package handlers
 
 import (
     "time"
 
-    "github.com/TheFellow/go-modular-monolith/app/inventory/internal/dao"
-    "github.com/TheFellow/go-modular-monolith/app/orders/events"
+    "github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/dao"
+    "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
     "github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -155,3 +155,4 @@ mixology order cancel <order-id>
 - Sprint 014 (Menu curation)
 - Sprint 015 (Cost/substitution logic)
 - Sprint 015b (Optional package)
+- Sprint 015c (Domain structure reorganization)

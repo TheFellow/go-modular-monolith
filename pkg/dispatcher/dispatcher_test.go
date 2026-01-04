@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/app/ingredients/events"
-	"github.com/TheFellow/go-modular-monolith/app/ingredients/handlers"
-	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/handlers"
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 

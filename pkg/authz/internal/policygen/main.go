@@ -120,7 +120,7 @@ func readModulePath(goModPath string) string {
 }
 
 func discoverModulePolicies(repoRoot, modulePath string) []modulePolicy {
-	pattern := filepath.Join(repoRoot, "app", "*", "authz", "policies.cedar")
+	pattern := filepath.Join(repoRoot, "app", "domains", "*", "authz", "policies.cedar")
 	matches, err := filepath.Glob(pattern)
 	must(err)
 
@@ -139,8 +139,8 @@ func discoverModulePolicies(repoRoot, modulePath string) []modulePolicy {
 		modules = append(modules, modulePolicy{
 			moduleName:  moduleName,
 			importAlias: importAlias,
-			importPath:  modulePath + "/app/" + moduleName + "/authz",
-			document:    filepath.ToSlash(filepath.Join("app", moduleName, "authz", "policies.cedar")),
+			importPath:  modulePath + "/app/domains/" + moduleName + "/authz",
+			document:    filepath.ToSlash(filepath.Join("app", "domains", moduleName, "authz", "policies.cedar")),
 		})
 	}
 

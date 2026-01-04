@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/TheFellow/go-modular-monolith/app/ingredients"
-	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
-	ingredientscli "github.com/TheFellow/go-modular-monolith/app/ingredients/surfaces/cli"
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	ingredientscli "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )

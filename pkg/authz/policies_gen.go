@@ -2,18 +2,18 @@
 package authz
 
 import (
-	drinksauthz "github.com/TheFellow/go-modular-monolith/app/drinks/authz"
-	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/ingredients/authz"
-	inventoryauthz "github.com/TheFellow/go-modular-monolith/app/inventory/authz"
-	menuauthz "github.com/TheFellow/go-modular-monolith/app/menu/authz"
+	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
+	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
+	inventoryauthz "github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
+	menuauthz "github.com/TheFellow/go-modular-monolith/app/domains/menu/authz"
 )
 
 func policyDocuments() []PolicyDocument {
 	return []PolicyDocument{
 		{Name: "pkg/authz/base.cedar", Text: Policies},
-		{Name: "app/drinks/authz/policies.cedar", Text: drinksauthz.Policies},
-		{Name: "app/ingredients/authz/policies.cedar", Text: ingredientsauthz.Policies},
-		{Name: "app/inventory/authz/policies.cedar", Text: inventoryauthz.Policies},
-		{Name: "app/menu/authz/policies.cedar", Text: menuauthz.Policies},
+		{Name: "app/domains/drinks/authz/policies.cedar", Text: drinksauthz.Policies},
+		{Name: "app/domains/ingredients/authz/policies.cedar", Text: ingredientsauthz.Policies},
+		{Name: "app/domains/inventory/authz/policies.cedar", Text: inventoryauthz.Policies},
+		{Name: "app/domains/menu/authz/policies.cedar", Text: menuauthz.Policies},
 	}
 }

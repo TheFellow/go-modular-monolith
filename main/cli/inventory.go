@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/TheFellow/go-modular-monolith/app/ingredients/models"
-	"github.com/TheFellow/go-modular-monolith/app/inventory"
-	inventorymodels "github.com/TheFellow/go-modular-monolith/app/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/app/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/urfave/cli/v3"
 )
