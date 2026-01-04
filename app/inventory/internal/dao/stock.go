@@ -19,9 +19,9 @@ type Stock struct {
 }
 
 func (s Stock) ToDomain() models.Stock {
-	var cost optional.Value[money.Price] = optional.NewNone[money.Price]()
+	var cost = optional.None[money.Price]()
 	if s.CostPerUnit != nil {
-		cost = optional.NewSome(*s.CostPerUnit)
+		cost = optional.Some(*s.CostPerUnit)
 	}
 	return models.Stock{
 		IngredientID: ingredientsmodels.NewIngredientID(s.IngredientID),
@@ -34,10 +34,8 @@ func (s Stock) ToDomain() models.Stock {
 
 func FromDomain(s models.Stock) Stock {
 	var cost *money.Price
-	if s.CostPerUnit != nil {
-		if v, ok := s.CostPerUnit.Unwrap(); ok {
-			cost = &v
-		}
+	if v, ok := s.CostPerUnit.Unwrap(); ok {
+		cost = &v
 	}
 	return Stock{
 		IngredientID: string(s.IngredientID.ID),

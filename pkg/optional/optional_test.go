@@ -7,7 +7,7 @@ import (
 )
 
 func TestSome(t *testing.T) {
-	v := optional.NewSome("hi")
+	v := optional.Some("hi")
 	if !v.IsSome() || v.IsNone() {
 		t.Fatalf("expected some")
 	}
@@ -27,7 +27,7 @@ func TestSome(t *testing.T) {
 }
 
 func TestNone(t *testing.T) {
-	var v optional.Value[string] = optional.NewNone[string]()
+	var v optional.Value[string] = optional.None[string]()
 	if v.IsSome() || !v.IsNone() {
 		t.Fatalf("expected none")
 	}
@@ -50,34 +50,35 @@ func TestNone(t *testing.T) {
 }
 
 func TestMap(t *testing.T) {
-	var a optional.Value[int] = optional.NewSome(2)
+	var a optional.Value[int] = optional.Some(2)
 	mapped := optional.Map(a, func(x int) string { return "n" })
-	if _, ok := mapped.(optional.Some[string]); !ok {
+	if !mapped.IsSome() {
 		t.Fatalf("expected some")
 	}
 
-	var b optional.Value[int] = optional.NewNone[int]()
+	var b optional.Value[int] = optional.None[int]()
 	mapped2 := optional.Map(b, func(x int) string { return "n" })
-	if _, ok := mapped2.(optional.None[string]); !ok {
+	if !mapped2.IsNone() {
 		t.Fatalf("expected none")
 	}
 }
 
 func TestFlatMap(t *testing.T) {
-	var a optional.Value[int] = optional.NewSome(2)
+	var a optional.Value[int] = optional.Some(2)
 	out := optional.FlatMap(a, func(x int) optional.Value[string] {
 		if x == 2 {
-			return optional.NewSome("ok")
+			return optional.Some("ok")
 		}
-		return optional.NewNone[string]()
+		return optional.None[string]()
 	})
-	if s, ok := out.(optional.Some[string]); !ok || s.Val != "ok" {
+	got, ok := out.Unwrap()
+	if !ok || got != "ok" {
 		t.Fatalf("unexpected out: %#v", out)
 	}
 
-	var b optional.Value[int] = optional.NewNone[int]()
-	out2 := optional.FlatMap(b, func(x int) optional.Value[string] { return optional.NewSome("nope") })
-	if _, ok := out2.(optional.None[string]); !ok {
+	var b optional.Value[int] = optional.None[int]()
+	out2 := optional.FlatMap(b, func(x int) optional.Value[string] { return optional.Some("nope") })
+	if !out2.IsNone() {
 		t.Fatalf("expected none")
 	}
 }

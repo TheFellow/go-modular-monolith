@@ -82,12 +82,6 @@ func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID cedar.Entity
 			Substitution:         pick.UsedSubstitution,
 		}
 
-		if stock.CostPerUnit == nil {
-			unknown = true
-			out = append(out, entry)
-			continue
-		}
-
 		cpu, ok := stock.CostPerUnit.Unwrap()
 		if !ok {
 			unknown = true

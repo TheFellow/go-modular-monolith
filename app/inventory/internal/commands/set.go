@@ -10,30 +10,26 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (c *Commands) Set(ctx *middleware.Context, stock models.Stock) (models.Stock, error) {
-	if string(stock.IngredientID.ID) == "" {
+func (c *Commands) Set(ctx *middleware.Context, update models.StockUpdate) (models.Stock, error) {
+	if string(update.IngredientID.ID) == "" {
 		return models.Stock{}, errors.Invalidf("ingredient id is required")
 	}
-	if stock.Quantity < 0 {
-		stock.Quantity = 0
+	if update.Quantity < 0 {
+		update.Quantity = 0
+	}
+	if err := update.CostPerUnit.Validate(); err != nil {
+		return models.Stock{}, err
 	}
 	if c.ingredients == nil {
 		return models.Stock{}, errors.Internalf("missing ingredients dependency")
 	}
 
-	ingredient, err := c.ingredients.Get(ctx, stock.IngredientID)
+	ingredient, err := c.ingredients.Get(ctx, update.IngredientID)
 	if err != nil {
 		return models.Stock{}, err
 	}
 	if ingredient.Unit == "" {
 		return models.Stock{}, errors.Invalidf("ingredient unit is required")
-	}
-	if stock.CostPerUnit != nil {
-		if v, ok := stock.CostPerUnit.Unwrap(); ok {
-			if err := v.Validate(); err != nil {
-				return models.Stock{}, err
-			}
-		}
 	}
 
 	tx, ok := ctx.UnitOfWork()
@@ -44,7 +40,7 @@ func (c *Commands) Set(ctx *middleware.Context, stock models.Stock) (models.Stoc
 		return models.Stock{}, errors.Internalf("register dao: %w", err)
 	}
 
-	ingredientIDStr := string(stock.IngredientID.ID)
+	ingredientIDStr := string(update.IngredientID.ID)
 	existing, found, err := c.dao.Get(ctx, ingredientIDStr)
 	if err != nil {
 		return models.Stock{}, errors.Internalf("get stock %s: %w", ingredientIDStr, err)
@@ -59,16 +55,12 @@ func (c *Commands) Set(ctx *middleware.Context, stock models.Stock) (models.Stoc
 	}
 
 	previousQty := existing.Quantity
-	newQty := stock.Quantity
+	newQty := update.Quantity
 	delta := newQty - previousQty
 
 	existing.Quantity = newQty
 	existing.Unit = string(ingredient.Unit)
-	if stock.CostPerUnit != nil {
-		if v, ok := stock.CostPerUnit.Unwrap(); ok {
-			existing.CostPerUnit = &v
-		}
-	}
+	existing.CostPerUnit = &update.CostPerUnit
 	existing.LastUpdated = time.Now().UTC()
 
 	if err := c.dao.Set(ctx, existing); err != nil {
@@ -76,7 +68,7 @@ func (c *Commands) Set(ctx *middleware.Context, stock models.Stock) (models.Stoc
 	}
 
 	ctx.AddEvent(events.StockAdjusted{
-		IngredientID: stock.IngredientID,
+		IngredientID: update.IngredientID,
 		PreviousQty:  previousQty,
 		NewQty:       newQty,
 		Delta:        delta,

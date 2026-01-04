@@ -10,19 +10,15 @@ import (
 
 func FromDomain(m models.Menu) Menu {
 	var publishedAt *time.Time
-	if m.PublishedAt != nil {
-		if t, ok := m.PublishedAt.Unwrap(); ok {
-			publishedAt = &t
-		}
+	if t, ok := m.PublishedAt.Unwrap(); ok {
+		publishedAt = &t
 	}
 
 	items := make([]MenuItem, 0, len(m.Items))
 	for _, item := range m.Items {
 		var displayName *string
-		if item.DisplayName != nil {
-			if s, ok := item.DisplayName.Unwrap(); ok {
-				displayName = &s
-			}
+		if s, ok := item.DisplayName.Unwrap(); ok {
+			displayName = &s
 		}
 
 		items = append(items, MenuItem{
@@ -47,16 +43,16 @@ func FromDomain(m models.Menu) Menu {
 }
 
 func (m Menu) ToDomain() models.Menu {
-	var publishedAt optional.Value[time.Time] = optional.NewNone[time.Time]()
+	var publishedAt optional.Value[time.Time] = optional.None[time.Time]()
 	if m.PublishedAt != nil {
-		publishedAt = optional.NewSome(*m.PublishedAt)
+		publishedAt = optional.Some(*m.PublishedAt)
 	}
 
 	items := make([]models.MenuItem, 0, len(m.Items))
 	for _, item := range m.Items {
-		var displayName optional.Value[string] = optional.NewNone[string]()
+		var displayName optional.Value[string] = optional.None[string]()
 		if item.DisplayName != nil {
-			displayName = optional.NewSome(*item.DisplayName)
+			displayName = optional.Some(*item.DisplayName)
 		}
 
 		items = append(items, models.MenuItem{
@@ -81,9 +77,6 @@ func (m Menu) ToDomain() models.Menu {
 }
 
 func fromDomainPrice(p optional.Value[models.Price]) *Price {
-	if p == nil {
-		return nil
-	}
 	v, ok := p.Unwrap()
 	if !ok {
 		return nil
@@ -93,7 +86,7 @@ func fromDomainPrice(p optional.Value[models.Price]) *Price {
 
 func (p *Price) toDomain() optional.Value[models.Price] {
 	if p == nil {
-		return optional.NewNone[models.Price]()
+		return optional.None[models.Price]()
 	}
-	return optional.NewSome(models.Price{Amount: p.Amount, Currency: p.Currency})
+	return optional.Some(models.Price{Amount: p.Amount, Currency: p.Currency})
 }

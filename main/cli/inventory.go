@@ -7,6 +7,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/inventory"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/money"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/urfave/cli/v3"
 )
 
@@ -50,10 +52,10 @@ func (c *CLI) inventoryCommands() *cli.Command {
 			},
 			{
 				Name:  "adjust",
-				Usage: "Adjust stock by delta",
+				Usage: "Patch stock quantity and/or cost",
 				Arguments: []cli.Argument{
 					&cli.StringArgs{Name: "ingredient_id", UsageText: "Ingredient ID", Min: 1, Max: 1},
-					&cli.Float64Args{Name: "delta", UsageText: "Delta (+/-)", Min: 1, Max: 1},
+					&cli.Float64Args{Name: "delta", UsageText: "Delta (+/-)", Min: 0, Max: 1},
 				},
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -70,14 +72,33 @@ func (c *CLI) inventoryCommands() *cli.Command {
 							}
 						},
 					},
+					&cli.StringFlag{
+						Name:  "cost-per-unit",
+						Usage: "Cost per unit (e.g. \"$1.23\" or \"USD 1.23\")",
+					},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					ingredientID := cmd.StringArgs("ingredient_id")[0]
-					delta := cmd.Float64Args("delta")[0]
+					deltaArgs := cmd.Float64Args("delta")
 
-					res, err := c.app.Inventory().Adjust(ctx, inventorymodels.StockAdjustment{
+					var delta optional.Value[float64]
+					if len(deltaArgs) == 1 {
+						delta = optional.Some(deltaArgs[0])
+					}
+
+					var cost optional.Value[money.Price]
+					if s := cmd.String("cost-per-unit"); s != "" {
+						p, err := parsePrice(s)
+						if err != nil {
+							return err
+						}
+						cost = optional.Some(p)
+					}
+
+					res, err := c.app.Inventory().Adjust(ctx, inventorymodels.StockPatch{
 						IngredientID: models.NewIngredientID(ingredientID),
 						Delta:        delta,
+						CostPerUnit:  cost,
 						Reason:       inventorymodels.AdjustmentReason(cmd.String("reason")),
 					})
 					if err != nil {
@@ -95,13 +116,26 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					&cli.StringArgs{Name: "ingredient_id", UsageText: "Ingredient ID", Min: 1, Max: 1},
 					&cli.Float64Args{Name: "quantity", UsageText: "Quantity", Min: 1, Max: 1},
 				},
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "cost-per-unit",
+						Usage:    "Cost per unit (e.g. \"$1.23\" or \"USD 1.23\")",
+						Required: true,
+					},
+				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					ingredientID := cmd.StringArgs("ingredient_id")[0]
 					qty := cmd.Float64Args("quantity")[0]
 
-					res, err := c.app.Inventory().Set(ctx, inventorymodels.Stock{
+					cost, err := parsePrice(cmd.String("cost-per-unit"))
+					if err != nil {
+						return err
+					}
+
+					res, err := c.app.Inventory().Set(ctx, inventorymodels.StockUpdate{
 						IngredientID: models.NewIngredientID(ingredientID),
 						Quantity:     qty,
+						CostPerUnit:  cost,
 					})
 					if err != nil {
 						return err

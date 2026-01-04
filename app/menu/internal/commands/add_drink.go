@@ -55,8 +55,8 @@ func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChan
 
 	menu.Items = append(menu.Items, models.MenuItem{
 		DrinkID:      change.DrinkID,
-		DisplayName:  optional.NewNone[string](),
-		Price:        optional.NewNone[models.Price](),
+		DisplayName:  optional.None[string](),
+		Price:        optional.None[models.Price](),
 		Availability: c.availability.Calculate(ctx, change.DrinkID),
 		SortOrder:    nextSort,
 	})

@@ -24,11 +24,9 @@ type MenuItem struct {
 
 func FromDomainMenu(m models.Menu) Menu {
 	var publishedAt *string
-	if m.PublishedAt != nil {
-		if t, ok := m.PublishedAt.Unwrap(); ok {
-			s := t.Format("2006-01-02T15:04:05Z07:00")
-			publishedAt = &s
-		}
+	if t, ok := m.PublishedAt.Unwrap(); ok {
+		s := t.Format("2006-01-02T15:04:05Z07:00")
+		publishedAt = &s
 	}
 
 	items := make([]MenuItem, 0, len(m.Items))
@@ -49,9 +47,7 @@ func FromDomainMenu(m models.Menu) Menu {
 
 func FromDomainMenuItem(i models.MenuItem) MenuItem {
 	var displayName string
-	if i.DisplayName != nil {
-		displayName, _ = i.DisplayName.Unwrap()
-	}
+	displayName, _ = i.DisplayName.Unwrap()
 	return MenuItem{
 		DrinkID:      string(i.DrinkID.ID),
 		DisplayName:  displayName,

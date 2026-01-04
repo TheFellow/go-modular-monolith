@@ -58,9 +58,7 @@ func (a *AnalyticsCalculator) Analyze(ctx *middleware.Context, menu models.Menu,
 	for _, item := range menu.Items {
 		name := ""
 		ok := false
-		if item.DisplayName != nil {
-			name, ok = item.DisplayName.Unwrap()
-		}
+		name, ok = item.DisplayName.Unwrap()
 		if !ok || name == "" {
 			if d, err := a.drinks.Get(ctx, item.DrinkID); err == nil {
 				name = d.Name
@@ -82,11 +80,9 @@ func (a *AnalyticsCalculator) Analyze(ctx *middleware.Context, menu models.Menu,
 		}
 
 		var menuPrice *money.Price
-		if item.Price != nil {
-			if p, ok := item.Price.Unwrap(); ok {
-				v := money.Price(p)
-				menuPrice = &v
-			}
+		if p, ok := item.Price.Unwrap(); ok {
+			v := money.Price(p)
+			menuPrice = &v
 		}
 
 		var margin *float64

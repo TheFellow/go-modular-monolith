@@ -1,64 +1,51 @@
 package optional
 
-//sumtype:decl
-type Value[T any] interface {
-	IsSome() bool
-	IsNone() bool
-	Unwrap() (T, bool)
-	Must() T
-	Or(fallback T) T
-	OrElse(fallback func() T) T
-	sealed()
+type Value[T any] struct {
+	valid bool
+	v     T
 }
 
-type Some[T any] struct {
-	Val T
+func Some[T any](v T) Value[T] { return Value[T]{valid: true, v: v} }
+func None[T any]() Value[T]    { return Value[T]{} }
+
+func (v Value[T]) IsSome() bool { return v.valid }
+func (v Value[T]) IsNone() bool { return !v.valid }
+
+func (v Value[T]) Unwrap() (T, bool) {
+	return v.v, v.valid
 }
 
-func NewSome[T any](v T) Some[T] { return Some[T]{Val: v} }
+func (v Value[T]) Must() T {
+	if !v.valid {
+		panic("option is None")
+	}
+	return v.v
+}
 
-func (Some[T]) IsSome() bool          { return true }
-func (Some[T]) IsNone() bool          { return false }
-func (s Some[T]) Unwrap() (T, bool)   { return s.Val, true }
-func (s Some[T]) Must() T             { return s.Val }
-func (s Some[T]) Or(_ T) T            { return s.Val }
-func (s Some[T]) OrElse(_ func() T) T { return s.Val }
-func (Some[T]) sealed()               {}
+func (v Value[T]) Or(fallback T) T {
+	if v.valid {
+		return v.v
+	}
+	return fallback
+}
 
-type None[T any] struct{}
-
-func NewNone[T any]() None[T] { return None[T]{} }
-
-func (None[T]) IsSome() bool          { return false }
-func (None[T]) IsNone() bool          { return true }
-func (None[T]) Unwrap() (T, bool)     { var zero T; return zero, false }
-func (None[T]) Must() T               { panic("optional: called Must on None") }
-func (n None[T]) Or(fallback T) T     { return fallback }
-func (n None[T]) OrElse(f func() T) T { return f() }
-func (None[T]) sealed()               {}
+func (v Value[T]) OrElse(fallback func() T) T {
+	if v.valid {
+		return v.v
+	}
+	return fallback()
+}
 
 func Map[T, U any](v Value[T], f func(T) U) Value[U] {
-	if v == nil {
-		return NewNone[U]()
+	if x, ok := v.Unwrap(); ok {
+		return Some(f(x))
 	}
-	switch x := v.(type) {
-	case Some[T]:
-		return NewSome(f(x.Val))
-	case None[T]:
-		return NewNone[U]()
-	}
-	return NewNone[U]()
+	return None[U]()
 }
 
 func FlatMap[T, U any](v Value[T], f func(T) Value[U]) Value[U] {
-	if v == nil {
-		return NewNone[U]()
+	if x, ok := v.Unwrap(); ok {
+		return f(x)
 	}
-	switch x := v.(type) {
-	case Some[T]:
-		return f(x.Val)
-	case None[T]:
-		return NewNone[U]()
-	}
-	return NewNone[U]()
+	return None[U]()
 }

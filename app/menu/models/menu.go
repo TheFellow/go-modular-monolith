@@ -75,11 +75,9 @@ func (i MenuItem) Validate() error {
 	if err := i.Availability.Validate(); err != nil {
 		return err
 	}
-	if i.Price != nil {
-		if p, ok := i.Price.Unwrap(); ok {
-			if err := p.Validate(); err != nil {
-				return err
-			}
+	if p, ok := i.Price.Unwrap(); ok {
+		if err := p.Validate(); err != nil {
+			return err
 		}
 	}
 	return nil

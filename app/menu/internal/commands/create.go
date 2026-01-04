@@ -44,7 +44,7 @@ func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (models.Men
 		Items:       nil,
 		Status:      models.MenuStatusDraft,
 		CreatedAt:   now,
-		PublishedAt: optional.NewNone[time.Time](),
+		PublishedAt: optional.None[time.Time](),
 	})
 
 	if err := c.dao.Add(ctx, record); err != nil {

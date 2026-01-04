@@ -12,6 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/inventory/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/uow"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -48,9 +49,9 @@ func TestAdjust_EmitsStockAdjusted(t *testing.T) {
 	cmds := commands.NewWithDependencies(d, fakeIngredients{})
 	ingredientID := ingredientsmodels.NewIngredientID("vodka")
 
-	_, err = cmds.Adjust(ctx, models.StockAdjustment{
+	_, err = cmds.Adjust(ctx, models.StockPatch{
 		IngredientID: ingredientID,
-		Delta:        -2.0,
+		Delta:        optional.Some(-2.0),
 		Reason:       models.ReasonUsed,
 	})
 	testutil.ErrorIf(t, err != nil, "execute: %v", err)

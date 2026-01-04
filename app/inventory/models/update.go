@@ -2,23 +2,21 @@ package models
 
 import (
 	"github.com/TheFellow/go-modular-monolith/pkg/money"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type StockAdjustment struct {
+type StockUpdate struct {
 	IngredientID cedar.EntityUID
-	Delta        float64
-	Reason       AdjustmentReason
-	CostPerUnit  optional.Value[money.Price]
+	Quantity     float64
+	CostPerUnit  money.Price
 }
 
-func (a StockAdjustment) EntityUID() cedar.EntityUID {
-	return NewStockID(a.IngredientID)
+func (u StockUpdate) EntityUID() cedar.EntityUID {
+	return NewStockID(u.IngredientID)
 }
 
-func (a StockAdjustment) CedarEntity() cedar.Entity {
-	uid := a.EntityUID()
+func (u StockUpdate) CedarEntity() cedar.Entity {
+	uid := u.EntityUID()
 	if string(uid.ID) == "" {
 		uid = cedar.NewEntityUID(StockEntityType, cedar.String(""))
 	}

@@ -39,7 +39,7 @@ func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (models.Me
 
 	now := time.Now().UTC()
 	menu.Status = models.MenuStatusPublished
-	menu.PublishedAt = optional.NewSome(now)
+	menu.PublishedAt = optional.Some(now)
 	for i := range menu.Items {
 		menu.Items[i].Availability = c.availability.Calculate(ctx, menu.Items[i].DrinkID)
 	}
