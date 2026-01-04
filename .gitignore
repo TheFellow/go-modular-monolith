@@ -35,3 +35,4 @@ go.work.sum
 # Local tool caches
 .cache/
 .gocache/
+/data/mixology.db
