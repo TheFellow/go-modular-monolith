@@ -14,19 +14,22 @@ func NewIngredientID(id string) cedar.EntityUID {
 }
 
 type Ingredient struct {
-	ID          string
-	Name        string   `bstore:"unique"`
-	Category    Category `bstore:"index"`
+	ID          cedar.EntityUID
+	Name        string
+	Category    Category
 	Unit        Unit
 	Description string
 }
 
 func (i Ingredient) EntityUID() cedar.EntityUID {
-	return NewIngredientID(i.ID)
+	return i.ID
 }
 
 func (i Ingredient) CedarEntity() cedar.Entity {
-	uid := NewIngredientID(i.ID)
+	uid := i.ID
+	if string(uid.ID) == "" {
+		uid = cedar.NewEntityUID(IngredientEntityType, cedar.String(""))
+	}
 	return cedar.Entity{
 		UID:        uid,
 		Parents:    cedar.NewEntityUIDSet(),

@@ -6,11 +6,6 @@ import (
 	"path/filepath"
 	"sync"
 
-	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
-	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/mjl-/bstore"
 )
@@ -52,18 +47,26 @@ func Open(path string) error {
 		}
 	}
 
-	db, err := bstore.Open(context.Background(), path, nil,
-		drinksmodels.Drink{},
-		ingredientsmodels.Ingredient{},
-		inventorymodels.Stock{},
-		menumodels.Menu{},
-		ordersmodels.Order{},
-	)
+	db, err := bstore.Open(context.Background(), path, nil)
 	if err != nil {
 		return err
 	}
 	DB = db
 	return nil
+}
+
+func Register(ctx context.Context, types ...any) error {
+	mu.Lock()
+	db := DB
+	mu.Unlock()
+
+	if db == nil {
+		return errors.Internalf("store not initialized")
+	}
+	if len(types) == 0 {
+		return errors.Internalf("missing bstore types")
+	}
+	return db.Register(ctx, types...)
 }
 
 func Close() error {

@@ -11,7 +11,7 @@ import (
 )
 
 func (c *Commands) Create(ctx *middleware.Context, drink models.Drink) (models.Drink, error) {
-	if drink.ID != "" {
+	if string(drink.ID.ID) != "" {
 		return models.Drink{}, errors.Invalidf("id must be empty")
 	}
 
@@ -54,7 +54,7 @@ func (c *Commands) Create(ctx *middleware.Context, drink models.Drink) (models.D
 	}
 
 	created := drink
-	created.ID = string(uid.ID)
+	created.ID = uid
 
 	if err := c.dao.Insert(ctx, created); err != nil {
 		return models.Drink{}, err

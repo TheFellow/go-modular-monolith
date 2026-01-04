@@ -38,7 +38,7 @@ func (c *Commands) Place(ctx *middleware.Context, order models.Order) (models.Or
 	}
 
 	now := time.Now().UTC()
-	order.ID = string(id.ID)
+	order.ID = id
 	order.Status = models.OrderStatusPending
 	order.CreatedAt = now
 	order.CompletedAt = optional.NewNone[time.Time]()

@@ -26,7 +26,7 @@ func (h *OrderCompletedStockUpdater) Handle(ctx *middleware.Context, e orderseve
 
 	for _, usage := range e.IngredientUsage {
 		ingredientID := string(usage.IngredientID.ID)
-		existing, found, err := h.stockDAO.Get(ctx, ingredientID)
+		existing, found, err := h.stockDAO.Get(ctx, usage.IngredientID)
 		if err != nil {
 			return err
 		}

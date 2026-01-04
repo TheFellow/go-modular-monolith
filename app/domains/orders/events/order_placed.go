@@ -62,7 +62,7 @@ func OrderPlacedFromDomain(o models.Order) OrderPlaced {
 		})
 	}
 	return OrderPlaced{
-		OrderID: models.NewOrderID(o.ID),
+		OrderID: o.ID,
 		MenuID:  o.MenuID,
 		Items:   items,
 		At:      o.CreatedAt,

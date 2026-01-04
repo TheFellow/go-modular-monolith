@@ -32,7 +32,7 @@ func TestAdjust_EmitsStockAdjusted(t *testing.T) {
 	err := store.DB.Write(context.Background(), func(tx *bstore.Tx) error {
 		ctx := middleware.NewContext(context.Background(), middleware.WithTransaction(tx))
 		return d.Upsert(ctx, models.Stock{
-			IngredientID: "vodka",
+			IngredientID: ingredientsmodels.NewIngredientID("vodka"),
 			Quantity:     1.0,
 			Unit:         ingredientsmodels.UnitOz,
 			CostPerUnit:  optional.None[money.Price](),

@@ -53,7 +53,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%s\t%s\t%d\n", created.ID, string(created.MenuID.ID), created.Status, len(created.Items))
+					fmt.Printf("%s\t%s\t%s\t%d\n", string(created.ID.ID), string(created.MenuID.ID), created.Status, len(created.Items))
 					return nil
 				}),
 			},
@@ -66,7 +66,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					for _, o := range res.Orders {
-						fmt.Printf("%s\t%s\t%s\t%s\n", o.ID, string(o.MenuID.ID), o.Status, o.CreatedAt.Format(time.RFC3339))
+						fmt.Printf("%s\t%s\t%s\t%s\n", string(o.ID.ID), string(o.MenuID.ID), o.Status, o.CreatedAt.Format(time.RFC3339))
 					}
 					return nil
 				}),
@@ -84,7 +84,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					o := res.Order
-					fmt.Printf("ID:        %s\n", o.ID)
+					fmt.Printf("ID:        %s\n", string(o.ID.ID))
 					fmt.Printf("MenuID:    %s\n", string(o.MenuID.ID))
 					fmt.Printf("Status:    %s\n", o.Status)
 					fmt.Printf("CreatedAt: %s\n", o.CreatedAt.Format(time.RFC3339))
@@ -109,11 +109,11 @@ func (c *CLI) ordersCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("order_id")[0]
-					updated, err := c.app.Orders().Complete(ctx, ordersmodels.Order{ID: id})
+					updated, err := c.app.Orders().Complete(ctx, ordersmodels.Order{ID: ordersmodels.NewOrderID(id)})
 					if err != nil {
 						return err
 					}
-					fmt.Printf("%s\t%s\n", updated.ID, updated.Status)
+					fmt.Printf("%s\t%s\n", string(updated.ID.ID), updated.Status)
 					return nil
 				}),
 			},
@@ -125,11 +125,11 @@ func (c *CLI) ordersCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("order_id")[0]
-					updated, err := c.app.Orders().Cancel(ctx, ordersmodels.Order{ID: id})
+					updated, err := c.app.Orders().Cancel(ctx, ordersmodels.Order{ID: ordersmodels.NewOrderID(id)})
 					if err != nil {
 						return err
 					}
-					fmt.Printf("%s\t%s\n", updated.ID, updated.Status)
+					fmt.Printf("%s\t%s\n", string(updated.ID.ID), updated.Status)
 					return nil
 				}),
 			},

@@ -21,6 +21,9 @@ func NewCLI() (*CLI, error) {
 	if err := store.Open("data/mixology.db"); err != nil {
 		return nil, err
 	}
+	if err := store.Register(context.Background(), app.StoreTypes()...); err != nil {
+		return nil, err
+	}
 	return &CLI{app: app.New(), actor: "owner"}, nil
 }
 

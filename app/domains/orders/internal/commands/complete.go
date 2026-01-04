@@ -15,7 +15,7 @@ import (
 )
 
 func (c *Commands) Complete(ctx *middleware.Context, order models.Order) (models.Order, error) {
-	if order.ID == "" {
+	if string(order.ID.ID) == "" {
 		return models.Order{}, errors.Invalidf("id is required")
 	}
 
@@ -24,14 +24,14 @@ func (c *Commands) Complete(ctx *middleware.Context, order models.Order) (models
 		return models.Order{}, err
 	}
 	if !found {
-		return models.Order{}, errors.NotFoundf("order %q not found", order.ID)
+		return models.Order{}, errors.NotFoundf("order %q not found", order.ID.ID)
 	}
 
 	switch existing.Status {
 	case models.OrderStatusCompleted:
 		return existing, nil
 	case models.OrderStatusCancelled:
-		return models.Order{}, errors.Invalidf("order %q is cancelled", existing.ID)
+		return models.Order{}, errors.Invalidf("order %q is cancelled", existing.ID.ID)
 	case models.OrderStatusPending, models.OrderStatusPreparing:
 	default:
 		return models.Order{}, errors.Invalidf("unexpected status %q", existing.Status)
@@ -52,7 +52,7 @@ func (c *Commands) Complete(ctx *middleware.Context, order models.Order) (models
 	}
 
 	ctx.AddEvent(events.OrderCompleted{
-		OrderID:             models.NewOrderID(existing.ID),
+		OrderID:             existing.ID,
 		MenuID:              existing.MenuID,
 		Items:               items,
 		IngredientUsage:     ingredientUsage,
@@ -124,7 +124,7 @@ func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]
 			return nil, nil, nil, errors.Invalidf("insufficient stock for ingredient %s: need %.2f %s, have %.2f %s", u.IngredientID.ID, u.Amount, u.Unit, stock.Quantity, stock.Unit)
 		}
 		if newQty <= 0 {
-			depleted = append(depleted, ingredientsmodels.NewIngredientID(stock.IngredientID))
+			depleted = append(depleted, stock.IngredientID)
 		}
 	}
 
@@ -164,7 +164,7 @@ func (c *Commands) computeUsageForDrink(ctx *middleware.Context, drink drinksmod
 		}
 
 		out = append(out, events.IngredientUsage{
-			IngredientID: ingredientsmodels.NewIngredientID(stock.IngredientID),
+			IngredientID: stock.IngredientID,
 			Name:         ingredient.Name,
 			Amount:       required,
 			Unit:         string(req.Unit),

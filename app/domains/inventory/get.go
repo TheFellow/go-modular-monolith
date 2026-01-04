@@ -17,7 +17,7 @@ type GetResponse struct {
 
 func (r GetRequest) CedarEntity() cedar.Entity {
 	return cedar.Entity{
-		UID:        models.NewStockID(string(r.IngredientID.ID)),
+		UID:        models.NewStockID(r.IngredientID),
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),

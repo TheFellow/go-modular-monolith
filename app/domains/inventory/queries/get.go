@@ -10,7 +10,7 @@ import (
 
 func (q *Queries) Get(ctx context.Context, ingredientID cedar.EntityUID) (models.Stock, error) {
 	id := string(ingredientID.ID)
-	stock, ok, err := q.dao.Get(ctx, id)
+	stock, ok, err := q.dao.Get(ctx, ingredientID)
 	if err != nil {
 		return models.Stock{}, errors.Internalf("get stock %s: %w", id, err)
 	}

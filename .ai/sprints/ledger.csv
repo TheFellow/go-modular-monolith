@@ -25,3 +25,4 @@ sprint-015,completed,2026-01-04,2026-01-04,Advanced business rules & cost analys
 sprint-015b,completed,2026-01-04,2026-01-04,Optional value sum type + model optional refactor
 sprint-016,completed,2026-01-04,2026-01-04,Orders & inventory consumption
 sprint-017,completed,2026-01-04,2026-01-04,Embedded database with bstore (bbolt)
+sprint-017b,completed,2026-01-04,2026-01-04,Separate domain models from internal DAO rows + post-open type registration

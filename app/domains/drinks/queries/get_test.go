@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/mjl-/bstore"
@@ -18,8 +19,9 @@ func TestGet_Found(t *testing.T) {
 
 	d := dao.New()
 	err := store.DB.Write(context.Background(), func(tx *bstore.Tx) error {
-		return tx.Insert(&models.Drink{
-			ID:   "margarita",
+		ctx := middleware.NewContext(context.Background(), middleware.WithTransaction(tx))
+		return d.Insert(ctx, models.Drink{
+			ID:   models.NewDrinkID("margarita"),
 			Name: "Margarita",
 		})
 	})
@@ -30,7 +32,7 @@ func TestGet_Found(t *testing.T) {
 	got, err := q.Get(context.Background(), models.NewDrinkID("margarita"))
 	testutil.ErrorIf(t, err != nil, "get: %v", err)
 
-	testutil.Equals(t, got, models.Drink{ID: "margarita", Name: "Margarita"})
+	testutil.Equals(t, got, models.Drink{ID: models.NewDrinkID("margarita"), Name: "Margarita"})
 }
 
 func TestGet_NotFound(t *testing.T) {

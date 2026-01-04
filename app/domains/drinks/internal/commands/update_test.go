@@ -31,7 +31,7 @@ func TestUpdate_PersistsAndEmitsEvent(t *testing.T) {
 	err := store.DB.Write(context.Background(), func(tx *bstore.Tx) error {
 		ctx := middleware.NewContext(context.Background(), middleware.WithTransaction(tx))
 		seed := drinksmodels.Drink{
-			ID:       "margarita",
+			ID:       drinksmodels.NewDrinkID("margarita"),
 			Name:     "Margarita",
 			Category: drinksmodels.DrinkCategoryCocktail,
 			Glass:    drinksmodels.GlassTypeCoupe,
@@ -59,7 +59,7 @@ func TestUpdate_PersistsAndEmitsEvent(t *testing.T) {
 
 		var err error
 		updated, err = cmds.Update(ctx, drinksmodels.Drink{
-			ID:       "margarita",
+			ID:       drinksmodels.NewDrinkID("margarita"),
 			Name:     "Margarita",
 			Category: drinksmodels.DrinkCategoryCocktail,
 			Glass:    drinksmodels.GlassTypeCoupe,
@@ -78,7 +78,7 @@ func TestUpdate_PersistsAndEmitsEvent(t *testing.T) {
 		return err
 	})
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, updated.ID != "margarita", "expected id margarita, got %q", updated.ID)
+	testutil.ErrorIf(t, string(updated.ID.ID) != "margarita", "expected id margarita, got %q", string(updated.ID.ID))
 	testutil.ErrorIf(t, len(updated.Recipe.Ingredients) != 1, "expected 1 ingredient")
 	testutil.ErrorIf(t, string(updated.Recipe.Ingredients[0].IngredientID.ID) != "lemon-juice", "expected lemon-juice")
 
@@ -90,7 +90,7 @@ func TestUpdate_PersistsAndEmitsEvent(t *testing.T) {
 	}
 	testutil.ErrorIf(t, !saw, "expected DrinkRecipeUpdated event")
 
-	got, ok, err := d.Get(context.Background(), "margarita")
+	got, ok, err := d.Get(context.Background(), drinksmodels.NewDrinkID("margarita"))
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, !ok, "expected margarita to exist")
 	testutil.ErrorIf(t, string(got.Recipe.Ingredients[0].IngredientID.ID) != "lemon-juice", "expected lemon-juice in persisted recipe")

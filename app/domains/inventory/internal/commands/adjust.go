@@ -57,13 +57,13 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (mod
 	}
 
 	ingredientIDStr := string(patch.IngredientID.ID)
-	existing, found, err := c.dao.Get(ctx, ingredientIDStr)
+	existing, found, err := c.dao.Get(ctx, patch.IngredientID)
 	if err != nil {
 		return models.Stock{}, errors.Internalf("get stock %s: %w", ingredientIDStr, err)
 	}
 	if !found {
 		existing = models.Stock{
-			IngredientID: ingredientIDStr,
+			IngredientID: patch.IngredientID,
 			Quantity:     0,
 			Unit:         ingredient.Unit,
 			CostPerUnit:  optional.None[money.Price](),

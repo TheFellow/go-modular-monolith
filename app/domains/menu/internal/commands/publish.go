@@ -11,7 +11,7 @@ import (
 )
 
 func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (models.Menu, error) {
-	if menu.ID == "" {
+	if string(menu.ID.ID) == "" {
 		return models.Menu{}, errors.Invalidf("menu id is required")
 	}
 
@@ -42,7 +42,7 @@ func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (models.Me
 	}
 
 	ctx.AddEvent(events.MenuPublished{
-		MenuID:      models.NewMenuID(menuID),
+		MenuID:      menuID,
 		PublishedAt: now,
 	})
 

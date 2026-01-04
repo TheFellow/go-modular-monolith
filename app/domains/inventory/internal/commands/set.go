@@ -33,13 +33,13 @@ func (c *Commands) Set(ctx *middleware.Context, update models.StockUpdate) (mode
 	}
 
 	ingredientIDStr := string(update.IngredientID.ID)
-	existing, found, err := c.dao.Get(ctx, ingredientIDStr)
+	existing, found, err := c.dao.Get(ctx, update.IngredientID)
 	if err != nil {
 		return models.Stock{}, errors.Internalf("get stock %s: %w", ingredientIDStr, err)
 	}
 	if !found {
 		existing = models.Stock{
-			IngredientID: ingredientIDStr,
+			IngredientID: update.IngredientID,
 			Quantity:     0,
 			Unit:         ingredient.Unit,
 			LastUpdated:  time.Time{},

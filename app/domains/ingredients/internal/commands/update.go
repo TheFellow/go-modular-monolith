@@ -10,7 +10,7 @@ import (
 )
 
 func (c *Commands) Update(ctx *middleware.Context, ingredient models.Ingredient) (models.Ingredient, error) {
-	if ingredient.ID == "" {
+	if string(ingredient.ID.ID) == "" {
 		return models.Ingredient{}, errors.Invalidf("id is required")
 	}
 
@@ -40,7 +40,7 @@ func (c *Commands) Update(ctx *middleware.Context, ingredient models.Ingredient)
 	}
 
 	ctx.AddEvent(events.IngredientUpdated{
-		IngredientID: models.NewIngredientID(existing.ID),
+		IngredientID: existing.ID,
 		Name:         existing.Name,
 		Category:     existing.Category,
 	})

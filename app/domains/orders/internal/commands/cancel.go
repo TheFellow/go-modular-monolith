@@ -11,7 +11,7 @@ import (
 )
 
 func (c *Commands) Cancel(ctx *middleware.Context, order models.Order) (models.Order, error) {
-	if order.ID == "" {
+	if string(order.ID.ID) == "" {
 		return models.Order{}, errors.Invalidf("id is required")
 	}
 
@@ -20,7 +20,7 @@ func (c *Commands) Cancel(ctx *middleware.Context, order models.Order) (models.O
 		return models.Order{}, err
 	}
 	if !found {
-		return models.Order{}, errors.NotFoundf("order %q not found", order.ID)
+		return models.Order{}, errors.NotFoundf("order %q not found", order.ID.ID)
 	}
 
 	switch existing.Status {
@@ -41,7 +41,7 @@ func (c *Commands) Cancel(ctx *middleware.Context, order models.Order) (models.O
 	}
 
 	ctx.AddEvent(events.OrderCancelled{
-		OrderID: models.NewOrderID(existing.ID),
+		OrderID: existing.ID,
 		MenuID:  existing.MenuID,
 		At:      time.Now().UTC(),
 	})

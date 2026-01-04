@@ -11,7 +11,7 @@ import (
 )
 
 func (c *Commands) Create(ctx *middleware.Context, ingredient models.Ingredient) (models.Ingredient, error) {
-	if ingredient.ID != "" {
+	if string(ingredient.ID.ID) != "" {
 		return models.Ingredient{}, errors.Invalidf("id must be empty")
 	}
 
@@ -32,7 +32,7 @@ func (c *Commands) Create(ctx *middleware.Context, ingredient models.Ingredient)
 	}
 
 	created := ingredient
-	created.ID = string(uid.ID)
+	created.ID = uid
 	created.Name = name
 	created.Description = strings.TrimSpace(created.Description)
 

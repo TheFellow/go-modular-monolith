@@ -20,8 +20,7 @@ func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChan
 		return models.Menu{}, err
 	}
 
-	menuIDStr := string(change.MenuID.ID)
-	menu, found, err := c.dao.Get(ctx, menuIDStr)
+	menu, found, err := c.dao.Get(ctx, change.MenuID)
 	if err != nil {
 		return models.Menu{}, errors.Internalf("get menu %s: %w", change.MenuID.ID, err)
 	}

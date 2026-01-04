@@ -12,7 +12,7 @@ type StockUpdate struct {
 }
 
 func (u StockUpdate) EntityUID() cedar.EntityUID {
-	return NewStockID(string(u.IngredientID.ID))
+	return NewStockID(u.IngredientID)
 }
 
 func (u StockUpdate) CedarEntity() cedar.Entity {

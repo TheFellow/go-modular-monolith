@@ -11,16 +11,16 @@ import (
 
 const StockEntityType = cedar.EntityType("Mixology::Stock")
 
-func NewStockID(ingredientID string) cedar.EntityUID {
-	return cedar.NewEntityUID(StockEntityType, cedar.String(ingredientID))
+func NewStockID(ingredientID cedar.EntityUID) cedar.EntityUID {
+	return cedar.NewEntityUID(StockEntityType, ingredientID.ID)
 }
 
 type Stock struct {
-	IngredientID string
+	IngredientID cedar.EntityUID
 	Quantity     float64
 	Unit         ingredientsmodels.Unit
 	CostPerUnit  optional.Value[money.Price]
-	LastUpdated  time.Time `bstore:"index"`
+	LastUpdated  time.Time
 }
 
 func (s Stock) EntityUID() cedar.EntityUID {

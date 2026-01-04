@@ -9,7 +9,7 @@ import (
 )
 
 func (q *Queries) Get(ctx context.Context, id cedar.EntityUID) (models.Menu, error) {
-	menu, ok, err := q.dao.Get(ctx, string(id.ID))
+	menu, ok, err := q.dao.Get(ctx, id)
 	if err != nil {
 		return models.Menu{}, errors.Internalf("get menu %s: %w", id.ID, err)
 	}

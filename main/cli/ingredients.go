@@ -25,7 +25,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					}
 
 					for _, i := range res.Ingredients {
-						fmt.Printf("%s\t%s\t%s\t%s\n", i.ID, i.Name, i.Category, i.Unit)
+						fmt.Printf("%s\t%s\t%s\t%s\n", string(i.ID.ID), i.Name, i.Category, i.Unit)
 					}
 					return nil
 				}),
@@ -44,7 +44,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					}
 
 					i := res.Ingredient
-					fmt.Printf("ID:          %s\n", i.ID)
+					fmt.Printf("ID:          %s\n", string(i.ID.ID))
 					fmt.Printf("Name:        %s\n", i.Name)
 					fmt.Printf("Category:    %s\n", i.Category)
 					fmt.Printf("Unit:        %s\n", i.Unit)
@@ -97,7 +97,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%s\t%s\t%s\n", res.ID, res.Name, res.Category, res.Unit)
+					fmt.Printf("%s\t%s\t%s\t%s\n", string(res.ID.ID), res.Name, res.Category, res.Unit)
 					return nil
 				}),
 			},
@@ -137,7 +137,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					res, err := c.app.Ingredients().Update(ctx, models.Ingredient{
-						ID:          cmd.StringArgs("id")[0],
+						ID:          models.NewIngredientID(cmd.StringArgs("id")[0]),
 						Name:        cmd.String("name"),
 						Category:    models.Category(cmd.String("category")),
 						Unit:        models.Unit(cmd.String("unit")),
@@ -147,7 +147,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%s\t%s\t%s\n", res.ID, res.Name, res.Category, res.Unit)
+					fmt.Printf("%s\t%s\t%s\t%s\n", string(res.ID.ID), res.Name, res.Category, res.Unit)
 					return nil
 				}),
 			},

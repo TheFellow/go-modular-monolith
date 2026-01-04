@@ -15,8 +15,7 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, change models.MenuDrinkC
 		return models.Menu{}, errors.Invalidf("drink id is required")
 	}
 
-	menuIDStr := string(change.MenuID.ID)
-	menu, found, err := c.dao.Get(ctx, menuIDStr)
+	menu, found, err := c.dao.Get(ctx, change.MenuID)
 	if err != nil {
 		return models.Menu{}, errors.Internalf("get menu %s: %w", change.MenuID.ID, err)
 	}

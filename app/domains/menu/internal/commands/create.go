@@ -13,7 +13,7 @@ import (
 )
 
 func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (models.Menu, error) {
-	if menu.ID != "" {
+	if string(menu.ID.ID) != "" {
 		return models.Menu{}, errors.Invalidf("id must be empty")
 	}
 
@@ -29,7 +29,7 @@ func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (models.Men
 
 	now := time.Now().UTC()
 	created := models.Menu{
-		ID:          string(uid.ID),
+		ID:          uid,
 		Name:        menu.Name,
 		Description: strings.TrimSpace(menu.Description),
 		Items:       nil,

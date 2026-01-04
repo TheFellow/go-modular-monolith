@@ -13,7 +13,7 @@ import (
 )
 
 func (c *Commands) Update(ctx *middleware.Context, drink models.Drink) (models.Drink, error) {
-	if drink.ID == "" {
+	if string(drink.ID.ID) == "" {
 		return models.Drink{}, errors.Invalidf("drink id is required")
 	}
 
@@ -68,7 +68,7 @@ func (c *Commands) Update(ctx *middleware.Context, drink models.Drink) (models.D
 	added, removed := diffIngredientIDs(previous.Recipe, updated.Recipe)
 	if !reflect.DeepEqual(previous.Recipe, updated.Recipe) {
 		ctx.AddEvent(events.DrinkRecipeUpdated{
-			DrinkID:            models.NewDrinkID(drink.ID),
+			DrinkID:            drink.ID,
 			Name:               updated.Name,
 			PreviousRecipe:     previous.Recipe,
 			NewRecipe:          updated.Recipe,
