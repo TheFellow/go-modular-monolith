@@ -51,6 +51,15 @@ func Open(path string) error {
 	if err != nil {
 		return err
 	}
+	types := registeredTypes()
+	if len(types) == 0 {
+		_ = db.Close()
+		return errors.Internalf("no bstore types registered (expected internal DAO packages to call store.RegisterTypes in init)")
+	}
+	if err := db.Register(context.Background(), types...); err != nil {
+		_ = db.Close()
+		return err
+	}
 	DB = db
 	return nil
 }

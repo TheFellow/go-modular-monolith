@@ -248,15 +248,18 @@ func Register(ctx context.Context, types ...any) error {
 }
 ```
 
-Note: since internal DAO row types cannot be imported by `pkg/store`, registration is done via
-per-domain `StoreTypes()` helpers that return `internal/dao.Types()` values.
+Note: since internal DAO row types cannot be imported by `pkg/store`, internal DAO packages
+register their row types via `init()` using `store.RegisterTypes(...)`. `store.Open(...)`
+then registers all previously-registered types with bstore.
 
 ```go
-// main/cli/cli.go
-db, err := store.Open("data/mixology.db")
-if err != nil { /* ... */ }
+// app/domains/drinks/internal/dao/dao.go (and similar)
+func init() {
+    store.RegisterTypes(Types()...)
+}
 
-if err := store.Register(context.Background(), app.StoreTypes()...); err != nil { /* ... */ }
+// main/cli/cli.go
+if err := store.Open("data/mixology.db"); err != nil { /* ... */ }
 ```
 
 ## Package Structure

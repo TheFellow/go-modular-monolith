@@ -12,10 +12,8 @@ type DAO struct{}
 
 func New() *DAO { return &DAO{} }
 
-func Types() []any {
-	return []any{
-		StockRow{},
-	}
+func init() {
+	store.RegisterTypes(StockRow{})
 }
 
 func (d *DAO) read(ctx context.Context, f func(*bstore.Tx) error) error {
