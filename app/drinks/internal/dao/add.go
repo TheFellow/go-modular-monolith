@@ -10,8 +10,8 @@ func (d *FileDrinkDAO) Add(ctx context.Context, drink Drink) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if !d.loaded {
-		return errors.Internalf("dao not loaded")
+	if err := d.ensureLoaded(ctx); err != nil {
+		return err
 	}
 	if drink.ID == "" {
 		return errors.Invalidf("drink id is required")

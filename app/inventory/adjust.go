@@ -1,7 +1,6 @@
 package inventory
 
 import (
-	"github.com/TheFellow/go-modular-monolith/app/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/inventory/authz"
 	"github.com/TheFellow/go-modular-monolith/app/inventory/internal/commands"
 	"github.com/TheFellow/go-modular-monolith/app/inventory/models"
@@ -20,7 +19,7 @@ type AdjustResponse struct {
 }
 
 func (m *Module) Adjust(ctx *middleware.Context, req AdjustRequest) (AdjustResponse, error) {
-	ingredient, err := m.ingredients.Get(ctx, ingredients.GetRequest{ID: req.IngredientID})
+	ingredient, err := m.ingredientsQueries.Get(ctx, req.IngredientID)
 	if err != nil {
 		return AdjustResponse{}, err
 	}
@@ -36,7 +35,7 @@ func (m *Module) Adjust(ctx *middleware.Context, req AdjustRequest) (AdjustRespo
 		stock, err := m.adjust.Execute(mctx, commands.AdjustRequest{
 			IngredientID: req.IngredientID,
 			Delta:        req.Delta,
-			Unit:         ingredient.Ingredient.Unit,
+			Unit:         ingredient.Unit,
 			Reason:       req.Reason,
 		})
 		if err != nil {

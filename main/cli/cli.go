@@ -16,11 +16,7 @@ type CLI struct {
 }
 
 func NewCLI() (*CLI, error) {
-	a, err := app.New()
-	if err != nil {
-		return nil, err
-	}
-	return &CLI{app: a, actor: "owner"}, nil
+	return &CLI{app: app.New(), actor: "owner"}, nil
 }
 
 func (c *CLI) action(fn func(*middleware.Context, *cli.Command) error) cli.ActionFunc {

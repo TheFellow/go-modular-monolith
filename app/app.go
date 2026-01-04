@@ -1,8 +1,6 @@
 package app
 
 import (
-	"path/filepath"
-
 	"github.com/TheFellow/go-modular-monolith/app/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/inventory"
@@ -17,68 +15,18 @@ type App struct {
 	inventory   *inventory.Module
 }
 
-type options struct {
-	drinksDataPath      string
-	ingredientsDataPath string
-	inventoryDataPath   string
-}
-
-type Option func(*options)
-
-func WithDrinksDataPath(path string) Option {
-	return func(o *options) {
-		o.drinksDataPath = path
-	}
-}
-
-func WithIngredientsDataPath(path string) Option {
-	return func(o *options) {
-		o.ingredientsDataPath = path
-	}
-}
-
-func WithInventoryDataPath(path string) Option {
-	return func(o *options) {
-		o.inventoryDataPath = path
-	}
-}
-
-func New(opts ...Option) (*App, error) {
+func New() *App {
 	middleware.Command = middleware.NewCommandChain(
 		middleware.CommandAuthZ(),
 		middleware.UnitOfWork(uow.NewManager()),
 		middleware.Dispatcher(dispatcher.New()),
 	)
 
-	o := options{
-		drinksDataPath:      filepath.Join("pkg", "data", "drinks.json"),
-		ingredientsDataPath: filepath.Join("pkg", "data", "ingredients.json"),
-		inventoryDataPath:   filepath.Join("pkg", "data", "inventory.json"),
-	}
-	for _, opt := range opts {
-		opt(&o)
-	}
+	im := ingredients.NewModule()
+	dm := drinks.NewModule()
+	invm := inventory.NewModule()
 
-	im, err := ingredients.NewModule(o.ingredientsDataPath)
-	if err != nil {
-		return nil, err
-	}
-
-	dm, err := drinks.NewModule(o.drinksDataPath, im)
-	if err != nil {
-		return nil, err
-	}
-
-	invm, err := inventory.NewModule(o.inventoryDataPath, im)
-	if err != nil {
-		return nil, err
-	}
-
-	return &App{
-		drinks:      dm,
-		ingredients: im,
-		inventory:   invm,
-	}, nil
+	return &App{drinks: dm, ingredients: im, inventory: invm}
 }
 
 func (a *App) Drinks() *drinks.Module {

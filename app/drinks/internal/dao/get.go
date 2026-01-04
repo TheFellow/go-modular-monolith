@@ -2,8 +2,6 @@ package dao
 
 import (
 	"context"
-
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 func (d *FileDrinkDAO) Get(ctx context.Context, id string) (Drink, bool, error) {
@@ -11,8 +9,8 @@ func (d *FileDrinkDAO) Get(ctx context.Context, id string) (Drink, bool, error) 
 		return Drink{}, false, err
 	}
 
-	if !d.loaded {
-		return Drink{}, false, errors.Internalf("dao not loaded")
+	if err := d.ensureLoaded(ctx); err != nil {
+		return Drink{}, false, err
 	}
 
 	for _, drink := range d.drinks {

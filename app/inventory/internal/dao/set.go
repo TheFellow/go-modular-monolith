@@ -10,8 +10,8 @@ func (d *FileStockDAO) Set(ctx context.Context, stock Stock) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if !d.loaded {
-		return errors.Internalf("dao not loaded")
+	if err := d.ensureLoaded(ctx); err != nil {
+		return err
 	}
 	if stock.IngredientID == "" {
 		return errors.Invalidf("ingredient id is required")

@@ -10,8 +10,8 @@ func (d *FileIngredientDAO) Add(ctx context.Context, ingredient Ingredient) erro
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if !d.loaded {
-		return errors.Internalf("dao not loaded")
+	if err := d.ensureLoaded(ctx); err != nil {
+		return err
 	}
 	if ingredient.ID == "" {
 		return errors.Invalidf("ingredient id is required")

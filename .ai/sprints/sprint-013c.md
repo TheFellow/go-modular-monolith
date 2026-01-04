@@ -88,13 +88,13 @@ func NewModule() *Module {
 
 ## Tasks
 
-- [ ] Update all DAOs to hardcode their data paths
-- [ ] Update all queries to `New()` with internal DAO creation
-- [ ] Update all commands to `New()` with internal DAO creation
-- [ ] Update cross-module dependencies to use queries packages
-- [ ] Update all modules to `NewModule()` with no parameters
-- [ ] Update CLI to use simplified constructors
-- [ ] Verify `go test ./...` passes
+- [x] Update all DAOs to hardcode their data paths
+- [x] Update all queries to `New()` with internal DAO creation
+- [x] Update all commands to `New()` with internal DAO creation
+- [x] Update cross-module dependencies to use queries packages
+- [x] Update all modules to `NewModule()` with no parameters
+- [x] Update CLI to use simplified constructors
+- [x] Verify `go test ./...` passes
 
 ## File Changes
 

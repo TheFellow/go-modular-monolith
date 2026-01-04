@@ -10,17 +10,17 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/drinks/internal/commands"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/internal/dao"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/drinks/models"
-	"github.com/TheFellow/go-modular-monolith/app/ingredients"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/uow"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type fakeIngredientsOK struct{}
 
-func (f fakeIngredientsOK) Get(_ *middleware.Context, _ ingredients.GetRequest) (ingredients.GetResponse, error) {
-	return ingredients.GetResponse{Ingredient: ingredientsmodels.Ingredient{}}, nil
+func (f fakeIngredientsOK) Get(_ context.Context, _ cedar.EntityUID) (ingredientsmodels.Ingredient, error) {
+	return ingredientsmodels.Ingredient{}, nil
 }
 
 func TestUpdateRecipe_PersistsAndEmitsEvent(t *testing.T) {
@@ -54,7 +54,7 @@ func TestUpdateRecipe_PersistsAndEmitsEvent(t *testing.T) {
 	testutil.ErrorIf(t, err != nil, "begin tx: %v", err)
 	ctx = middleware.NewContext(ctx, middleware.WithUnitOfWork(tx))
 
-	uc := commands.NewUpdateRecipe(d, fakeIngredientsOK{})
+	uc := commands.NewUpdateRecipeWithDependencies(d, fakeIngredientsOK{})
 	updated, err := uc.Execute(ctx, commands.UpdateRecipeRequest{
 		DrinkID: drinksmodels.NewDrinkID("margarita"),
 		Recipe: drinksmodels.Recipe{

@@ -14,8 +14,12 @@ type Update struct {
 	dao *dao.FileIngredientDAO
 }
 
-func NewUpdate(dao *dao.FileIngredientDAO) *Update {
-	return &Update{dao: dao}
+func NewUpdate() *Update {
+	return &Update{dao: dao.New()}
+}
+
+func NewUpdateWithDAO(d *dao.FileIngredientDAO) *Update {
+	return &Update{dao: d}
 }
 
 type UpdateRequest struct {

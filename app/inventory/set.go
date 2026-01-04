@@ -1,7 +1,6 @@
 package inventory
 
 import (
-	"github.com/TheFellow/go-modular-monolith/app/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/inventory/authz"
 	"github.com/TheFellow/go-modular-monolith/app/inventory/internal/commands"
 	"github.com/TheFellow/go-modular-monolith/app/inventory/models"
@@ -19,7 +18,7 @@ type SetResponse struct {
 }
 
 func (m *Module) Set(ctx *middleware.Context, req SetRequest) (SetResponse, error) {
-	ingredient, err := m.ingredients.Get(ctx, ingredients.GetRequest{ID: req.IngredientID})
+	ingredient, err := m.ingredientsQueries.Get(ctx, req.IngredientID)
 	if err != nil {
 		return SetResponse{}, err
 	}
@@ -35,7 +34,7 @@ func (m *Module) Set(ctx *middleware.Context, req SetRequest) (SetResponse, erro
 		stock, err := m.set.Execute(mctx, commands.SetRequest{
 			IngredientID: req.IngredientID,
 			Quantity:     req.Quantity,
-			Unit:         ingredient.Ingredient.Unit,
+			Unit:         ingredient.Unit,
 		})
 		if err != nil {
 			return SetResponse{}, err

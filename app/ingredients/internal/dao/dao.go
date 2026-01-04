@@ -15,8 +15,21 @@ type FileIngredientDAO struct {
 	loaded      bool
 }
 
+const dataPath = "data/ingredients.json"
+
+func New() *FileIngredientDAO {
+	return &FileIngredientDAO{path: dataPath}
+}
+
 func NewFileIngredientDAO(path string) *FileIngredientDAO {
 	return &FileIngredientDAO{path: path}
+}
+
+func (d *FileIngredientDAO) ensureLoaded(ctx context.Context) error {
+	if d.loaded {
+		return nil
+	}
+	return d.Load(ctx)
 }
 
 func (d *FileIngredientDAO) Load(ctx context.Context) error {
@@ -50,12 +63,8 @@ func (d *FileIngredientDAO) Load(ctx context.Context) error {
 }
 
 func (d *FileIngredientDAO) Save(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
+	if err := d.ensureLoaded(ctx); err != nil {
 		return err
-	}
-
-	if !d.loaded {
-		return errors.Internalf("dao not loaded")
 	}
 
 	dir := filepath.Dir(d.path)

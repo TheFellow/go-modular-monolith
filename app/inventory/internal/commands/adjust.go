@@ -16,8 +16,12 @@ type Adjust struct {
 	dao *dao.FileStockDAO
 }
 
-func NewAdjust(dao *dao.FileStockDAO) *Adjust {
-	return &Adjust{dao: dao}
+func NewAdjust() *Adjust {
+	return &Adjust{dao: dao.New()}
+}
+
+func NewAdjustWithDAO(d *dao.FileStockDAO) *Adjust {
+	return &Adjust{dao: d}
 }
 
 type AdjustRequest struct {

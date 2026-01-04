@@ -9,17 +9,17 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/drinks/internal/commands"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/internal/dao"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/drinks/models"
-	"github.com/TheFellow/go-modular-monolith/app/ingredients"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/uow"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type fakeIngredients struct{}
 
-func (f fakeIngredients) Get(_ *middleware.Context, _ ingredients.GetRequest) (ingredients.GetResponse, error) {
-	return ingredients.GetResponse{Ingredient: ingredientsmodels.Ingredient{}}, nil
+func (f fakeIngredients) Get(_ context.Context, _ cedar.EntityUID) (ingredientsmodels.Ingredient, error) {
+	return ingredientsmodels.Ingredient{}, nil
 }
 
 func TestCreate_PersistsOnCommit(t *testing.T) {
@@ -40,7 +40,7 @@ func TestCreate_PersistsOnCommit(t *testing.T) {
 	testutil.ErrorIf(t, err != nil, "begin tx: %v", err)
 	ctx = middleware.NewContext(ctx, middleware.WithUnitOfWork(tx))
 
-	uc := commands.NewCreate(d, fakeIngredients{})
+	uc := commands.NewCreateWithDependencies(d, fakeIngredients{})
 	created, err := uc.Execute(ctx, commands.CreateRequest{
 		Name:     "Margarita",
 		Category: drinksmodels.DrinkCategoryCocktail,

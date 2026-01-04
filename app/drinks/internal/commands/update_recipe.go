@@ -6,7 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/models"
-	"github.com/TheFellow/go-modular-monolith/app/ingredients"
+	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/ingredients/queries"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -17,8 +17,15 @@ type UpdateRecipe struct {
 	ingredients ingredientReader
 }
 
-func NewUpdateRecipe(dao *dao.FileDrinkDAO, ingredients ingredientReader) *UpdateRecipe {
-	return &UpdateRecipe{dao: dao, ingredients: ingredients}
+func NewUpdateRecipe() *UpdateRecipe {
+	return &UpdateRecipe{
+		dao:         dao.New(),
+		ingredients: ingredientsqueries.New(),
+	}
+}
+
+func NewUpdateRecipeWithDependencies(d *dao.FileDrinkDAO, ingredients ingredientReader) *UpdateRecipe {
+	return &UpdateRecipe{dao: d, ingredients: ingredients}
 }
 
 type UpdateRecipeRequest struct {
@@ -38,14 +45,14 @@ func (c *UpdateRecipe) Execute(ctx *middleware.Context, req UpdateRecipeRequest)
 	}
 
 	for _, ing := range req.Recipe.Ingredients {
-		if _, err := c.ingredients.Get(ctx, ingredients.GetRequest{ID: ing.IngredientID}); err != nil {
+		if _, err := c.ingredients.Get(ctx, ing.IngredientID); err != nil {
 			if ing.Optional {
 				continue
 			}
 			return models.Drink{}, errors.Invalidf("ingredient %s not found: %w", string(ing.IngredientID.ID), err)
 		}
 		for _, sub := range ing.Substitutes {
-			if _, err := c.ingredients.Get(ctx, ingredients.GetRequest{ID: sub}); err != nil {
+			if _, err := c.ingredients.Get(ctx, sub); err != nil {
 				return models.Drink{}, errors.Invalidf("substitute ingredient %s not found: %w", string(sub.ID), err)
 			}
 		}

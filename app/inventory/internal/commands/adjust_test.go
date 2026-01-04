@@ -38,7 +38,7 @@ func TestAdjust_EmitsStockAdjusted(t *testing.T) {
 	testutil.ErrorIf(t, err != nil, "begin tx: %v", err)
 	ctx = middleware.NewContext(ctx, middleware.WithUnitOfWork(tx))
 
-	uc := commands.NewAdjust(d)
+	uc := commands.NewAdjustWithDAO(d)
 	ingredientID := ingredientsmodels.NewIngredientID("vodka")
 
 	_, err = uc.Execute(ctx, commands.AdjustRequest{

@@ -16,8 +16,12 @@ type Set struct {
 	dao *dao.FileStockDAO
 }
 
-func NewSet(dao *dao.FileStockDAO) *Set {
-	return &Set{dao: dao}
+func NewSet() *Set {
+	return &Set{dao: dao.New()}
+}
+
+func NewSetWithDAO(d *dao.FileStockDAO) *Set {
+	return &Set{dao: d}
 }
 
 type SetRequest struct {

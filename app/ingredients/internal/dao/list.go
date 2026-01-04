@@ -2,8 +2,6 @@ package dao
 
 import (
 	"context"
-
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 func (d *FileIngredientDAO) List(ctx context.Context) ([]Ingredient, error) {
@@ -11,8 +9,8 @@ func (d *FileIngredientDAO) List(ctx context.Context) ([]Ingredient, error) {
 		return nil, err
 	}
 
-	if !d.loaded {
-		return nil, errors.Internalf("dao not loaded")
+	if err := d.ensureLoaded(ctx); err != nil {
+		return nil, err
 	}
 
 	out := make([]Ingredient, 0, len(d.ingredients))

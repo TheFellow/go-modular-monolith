@@ -15,8 +15,12 @@ type Create struct {
 	dao *dao.FileIngredientDAO
 }
 
-func NewCreate(dao *dao.FileIngredientDAO) *Create {
-	return &Create{dao: dao}
+func NewCreate() *Create {
+	return &Create{dao: dao.New()}
+}
+
+func NewCreateWithDAO(d *dao.FileIngredientDAO) *Create {
+	return &Create{dao: d}
 }
 
 type CreateRequest struct {

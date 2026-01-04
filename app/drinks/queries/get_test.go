@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/TheFellow/go-modular-monolith/app/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/queries"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -26,8 +27,7 @@ func TestGet_Found(t *testing.T) {
 	err := os.WriteFile(path, []byte(seed), 0o644)
 	testutil.ErrorIf(t, err != nil, "write seed: %v", err)
 
-	q, err := queries.New(path)
-	testutil.ErrorIf(t, err != nil, "new queries: %v", err)
+	q := queries.NewWithDAO(dao.NewFileDrinkDAO(path))
 
 	got, err := q.Get(context.Background(), models.NewDrinkID("margarita"))
 	testutil.ErrorIf(t, err != nil, "get: %v", err)
@@ -48,8 +48,7 @@ func TestGet_NotFound(t *testing.T) {
 	err := os.WriteFile(path, []byte(seed), 0o644)
 	testutil.ErrorIf(t, err != nil, "write seed: %v", err)
 
-	q, err := queries.New(path)
-	testutil.ErrorIf(t, err != nil, "new queries: %v", err)
+	q := queries.NewWithDAO(dao.NewFileDrinkDAO(path))
 
 	_, err = q.Get(context.Background(), models.NewDrinkID("missing"))
 	testutil.ErrorIf(t, !errors.IsNotFound(err), "expected NotFound error, got %v", err)
@@ -68,8 +67,7 @@ func TestGet_DeletedIsNotFound(t *testing.T) {
 	err := os.WriteFile(path, []byte(seed), 0o644)
 	testutil.ErrorIf(t, err != nil, "write seed: %v", err)
 
-	q, err := queries.New(path)
-	testutil.ErrorIf(t, err != nil, "new queries: %v", err)
+	q := queries.NewWithDAO(dao.NewFileDrinkDAO(path))
 
 	_, err = q.Get(context.Background(), models.NewDrinkID("old-fashioned"))
 	testutil.ErrorIf(t, !errors.IsNotFound(err), "expected NotFound error, got %v", err)

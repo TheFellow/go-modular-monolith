@@ -1,15 +1,18 @@
 package commands
 
 import (
+	"context"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/models"
-	"github.com/TheFellow/go-modular-monolith/app/ingredients"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/ingredients/models"
+	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/ingredients/queries"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/ids"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type Create struct {
@@ -18,11 +21,18 @@ type Create struct {
 }
 
 type ingredientReader interface {
-	Get(ctx *middleware.Context, req ingredients.GetRequest) (ingredients.GetResponse, error)
+	Get(ctx context.Context, id cedar.EntityUID) (ingredientsmodels.Ingredient, error)
 }
 
-func NewCreate(dao *dao.FileDrinkDAO, ingredients ingredientReader) *Create {
-	return &Create{dao: dao, ingredients: ingredients}
+func NewCreate() *Create {
+	return &Create{
+		dao:         dao.New(),
+		ingredients: ingredientsqueries.New(),
+	}
+}
+
+func NewCreateWithDependencies(d *dao.FileDrinkDAO, ingredients ingredientReader) *Create {
+	return &Create{dao: d, ingredients: ingredients}
 }
 
 type CreateRequest struct {
@@ -53,14 +63,14 @@ func (c *Create) Execute(ctx *middleware.Context, req CreateRequest) (models.Dri
 	}
 
 	for _, ing := range req.Recipe.Ingredients {
-		if _, err := c.ingredients.Get(ctx, ingredients.GetRequest{ID: ing.IngredientID}); err != nil {
+		if _, err := c.ingredients.Get(ctx, ing.IngredientID); err != nil {
 			if ing.Optional {
 				continue
 			}
 			return models.Drink{}, errors.Invalidf("ingredient %s not found: %w", string(ing.IngredientID.ID), err)
 		}
 		for _, sub := range ing.Substitutes {
-			if _, err := c.ingredients.Get(ctx, ingredients.GetRequest{ID: sub}); err != nil {
+			if _, err := c.ingredients.Get(ctx, sub); err != nil {
 				return models.Drink{}, errors.Invalidf("substitute ingredient %s not found: %w", string(sub.ID), err)
 			}
 		}

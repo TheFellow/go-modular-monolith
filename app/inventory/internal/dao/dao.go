@@ -15,8 +15,21 @@ type FileStockDAO struct {
 	loaded bool
 }
 
+const dataPath = "data/stock.json"
+
+func New() *FileStockDAO {
+	return &FileStockDAO{path: dataPath}
+}
+
 func NewFileStockDAO(path string) *FileStockDAO {
 	return &FileStockDAO{path: path}
+}
+
+func (d *FileStockDAO) ensureLoaded(ctx context.Context) error {
+	if d.loaded {
+		return nil
+	}
+	return d.Load(ctx)
 }
 
 func (d *FileStockDAO) Load(ctx context.Context) error {
@@ -50,11 +63,8 @@ func (d *FileStockDAO) Load(ctx context.Context) error {
 }
 
 func (d *FileStockDAO) Save(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
+	if err := d.ensureLoaded(ctx); err != nil {
 		return err
-	}
-	if !d.loaded {
-		return errors.Internalf("dao not loaded")
 	}
 
 	dir := filepath.Dir(d.path)
