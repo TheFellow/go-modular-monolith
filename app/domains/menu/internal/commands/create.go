@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/events"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/ids"
@@ -14,7 +13,7 @@ import (
 )
 
 func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (models.Menu, error) {
-	if string(menu.ID.ID) != "" {
+	if menu.ID != "" {
 		return models.Menu{}, errors.Invalidf("id must be empty")
 	}
 
@@ -23,36 +22,29 @@ func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (models.Men
 		return models.Menu{}, errors.Invalidf("name is required")
 	}
 
-	tx, ok := ctx.UnitOfWork()
-	if !ok {
-		return models.Menu{}, errors.Internalf("missing unit of work")
-	}
-	if err := tx.Register(c.dao); err != nil {
-		return models.Menu{}, errors.Internalf("register dao: %w", err)
-	}
-
 	uid, err := ids.New(models.MenuEntityType)
 	if err != nil {
 		return models.Menu{}, errors.Internalf("generate id: %w", err)
 	}
 
 	now := time.Now().UTC()
-	record := dao.FromDomain(models.Menu{
-		ID:          uid,
+	created := models.Menu{
+		ID:          string(uid.ID),
 		Name:        menu.Name,
 		Description: strings.TrimSpace(menu.Description),
 		Items:       nil,
 		Status:      models.MenuStatusDraft,
 		CreatedAt:   now,
 		PublishedAt: optional.None[time.Time](),
-	})
+	}
 
-	if err := c.dao.Add(ctx, record); err != nil {
+	if err := created.Validate(); err != nil {
 		return models.Menu{}, err
 	}
 
-	created := record.ToDomain()
-	created.ID = uid
+	if err := c.dao.Insert(ctx, created); err != nil {
+		return models.Menu{}, err
+	}
 
 	ctx.AddEvent(events.MenuCreated{
 		MenuID: uid,

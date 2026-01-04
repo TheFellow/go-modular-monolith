@@ -2,107 +2,80 @@ package dao
 
 import (
 	"context"
-	"encoding/json"
-	"os"
-	"path/filepath"
 
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/mjl-/bstore"
 )
 
-type FileIngredientDAO struct {
-	path        string
-	ingredients []Ingredient
-	loaded      bool
-}
+type DAO struct{}
 
-const dataPath = "data/ingredients.json"
+func New() *DAO { return &DAO{} }
 
-func New() *FileIngredientDAO {
-	return &FileIngredientDAO{path: dataPath}
-}
+func (d *DAO) Get(ctx context.Context, id string) (models.Ingredient, bool, error) {
+	var (
+		out   models.Ingredient
+		found bool
+	)
 
-func NewFileIngredientDAO(path string) *FileIngredientDAO {
-	return &FileIngredientDAO{path: path}
-}
-
-func (d *FileIngredientDAO) ensureLoaded(ctx context.Context) error {
-	if d.loaded {
-		return nil
-	}
-	return d.Load(ctx)
-}
-
-func (d *FileIngredientDAO) Load(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	b, err := os.ReadFile(d.path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			d.ingredients = []Ingredient{}
-			d.loaded = true
-			return nil
+	err := d.read(ctx, func(tx *bstore.Tx) error {
+		out = models.Ingredient{ID: id}
+		if err := tx.Get(&out); err != nil {
+			if err == bstore.ErrAbsent {
+				out = models.Ingredient{}
+				found = false
+				return nil
+			}
+			return err
 		}
-		return errors.Internalf("read ingredients file: %w", err)
-	}
-	if len(b) == 0 {
-		d.ingredients = []Ingredient{}
-		d.loaded = true
+		found = true
 		return nil
-	}
-
-	var ingredients []Ingredient
-	if err := json.Unmarshal(b, &ingredients); err != nil {
-		return errors.Internalf("parse ingredients json %q: %w", d.path, err)
-	}
-
-	d.ingredients = ingredients
-	d.loaded = true
-	return nil
+	})
+	return out, found, err
 }
 
-func (d *FileIngredientDAO) Save(ctx context.Context) error {
-	if err := d.ensureLoaded(ctx); err != nil {
-		return err
-	}
+func (d *DAO) List(ctx context.Context) ([]models.Ingredient, error) {
+	var out []models.Ingredient
+	err := d.read(ctx, func(tx *bstore.Tx) error {
+		ingredients, err := bstore.QueryTx[models.Ingredient](tx).List()
+		if err != nil {
+			return err
+		}
+		out = ingredients
+		return nil
+	})
+	return out, err
+}
 
-	dir := filepath.Dir(d.path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
+func (d *DAO) Insert(ctx context.Context, ingredient models.Ingredient) error {
+	return d.write(ctx, func(tx *bstore.Tx) error {
+		return tx.Insert(&ingredient)
+	})
+}
 
-	b, err := json.MarshalIndent(d.ingredients, "", "  ")
-	if err != nil {
-		return err
-	}
-	b = append(b, '\n')
+func (d *DAO) Update(ctx context.Context, ingredient models.Ingredient) error {
+	return d.write(ctx, func(tx *bstore.Tx) error {
+		return tx.Update(&ingredient)
+	})
+}
 
-	tmp, err := os.CreateTemp(dir, ".ingredients-*.json")
-	if err != nil {
-		return err
+func (d *DAO) read(ctx context.Context, f func(*bstore.Tx) error) error {
+	if tx, ok := store.TxFromContext(ctx); ok && tx != nil {
+		return f(tx)
 	}
+	if store.DB == nil {
+		return errors.Internalf("store not initialized")
+	}
+	return store.DB.Read(ctx, func(tx *bstore.Tx) error {
+		return f(tx)
+	})
+}
 
-	tmpName := tmp.Name()
-	_, writeErr := tmp.Write(b)
-	closeErr := tmp.Close()
-	if writeErr != nil {
-		_ = os.Remove(tmpName)
-		return writeErr
+func (d *DAO) write(ctx context.Context, f func(*bstore.Tx) error) error {
+	tx, ok := store.TxFromContext(ctx)
+	if !ok || tx == nil {
+		return errors.Internalf("missing transaction")
 	}
-	if closeErr != nil {
-		_ = os.Remove(tmpName)
-		return closeErr
-	}
-
-	if err := os.Chmod(tmpName, 0o644); err != nil {
-		_ = os.Remove(tmpName)
-		return err
-	}
-
-	if err := os.Rename(tmpName, d.path); err != nil {
-		_ = os.Remove(tmpName)
-		return err
-	}
-	return nil
+	return f(tx)
 }

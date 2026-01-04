@@ -5,13 +5,12 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	ordersevents "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type OrderCompletedMenuUpdater struct {
-	menuDAO      *dao.FileMenuDAO
+	menuDAO      *dao.DAO
 	drinkQueries *drinksq.Queries
 }
 
@@ -43,10 +42,7 @@ func (h *OrderCompletedMenuUpdater) Handle(ctx *middleware.Context, e orderseven
 		return err
 	}
 
-	var registered bool
-
-	for _, record := range menus {
-		menu := record.ToDomain()
+	for _, menu := range menus {
 		if menu.Status != models.MenuStatusPublished {
 			continue
 		}
@@ -67,19 +63,7 @@ func (h *OrderCompletedMenuUpdater) Handle(ctx *middleware.Context, e orderseven
 		if !changed {
 			continue
 		}
-
-		if !registered {
-			tx, ok := ctx.UnitOfWork()
-			if !ok {
-				return errors.Internalf("missing unit of work")
-			}
-			if err := tx.Register(h.menuDAO); err != nil {
-				return errors.Internalf("register dao: %w", err)
-			}
-			registered = true
-		}
-
-		if err := h.menuDAO.Update(ctx, dao.FromDomain(menu)); err != nil {
+		if err := h.menuDAO.Update(ctx, menu); err != nil {
 			return err
 		}
 	}

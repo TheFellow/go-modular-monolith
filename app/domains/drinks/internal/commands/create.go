@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
-	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/ids"
@@ -12,7 +11,7 @@ import (
 )
 
 func (c *Commands) Create(ctx *middleware.Context, drink models.Drink) (models.Drink, error) {
-	if string(drink.ID.ID) != "" {
+	if drink.ID != "" {
 		return models.Drink{}, errors.Invalidf("id must be empty")
 	}
 
@@ -20,6 +19,7 @@ func (c *Commands) Create(ctx *middleware.Context, drink models.Drink) (models.D
 	if drink.Name == "" {
 		return models.Drink{}, errors.Invalidf("name is required")
 	}
+	drink.Description = strings.TrimSpace(drink.Description)
 	if err := drink.Category.Validate(); err != nil {
 		return models.Drink{}, err
 	}
@@ -48,34 +48,17 @@ func (c *Commands) Create(ctx *middleware.Context, drink models.Drink) (models.D
 		}
 	}
 
-	tx, ok := ctx.UnitOfWork()
-	if !ok {
-		return models.Drink{}, errors.Internalf("missing unit of work")
-	}
-	if err := tx.Register(c.dao); err != nil {
-		return models.Drink{}, errors.Internalf("register dao: %w", err)
-	}
-
 	uid, err := ids.New(models.DrinkEntityType)
 	if err != nil {
 		return models.Drink{}, errors.Internalf("generate id: %w", err)
 	}
 
-	record := dao.Drink{
-		ID:          string(uid.ID),
-		Name:        drink.Name,
-		Category:    string(drink.Category),
-		Glass:       string(drink.Glass),
-		Recipe:      dao.FromDomain(models.Drink{Recipe: drink.Recipe}).Recipe,
-		Description: drink.Description,
-	}
+	created := drink
+	created.ID = string(uid.ID)
 
-	if err := c.dao.Add(ctx, record); err != nil {
+	if err := c.dao.Insert(ctx, created); err != nil {
 		return models.Drink{}, err
 	}
-
-	created := record.ToDomain()
-	created.ID = uid
 
 	ctx.AddEvent(events.DrinkCreated{
 		DrinkID:     uid,

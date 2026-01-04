@@ -10,35 +10,26 @@ import (
 )
 
 func (c *Commands) Update(ctx *middleware.Context, ingredient models.Ingredient) (models.Ingredient, error) {
-	if string(ingredient.ID.ID) == "" {
+	if ingredient.ID == "" {
 		return models.Ingredient{}, errors.Invalidf("id is required")
 	}
 
-	tx, ok := ctx.UnitOfWork()
-	if !ok {
-		return models.Ingredient{}, errors.Internalf("missing unit of work")
-	}
-	if err := tx.Register(c.dao); err != nil {
-		return models.Ingredient{}, errors.Internalf("register dao: %w", err)
-	}
-
-	ingredientID := string(ingredient.ID.ID)
-	existing, ok, err := c.dao.Get(ctx, ingredientID)
+	existing, ok, err := c.dao.Get(ctx, ingredient.ID)
 	if err != nil {
-		return models.Ingredient{}, errors.Internalf("get ingredient %s: %w", ingredientID, err)
+		return models.Ingredient{}, errors.Internalf("get ingredient %s: %w", ingredient.ID, err)
 	}
 	if !ok {
-		return models.Ingredient{}, errors.NotFoundf("ingredient %s not found", ingredientID)
+		return models.Ingredient{}, errors.NotFoundf("ingredient %s not found", ingredient.ID)
 	}
 
 	if name := strings.TrimSpace(ingredient.Name); name != "" {
 		existing.Name = name
 	}
 	if ingredient.Category != "" {
-		existing.Category = string(ingredient.Category)
+		existing.Category = ingredient.Category
 	}
 	if ingredient.Unit != "" {
-		existing.Unit = string(ingredient.Unit)
+		existing.Unit = ingredient.Unit
 	}
 	if desc := strings.TrimSpace(ingredient.Description); desc != "" {
 		existing.Description = desc
@@ -51,8 +42,8 @@ func (c *Commands) Update(ctx *middleware.Context, ingredient models.Ingredient)
 	ctx.AddEvent(events.IngredientUpdated{
 		IngredientID: models.NewIngredientID(existing.ID),
 		Name:         existing.Name,
-		Category:     models.Category(existing.Category),
+		Category:     existing.Category,
 	})
 
-	return existing.ToDomain(), nil
+	return existing, nil
 }

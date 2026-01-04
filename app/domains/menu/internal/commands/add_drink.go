@@ -2,7 +2,6 @@ package commands
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/events"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -21,24 +20,14 @@ func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChan
 		return models.Menu{}, err
 	}
 
-	tx, ok := ctx.UnitOfWork()
-	if !ok {
-		return models.Menu{}, errors.Internalf("missing unit of work")
-	}
-	if err := tx.Register(c.dao); err != nil {
-		return models.Menu{}, errors.Internalf("register dao: %w", err)
-	}
-
-	record, found, err := c.dao.Get(ctx, string(change.MenuID.ID))
+	menuIDStr := string(change.MenuID.ID)
+	menu, found, err := c.dao.Get(ctx, menuIDStr)
 	if err != nil {
 		return models.Menu{}, errors.Internalf("get menu %s: %w", change.MenuID.ID, err)
 	}
 	if !found {
 		return models.Menu{}, errors.NotFoundf("menu %s not found", change.MenuID.ID)
 	}
-
-	menu := record.ToDomain()
-	menu.ID = change.MenuID
 
 	for _, item := range menu.Items {
 		if string(item.DrinkID.ID) == string(change.DrinkID.ID) {
@@ -65,7 +54,7 @@ func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChan
 		return models.Menu{}, err
 	}
 
-	if err := c.dao.Update(ctx, dao.FromDomain(menu)); err != nil {
+	if err := c.dao.Update(ctx, menu); err != nil {
 		return models.Menu{}, err
 	}
 

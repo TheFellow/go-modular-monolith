@@ -20,7 +20,7 @@ type Drink struct {
 
 func FromDomainDrink(d models.Drink) Drink {
 	return Drink{
-		ID:          string(d.ID.ID),
+		ID:          d.ID,
 		Name:        d.Name,
 		Category:    string(d.Category),
 		Glass:       string(d.Glass),
@@ -60,7 +60,7 @@ func (d Drink) ToDomainForUpdate() (models.Drink, error) {
 	}
 
 	out := models.Drink{
-		ID:          models.NewDrinkID(id),
+		ID:          id,
 		Name:        d.Name,
 		Category:    models.DrinkCategory(d.Category),
 		Glass:       models.GlassType(d.Glass),

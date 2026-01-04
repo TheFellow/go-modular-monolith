@@ -5,13 +5,13 @@ import (
 )
 
 type Queries struct {
-	dao *dao.FileDrinkDAO
+	dao *dao.DAO
 }
 
 func New() *Queries {
 	return &Queries{dao: dao.New()}
 }
 
-func NewWithDAO(d *dao.FileDrinkDAO) *Queries {
+func NewWithDAO(d *dao.DAO) *Queries {
 	return &Queries{dao: d}
 }

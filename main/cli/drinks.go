@@ -38,7 +38,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 					}
 
 					for _, d := range res.Drinks {
-						fmt.Printf("%s\t%s\n", string(d.ID.ID), d.Name)
+						fmt.Printf("%s\t%s\n", d.ID, d.Name)
 					}
 					return nil
 				}),
@@ -61,7 +61,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(res.Drink))
 					}
 
-					fmt.Printf("%s\t%s\n", string(res.Drink.ID.ID), res.Drink.Name)
+					fmt.Printf("%s\t%s\n", res.Drink.ID, res.Drink.Name)
 					return nil
 				}),
 			},
@@ -96,7 +96,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(res))
 					}
 
-					fmt.Printf("%s\t%s\n", string(res.ID.ID), res.Name)
+					fmt.Printf("%s\t%s\n", res.ID, res.Name)
 					return nil
 				}),
 			},
@@ -131,7 +131,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(res))
 					}
 
-					fmt.Printf("%s\t%s\n", string(res.ID.ID), res.Name)
+					fmt.Printf("%s\t%s\n", res.ID, res.Name)
 					return nil
 				}),
 			},

@@ -4,11 +4,11 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
-	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
 func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (models.Stock, error) {
@@ -56,24 +56,17 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (mod
 		return models.Stock{}, errors.Invalidf("ingredient unit is required")
 	}
 
-	tx, ok := ctx.UnitOfWork()
-	if !ok {
-		return models.Stock{}, errors.Internalf("missing unit of work")
-	}
-	if err := tx.Register(c.dao); err != nil {
-		return models.Stock{}, errors.Internalf("register dao: %w", err)
-	}
-
 	ingredientIDStr := string(patch.IngredientID.ID)
 	existing, found, err := c.dao.Get(ctx, ingredientIDStr)
 	if err != nil {
 		return models.Stock{}, errors.Internalf("get stock %s: %w", ingredientIDStr, err)
 	}
 	if !found {
-		existing = dao.Stock{
+		existing = models.Stock{
 			IngredientID: ingredientIDStr,
 			Quantity:     0,
-			Unit:         string(ingredient.Unit),
+			Unit:         ingredient.Unit,
+			CostPerUnit:  optional.None[money.Price](),
 			LastUpdated:  time.Time{},
 		}
 	}
@@ -92,13 +85,13 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (mod
 	if hasDelta {
 		existing.Quantity = newQty
 	}
-	existing.Unit = string(ingredient.Unit)
+	existing.Unit = ingredient.Unit
 	if hasCost {
-		existing.CostPerUnit = &cost
+		existing.CostPerUnit = optional.Some(cost)
 	}
 	existing.LastUpdated = time.Now().UTC()
 
-	if err := c.dao.Set(ctx, existing); err != nil {
+	if err := c.dao.Upsert(ctx, existing); err != nil {
 		return models.Stock{}, err
 	}
 
@@ -112,5 +105,5 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (mod
 		})
 	}
 
-	return existing.ToDomain(), nil
+	return existing, nil
 }

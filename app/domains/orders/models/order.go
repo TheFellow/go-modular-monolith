@@ -16,24 +16,21 @@ func NewOrderID(id string) cedar.EntityUID {
 }
 
 type Order struct {
-	ID          cedar.EntityUID
+	ID          string
 	MenuID      cedar.EntityUID
 	Items       []OrderItem
-	Status      OrderStatus
-	CreatedAt   time.Time
+	Status      OrderStatus `bstore:"index"`
+	CreatedAt   time.Time   `bstore:"index"`
 	CompletedAt optional.Value[time.Time]
 	Notes       string
 }
 
 func (o Order) EntityUID() cedar.EntityUID {
-	return o.ID
+	return NewOrderID(o.ID)
 }
 
 func (o Order) CedarEntity() cedar.Entity {
-	uid := o.ID
-	if string(uid.ID) == "" {
-		uid = cedar.NewEntityUID(OrderEntityType, cedar.String(""))
-	}
+	uid := NewOrderID(o.ID)
 	return cedar.Entity{
 		UID:        uid,
 		Parents:    cedar.NewEntityUIDSet(),

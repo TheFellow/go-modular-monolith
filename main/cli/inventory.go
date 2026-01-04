@@ -27,7 +27,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					for _, s := range res.Stock {
-						fmt.Printf("%s\t%.2f\t%s\n", string(s.IngredientID.ID), s.Quantity, s.Unit)
+						fmt.Printf("%s\t%.2f\t%s\n", s.IngredientID, s.Quantity, s.Unit)
 					}
 					return nil
 				}),
@@ -46,7 +46,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					s := res.Stock
-					fmt.Printf("%s\t%.2f\t%s\n", string(s.IngredientID.ID), s.Quantity, s.Unit)
+					fmt.Printf("%s\t%.2f\t%s\n", s.IngredientID, s.Quantity, s.Unit)
 					return nil
 				}),
 			},
@@ -105,7 +105,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%.2f\t%s\n", string(res.IngredientID.ID), res.Quantity, res.Unit)
+					fmt.Printf("%s\t%.2f\t%s\n", res.IngredientID, res.Quantity, res.Unit)
 					return nil
 				}),
 			},
@@ -141,7 +141,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%.2f\t%s\n", string(res.IngredientID.ID), res.Quantity, res.Unit)
+					fmt.Printf("%s\t%.2f\t%s\n", res.IngredientID, res.Quantity, res.Unit)
 					return nil
 				}),
 			},

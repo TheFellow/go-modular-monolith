@@ -37,7 +37,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					for _, m := range res.Menus {
-						fmt.Printf("%s\t%s\t%s\t%d\n", string(m.ID.ID), m.Name, m.Status, len(m.Items))
+						fmt.Printf("%s\t%s\t%s\t%d\n", m.ID, m.Name, m.Status, len(m.Items))
 						if cmd.Bool("costs") && len(m.Items) > 0 {
 							an, err := menuqueries.NewAnalyticsCalculator().Analyze(ctx, m, cmd.Float64("target-margin"))
 							if err != nil {
@@ -79,7 +79,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					m := res.Menu
-					fmt.Printf("ID:          %s\n", string(m.ID.ID))
+					fmt.Printf("ID:          %s\n", m.ID)
 					fmt.Printf("Name:        %s\n", m.Name)
 					if m.Description != "" {
 						fmt.Printf("Description: %s\n", m.Description)
@@ -150,7 +150,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(created))
 					}
 
-					fmt.Printf("%s\t%s\n", string(created.ID.ID), created.Name)
+					fmt.Printf("%s\t%s\n", created.ID, created.Name)
 					return nil
 				}),
 			},
@@ -177,7 +177,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(updated))
 					}
 
-					fmt.Printf("%s\t%s\t%d\n", string(updated.ID.ID), updated.Name, len(updated.Items))
+					fmt.Printf("%s\t%s\t%d\n", updated.ID, updated.Name, len(updated.Items))
 					return nil
 				}),
 			},
@@ -204,7 +204,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(updated))
 					}
 
-					fmt.Printf("%s\t%s\t%d\n", string(updated.ID.ID), updated.Name, len(updated.Items))
+					fmt.Printf("%s\t%s\t%d\n", updated.ID, updated.Name, len(updated.Items))
 					return nil
 				}),
 			},
@@ -216,7 +216,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				},
 				Flags: []cli.Flag{JSONFlag},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					menuID := menumodels.NewMenuID(cmd.StringArgs("menu_id")[0])
+					menuID := cmd.StringArgs("menu_id")[0]
 					published, err := c.app.Menu().Publish(ctx, menumodels.Menu{ID: menuID})
 					if err != nil {
 						return err
@@ -226,7 +226,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(published))
 					}
 
-					fmt.Printf("%s\t%s\t%s\n", string(published.ID.ID), published.Name, published.Status)
+					fmt.Printf("%s\t%s\t%s\n", published.ID, published.Name, published.Status)
 					return nil
 				}),
 			},

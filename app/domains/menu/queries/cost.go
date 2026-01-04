@@ -125,7 +125,7 @@ func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID cedar.Entity
 	}
 
 	return DrinkCost{
-		DrinkID:        drink.ID,
+		DrinkID:        drink.EntityUID(),
 		IngredientCost: total,
 		Breakdown:      out,
 		SuggestedPrice: suggested,
@@ -138,5 +138,5 @@ func (c *CostCalculator) ExplainMissing(drink drinksmodels.Drink, cost DrinkCost
 	if !cost.UnknownCost {
 		return ""
 	}
-	return fmt.Sprintf("missing cost data for one or more ingredients in %s", drink.ID.ID)
+	return fmt.Sprintf("missing cost data for one or more ingredients in %s", drink.ID)
 }

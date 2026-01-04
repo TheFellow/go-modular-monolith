@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
-	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -14,7 +13,7 @@ import (
 )
 
 func (c *Commands) Update(ctx *middleware.Context, drink models.Drink) (models.Drink, error) {
-	if string(drink.ID.ID) == "" {
+	if drink.ID == "" {
 		return models.Drink{}, errors.Invalidf("drink id is required")
 	}
 
@@ -49,41 +48,27 @@ func (c *Commands) Update(ctx *middleware.Context, drink models.Drink) (models.D
 		}
 	}
 
-	tx, ok := ctx.UnitOfWork()
-	if !ok {
-		return models.Drink{}, errors.Internalf("missing unit of work")
-	}
-	if err := tx.Register(c.dao); err != nil {
-		return models.Drink{}, errors.Internalf("register dao: %w", err)
-	}
-
-	existing, found, err := c.dao.Get(ctx, string(drink.ID.ID))
+	existing, found, err := c.dao.Get(ctx, drink.ID)
 	if err != nil {
-		return models.Drink{}, errors.Internalf("get drink %s: %w", string(drink.ID.ID), err)
+		return models.Drink{}, errors.Internalf("get drink %s: %w", drink.ID, err)
 	}
 	if !found {
-		return models.Drink{}, errors.NotFoundf("drink %s not found", string(drink.ID.ID))
+		return models.Drink{}, errors.NotFoundf("drink %s not found", drink.ID)
 	}
 
-	previous := existing.ToDomain()
-	previous.ID = drink.ID
+	previous := existing
 
-	existing.Name = drink.Name
-	existing.Category = string(drink.Category)
-	existing.Glass = string(drink.Glass)
-	existing.Description = strings.TrimSpace(drink.Description)
-	existing.Recipe = dao.FromDomain(models.Drink{Recipe: drink.Recipe}).Recipe
-	if err := c.dao.Update(ctx, existing); err != nil {
+	updated := drink
+	updated.Description = strings.TrimSpace(updated.Description)
+
+	if err := c.dao.Update(ctx, updated); err != nil {
 		return models.Drink{}, err
 	}
-
-	updated := existing.ToDomain()
-	updated.ID = drink.ID
 
 	added, removed := diffIngredientIDs(previous.Recipe, updated.Recipe)
 	if !reflect.DeepEqual(previous.Recipe, updated.Recipe) {
 		ctx.AddEvent(events.DrinkRecipeUpdated{
-			DrinkID:            drink.ID,
+			DrinkID:            models.NewDrinkID(drink.ID),
 			Name:               updated.Name,
 			PreviousRecipe:     previous.Recipe,
 			NewRecipe:          updated.Recipe,

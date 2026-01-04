@@ -9,7 +9,7 @@ import (
 )
 
 type Commands struct {
-	dao *dao.FileOrderDAO
+	dao *dao.DAO
 
 	menus       *menuq.Queries
 	drinks      *drinksq.Queries
@@ -27,7 +27,7 @@ func New() *Commands {
 	}
 }
 
-func NewWithDependencies(d *dao.FileOrderDAO, menus *menuq.Queries, drinks *drinksq.Queries, ingredients *ingredientsq.Queries, inventory *inventoryq.Queries) *Commands {
+func NewWithDependencies(d *dao.DAO, menus *menuq.Queries, drinks *drinksq.Queries, ingredients *ingredientsq.Queries, inventory *inventoryq.Queries) *Commands {
 	return &Commands{
 		dao:         d,
 		menus:       menus,

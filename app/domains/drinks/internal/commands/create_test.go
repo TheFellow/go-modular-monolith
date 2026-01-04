@@ -2,8 +2,6 @@ package commands_test
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/commands"
@@ -11,9 +9,10 @@ import (
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
-	"github.com/TheFellow/go-modular-monolith/pkg/uow"
 	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/mjl-/bstore"
 )
 
 type fakeIngredients struct{}
@@ -23,55 +22,42 @@ func (f fakeIngredients) Get(_ context.Context, _ cedar.EntityUID) (ingredientsm
 }
 
 func TestCreate_PersistsOnCommit(t *testing.T) {
-	t.Parallel()
+	testutil.OpenStore(t)
 
-	dir := t.TempDir()
-	path := filepath.Join(dir, "drinks.json")
-
-	err := os.WriteFile(path, []byte("[]\n"), 0o644)
-	testutil.ErrorIf(t, err != nil, "write seed: %v", err)
-
-	d := dao.NewFileDrinkDAO(path)
-	err = d.Load(context.Background())
-	testutil.ErrorIf(t, err != nil, "load: %v", err)
-
-	ctx := middleware.NewContext(context.Background())
-	tx, err := uow.NewManager().Begin(ctx)
-	testutil.ErrorIf(t, err != nil, "begin tx: %v", err)
-	ctx = middleware.NewContext(ctx, middleware.WithUnitOfWork(tx))
-
+	d := dao.New()
 	cmds := commands.NewWithDependencies(d, fakeIngredients{})
-	created, err := cmds.Create(ctx, drinksmodels.Drink{
-		Name:     "Margarita",
-		Category: drinksmodels.DrinkCategoryCocktail,
-		Glass:    drinksmodels.GlassTypeCoupe,
-		Recipe: drinksmodels.Recipe{
-			Ingredients: []drinksmodels.RecipeIngredient{
-				{
-					IngredientID: ingredientsmodels.NewIngredientID("lime-juice"),
-					Amount:       1.0,
-					Unit:         ingredientsmodels.UnitOz,
+
+	var created drinksmodels.Drink
+	err := store.DB.Write(context.Background(), func(tx *bstore.Tx) error {
+		ctx := middleware.NewContext(context.Background(), middleware.WithTransaction(tx))
+
+		var err error
+		created, err = cmds.Create(ctx, drinksmodels.Drink{
+			Name:     "Margarita",
+			Category: drinksmodels.DrinkCategoryCocktail,
+			Glass:    drinksmodels.GlassTypeCoupe,
+			Recipe: drinksmodels.Recipe{
+				Ingredients: []drinksmodels.RecipeIngredient{
+					{
+						IngredientID: ingredientsmodels.NewIngredientID("lime-juice"),
+						Amount:       1.0,
+						Unit:         ingredientsmodels.UnitOz,
+					},
 				},
+				Steps: []string{"Shake with ice"},
 			},
-			Steps: []string{"Shake with ice"},
-		},
-		Description: "A classic sour",
+			Description: "A classic sour",
+		})
+		return err
 	})
-	testutil.ErrorIf(t, err != nil, "execute: %v", err)
-	testutil.ErrorIf(t, string(created.ID.ID) == "", "expected id to be set")
+	testutil.Ok(t, err)
+	testutil.ErrorIf(t, created.ID == "", "expected id to be set")
 
-	err = tx.Commit()
-	testutil.ErrorIf(t, err != nil, "commit: %v", err)
-
-	loaded := dao.NewFileDrinkDAO(path)
-	err = loaded.Load(context.Background())
-	testutil.ErrorIf(t, err != nil, "reload: %v", err)
-
-	drinks, err := loaded.List(context.Background())
-	testutil.ErrorIf(t, err != nil, "list: %v", err)
+	drinks, err := d.List(context.Background())
+	testutil.Ok(t, err)
 
 	testutil.ErrorIf(t, len(drinks) != 1, "expected 1 drink, got %d", len(drinks))
 	testutil.ErrorIf(t, drinks[0].Name != "Margarita", "expected Margarita, got %q", drinks[0].Name)
 	testutil.ErrorIf(t, drinks[0].Recipe.Ingredients == nil || len(drinks[0].Recipe.Ingredients) != 1, "expected 1 recipe ingredient")
-	testutil.ErrorIf(t, drinks[0].Recipe.Ingredients[0].IngredientID != "lime-juice", "expected lime-juice, got %q", drinks[0].Recipe.Ingredients[0].IngredientID)
+	testutil.ErrorIf(t, string(drinks[0].Recipe.Ingredients[0].IngredientID.ID) != "lime-juice", "expected lime-juice, got %q", string(drinks[0].Recipe.Ingredients[0].IngredientID.ID))
 }

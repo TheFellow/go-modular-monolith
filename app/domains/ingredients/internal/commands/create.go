@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
-	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/ids"
@@ -12,7 +11,7 @@ import (
 )
 
 func (c *Commands) Create(ctx *middleware.Context, ingredient models.Ingredient) (models.Ingredient, error) {
-	if string(ingredient.ID.ID) != "" {
+	if ingredient.ID != "" {
 		return models.Ingredient{}, errors.Invalidf("id must be empty")
 	}
 
@@ -27,28 +26,17 @@ func (c *Commands) Create(ctx *middleware.Context, ingredient models.Ingredient)
 		return models.Ingredient{}, errors.Invalidf("unit is required")
 	}
 
-	tx, ok := ctx.UnitOfWork()
-	if !ok {
-		return models.Ingredient{}, errors.Internalf("missing unit of work")
-	}
-	if err := tx.Register(c.dao); err != nil {
-		return models.Ingredient{}, errors.Internalf("register dao: %w", err)
-	}
-
 	uid, err := ids.New(models.IngredientEntityType)
 	if err != nil {
 		return models.Ingredient{}, errors.Internalf("generate id: %w", err)
 	}
 
-	record := dao.Ingredient{
-		ID:          string(uid.ID),
-		Name:        name,
-		Category:    string(ingredient.Category),
-		Unit:        string(ingredient.Unit),
-		Description: strings.TrimSpace(ingredient.Description),
-	}
+	created := ingredient
+	created.ID = string(uid.ID)
+	created.Name = name
+	created.Description = strings.TrimSpace(created.Description)
 
-	if err := c.dao.Add(ctx, record); err != nil {
+	if err := c.dao.Insert(ctx, created); err != nil {
 		return models.Ingredient{}, err
 	}
 
@@ -58,5 +46,5 @@ func (c *Commands) Create(ctx *middleware.Context, ingredient models.Ingredient)
 		Category:     ingredient.Category,
 	})
 
-	return record.ToDomain(), nil
+	return created, nil
 }

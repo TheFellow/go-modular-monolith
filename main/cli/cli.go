@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/urfave/cli/v3"
 )
 
@@ -17,6 +18,9 @@ type CLI struct {
 }
 
 func NewCLI() (*CLI, error) {
+	if err := store.Open("data/mixology.db"); err != nil {
+		return nil, err
+	}
 	return &CLI{app: app.New(), actor: "owner"}, nil
 }
 

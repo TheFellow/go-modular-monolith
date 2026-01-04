@@ -2,132 +2,80 @@ package dao
 
 import (
 	"context"
-	"encoding/json"
-	"os"
-	"path/filepath"
-	"time"
 
+	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/mjl-/bstore"
 )
 
-type FileMenuDAO struct {
-	path   string
-	menus  []Menu
-	loaded bool
-}
+type DAO struct{}
 
-const dataPath = "data/menus.json"
+func New() *DAO { return &DAO{} }
 
-func New() *FileMenuDAO {
-	return &FileMenuDAO{path: dataPath}
-}
+func (d *DAO) Get(ctx context.Context, id string) (models.Menu, bool, error) {
+	var (
+		out   models.Menu
+		found bool
+	)
 
-func NewFileMenuDAO(path string) *FileMenuDAO {
-	return &FileMenuDAO{path: path}
-}
-
-func (d *FileMenuDAO) ensureLoaded(ctx context.Context) error {
-	if d.loaded {
-		return nil
-	}
-	return d.Load(ctx)
-}
-
-func (d *FileMenuDAO) Load(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	b, err := os.ReadFile(d.path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			d.menus = []Menu{}
-			d.loaded = true
-			return nil
+	err := d.read(ctx, func(tx *bstore.Tx) error {
+		out = models.Menu{ID: id}
+		if err := tx.Get(&out); err != nil {
+			if err == bstore.ErrAbsent {
+				out = models.Menu{}
+				found = false
+				return nil
+			}
+			return err
 		}
-		return errors.Internalf("read menus file: %w", err)
-	}
-	if len(b) == 0 {
-		d.menus = []Menu{}
-		d.loaded = true
+		found = true
 		return nil
-	}
-
-	var menus []Menu
-	if err := json.Unmarshal(b, &menus); err != nil {
-		return errors.Internalf("parse menus json %q: %w", d.path, err)
-	}
-
-	d.menus = menus
-	d.loaded = true
-	return nil
+	})
+	return out, found, err
 }
 
-func (d *FileMenuDAO) Save(ctx context.Context) error {
-	if err := d.ensureLoaded(ctx); err != nil {
-		return err
-	}
-
-	dir := filepath.Dir(d.path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-
-	b, err := json.MarshalIndent(d.menus, "", "  ")
-	if err != nil {
-		return err
-	}
-	b = append(b, '\n')
-
-	tmp, err := os.CreateTemp(dir, ".menus-*.json")
-	if err != nil {
-		return err
-	}
-
-	tmpName := tmp.Name()
-	_, writeErr := tmp.Write(b)
-	closeErr := tmp.Close()
-	if writeErr != nil {
-		_ = os.Remove(tmpName)
-		return writeErr
-	}
-	if closeErr != nil {
-		_ = os.Remove(tmpName)
-		return closeErr
-	}
-
-	if err := os.Chmod(tmpName, 0o644); err != nil {
-		_ = os.Remove(tmpName)
-		return err
-	}
-	if err := os.Rename(tmpName, d.path); err != nil {
-		_ = os.Remove(tmpName)
-		return err
-	}
-
-	return nil
+func (d *DAO) List(ctx context.Context) ([]models.Menu, error) {
+	var out []models.Menu
+	err := d.read(ctx, func(tx *bstore.Tx) error {
+		menus, err := bstore.QueryTx[models.Menu](tx).List()
+		if err != nil {
+			return err
+		}
+		out = menus
+		return nil
+	})
+	return out, err
 }
 
-type Menu struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	Description string     `json:"description,omitempty"`
-	Items       []MenuItem `json:"items,omitempty"`
-	Status      string     `json:"status"`
-	CreatedAt   time.Time  `json:"created_at"`
-	PublishedAt *time.Time `json:"published_at,omitempty"`
+func (d *DAO) Insert(ctx context.Context, menu models.Menu) error {
+	return d.write(ctx, func(tx *bstore.Tx) error {
+		return tx.Insert(&menu)
+	})
 }
 
-type MenuItem struct {
-	DrinkID      string  `json:"drink_id"`
-	DisplayName  *string `json:"display_name,omitempty"`
-	Price        *Price  `json:"price,omitempty"`
-	Featured     bool    `json:"featured,omitempty"`
-	Availability string  `json:"availability"`
-	SortOrder    int     `json:"sort_order,omitempty"`
+func (d *DAO) Update(ctx context.Context, menu models.Menu) error {
+	return d.write(ctx, func(tx *bstore.Tx) error {
+		return tx.Update(&menu)
+	})
 }
 
-type Price struct {
-	Amount   int    `json:"amount"`
-	Currency string `json:"currency"`
+func (d *DAO) read(ctx context.Context, f func(*bstore.Tx) error) error {
+	if tx, ok := store.TxFromContext(ctx); ok && tx != nil {
+		return f(tx)
+	}
+	if store.DB == nil {
+		return errors.Internalf("store not initialized")
+	}
+	return store.DB.Read(ctx, func(tx *bstore.Tx) error {
+		return f(tx)
+	})
+}
+
+func (d *DAO) write(ctx context.Context, f func(*bstore.Tx) error) error {
+	tx, ok := store.TxFromContext(ctx)
+	if !ok || tx == nil {
+		return errors.Internalf("missing transaction")
+	}
+	return f(tx)
 }

@@ -3,13 +3,13 @@ package queries
 import "github.com/TheFellow/go-modular-monolith/app/domains/orders/internal/dao"
 
 type Queries struct {
-	dao *dao.FileOrderDAO
+	dao *dao.DAO
 }
 
 func New() *Queries {
 	return &Queries{dao: dao.New()}
 }
 
-func NewWithDAO(d *dao.FileOrderDAO) *Queries {
+func NewWithDAO(d *dao.DAO) *Queries {
 	return &Queries{dao: d}
 }

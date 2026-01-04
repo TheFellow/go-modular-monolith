@@ -7,7 +7,7 @@ import (
 )
 
 type Commands struct {
-	dao          *dao.FileMenuDAO
+	dao          *dao.DAO
 	availability *availability.AvailabilityCalculator
 	drinks       *drinksq.Queries
 }

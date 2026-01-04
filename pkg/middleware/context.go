@@ -3,8 +3,10 @@ package middleware
 import (
 	"context"
 
-	"github.com/TheFellow/go-modular-monolith/pkg/uow"
 	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/mjl-/bstore"
+
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type Context struct {
@@ -15,7 +17,6 @@ type Context struct {
 type ContextOpt func(*Context)
 
 type principalKey struct{}
-type uowKey struct{}
 
 func WithPrincipal(p cedar.EntityUID) ContextOpt {
 	return func(c *Context) {
@@ -23,9 +24,9 @@ func WithPrincipal(p cedar.EntityUID) ContextOpt {
 	}
 }
 
-func WithUnitOfWork(tx *uow.Tx) ContextOpt {
+func WithTransaction(tx *bstore.Tx) ContextOpt {
 	return func(c *Context) {
-		c.Context = context.WithValue(c.Context, uowKey{}, tx)
+		c.Context = store.WithTx(c.Context, tx)
 	}
 }
 
@@ -75,7 +76,6 @@ func (c *Context) Principal() cedar.EntityUID {
 	return cedar.NewEntityUID(cedar.EntityType("Mixology::Actor"), cedar.String("anonymous"))
 }
 
-func (c *Context) UnitOfWork() (*uow.Tx, bool) {
-	tx, ok := c.Context.Value(uowKey{}).(*uow.Tx)
-	return tx, ok
+func (c *Context) Transaction() (*bstore.Tx, bool) {
+	return store.TxFromContext(c.Context)
 }

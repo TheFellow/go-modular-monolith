@@ -8,14 +8,9 @@ import (
 )
 
 func (q *Queries) List(ctx *middleware.Context) ([]models.Order, error) {
-	records, err := q.dao.List(ctx)
+	out, err := q.dao.List(ctx)
 	if err != nil {
 		return nil, err
-	}
-
-	out := make([]models.Order, 0, len(records))
-	for _, r := range records {
-		out = append(out, r.ToDomain())
 	}
 
 	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })

@@ -10,7 +10,7 @@ import (
 )
 
 type Commands struct {
-	dao         *dao.FileStockDAO
+	dao         *dao.DAO
 	ingredients ingredientReader
 }
 
@@ -25,6 +25,6 @@ func New() *Commands {
 	}
 }
 
-func NewWithDependencies(d *dao.FileStockDAO, ingredients ingredientReader) *Commands {
+func NewWithDependencies(d *dao.DAO, ingredients ingredientReader) *Commands {
 	return &Commands{dao: d, ingredients: ingredients}
 }

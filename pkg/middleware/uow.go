@@ -1,23 +1,22 @@
 package middleware
 
 import (
-	"github.com/TheFellow/go-modular-monolith/pkg/uow"
 	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/mjl-/bstore"
+
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-func UnitOfWork(m *uow.Manager) CommandMiddleware {
+func UnitOfWork() CommandMiddleware {
 	return func(ctx *Context, _ cedar.EntityUID, _ cedar.Entity, next CommandNext) error {
-		tx, err := m.Begin(ctx)
-		if err != nil {
-			return err
-		}
-		ctx = NewContext(ctx, WithUnitOfWork(tx))
-
-		if err := next(ctx); err != nil {
-			tx.Rollback()
-			return err
+		if store.DB == nil {
+			return errors.Internalf("store not initialized")
 		}
 
-		return tx.Commit()
+		return store.DB.Write(ctx, func(tx *bstore.Tx) error {
+			txCtx := NewContext(ctx, WithTransaction(tx))
+			return next(txCtx)
+		})
 	}
 }

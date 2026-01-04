@@ -8,14 +8,9 @@ import (
 )
 
 func (q *Queries) List(ctx context.Context) ([]models.Drink, error) {
-	records, err := q.dao.List(ctx)
+	drinks, err := q.dao.List(ctx)
 	if err != nil {
 		return nil, errors.Internalf("list drinks: %w", err)
-	}
-
-	drinks := make([]models.Drink, 0, len(records))
-	for _, record := range records {
-		drinks = append(drinks, record.ToDomain())
 	}
 
 	return drinks, nil

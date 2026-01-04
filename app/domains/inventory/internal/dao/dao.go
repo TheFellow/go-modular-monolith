@@ -2,107 +2,80 @@ package dao
 
 import (
 	"context"
-	"encoding/json"
-	"os"
-	"path/filepath"
 
+	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/mjl-/bstore"
 )
 
-type FileStockDAO struct {
-	path   string
-	stock  []Stock
-	loaded bool
-}
+type DAO struct{}
 
-const dataPath = "data/stock.json"
+func New() *DAO { return &DAO{} }
 
-func New() *FileStockDAO {
-	return &FileStockDAO{path: dataPath}
-}
+func (d *DAO) Get(ctx context.Context, ingredientID string) (models.Stock, bool, error) {
+	var (
+		out   models.Stock
+		found bool
+	)
 
-func NewFileStockDAO(path string) *FileStockDAO {
-	return &FileStockDAO{path: path}
-}
-
-func (d *FileStockDAO) ensureLoaded(ctx context.Context) error {
-	if d.loaded {
-		return nil
-	}
-	return d.Load(ctx)
-}
-
-func (d *FileStockDAO) Load(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	b, err := os.ReadFile(d.path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			d.stock = []Stock{}
-			d.loaded = true
-			return nil
+	err := d.read(ctx, func(tx *bstore.Tx) error {
+		out = models.Stock{IngredientID: ingredientID}
+		if err := tx.Get(&out); err != nil {
+			if err == bstore.ErrAbsent {
+				out = models.Stock{}
+				found = false
+				return nil
+			}
+			return err
 		}
-		return errors.Internalf("read stock file: %w", err)
-	}
-	if len(b) == 0 {
-		d.stock = []Stock{}
-		d.loaded = true
+		found = true
 		return nil
-	}
-
-	var stock []Stock
-	if err := json.Unmarshal(b, &stock); err != nil {
-		return errors.Internalf("parse stock json %q: %w", d.path, err)
-	}
-
-	d.stock = stock
-	d.loaded = true
-	return nil
+	})
+	return out, found, err
 }
 
-func (d *FileStockDAO) Save(ctx context.Context) error {
-	if err := d.ensureLoaded(ctx); err != nil {
-		return err
-	}
+func (d *DAO) List(ctx context.Context) ([]models.Stock, error) {
+	var out []models.Stock
+	err := d.read(ctx, func(tx *bstore.Tx) error {
+		stock, err := bstore.QueryTx[models.Stock](tx).List()
+		if err != nil {
+			return err
+		}
+		out = stock
+		return nil
+	})
+	return out, err
+}
 
-	dir := filepath.Dir(d.path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
+func (d *DAO) Upsert(ctx context.Context, stock models.Stock) error {
+	return d.write(ctx, func(tx *bstore.Tx) error {
+		if err := tx.Update(&stock); err != nil {
+			if err == bstore.ErrAbsent {
+				return tx.Insert(&stock)
+			}
+			return err
+		}
+		return nil
+	})
+}
 
-	b, err := json.MarshalIndent(d.stock, "", "  ")
-	if err != nil {
-		return err
+func (d *DAO) read(ctx context.Context, f func(*bstore.Tx) error) error {
+	if tx, ok := store.TxFromContext(ctx); ok && tx != nil {
+		return f(tx)
 	}
-	b = append(b, '\n')
+	if store.DB == nil {
+		return errors.Internalf("store not initialized")
+	}
+	return store.DB.Read(ctx, func(tx *bstore.Tx) error {
+		return f(tx)
+	})
+}
 
-	tmp, err := os.CreateTemp(dir, ".stock-*.json")
-	if err != nil {
-		return err
+func (d *DAO) write(ctx context.Context, f func(*bstore.Tx) error) error {
+	tx, ok := store.TxFromContext(ctx)
+	if !ok || tx == nil {
+		return errors.Internalf("missing transaction")
 	}
-
-	tmpName := tmp.Name()
-	_, writeErr := tmp.Write(b)
-	closeErr := tmp.Close()
-	if writeErr != nil {
-		_ = os.Remove(tmpName)
-		return writeErr
-	}
-	if closeErr != nil {
-		_ = os.Remove(tmpName)
-		return closeErr
-	}
-
-	if err := os.Chmod(tmpName, 0o644); err != nil {
-		_ = os.Remove(tmpName)
-		return err
-	}
-	if err := os.Rename(tmpName, d.path); err != nil {
-		_ = os.Remove(tmpName)
-		return err
-	}
-
-	return nil
+	return f(tx)
 }

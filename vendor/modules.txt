@@ -43,6 +43,9 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
+# github.com/mjl-/bstore v0.0.10
+## explicit; go 1.23.0
+github.com/mjl-/bstore
 # github.com/nishanths/exhaustive v0.12.0
 ## explicit; go 1.18
 github.com/nishanths/exhaustive
@@ -59,6 +62,9 @@ github.com/xeipuuv/gojsonreference
 # github.com/xeipuuv/gojsonschema v1.2.0
 ## explicit
 github.com/xeipuuv/gojsonschema
+# go.etcd.io/bbolt v1.3.12
+## explicit; go 1.23
+go.etcd.io/bbolt
 # golang.org/x/exp v0.0.0-20220921023135-46d9e7742f1e
 ## explicit; go 1.18
 golang.org/x/exp/constraints

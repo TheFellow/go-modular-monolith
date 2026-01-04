@@ -20,7 +20,7 @@ func (q *Queries) Get(ctx *middleware.Context, id cedar.EntityUID) (models.Order
 		return models.Order{}, errors.NotFoundf("order %q not found", id.ID)
 	}
 
-	o := record.ToDomain()
+	o := record
 	if err := o.Status.Validate(); err != nil {
 		return models.Order{}, err
 	}

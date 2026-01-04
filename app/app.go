@@ -8,7 +8,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/uow"
 )
 
 type App struct {
@@ -22,7 +21,7 @@ type App struct {
 func New() *App {
 	middleware.Command = middleware.NewCommandChain(
 		middleware.CommandAuthZ(),
-		middleware.UnitOfWork(uow.NewManager()),
+		middleware.UnitOfWork(),
 		middleware.Dispatcher(dispatcher.New()),
 	)
 

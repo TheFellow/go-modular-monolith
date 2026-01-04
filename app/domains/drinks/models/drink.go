@@ -9,23 +9,20 @@ func NewDrinkID(id string) cedar.EntityUID {
 }
 
 type Drink struct {
-	ID          cedar.EntityUID
-	Name        string
-	Category    DrinkCategory
+	ID          string
+	Name        string        `bstore:"unique"`
+	Category    DrinkCategory `bstore:"index"`
 	Glass       GlassType
 	Recipe      Recipe
 	Description string
 }
 
 func (d Drink) EntityUID() cedar.EntityUID {
-	return d.ID
+	return NewDrinkID(d.ID)
 }
 
 func (d Drink) CedarEntity() cedar.Entity {
-	uid := d.ID
-	if string(uid.ID) == "" {
-		uid = cedar.NewEntityUID(DrinkEntityType, cedar.String(""))
-	}
+	uid := NewDrinkID(d.ID)
 	return cedar.Entity{
 		UID:        uid,
 		Parents:    cedar.NewEntityUIDSet(),

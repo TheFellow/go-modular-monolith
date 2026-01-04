@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/events"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -12,30 +11,20 @@ import (
 )
 
 func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (models.Menu, error) {
-	if string(menu.ID.ID) == "" {
+	if menu.ID == "" {
 		return models.Menu{}, errors.Invalidf("menu id is required")
 	}
 
 	menuID := menu.ID
-
-	tx, ok := ctx.UnitOfWork()
-	if !ok {
-		return models.Menu{}, errors.Internalf("missing unit of work")
-	}
-	if err := tx.Register(c.dao); err != nil {
-		return models.Menu{}, errors.Internalf("register dao: %w", err)
-	}
-
-	record, found, err := c.dao.Get(ctx, string(menu.ID.ID))
+	record, found, err := c.dao.Get(ctx, menuID)
 	if err != nil {
-		return models.Menu{}, errors.Internalf("get menu %s: %w", menu.ID.ID, err)
+		return models.Menu{}, errors.Internalf("get menu %s: %w", menuID, err)
 	}
 	if !found {
-		return models.Menu{}, errors.NotFoundf("menu %s not found", menu.ID.ID)
+		return models.Menu{}, errors.NotFoundf("menu %s not found", menuID)
 	}
 
-	menu = record.ToDomain()
-	menu.ID = menuID
+	menu = record
 
 	now := time.Now().UTC()
 	menu.Status = models.MenuStatusPublished
@@ -48,12 +37,12 @@ func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (models.Me
 		return models.Menu{}, err
 	}
 
-	if err := c.dao.Update(ctx, dao.FromDomain(menu)); err != nil {
+	if err := c.dao.Update(ctx, menu); err != nil {
 		return models.Menu{}, err
 	}
 
 	ctx.AddEvent(events.MenuPublished{
-		MenuID:      menuID,
+		MenuID:      models.NewMenuID(menuID),
 		PublishedAt: now,
 	})
 

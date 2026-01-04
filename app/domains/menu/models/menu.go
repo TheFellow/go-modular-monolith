@@ -17,24 +17,21 @@ func NewMenuID(id string) cedar.EntityUID {
 }
 
 type Menu struct {
-	ID          cedar.EntityUID
-	Name        string
+	ID          string
+	Name        string `bstore:"unique"`
 	Description string
 	Items       []MenuItem
-	Status      MenuStatus
-	CreatedAt   time.Time
+	Status      MenuStatus `bstore:"index"`
+	CreatedAt   time.Time  `bstore:"index"`
 	PublishedAt optional.Value[time.Time]
 }
 
 func (m Menu) EntityUID() cedar.EntityUID {
-	return m.ID
+	return NewMenuID(m.ID)
 }
 
 func (m Menu) CedarEntity() cedar.Entity {
-	uid := m.ID
-	if string(uid.ID) == "" {
-		uid = cedar.NewEntityUID(MenuEntityType, cedar.String(""))
-	}
+	uid := NewMenuID(m.ID)
 	return cedar.Entity{
 		UID:        uid,
 		Parents:    cedar.NewEntityUIDSet(),

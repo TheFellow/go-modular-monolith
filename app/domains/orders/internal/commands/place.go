@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
-	"github.com/TheFellow/go-modular-monolith/app/domains/orders/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/ids"
@@ -39,7 +38,7 @@ func (c *Commands) Place(ctx *middleware.Context, order models.Order) (models.Or
 	}
 
 	now := time.Now().UTC()
-	order.ID = id
+	order.ID = string(id.ID)
 	order.Status = models.OrderStatusPending
 	order.CreatedAt = now
 	order.CompletedAt = optional.NewNone[time.Time]()
@@ -48,15 +47,7 @@ func (c *Commands) Place(ctx *middleware.Context, order models.Order) (models.Or
 		return models.Order{}, err
 	}
 
-	tx, ok := ctx.UnitOfWork()
-	if !ok {
-		return models.Order{}, errors.Internalf("missing unit of work")
-	}
-	if err := tx.Register(c.dao); err != nil {
-		return models.Order{}, errors.Internalf("register dao: %w", err)
-	}
-
-	if err := c.dao.Add(ctx, dao.FromDomain(order)); err != nil {
+	if err := c.dao.Insert(ctx, order); err != nil {
 		return models.Order{}, err
 	}
 

@@ -17,7 +17,7 @@ func (p StockPatch) EntityUID() cedar.EntityUID {
 	_ = p.Reason
 	_ = p.Delta
 	_ = p.CostPerUnit
-	return NewStockID(p.IngredientID)
+	return NewStockID(string(p.IngredientID.ID))
 }
 
 func (p StockPatch) CedarEntity() cedar.Entity {
