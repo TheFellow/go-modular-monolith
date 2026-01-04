@@ -28,6 +28,11 @@ func (c *Commands) Adjust(ctx *middleware.Context, adj models.StockAdjustment) (
 	if ingredient.Unit == "" {
 		return models.Stock{}, errors.Invalidf("ingredient unit is required")
 	}
+	if adj.CostPerUnit != nil {
+		if err := adj.CostPerUnit.Validate(); err != nil {
+			return models.Stock{}, err
+		}
+	}
 
 	tx, ok := ctx.UnitOfWork()
 	if !ok {
@@ -60,6 +65,9 @@ func (c *Commands) Adjust(ctx *middleware.Context, adj models.StockAdjustment) (
 
 	existing.Quantity = newQty
 	existing.Unit = string(ingredient.Unit)
+	if adj.CostPerUnit != nil {
+		existing.CostPerUnit = adj.CostPerUnit
+	}
 	existing.LastUpdated = time.Now().UTC()
 
 	if err := c.dao.Set(ctx, existing); err != nil {

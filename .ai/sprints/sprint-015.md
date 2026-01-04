@@ -6,13 +6,13 @@ Implement sophisticated business rules including ingredient substitutions, cost 
 
 ## Tasks
 
-- [ ] Create `app/ingredients/models/substitution.go` with substitution rules
-- [ ] Add substitution queries to Ingredients context
-- [ ] Implement substitution-aware availability in Menu context
-- [ ] Add cost tracking to Inventory (cost per unit)
-- [ ] Create `app/menu/queries/cost.go` for drink cost calculation
-- [ ] Create `app/menu/queries/analytics.go` for menu analytics
-- [ ] Add cost/margin display to CLI menu commands
+- [x] Create `app/ingredients/models/substitution.go` with substitution rules
+- [x] Add substitution queries to Ingredients context
+- [x] Implement substitution-aware availability in Menu context
+- [x] Add cost tracking to Inventory (cost per unit)
+- [x] Create `app/menu/queries/cost.go` for drink cost calculation
+- [x] Create `app/menu/queries/analytics.go` for menu analytics
+- [x] Add cost/margin display to CLI menu commands
 
 ## Substitution Rules
 

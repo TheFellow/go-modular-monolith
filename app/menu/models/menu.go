@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/money"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -115,17 +116,4 @@ func (s MenuStatus) Validate() error {
 	}
 }
 
-type Price struct {
-	Amount   int
-	Currency string
-}
-
-func (p Price) Validate() error {
-	if p.Amount < 0 {
-		return errors.Invalidf("amount must be >= 0")
-	}
-	if strings.TrimSpace(p.Currency) == "" {
-		return errors.Invalidf("currency is required")
-	}
-	return nil
-}
+type Price = money.Price
