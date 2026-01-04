@@ -8,12 +8,12 @@ A cocktail/drink management system demonstrating modular monolith architecture w
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           Mixology Domain                                    │
+│                           Mixology Domain                                   │
 │                                                                             │
-│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌───────────┐ │
-│  │ Ingredients │     │   Drinks    │     │  Inventory  │     │   Menu    │ │
-│  │  (Master)   │────▶│  (Recipes)  │     │  (Stock)    │────▶│ (Curation)│ │
-│  └─────────────┘     └─────────────┘     └─────────────┘     └───────────┘ │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌───────────┐  │
+│  │ Ingredients │     │   Drinks    │     │  Inventory  │     │   Menu    │  │
+│  │  (Master)   │────▶│  (Recipes)  │     │  (Stock)    │────▶│ (Curation)│  │
+│  └─────────────┘     └─────────────┘     └─────────────┘     └───────────┘  │
 │        │                   │                   │                   │        │
 │        │                   │                   │                   │        │
 │        └───────────────────┴───────────────────┴───────────────────┘        │
@@ -47,9 +47,9 @@ Command
 Event(s) emitted
     │
     ▼
-┌─────────┐
+┌──────────┐
 │Dispatcher│
-└─────────┘
+└──────────┘
     │
 ┌───┴───┐
 ▼       ▼
@@ -214,10 +214,10 @@ Module entry points invoke commands through a pipeline that handles cross-cuttin
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Write Pipeline (Commands)                   │
-│  ┌─────────┐    ┌─────────┐    ┌────────────┐    ┌──────────┐  │
-│  │  AuthZ  │ -> │   UoW   │ -> │ Dispatcher │ -> │ Execute  │  │
-│  │ (Cedar) │    │ (Begin) │    │  (Events)  │    │(Use Case)│  │
-│  └─────────┘    └─────────┘    └────────────┘    └──────────┘  │
+│  ┌─────────┐    ┌─────────┐    ┌────────────┐    ┌──────────┐   │
+│  │  AuthZ  │ -> │   UoW   │ -> │ Dispatcher │ -> │ Execute  │   │
+│  │ (Cedar) │    │ (Begin) │    │  (Events)  │    │(Use Case)│   │
+│  └─────────┘    └─────────┘    └────────────┘    └──────────┘   │
 │       │              │               │                 │        │
 │       │              │               │                 v        │
 │       │              │               │           ┌──────────┐   │

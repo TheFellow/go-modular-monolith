@@ -23,33 +23,11 @@ Handlers must not call commands (which would emit events, causing cascading).
 
 ### Rule 2: Handlers Cannot Import Own Module's Events
 
-Handlers may react to events from any module (including their own). Importing events does not imply emission; cascading is prevented by forbidding handlers from importing commands.
-
-```yaml
-- name: handlers-no-own-events
-  packages:
-    include:
-      - "app/{module}/handlers/**"
-  rules:
-    forbid:
-      - "app/{module}/events"
-```
+Removed: handlers may import and handle their own events when appropriate.
 
 ### Rule 3: Internal Packages Stay Internal
 
-A module's `internal/` packages should only be imported within that module.
-
-```yaml
-- name: internal-stays-internal
-  packages:
-    include:
-      - "app/**"
-    exclude:
-      - "app/{module}/**"
-  rules:
-    forbid:
-      - "app/{module}/internal/**"
-```
+A module's `internal/` packages should only be imported within that module. This is enforced by `no-cross-module-internal` (Rule 7).
 
 ### Rule 4: Events Cannot Import Internal
 
@@ -107,6 +85,20 @@ No module should reach into another module's internal packages.
       - "app/{!module}/internal/**"
 ```
 
+### Rule 8: Handlers Cannot Import Module Packages
+
+Handlers must not import Module types (which wrap commands with AuthZ). Modules enforce AuthZ at the surface boundary (CLI, API). Handlers execute within an already-authorized context and should use queries/events/models packages directly.
+
+```yaml
+- name: handlers-no-modules
+  packages:
+    include:
+      - "app/*/handlers/**"
+  rules:
+    forbid:
+      - "app/*"
+```
+
 ## Tasks
 
 - [x] Add `arch-lint` as a tool dependency in `go.mod`
@@ -151,6 +143,15 @@ specs:
         - "app/*/internal/commands"
         - "app/*/internal/commands/**"
 
+  # Handlers cannot import module root packages (e.g. "app/inventory")
+  - name: handlers-no-modules
+    packages:
+      include:
+        - "app/*/handlers/**"
+    rules:
+      forbid:
+        - "app/*"
+
   # Internal packages are module-private
   - name: no-cross-module-internal
     packages:
@@ -193,7 +194,7 @@ specs:
 | Violation | Rule | Example |
 |-----------|------|---------|
 | Handler calls command | handlers-no-commands | `menu/handlers` imports `inventory/internal/commands` |
-| Handler emits own events | handlers-no-own-events | `drinks/handlers` imports `drinks/events` |
+| Handler imports module root | handlers-no-modules | handler imports `app/inventory` instead of `app/inventory/events` |
 | Cross-module internal access | no-cross-module-internal | `menu` imports `drinks/internal/dao` |
 | Event depends on internal | events-no-internal | `inventory/events` imports `inventory/internal/dao` |
 | Query calls command | queries-no-commands | `drinks/queries` imports `drinks/internal/commands` |

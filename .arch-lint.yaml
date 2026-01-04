@@ -9,6 +9,16 @@ specs:
         - "app/*/internal/commands"
         - "app/*/internal/commands/**"
 
+  # Handlers cannot import module root packages (e.g. "app/inventory").
+  # Handlers may import subpackages (events/models/queries) as needed.
+  - name: handlers-no-modules
+    packages:
+      include:
+        - "app/*/handlers/**"
+    rules:
+      forbid:
+        - "app/*"
+
   # Internal packages are module-private
   - name: no-cross-module-internal
     packages:
