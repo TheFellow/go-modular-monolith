@@ -8,30 +8,14 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/menu/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type PublishParams struct {
-	MenuID cedar.EntityUID
-}
-
-func (p PublishParams) CedarEntity() cedar.Entity {
-	uid := p.MenuID
-	if string(uid.ID) == "" {
-		uid = cedar.NewEntityUID(models.MenuEntityType, cedar.String(""))
-	}
-	return cedar.Entity{
-		UID:        uid,
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
-	}
-}
-
-func (c *Commands) Publish(ctx *middleware.Context, params PublishParams) (models.Menu, error) {
-	if string(params.MenuID.ID) == "" {
+func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (models.Menu, error) {
+	if string(menu.ID.ID) == "" {
 		return models.Menu{}, errors.Invalidf("menu id is required")
 	}
+
+	menuID := menu.ID
 
 	tx, ok := ctx.UnitOfWork()
 	if !ok {
@@ -41,16 +25,16 @@ func (c *Commands) Publish(ctx *middleware.Context, params PublishParams) (model
 		return models.Menu{}, errors.Internalf("register dao: %w", err)
 	}
 
-	record, found, err := c.dao.Get(ctx, string(params.MenuID.ID))
+	record, found, err := c.dao.Get(ctx, string(menu.ID.ID))
 	if err != nil {
-		return models.Menu{}, errors.Internalf("get menu %s: %w", params.MenuID.ID, err)
+		return models.Menu{}, errors.Internalf("get menu %s: %w", menu.ID.ID, err)
 	}
 	if !found {
-		return models.Menu{}, errors.NotFoundf("menu %s not found", params.MenuID.ID)
+		return models.Menu{}, errors.NotFoundf("menu %s not found", menu.ID.ID)
 	}
 
-	menu := record.ToDomain()
-	menu.ID = params.MenuID
+	menu = record.ToDomain()
+	menu.ID = menuID
 
 	now := time.Now().UTC()
 	menu.Status = models.MenuStatusPublished
@@ -68,7 +52,7 @@ func (c *Commands) Publish(ctx *middleware.Context, params PublishParams) (model
 	}
 
 	ctx.AddEvent(events.MenuPublished{
-		MenuID:      params.MenuID,
+		MenuID:      menuID,
 		PublishedAt: now,
 	})
 

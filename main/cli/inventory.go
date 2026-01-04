@@ -75,7 +75,11 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					ingredientID := cmd.StringArgs("ingredient_id")[0]
 					delta := cmd.Float64Args("delta")[0]
 
-					res, err := c.app.Inventory().Adjust(ctx, models.NewIngredientID(ingredientID), delta, inventorymodels.AdjustmentReason(cmd.String("reason")))
+					res, err := c.app.Inventory().Adjust(ctx, inventorymodels.StockAdjustment{
+						IngredientID: models.NewIngredientID(ingredientID),
+						Delta:        delta,
+						Reason:       inventorymodels.AdjustmentReason(cmd.String("reason")),
+					})
 					if err != nil {
 						return err
 					}
@@ -95,7 +99,10 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					ingredientID := cmd.StringArgs("ingredient_id")[0]
 					qty := cmd.Float64Args("quantity")[0]
 
-					res, err := c.app.Inventory().Set(ctx, models.NewIngredientID(ingredientID), qty)
+					res, err := c.app.Inventory().Set(ctx, inventorymodels.Stock{
+						IngredientID: models.NewIngredientID(ingredientID),
+						Quantity:     qty,
+					})
 					if err != nil {
 						return err
 					}

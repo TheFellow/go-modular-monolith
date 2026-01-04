@@ -105,7 +105,10 @@ func (c *CLI) menuCommands() *cli.Command {
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					menuID := menumodels.NewMenuID(cmd.StringArgs("menu_id")[0])
 					drinkID := drinksmodels.NewDrinkID(cmd.StringArgs("drink_id")[0])
-					updated, err := c.app.Menu().AddDrink(ctx, menuID, drinkID)
+					updated, err := c.app.Menu().AddDrink(ctx, menumodels.MenuDrinkChange{
+						MenuID:  menuID,
+						DrinkID: drinkID,
+					})
 					if err != nil {
 						return err
 					}
@@ -129,7 +132,10 @@ func (c *CLI) menuCommands() *cli.Command {
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					menuID := menumodels.NewMenuID(cmd.StringArgs("menu_id")[0])
 					drinkID := drinksmodels.NewDrinkID(cmd.StringArgs("drink_id")[0])
-					updated, err := c.app.Menu().RemoveDrink(ctx, menuID, drinkID)
+					updated, err := c.app.Menu().RemoveDrink(ctx, menumodels.MenuDrinkChange{
+						MenuID:  menuID,
+						DrinkID: drinkID,
+					})
 					if err != nil {
 						return err
 					}
@@ -151,7 +157,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Flags: []cli.Flag{JSONFlag},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					menuID := menumodels.NewMenuID(cmd.StringArgs("menu_id")[0])
-					published, err := c.app.Menu().Publish(ctx, menuID)
+					published, err := c.app.Menu().Publish(ctx, menumodels.Menu{ID: menuID})
 					if err != nil {
 						return err
 					}

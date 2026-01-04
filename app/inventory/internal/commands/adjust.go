@@ -8,36 +8,20 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type AdjustParams struct {
-	IngredientID cedar.EntityUID
-	Delta        float64
-	Reason       models.AdjustmentReason
-}
-
-func (p AdjustParams) CedarEntity() cedar.Entity {
-	return cedar.Entity{
-		UID:        models.NewStockID(p.IngredientID),
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
-	}
-}
-
-func (c *Commands) Adjust(ctx *middleware.Context, params AdjustParams) (models.Stock, error) {
-	if string(params.IngredientID.ID) == "" {
+func (c *Commands) Adjust(ctx *middleware.Context, adj models.StockAdjustment) (models.Stock, error) {
+	if string(adj.IngredientID.ID) == "" {
 		return models.Stock{}, errors.Invalidf("ingredient id is required")
 	}
-	if params.Reason == "" {
+	if adj.Reason == "" {
 		return models.Stock{}, errors.Invalidf("reason is required")
 	}
 	if c.ingredients == nil {
 		return models.Stock{}, errors.Internalf("missing ingredients dependency")
 	}
 
-	ingredient, err := c.ingredients.Get(ctx, params.IngredientID)
+	ingredient, err := c.ingredients.Get(ctx, adj.IngredientID)
 	if err != nil {
 		return models.Stock{}, err
 	}
@@ -53,7 +37,7 @@ func (c *Commands) Adjust(ctx *middleware.Context, params AdjustParams) (models.
 		return models.Stock{}, errors.Internalf("register dao: %w", err)
 	}
 
-	ingredientIDStr := string(params.IngredientID.ID)
+	ingredientIDStr := string(adj.IngredientID.ID)
 	existing, found, err := c.dao.Get(ctx, ingredientIDStr)
 	if err != nil {
 		return models.Stock{}, errors.Internalf("get stock %s: %w", ingredientIDStr, err)
@@ -68,7 +52,7 @@ func (c *Commands) Adjust(ctx *middleware.Context, params AdjustParams) (models.
 	}
 
 	previousQty := existing.Quantity
-	newQty := previousQty + params.Delta
+	newQty := previousQty + adj.Delta
 	if newQty < 0 {
 		newQty = 0
 	}
@@ -83,11 +67,11 @@ func (c *Commands) Adjust(ctx *middleware.Context, params AdjustParams) (models.
 	}
 
 	ctx.AddEvent(events.StockAdjusted{
-		IngredientID: params.IngredientID,
+		IngredientID: adj.IngredientID,
 		PreviousQty:  previousQty,
 		NewQty:       newQty,
 		Delta:        appliedDelta,
-		Reason:       string(params.Reason),
+		Reason:       string(adj.Reason),
 	})
 
 	return existing.ToDomain(), nil

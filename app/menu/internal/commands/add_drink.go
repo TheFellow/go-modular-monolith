@@ -6,36 +6,17 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/menu/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type AddDrinkParams struct {
-	MenuID  cedar.EntityUID
-	DrinkID cedar.EntityUID
-}
-
-func (p AddDrinkParams) CedarEntity() cedar.Entity {
-	uid := p.MenuID
-	if string(uid.ID) == "" {
-		uid = cedar.NewEntityUID(models.MenuEntityType, cedar.String(""))
-	}
-	return cedar.Entity{
-		UID:        uid,
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
-	}
-}
-
-func (c *Commands) AddDrink(ctx *middleware.Context, params AddDrinkParams) (models.Menu, error) {
-	if string(params.MenuID.ID) == "" {
+func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChange) (models.Menu, error) {
+	if string(change.MenuID.ID) == "" {
 		return models.Menu{}, errors.Invalidf("menu id is required")
 	}
-	if string(params.DrinkID.ID) == "" {
+	if string(change.DrinkID.ID) == "" {
 		return models.Menu{}, errors.Invalidf("drink id is required")
 	}
 
-	if _, err := c.drinks.Get(ctx, params.DrinkID); err != nil {
+	if _, err := c.drinks.Get(ctx, change.DrinkID); err != nil {
 		return models.Menu{}, err
 	}
 
@@ -47,19 +28,19 @@ func (c *Commands) AddDrink(ctx *middleware.Context, params AddDrinkParams) (mod
 		return models.Menu{}, errors.Internalf("register dao: %w", err)
 	}
 
-	record, found, err := c.dao.Get(ctx, string(params.MenuID.ID))
+	record, found, err := c.dao.Get(ctx, string(change.MenuID.ID))
 	if err != nil {
-		return models.Menu{}, errors.Internalf("get menu %s: %w", params.MenuID.ID, err)
+		return models.Menu{}, errors.Internalf("get menu %s: %w", change.MenuID.ID, err)
 	}
 	if !found {
-		return models.Menu{}, errors.NotFoundf("menu %s not found", params.MenuID.ID)
+		return models.Menu{}, errors.NotFoundf("menu %s not found", change.MenuID.ID)
 	}
 
 	menu := record.ToDomain()
-	menu.ID = params.MenuID
+	menu.ID = change.MenuID
 
 	for _, item := range menu.Items {
-		if string(item.DrinkID.ID) == string(params.DrinkID.ID) {
+		if string(item.DrinkID.ID) == string(change.DrinkID.ID) {
 			return models.Menu{}, errors.Invalidf("drink already in menu")
 		}
 	}
@@ -72,8 +53,8 @@ func (c *Commands) AddDrink(ctx *middleware.Context, params AddDrinkParams) (mod
 	}
 
 	menu.Items = append(menu.Items, models.MenuItem{
-		DrinkID:      params.DrinkID,
-		Availability: c.availability.Calculate(ctx, params.DrinkID),
+		DrinkID:      change.DrinkID,
+		Availability: c.availability.Calculate(ctx, change.DrinkID),
 		SortOrder:    nextSort,
 	})
 
@@ -86,8 +67,8 @@ func (c *Commands) AddDrink(ctx *middleware.Context, params AddDrinkParams) (mod
 	}
 
 	ctx.AddEvent(events.DrinkAddedToMenu{
-		MenuID:  params.MenuID,
-		DrinkID: params.DrinkID,
+		MenuID:  change.MenuID,
+		DrinkID: change.DrinkID,
 	})
 
 	return menu, nil

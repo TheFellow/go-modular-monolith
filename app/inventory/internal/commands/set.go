@@ -8,35 +8,20 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type SetParams struct {
-	IngredientID cedar.EntityUID
-	Quantity     float64
-}
-
-func (p SetParams) CedarEntity() cedar.Entity {
-	return cedar.Entity{
-		UID:        models.NewStockID(p.IngredientID),
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
-	}
-}
-
-func (c *Commands) Set(ctx *middleware.Context, params SetParams) (models.Stock, error) {
-	if string(params.IngredientID.ID) == "" {
+func (c *Commands) Set(ctx *middleware.Context, stock models.Stock) (models.Stock, error) {
+	if string(stock.IngredientID.ID) == "" {
 		return models.Stock{}, errors.Invalidf("ingredient id is required")
 	}
-	if params.Quantity < 0 {
-		params.Quantity = 0
+	if stock.Quantity < 0 {
+		stock.Quantity = 0
 	}
 	if c.ingredients == nil {
 		return models.Stock{}, errors.Internalf("missing ingredients dependency")
 	}
 
-	ingredient, err := c.ingredients.Get(ctx, params.IngredientID)
+	ingredient, err := c.ingredients.Get(ctx, stock.IngredientID)
 	if err != nil {
 		return models.Stock{}, err
 	}
@@ -52,7 +37,7 @@ func (c *Commands) Set(ctx *middleware.Context, params SetParams) (models.Stock,
 		return models.Stock{}, errors.Internalf("register dao: %w", err)
 	}
 
-	ingredientIDStr := string(params.IngredientID.ID)
+	ingredientIDStr := string(stock.IngredientID.ID)
 	existing, found, err := c.dao.Get(ctx, ingredientIDStr)
 	if err != nil {
 		return models.Stock{}, errors.Internalf("get stock %s: %w", ingredientIDStr, err)
@@ -67,7 +52,7 @@ func (c *Commands) Set(ctx *middleware.Context, params SetParams) (models.Stock,
 	}
 
 	previousQty := existing.Quantity
-	newQty := params.Quantity
+	newQty := stock.Quantity
 	delta := newQty - previousQty
 
 	existing.Quantity = newQty
@@ -79,7 +64,7 @@ func (c *Commands) Set(ctx *middleware.Context, params SetParams) (models.Stock,
 	}
 
 	ctx.AddEvent(events.StockAdjusted{
-		IngredientID: params.IngredientID,
+		IngredientID: stock.IngredientID,
 		PreviousQty:  previousQty,
 		NewQty:       newQty,
 		Delta:        delta,
