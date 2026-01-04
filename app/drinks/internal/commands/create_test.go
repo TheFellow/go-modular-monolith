@@ -41,7 +41,7 @@ func TestCreate_PersistsOnCommit(t *testing.T) {
 	ctx = middleware.NewContext(ctx, middleware.WithUnitOfWork(tx))
 
 	cmds := commands.NewWithDependencies(d, fakeIngredients{})
-	created, err := cmds.Create(ctx, commands.CreateRequest{
+	created, err := cmds.Create(ctx, drinksmodels.Drink{
 		Name:     "Margarita",
 		Category: drinksmodels.DrinkCategoryCocktail,
 		Glass:    drinksmodels.GlassTypeCoupe,

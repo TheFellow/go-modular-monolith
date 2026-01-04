@@ -9,16 +9,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-type UpdateRequest struct {
-	ID          string
-	Name        string
-	Category    models.Category
-	Unit        models.Unit
-	Description string
-}
-
-func (c *Commands) Update(ctx *middleware.Context, req UpdateRequest) (models.Ingredient, error) {
-	if req.ID == "" {
+func (c *Commands) Update(ctx *middleware.Context, ingredient models.Ingredient) (models.Ingredient, error) {
+	if string(ingredient.ID.ID) == "" {
 		return models.Ingredient{}, errors.Invalidf("id is required")
 	}
 
@@ -30,24 +22,25 @@ func (c *Commands) Update(ctx *middleware.Context, req UpdateRequest) (models.In
 		return models.Ingredient{}, errors.Internalf("register dao: %w", err)
 	}
 
-	existing, ok, err := c.dao.Get(ctx, req.ID)
+	ingredientID := string(ingredient.ID.ID)
+	existing, ok, err := c.dao.Get(ctx, ingredientID)
 	if err != nil {
-		return models.Ingredient{}, errors.Internalf("get ingredient %s: %w", req.ID, err)
+		return models.Ingredient{}, errors.Internalf("get ingredient %s: %w", ingredientID, err)
 	}
 	if !ok {
-		return models.Ingredient{}, errors.NotFoundf("ingredient %s not found", req.ID)
+		return models.Ingredient{}, errors.NotFoundf("ingredient %s not found", ingredientID)
 	}
 
-	if name := strings.TrimSpace(req.Name); name != "" {
+	if name := strings.TrimSpace(ingredient.Name); name != "" {
 		existing.Name = name
 	}
-	if req.Category != "" {
-		existing.Category = string(req.Category)
+	if ingredient.Category != "" {
+		existing.Category = string(ingredient.Category)
 	}
-	if req.Unit != "" {
-		existing.Unit = string(req.Unit)
+	if ingredient.Unit != "" {
+		existing.Unit = string(ingredient.Unit)
 	}
-	if desc := strings.TrimSpace(req.Description); desc != "" {
+	if desc := strings.TrimSpace(ingredient.Description); desc != "" {
 		existing.Description = desc
 	}
 

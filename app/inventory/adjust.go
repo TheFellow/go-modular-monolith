@@ -2,39 +2,24 @@ package inventory
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/inventory/authz"
-	"github.com/TheFellow/go-modular-monolith/app/inventory/internal/commands"
 	"github.com/TheFellow/go-modular-monolith/app/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type AdjustRequest struct {
-	IngredientID cedar.EntityUID
-	Delta        float64
-	Reason       models.AdjustmentReason
-}
-
-type AdjustResponse struct {
-	Stock models.Stock
-}
-
-func (m *Module) Adjust(ctx *middleware.Context, req AdjustRequest) (AdjustResponse, error) {
+func (m *Module) Adjust(ctx *middleware.Context, ingredientID cedar.EntityUID, delta float64, reason models.AdjustmentReason) (models.Stock, error) {
 	resource := cedar.Entity{
-		UID:        models.NewStockID(req.IngredientID),
+		UID:        models.NewStockID(ingredientID),
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),
 	}
 
-	return middleware.RunCommand(ctx, authz.ActionAdjust, resource, func(mctx *middleware.Context, req AdjustRequest) (AdjustResponse, error) {
-		stock, err := m.commands.Adjust(mctx, commands.AdjustRequest{
-			IngredientID: req.IngredientID,
-			Delta:        req.Delta,
-			Reason:       req.Reason,
-		})
+	return middleware.RunCommand(ctx, authz.ActionAdjust, resource, func(mctx *middleware.Context, _ struct{}) (models.Stock, error) {
+		stock, err := m.commands.Adjust(mctx, ingredientID, delta, reason)
 		if err != nil {
-			return AdjustResponse{}, err
+			return models.Stock{}, err
 		}
-		return AdjustResponse{Stock: stock}, nil
-	}, req)
+		return stock, nil
+	}, struct{}{})
 }

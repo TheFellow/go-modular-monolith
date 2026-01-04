@@ -75,17 +75,12 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					ingredientID := cmd.StringArgs("ingredient_id")[0]
 					delta := cmd.Float64Args("delta")[0]
 
-					res, err := c.app.Inventory().Adjust(ctx, inventory.AdjustRequest{
-						IngredientID: models.NewIngredientID(ingredientID),
-						Delta:        delta,
-						Reason:       inventorymodels.AdjustmentReason(cmd.String("reason")),
-					})
+					res, err := c.app.Inventory().Adjust(ctx, models.NewIngredientID(ingredientID), delta, inventorymodels.AdjustmentReason(cmd.String("reason")))
 					if err != nil {
 						return err
 					}
 
-					s := res.Stock
-					fmt.Printf("%s\t%.2f\t%s\n", string(s.IngredientID.ID), s.Quantity, s.Unit)
+					fmt.Printf("%s\t%.2f\t%s\n", string(res.IngredientID.ID), res.Quantity, res.Unit)
 					return nil
 				}),
 			},
@@ -100,16 +95,12 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					ingredientID := cmd.StringArgs("ingredient_id")[0]
 					qty := cmd.Float64Args("quantity")[0]
 
-					res, err := c.app.Inventory().Set(ctx, inventory.SetRequest{
-						IngredientID: models.NewIngredientID(ingredientID),
-						Quantity:     qty,
-					})
+					res, err := c.app.Inventory().Set(ctx, models.NewIngredientID(ingredientID), qty)
 					if err != nil {
 						return err
 					}
 
-					s := res.Stock
-					fmt.Printf("%s\t%.2f\t%s\n", string(s.IngredientID.ID), s.Quantity, s.Unit)
+					fmt.Printf("%s\t%.2f\t%s\n", string(res.IngredientID.ID), res.Quantity, res.Unit)
 					return nil
 				}),
 			},

@@ -11,23 +11,18 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type SetRequest struct {
-	IngredientID cedar.EntityUID
-	Quantity     float64
-}
-
-func (c *Commands) Set(ctx *middleware.Context, req SetRequest) (models.Stock, error) {
-	if string(req.IngredientID.ID) == "" {
+func (c *Commands) Set(ctx *middleware.Context, ingredientID cedar.EntityUID, quantity float64) (models.Stock, error) {
+	if string(ingredientID.ID) == "" {
 		return models.Stock{}, errors.Invalidf("ingredient id is required")
 	}
-	if req.Quantity < 0 {
-		req.Quantity = 0
+	if quantity < 0 {
+		quantity = 0
 	}
 	if c.ingredients == nil {
 		return models.Stock{}, errors.Internalf("missing ingredients dependency")
 	}
 
-	ingredient, err := c.ingredients.Get(ctx, req.IngredientID)
+	ingredient, err := c.ingredients.Get(ctx, ingredientID)
 	if err != nil {
 		return models.Stock{}, err
 	}
@@ -43,14 +38,14 @@ func (c *Commands) Set(ctx *middleware.Context, req SetRequest) (models.Stock, e
 		return models.Stock{}, errors.Internalf("register dao: %w", err)
 	}
 
-	ingredientID := string(req.IngredientID.ID)
-	existing, found, err := c.dao.Get(ctx, ingredientID)
+	ingredientIDStr := string(ingredientID.ID)
+	existing, found, err := c.dao.Get(ctx, ingredientIDStr)
 	if err != nil {
-		return models.Stock{}, errors.Internalf("get stock %s: %w", ingredientID, err)
+		return models.Stock{}, errors.Internalf("get stock %s: %w", ingredientIDStr, err)
 	}
 	if !found {
 		existing = dao.Stock{
-			IngredientID: ingredientID,
+			IngredientID: ingredientIDStr,
 			Quantity:     0,
 			Unit:         string(ingredient.Unit),
 			LastUpdated:  time.Time{},
@@ -58,7 +53,7 @@ func (c *Commands) Set(ctx *middleware.Context, req SetRequest) (models.Stock, e
 	}
 
 	previousQty := existing.Quantity
-	newQty := req.Quantity
+	newQty := quantity
 	delta := newQty - previousQty
 
 	existing.Quantity = newQty
@@ -70,7 +65,7 @@ func (c *Commands) Set(ctx *middleware.Context, req SetRequest) (models.Stock, e
 	}
 
 	ctx.AddEvent(events.StockAdjusted{
-		IngredientID: req.IngredientID,
+		IngredientID: ingredientID,
 		PreviousQty:  previousQty,
 		NewQty:       newQty,
 		Delta:        delta,

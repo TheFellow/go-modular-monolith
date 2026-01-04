@@ -72,31 +72,51 @@ func createDrinkAction(ctx context.Context, cmd *cli.Command) error {
 }
 ```
 
-### 2. Commands → DAO (persistence boundary)
+### 2. DAO ↔ Storage (persistence boundary)
 
-If the DAO uses different internal types (e.g., for database mapping), translation happens there:
+Public models are the clean, nested, denormalized structures that other modules and surfaces consume. DAO models may be normalized for storage. Translation happens inside the DAO:
 
 ```go
 // app/drinks/internal/dao/dao.go
-type drinkRow struct {  // internal to DAO
+
+// Internal normalized types for storage
+type drinkRow struct {
     ID          string `json:"id"`
     Name        string `json:"name"`
-    RecipeJSON  string `json:"recipe"`  // serialized differently
+    Description string `json:"description"`
+    Glass       string `json:"glass"`
 }
 
+type recipeIngredientRow struct {
+    DrinkID      string  `json:"drink_id"`
+    IngredientID string  `json:"ingredient_id"`
+    Amount       float64 `json:"amount"`
+    Unit         string  `json:"unit"`
+}
+
+// DAO accepts/returns public models, translates internally
 func (d *DAO) Save(ctx *middleware.Context, drink models.Drink) error {
-    row := toRow(drink)  // translation here
-    // persist row
+    row := toRow(drink)                    // denormalized → normalized
+    ingredientRows := toIngredientRows(drink)
+    // persist normalized rows
+}
+
+func (d *DAO) Get(ctx *middleware.Context, id string) (models.Drink, error) {
+    row, _ := d.loadRow(id)
+    ingredientRows, _ := d.loadIngredients(id)
+    return toModel(row, ingredientRows), nil  // normalized → denormalized
 }
 ```
 
+**Key principle:** Public models are always clean and nested. Normalization is a storage concern hidden inside the DAO.
+
 ## Tasks
 
-- [ ] Remove Request/Response types from all command files
-- [ ] Update command methods to accept/return public models
-- [ ] Update Module methods to pass models through
-- [ ] Update CLI to construct models directly
-- [ ] Verify `go test ./...` passes
+- [x] Remove Request/Response types from all command files
+- [x] Update command methods to accept/return public models
+- [x] Update Module methods to pass models through
+- [x] Update CLI to construct models directly
+- [x] Verify `go test ./...` passes
 
 ## Before/After
 

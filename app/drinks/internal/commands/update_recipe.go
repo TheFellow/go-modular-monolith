@@ -11,23 +11,18 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type UpdateRecipeRequest struct {
-	DrinkID cedar.EntityUID
-	Recipe  models.Recipe
-}
-
-func (c *Commands) UpdateRecipe(ctx *middleware.Context, req UpdateRecipeRequest) (models.Drink, error) {
-	if string(req.DrinkID.ID) == "" {
+func (c *Commands) UpdateRecipe(ctx *middleware.Context, drinkID cedar.EntityUID, recipe models.Recipe) (models.Drink, error) {
+	if string(drinkID.ID) == "" {
 		return models.Drink{}, errors.Invalidf("drink id is required")
 	}
-	if err := req.Recipe.Validate(); err != nil {
+	if err := recipe.Validate(); err != nil {
 		return models.Drink{}, err
 	}
 	if c.ingredients == nil {
 		return models.Drink{}, errors.Internalf("missing ingredients dependency")
 	}
 
-	for _, ing := range req.Recipe.Ingredients {
+	for _, ing := range recipe.Ingredients {
 		if _, err := c.ingredients.Get(ctx, ing.IngredientID); err != nil {
 			if ing.Optional {
 				continue
@@ -49,29 +44,29 @@ func (c *Commands) UpdateRecipe(ctx *middleware.Context, req UpdateRecipeRequest
 		return models.Drink{}, errors.Internalf("register dao: %w", err)
 	}
 
-	existing, found, err := c.dao.Get(ctx, string(req.DrinkID.ID))
+	existing, found, err := c.dao.Get(ctx, string(drinkID.ID))
 	if err != nil {
-		return models.Drink{}, errors.Internalf("get drink %s: %w", string(req.DrinkID.ID), err)
+		return models.Drink{}, errors.Internalf("get drink %s: %w", string(drinkID.ID), err)
 	}
 	if !found {
-		return models.Drink{}, errors.NotFoundf("drink %s not found", string(req.DrinkID.ID))
+		return models.Drink{}, errors.NotFoundf("drink %s not found", string(drinkID.ID))
 	}
 
 	previous := existing.ToDomain()
-	previous.ID = req.DrinkID
+	previous.ID = drinkID
 
-	existing.Recipe = dao.FromDomain(models.Drink{Recipe: req.Recipe}).Recipe
+	existing.Recipe = dao.FromDomain(models.Drink{Recipe: recipe}).Recipe
 	if err := c.dao.Update(ctx, existing); err != nil {
 		return models.Drink{}, err
 	}
 
 	updated := existing.ToDomain()
-	updated.ID = req.DrinkID
+	updated.ID = drinkID
 
 	added, removed := diffIngredientIDs(previous.Recipe, updated.Recipe)
 
 	ctx.AddEvent(events.DrinkRecipeUpdated{
-		DrinkID:            req.DrinkID,
+		DrinkID:            drinkID,
 		Name:               updated.Name,
 		PreviousRecipe:     previous.Recipe,
 		NewRecipe:          updated.Recipe,

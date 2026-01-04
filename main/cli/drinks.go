@@ -87,22 +87,16 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return err
 					}
 
-					res, err := c.app.Drinks().Create(ctx, drinks.CreateRequest{
-						Name:        created.Name,
-						Category:    created.Category,
-						Glass:       created.Glass,
-						Recipe:      created.Recipe,
-						Description: created.Description,
-					})
+					res, err := c.app.Drinks().Create(ctx, created)
 					if err != nil {
 						return err
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(res.Drink))
+						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(res))
 					}
 
-					fmt.Printf("%s\t%s\n", string(res.Drink.ID.ID), res.Drink.Name)
+					fmt.Printf("%s\t%s\n", string(res.ID.ID), res.Name)
 					return nil
 				}),
 			},
@@ -128,19 +122,16 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return err
 					}
 
-					res, err := c.app.Drinks().UpdateRecipe(ctx, drinks.UpdateRecipeRequest{
-						ID:     drinksmodels.NewDrinkID(cmd.StringArgs("id")[0]),
-						Recipe: recipe,
-					})
+					res, err := c.app.Drinks().UpdateRecipe(ctx, drinksmodels.NewDrinkID(cmd.StringArgs("id")[0]), recipe)
 					if err != nil {
 						return err
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(res.Drink))
+						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(res))
 					}
 
-					fmt.Printf("%s\t%s\n", string(res.Drink.ID.ID), res.Drink.Name)
+					fmt.Printf("%s\t%s\n", string(res.ID.ID), res.Name)
 					return nil
 				}),
 			},

@@ -11,24 +11,18 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type AdjustRequest struct {
-	IngredientID cedar.EntityUID
-	Delta        float64
-	Reason       models.AdjustmentReason
-}
-
-func (c *Commands) Adjust(ctx *middleware.Context, req AdjustRequest) (models.Stock, error) {
-	if string(req.IngredientID.ID) == "" {
+func (c *Commands) Adjust(ctx *middleware.Context, ingredientID cedar.EntityUID, delta float64, reason models.AdjustmentReason) (models.Stock, error) {
+	if string(ingredientID.ID) == "" {
 		return models.Stock{}, errors.Invalidf("ingredient id is required")
 	}
-	if req.Reason == "" {
+	if reason == "" {
 		return models.Stock{}, errors.Invalidf("reason is required")
 	}
 	if c.ingredients == nil {
 		return models.Stock{}, errors.Internalf("missing ingredients dependency")
 	}
 
-	ingredient, err := c.ingredients.Get(ctx, req.IngredientID)
+	ingredient, err := c.ingredients.Get(ctx, ingredientID)
 	if err != nil {
 		return models.Stock{}, err
 	}
@@ -44,14 +38,14 @@ func (c *Commands) Adjust(ctx *middleware.Context, req AdjustRequest) (models.St
 		return models.Stock{}, errors.Internalf("register dao: %w", err)
 	}
 
-	ingredientID := string(req.IngredientID.ID)
-	existing, found, err := c.dao.Get(ctx, ingredientID)
+	ingredientIDStr := string(ingredientID.ID)
+	existing, found, err := c.dao.Get(ctx, ingredientIDStr)
 	if err != nil {
-		return models.Stock{}, errors.Internalf("get stock %s: %w", ingredientID, err)
+		return models.Stock{}, errors.Internalf("get stock %s: %w", ingredientIDStr, err)
 	}
 	if !found {
 		existing = dao.Stock{
-			IngredientID: ingredientID,
+			IngredientID: ingredientIDStr,
 			Quantity:     0,
 			Unit:         string(ingredient.Unit),
 			LastUpdated:  time.Time{},
@@ -59,7 +53,7 @@ func (c *Commands) Adjust(ctx *middleware.Context, req AdjustRequest) (models.St
 	}
 
 	previousQty := existing.Quantity
-	newQty := previousQty + req.Delta
+	newQty := previousQty + delta
 	if newQty < 0 {
 		newQty = 0
 	}
@@ -74,11 +68,11 @@ func (c *Commands) Adjust(ctx *middleware.Context, req AdjustRequest) (models.St
 	}
 
 	ctx.AddEvent(events.StockAdjusted{
-		IngredientID: req.IngredientID,
+		IngredientID: ingredientID,
 		PreviousQty:  previousQty,
 		NewQty:       newQty,
 		Delta:        appliedDelta,
-		Reason:       string(req.Reason),
+		Reason:       string(reason),
 	})
 
 	return existing.ToDomain(), nil

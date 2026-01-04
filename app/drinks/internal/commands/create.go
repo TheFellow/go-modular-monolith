@@ -11,26 +11,22 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-type CreateRequest struct {
-	Name        string
-	Category    models.DrinkCategory
-	Glass       models.GlassType
-	Recipe      models.Recipe
-	Description string
-}
+func (c *Commands) Create(ctx *middleware.Context, drink models.Drink) (models.Drink, error) {
+	if string(drink.ID.ID) != "" {
+		return models.Drink{}, errors.Invalidf("id must be empty")
+	}
 
-func (c *Commands) Create(ctx *middleware.Context, req CreateRequest) (models.Drink, error) {
-	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" {
+	drink.Name = strings.TrimSpace(drink.Name)
+	if drink.Name == "" {
 		return models.Drink{}, errors.Invalidf("name is required")
 	}
-	if err := req.Category.Validate(); err != nil {
+	if err := drink.Category.Validate(); err != nil {
 		return models.Drink{}, err
 	}
-	if err := req.Glass.Validate(); err != nil {
+	if err := drink.Glass.Validate(); err != nil {
 		return models.Drink{}, err
 	}
-	if err := req.Recipe.Validate(); err != nil {
+	if err := drink.Recipe.Validate(); err != nil {
 		return models.Drink{}, err
 	}
 
@@ -38,7 +34,7 @@ func (c *Commands) Create(ctx *middleware.Context, req CreateRequest) (models.Dr
 		return models.Drink{}, errors.Internalf("missing ingredients dependency")
 	}
 
-	for _, ing := range req.Recipe.Ingredients {
+	for _, ing := range drink.Recipe.Ingredients {
 		if _, err := c.ingredients.Get(ctx, ing.IngredientID); err != nil {
 			if ing.Optional {
 				continue
@@ -67,11 +63,11 @@ func (c *Commands) Create(ctx *middleware.Context, req CreateRequest) (models.Dr
 
 	record := dao.Drink{
 		ID:          string(uid.ID),
-		Name:        req.Name,
-		Category:    string(req.Category),
-		Glass:       string(req.Glass),
-		Recipe:      dao.FromDomain(models.Drink{Recipe: req.Recipe}).Recipe,
-		Description: req.Description,
+		Name:        drink.Name,
+		Category:    string(drink.Category),
+		Glass:       string(drink.Glass),
+		Recipe:      dao.FromDomain(models.Drink{Recipe: drink.Recipe}).Recipe,
+		Description: drink.Description,
 	}
 
 	if err := c.dao.Add(ctx, record); err != nil {

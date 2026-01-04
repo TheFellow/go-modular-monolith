@@ -11,22 +11,19 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-type CreateRequest struct {
-	Name        string
-	Category    models.Category
-	Unit        models.Unit
-	Description string
-}
+func (c *Commands) Create(ctx *middleware.Context, ingredient models.Ingredient) (models.Ingredient, error) {
+	if string(ingredient.ID.ID) != "" {
+		return models.Ingredient{}, errors.Invalidf("id must be empty")
+	}
 
-func (c *Commands) Create(ctx *middleware.Context, req CreateRequest) (models.Ingredient, error) {
-	name := strings.TrimSpace(req.Name)
+	name := strings.TrimSpace(ingredient.Name)
 	if name == "" {
 		return models.Ingredient{}, errors.Invalidf("name is required")
 	}
-	if req.Category == "" {
+	if ingredient.Category == "" {
 		return models.Ingredient{}, errors.Invalidf("category is required")
 	}
-	if req.Unit == "" {
+	if ingredient.Unit == "" {
 		return models.Ingredient{}, errors.Invalidf("unit is required")
 	}
 
@@ -46,9 +43,9 @@ func (c *Commands) Create(ctx *middleware.Context, req CreateRequest) (models.In
 	record := dao.Ingredient{
 		ID:          string(uid.ID),
 		Name:        name,
-		Category:    string(req.Category),
-		Unit:        string(req.Unit),
-		Description: strings.TrimSpace(req.Description),
+		Category:    string(ingredient.Category),
+		Unit:        string(ingredient.Unit),
+		Description: strings.TrimSpace(ingredient.Description),
 	}
 
 	if err := c.dao.Add(ctx, record); err != nil {
@@ -58,7 +55,7 @@ func (c *Commands) Create(ctx *middleware.Context, req CreateRequest) (models.In
 	ctx.AddEvent(events.IngredientCreated{
 		IngredientID: uid,
 		Name:         name,
-		Category:     req.Category,
+		Category:     ingredient.Category,
 	})
 
 	return record.ToDomain(), nil
