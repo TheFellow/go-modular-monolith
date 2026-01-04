@@ -26,6 +26,8 @@ func (e *{{ .Name }}Error) Unwrap() error { return e.cause }
 func (e *{{ .Name }}Error) Kind() ErrorKind { return {{ printf "Err%s" .Name }} }
 func (e *{{ .Name }}Error) HTTPCode() httpCode { return {{ printf "Err%s" .Name }}.HTTPCode }
 func (e *{{ .Name }}Error) GRPCCode() codes.Code { return {{ printf "Err%s" .Name }}.GRPCCode }
+func (e *{{ .Name }}Error) CLICode() int { return {{ printf "Err%s" .Name }}.CLICode }
+func (e *{{ .Name }}Error) ExitCode() int { return {{ printf "Err%s" .Name }}.CLICode }
 
 func {{ .Name }}f(format string, args ...any) error {
 	msg, cause := formatf(format, args...)

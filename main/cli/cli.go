@@ -6,6 +6,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -23,9 +24,9 @@ func (c *CLI) action(fn func(*middleware.Context, *cli.Command) error) cli.Actio
 	return func(ctx context.Context, cmd *cli.Command) error {
 		mctx, ok := ctx.(*middleware.Context)
 		if !ok {
-			return fmt.Errorf("expected middleware context")
+			return apperrors.ToCLIExit(fmt.Errorf("expected middleware context"))
 		}
-		return fn(mctx, cmd)
+		return apperrors.ToCLIExit(fn(mctx, cmd))
 	}
 }
 
@@ -47,6 +48,10 @@ func (c *CLI) Command() *cli.Command {
 				return ctx, err
 			}
 			return middleware.NewContext(ctx, middleware.WithPrincipal(p)), nil
+		},
+		ExitErrHandler: func(_ context.Context, _ *cli.Command, _ error) {},
+		OnUsageError: func(_ context.Context, _ *cli.Command, err error, _ bool) error {
+			return cli.Exit(err, apperrors.ExitUsage)
 		},
 		Commands: []*cli.Command{
 			c.drinksCommands(),

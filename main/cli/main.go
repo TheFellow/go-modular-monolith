@@ -2,20 +2,22 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
+
+	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/urfave/cli/v3"
 )
 
 func main() {
 	cliApp, err := NewCLI()
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		cli.HandleExitCoder(apperrors.ToCLIExit(err))
+		os.Exit(apperrors.ExitGeneral)
 	}
 
 	cmd := cliApp.Command()
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
-		_, _ = fmt.Fprintln(cmd.ErrWriter, err)
-		os.Exit(1)
+		cli.HandleExitCoder(apperrors.ToCLIExit(err))
+		os.Exit(apperrors.ExitGeneral)
 	}
 }

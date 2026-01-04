@@ -25,6 +25,8 @@ func (e *InvalidError) Unwrap() error        { return e.cause }
 func (e *InvalidError) Kind() ErrorKind      { return ErrInvalid }
 func (e *InvalidError) HTTPCode() httpCode   { return ErrInvalid.HTTPCode }
 func (e *InvalidError) GRPCCode() codes.Code { return ErrInvalid.GRPCCode }
+func (e *InvalidError) CLICode() int         { return ErrInvalid.CLICode }
+func (e *InvalidError) ExitCode() int        { return ErrInvalid.CLICode }
 
 func Invalidf(format string, args ...any) error {
 	msg, cause := formatf(format, args...)
@@ -55,6 +57,8 @@ func (e *NotFoundError) Unwrap() error        { return e.cause }
 func (e *NotFoundError) Kind() ErrorKind      { return ErrNotFound }
 func (e *NotFoundError) HTTPCode() httpCode   { return ErrNotFound.HTTPCode }
 func (e *NotFoundError) GRPCCode() codes.Code { return ErrNotFound.GRPCCode }
+func (e *NotFoundError) CLICode() int         { return ErrNotFound.CLICode }
+func (e *NotFoundError) ExitCode() int        { return ErrNotFound.CLICode }
 
 func NotFoundf(format string, args ...any) error {
 	msg, cause := formatf(format, args...)
@@ -85,6 +89,8 @@ func (e *InternalError) Unwrap() error        { return e.cause }
 func (e *InternalError) Kind() ErrorKind      { return ErrInternal }
 func (e *InternalError) HTTPCode() httpCode   { return ErrInternal.HTTPCode }
 func (e *InternalError) GRPCCode() codes.Code { return ErrInternal.GRPCCode }
+func (e *InternalError) CLICode() int         { return ErrInternal.CLICode }
+func (e *InternalError) ExitCode() int        { return ErrInternal.CLICode }
 
 func Internalf(format string, args ...any) error {
 	msg, cause := formatf(format, args...)

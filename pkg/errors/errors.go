@@ -16,7 +16,30 @@ type ErrorKind struct {
 	Message  string
 	HTTPCode httpCode
 	GRPCCode codes.Code
+	CLICode  int
 }
+
+// Exit codes.
+//
+// Standard Unix conventions:
+//
+//	0 - Success
+//	1 - General error
+//	2 - Misuse of command (invalid args)
+//
+// Application-specific:
+//
+//	10 - Validation/invalid input error
+//	20 - Not found error
+//	50 - Internal error
+const (
+	ExitSuccess  = 0
+	ExitGeneral  = 1
+	ExitUsage    = 2
+	ExitInvalid  = 10
+	ExitNotFound = 20
+	ExitInternal = 50
+)
 
 var (
 	ErrInvalid = ErrorKind{
@@ -24,18 +47,21 @@ var (
 		Message:  "invalid",
 		HTTPCode: http.StatusBadRequest,
 		GRPCCode: codes.InvalidArgument,
+		CLICode:  ExitInvalid,
 	}
 	ErrNotFound = ErrorKind{
 		Name:     "NotFound",
 		Message:  "not found",
 		HTTPCode: http.StatusNotFound,
 		GRPCCode: codes.NotFound,
+		CLICode:  ExitNotFound,
 	}
 	ErrInternal = ErrorKind{
 		Name:     "Internal",
 		Message:  "internal error",
 		HTTPCode: http.StatusInternalServerError,
 		GRPCCode: codes.Internal,
+		CLICode:  ExitInternal,
 	}
 
 	ErrorKinds = []ErrorKind{ErrInvalid, ErrNotFound, ErrInternal}
@@ -58,9 +84,6 @@ func formatf(format string, args ...any) (msg string, cause error) {
 	msg = fmt.Sprintf(format, args...)
 	if msg == "" {
 		return "", nil
-	}
-	if cause != nil && msg == cause.Error() {
-		return msg, nil
 	}
 
 	if cause != nil {

@@ -19,7 +19,7 @@ func main() {
 	wd, err := os.Getwd()
 	must(err)
 
-	tmplBytes, err := os.ReadFile(filepath.Join(wd, "gen.tmpl"))
+	tmplBytes, err := os.ReadFile(filepath.Join(wd, "internal", "gen", "errors.go.tpl"))
 	must(err)
 
 	tmpl, err := template.New("gen").Parse(string(tmplBytes))
