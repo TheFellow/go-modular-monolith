@@ -11,18 +11,33 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (c *Commands) Adjust(ctx *middleware.Context, ingredientID cedar.EntityUID, delta float64, reason models.AdjustmentReason) (models.Stock, error) {
-	if string(ingredientID.ID) == "" {
+type AdjustParams struct {
+	IngredientID cedar.EntityUID
+	Delta        float64
+	Reason       models.AdjustmentReason
+}
+
+func (p AdjustParams) CedarEntity() cedar.Entity {
+	return cedar.Entity{
+		UID:        models.NewStockID(p.IngredientID),
+		Parents:    cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(nil),
+	}
+}
+
+func (c *Commands) Adjust(ctx *middleware.Context, params AdjustParams) (models.Stock, error) {
+	if string(params.IngredientID.ID) == "" {
 		return models.Stock{}, errors.Invalidf("ingredient id is required")
 	}
-	if reason == "" {
+	if params.Reason == "" {
 		return models.Stock{}, errors.Invalidf("reason is required")
 	}
 	if c.ingredients == nil {
 		return models.Stock{}, errors.Internalf("missing ingredients dependency")
 	}
 
-	ingredient, err := c.ingredients.Get(ctx, ingredientID)
+	ingredient, err := c.ingredients.Get(ctx, params.IngredientID)
 	if err != nil {
 		return models.Stock{}, err
 	}
@@ -38,7 +53,7 @@ func (c *Commands) Adjust(ctx *middleware.Context, ingredientID cedar.EntityUID,
 		return models.Stock{}, errors.Internalf("register dao: %w", err)
 	}
 
-	ingredientIDStr := string(ingredientID.ID)
+	ingredientIDStr := string(params.IngredientID.ID)
 	existing, found, err := c.dao.Get(ctx, ingredientIDStr)
 	if err != nil {
 		return models.Stock{}, errors.Internalf("get stock %s: %w", ingredientIDStr, err)
@@ -53,7 +68,7 @@ func (c *Commands) Adjust(ctx *middleware.Context, ingredientID cedar.EntityUID,
 	}
 
 	previousQty := existing.Quantity
-	newQty := previousQty + delta
+	newQty := previousQty + params.Delta
 	if newQty < 0 {
 		newQty = 0
 	}
@@ -68,11 +83,11 @@ func (c *Commands) Adjust(ctx *middleware.Context, ingredientID cedar.EntityUID,
 	}
 
 	ctx.AddEvent(events.StockAdjusted{
-		IngredientID: ingredientID,
+		IngredientID: params.IngredientID,
 		PreviousQty:  previousQty,
 		NewQty:       newQty,
 		Delta:        appliedDelta,
-		Reason:       string(reason),
+		Reason:       string(params.Reason),
 	})
 
 	return existing.ToDomain(), nil

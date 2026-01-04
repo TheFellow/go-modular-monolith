@@ -28,6 +28,19 @@ func (m Menu) EntityUID() cedar.EntityUID {
 	return m.ID
 }
 
+func (m Menu) CedarEntity() cedar.Entity {
+	uid := m.ID
+	if string(uid.ID) == "" {
+		uid = cedar.NewEntityUID(MenuEntityType, cedar.String(""))
+	}
+	return cedar.Entity{
+		UID:        uid,
+		Parents:    cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(nil),
+	}
+}
+
 func (m Menu) Validate() error {
 	m.Name = strings.TrimSpace(m.Name)
 	if m.Name == "" {

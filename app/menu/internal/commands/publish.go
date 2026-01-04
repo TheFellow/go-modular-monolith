@@ -11,8 +11,25 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (c *Commands) Publish(ctx *middleware.Context, menuID cedar.EntityUID) (models.Menu, error) {
-	if string(menuID.ID) == "" {
+type PublishParams struct {
+	MenuID cedar.EntityUID
+}
+
+func (p PublishParams) CedarEntity() cedar.Entity {
+	uid := p.MenuID
+	if string(uid.ID) == "" {
+		uid = cedar.NewEntityUID(models.MenuEntityType, cedar.String(""))
+	}
+	return cedar.Entity{
+		UID:        uid,
+		Parents:    cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(nil),
+	}
+}
+
+func (c *Commands) Publish(ctx *middleware.Context, params PublishParams) (models.Menu, error) {
+	if string(params.MenuID.ID) == "" {
 		return models.Menu{}, errors.Invalidf("menu id is required")
 	}
 
@@ -24,16 +41,16 @@ func (c *Commands) Publish(ctx *middleware.Context, menuID cedar.EntityUID) (mod
 		return models.Menu{}, errors.Internalf("register dao: %w", err)
 	}
 
-	record, found, err := c.dao.Get(ctx, string(menuID.ID))
+	record, found, err := c.dao.Get(ctx, string(params.MenuID.ID))
 	if err != nil {
-		return models.Menu{}, errors.Internalf("get menu %s: %w", menuID.ID, err)
+		return models.Menu{}, errors.Internalf("get menu %s: %w", params.MenuID.ID, err)
 	}
 	if !found {
-		return models.Menu{}, errors.NotFoundf("menu %s not found", menuID.ID)
+		return models.Menu{}, errors.NotFoundf("menu %s not found", params.MenuID.ID)
 	}
 
 	menu := record.ToDomain()
-	menu.ID = menuID
+	menu.ID = params.MenuID
 
 	now := time.Now().UTC()
 	menu.Status = models.MenuStatusPublished
@@ -51,7 +68,7 @@ func (c *Commands) Publish(ctx *middleware.Context, menuID cedar.EntityUID) (mod
 	}
 
 	ctx.AddEvent(events.MenuPublished{
-		MenuID:      menuID,
+		MenuID:      params.MenuID,
 		PublishedAt: now,
 	})
 

@@ -15,12 +15,23 @@ type GetResponse struct {
 	Stock models.Stock
 }
 
+func (r GetRequest) CedarEntity() cedar.Entity {
+	return cedar.Entity{
+		UID:        models.NewStockID(r.IngredientID),
+		Parents:    cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(nil),
+	}
+}
+
 func (m *Module) Get(ctx *middleware.Context, req GetRequest) (GetResponse, error) {
-	return middleware.RunQuery(ctx, authz.ActionGet, func(mctx *middleware.Context, req GetRequest) (GetResponse, error) {
-		s, err := m.queries.Get(mctx, req.IngredientID)
-		if err != nil {
-			return GetResponse{}, err
-		}
-		return GetResponse{Stock: s}, nil
-	}, req)
+	return middleware.RunQueryWithResource(ctx, authz.ActionGet, m.get, req)
+}
+
+func (m *Module) get(ctx *middleware.Context, req GetRequest) (GetResponse, error) {
+	s, err := m.queries.Get(ctx, req.IngredientID)
+	if err != nil {
+		return GetResponse{}, err
+	}
+	return GetResponse{Stock: s}, nil
 }

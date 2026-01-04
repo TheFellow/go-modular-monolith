@@ -20,5 +20,6 @@ sprint-013d,completed,2026-01-04,2026-01-04,Unified Commands object per module (
 sprint-013e,completed,2026-01-04,2026-01-04,Commands/modules/CLI use public models directly (no request/response wrappers)
 sprint-013f,completed,2026-01-04,2026-01-04,CLI exit codes via ErrorKind.CLICode + errors.ToCLIExit
 sprint-014,completed,2026-01-04,2026-01-04,Menu curation context
+sprint-014b,completed,2026-01-04,2026-01-04,Simplified middleware signatures (CedarEntity + params structs)
 sprint-015,pending,,,Advanced business rules & cost analysis
 sprint-016,pending,,,Orders & inventory consumption

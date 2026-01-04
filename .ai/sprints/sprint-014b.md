@@ -1,4 +1,4 @@
-# Sprint 013g: Simplified Middleware Signatures (Intermezzo)
+# Sprint 014b: Simplified Middleware Signatures (Intermezzo)
 
 ## Goal
 
@@ -206,14 +206,14 @@ func (m *Module) Get(ctx *middleware.Context, id cedar.EntityUID) (models.Drink,
 
 ## Tasks
 
-- [ ] Define `CedarEntity` interface in `pkg/middleware/cedar.go`
-- [ ] Update all models to implement `CedarEntity()`
-- [ ] Create params structs for multi-parameter commands
-- [ ] Update `RunCommand` to use `CedarEntity` constraint
-- [ ] Add `RunQueryWithResource` for resource-scoped queries
-- [ ] Simplify all module command methods to single-line returns
-- [ ] Simplify all module query methods
-- [ ] Verify `go test ./...` passes
+- [x] Define `CedarEntity` interface in `pkg/middleware/cedar.go`
+- [x] Update all models to implement `CedarEntity()`
+- [x] Create params structs for multi-parameter commands
+- [x] Update `RunCommand` to use `CedarEntity` constraint
+- [x] Add `RunQueryWithResource` for resource-scoped queries
+- [x] Simplify all module command methods to single-line returns
+- [x] Simplify all module query methods
+- [x] Verify `go test ./...` passes
 
 ## Before/After Summary
 

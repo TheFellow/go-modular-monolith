@@ -9,15 +9,33 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (c *Commands) AddDrink(ctx *middleware.Context, menuID cedar.EntityUID, drinkID cedar.EntityUID) (models.Menu, error) {
-	if string(menuID.ID) == "" {
+type AddDrinkParams struct {
+	MenuID  cedar.EntityUID
+	DrinkID cedar.EntityUID
+}
+
+func (p AddDrinkParams) CedarEntity() cedar.Entity {
+	uid := p.MenuID
+	if string(uid.ID) == "" {
+		uid = cedar.NewEntityUID(models.MenuEntityType, cedar.String(""))
+	}
+	return cedar.Entity{
+		UID:        uid,
+		Parents:    cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(nil),
+	}
+}
+
+func (c *Commands) AddDrink(ctx *middleware.Context, params AddDrinkParams) (models.Menu, error) {
+	if string(params.MenuID.ID) == "" {
 		return models.Menu{}, errors.Invalidf("menu id is required")
 	}
-	if string(drinkID.ID) == "" {
+	if string(params.DrinkID.ID) == "" {
 		return models.Menu{}, errors.Invalidf("drink id is required")
 	}
 
-	if _, err := c.drinks.Get(ctx, drinkID); err != nil {
+	if _, err := c.drinks.Get(ctx, params.DrinkID); err != nil {
 		return models.Menu{}, err
 	}
 
@@ -29,19 +47,19 @@ func (c *Commands) AddDrink(ctx *middleware.Context, menuID cedar.EntityUID, dri
 		return models.Menu{}, errors.Internalf("register dao: %w", err)
 	}
 
-	record, found, err := c.dao.Get(ctx, string(menuID.ID))
+	record, found, err := c.dao.Get(ctx, string(params.MenuID.ID))
 	if err != nil {
-		return models.Menu{}, errors.Internalf("get menu %s: %w", menuID.ID, err)
+		return models.Menu{}, errors.Internalf("get menu %s: %w", params.MenuID.ID, err)
 	}
 	if !found {
-		return models.Menu{}, errors.NotFoundf("menu %s not found", menuID.ID)
+		return models.Menu{}, errors.NotFoundf("menu %s not found", params.MenuID.ID)
 	}
 
 	menu := record.ToDomain()
-	menu.ID = menuID
+	menu.ID = params.MenuID
 
 	for _, item := range menu.Items {
-		if string(item.DrinkID.ID) == string(drinkID.ID) {
+		if string(item.DrinkID.ID) == string(params.DrinkID.ID) {
 			return models.Menu{}, errors.Invalidf("drink already in menu")
 		}
 	}
@@ -54,8 +72,8 @@ func (c *Commands) AddDrink(ctx *middleware.Context, menuID cedar.EntityUID, dri
 	}
 
 	menu.Items = append(menu.Items, models.MenuItem{
-		DrinkID:      drinkID,
-		Availability: c.availability.Calculate(ctx, drinkID),
+		DrinkID:      params.DrinkID,
+		Availability: c.availability.Calculate(ctx, params.DrinkID),
 		SortOrder:    nextSort,
 	})
 
@@ -68,8 +86,8 @@ func (c *Commands) AddDrink(ctx *middleware.Context, menuID cedar.EntityUID, dri
 	}
 
 	ctx.AddEvent(events.DrinkAddedToMenu{
-		MenuID:  menuID,
-		DrinkID: drinkID,
+		MenuID:  params.MenuID,
+		DrinkID: params.DrinkID,
 	})
 
 	return menu, nil

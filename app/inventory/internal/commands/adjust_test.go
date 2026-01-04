@@ -48,7 +48,11 @@ func TestAdjust_EmitsStockAdjusted(t *testing.T) {
 	cmds := commands.NewWithDependencies(d, fakeIngredients{})
 	ingredientID := ingredientsmodels.NewIngredientID("vodka")
 
-	_, err = cmds.Adjust(ctx, ingredientID, -2.0, models.ReasonUsed)
+	_, err = cmds.Adjust(ctx, commands.AdjustParams{
+		IngredientID: ingredientID,
+		Delta:        -2.0,
+		Reason:       models.ReasonUsed,
+	})
 	testutil.ErrorIf(t, err != nil, "execute: %v", err)
 
 	var sawAdjusted bool

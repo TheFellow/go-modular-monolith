@@ -14,6 +14,15 @@ func QueryAuthZ() QueryMiddleware {
 	}
 }
 
+func QueryAuthZWithResource() QueryWithResourceMiddleware {
+	return func(ctx *Context, action cedar.EntityUID, resource cedar.Entity, next QueryWithResourceNext) error {
+		if err := authz.AuthorizeWithEntity(ctx, ctx.Principal(), action, resource); err != nil {
+			return err
+		}
+		return next(ctx)
+	}
+}
+
 func CommandAuthZ() CommandMiddleware {
 	return func(ctx *Context, action cedar.EntityUID, resource cedar.Entity, next CommandNext) error {
 		if err := authz.AuthorizeWithEntity(ctx, ctx.Principal(), action, resource); err != nil {

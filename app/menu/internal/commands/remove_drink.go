@@ -9,11 +9,29 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (c *Commands) RemoveDrink(ctx *middleware.Context, menuID cedar.EntityUID, drinkID cedar.EntityUID) (models.Menu, error) {
-	if string(menuID.ID) == "" {
+type RemoveDrinkParams struct {
+	MenuID  cedar.EntityUID
+	DrinkID cedar.EntityUID
+}
+
+func (p RemoveDrinkParams) CedarEntity() cedar.Entity {
+	uid := p.MenuID
+	if string(uid.ID) == "" {
+		uid = cedar.NewEntityUID(models.MenuEntityType, cedar.String(""))
+	}
+	return cedar.Entity{
+		UID:        uid,
+		Parents:    cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(nil),
+	}
+}
+
+func (c *Commands) RemoveDrink(ctx *middleware.Context, params RemoveDrinkParams) (models.Menu, error) {
+	if string(params.MenuID.ID) == "" {
 		return models.Menu{}, errors.Invalidf("menu id is required")
 	}
-	if string(drinkID.ID) == "" {
+	if string(params.DrinkID.ID) == "" {
 		return models.Menu{}, errors.Invalidf("drink id is required")
 	}
 
@@ -25,21 +43,21 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, menuID cedar.EntityUID, 
 		return models.Menu{}, errors.Internalf("register dao: %w", err)
 	}
 
-	record, found, err := c.dao.Get(ctx, string(menuID.ID))
+	record, found, err := c.dao.Get(ctx, string(params.MenuID.ID))
 	if err != nil {
-		return models.Menu{}, errors.Internalf("get menu %s: %w", menuID.ID, err)
+		return models.Menu{}, errors.Internalf("get menu %s: %w", params.MenuID.ID, err)
 	}
 	if !found {
-		return models.Menu{}, errors.NotFoundf("menu %s not found", menuID.ID)
+		return models.Menu{}, errors.NotFoundf("menu %s not found", params.MenuID.ID)
 	}
 
 	menu := record.ToDomain()
-	menu.ID = menuID
+	menu.ID = params.MenuID
 
 	var out []models.MenuItem
 	var removed bool
 	for _, item := range menu.Items {
-		if string(item.DrinkID.ID) == string(drinkID.ID) {
+		if string(item.DrinkID.ID) == string(params.DrinkID.ID) {
 			removed = true
 			continue
 		}
@@ -59,8 +77,8 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, menuID cedar.EntityUID, 
 	}
 
 	ctx.AddEvent(events.DrinkRemovedFromMenu{
-		MenuID:  menuID,
-		DrinkID: drinkID,
+		MenuID:  params.MenuID,
+		DrinkID: params.DrinkID,
 	})
 
 	return menu, nil

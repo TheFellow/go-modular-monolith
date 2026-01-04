@@ -11,18 +11,36 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (c *Commands) UpdateRecipe(ctx *middleware.Context, drinkID cedar.EntityUID, recipe models.Recipe) (models.Drink, error) {
-	if string(drinkID.ID) == "" {
+type UpdateRecipeParams struct {
+	DrinkID cedar.EntityUID
+	Recipe  models.Recipe
+}
+
+func (p UpdateRecipeParams) CedarEntity() cedar.Entity {
+	uid := p.DrinkID
+	if string(uid.ID) == "" {
+		uid = cedar.NewEntityUID(models.DrinkEntityType, cedar.String(""))
+	}
+	return cedar.Entity{
+		UID:        uid,
+		Parents:    cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(nil),
+	}
+}
+
+func (c *Commands) UpdateRecipe(ctx *middleware.Context, params UpdateRecipeParams) (models.Drink, error) {
+	if string(params.DrinkID.ID) == "" {
 		return models.Drink{}, errors.Invalidf("drink id is required")
 	}
-	if err := recipe.Validate(); err != nil {
+	if err := params.Recipe.Validate(); err != nil {
 		return models.Drink{}, err
 	}
 	if c.ingredients == nil {
 		return models.Drink{}, errors.Internalf("missing ingredients dependency")
 	}
 
-	for _, ing := range recipe.Ingredients {
+	for _, ing := range params.Recipe.Ingredients {
 		if _, err := c.ingredients.Get(ctx, ing.IngredientID); err != nil {
 			if ing.Optional {
 				continue
@@ -44,29 +62,29 @@ func (c *Commands) UpdateRecipe(ctx *middleware.Context, drinkID cedar.EntityUID
 		return models.Drink{}, errors.Internalf("register dao: %w", err)
 	}
 
-	existing, found, err := c.dao.Get(ctx, string(drinkID.ID))
+	existing, found, err := c.dao.Get(ctx, string(params.DrinkID.ID))
 	if err != nil {
-		return models.Drink{}, errors.Internalf("get drink %s: %w", string(drinkID.ID), err)
+		return models.Drink{}, errors.Internalf("get drink %s: %w", string(params.DrinkID.ID), err)
 	}
 	if !found {
-		return models.Drink{}, errors.NotFoundf("drink %s not found", string(drinkID.ID))
+		return models.Drink{}, errors.NotFoundf("drink %s not found", string(params.DrinkID.ID))
 	}
 
 	previous := existing.ToDomain()
-	previous.ID = drinkID
+	previous.ID = params.DrinkID
 
-	existing.Recipe = dao.FromDomain(models.Drink{Recipe: recipe}).Recipe
+	existing.Recipe = dao.FromDomain(models.Drink{Recipe: params.Recipe}).Recipe
 	if err := c.dao.Update(ctx, existing); err != nil {
 		return models.Drink{}, err
 	}
 
 	updated := existing.ToDomain()
-	updated.ID = drinkID
+	updated.ID = params.DrinkID
 
 	added, removed := diffIngredientIDs(previous.Recipe, updated.Recipe)
 
 	ctx.AddEvent(events.DrinkRecipeUpdated{
-		DrinkID:            drinkID,
+		DrinkID:            params.DrinkID,
 		Name:               updated.Name,
 		PreviousRecipe:     previous.Recipe,
 		NewRecipe:          updated.Recipe,

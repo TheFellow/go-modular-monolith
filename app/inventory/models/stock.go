@@ -24,6 +24,19 @@ func (s Stock) EntityUID() cedar.EntityUID {
 	return NewStockID(s.IngredientID)
 }
 
+func (s Stock) CedarEntity() cedar.Entity {
+	uid := s.EntityUID()
+	if string(uid.ID) == "" {
+		uid = cedar.NewEntityUID(StockEntityType, cedar.String(""))
+	}
+	return cedar.Entity{
+		UID:        uid,
+		Parents:    cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(nil),
+	}
+}
+
 type AdjustmentReason string
 
 const (

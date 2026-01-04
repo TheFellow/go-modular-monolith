@@ -5,6 +5,7 @@ import (
 )
 
 var (
-	Query   = NewQueryChain(QueryAuthZ())
-	Command = NewCommandChain(CommandAuthZ(), UnitOfWork(uow.NewManager()))
+	Query             = NewQueryChain(QueryAuthZ())
+	QueryWithResource = NewQueryWithResourceChain(QueryAuthZWithResource())
+	Command           = NewCommandChain(CommandAuthZ(), UnitOfWork(uow.NewManager()))
 )

@@ -25,6 +25,19 @@ func (i Ingredient) EntityUID() cedar.EntityUID {
 	return i.ID
 }
 
+func (i Ingredient) CedarEntity() cedar.Entity {
+	uid := i.ID
+	if string(uid.ID) == "" {
+		uid = cedar.NewEntityUID(IngredientEntityType, cedar.String(""))
+	}
+	return cedar.Entity{
+		UID:        uid,
+		Parents:    cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(nil),
+	}
+}
+
 type Category string
 
 const (

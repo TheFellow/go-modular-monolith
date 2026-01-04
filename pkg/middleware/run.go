@@ -23,15 +23,35 @@ func RunQuery[Req, Res any](
 	return out, err
 }
 
-func RunCommand[Req, Res any](
+func RunQueryWithResource[Req CedarEntity, Res any](
 	ctx *Context,
 	action cedar.EntityUID,
-	resource cedar.Entity,
 	execute func(*Context, Req) (Res, error),
 	req Req,
 ) (Res, error) {
 	var out Res
 
+	resource := req.CedarEntity()
+	err := QueryWithResource.Execute(ctx, action, resource, func(c *Context) error {
+		res, err := execute(c, req)
+		if err != nil {
+			return err
+		}
+		out = res
+		return nil
+	})
+	return out, err
+}
+
+func RunCommand[Req CedarEntity, Res any](
+	ctx *Context,
+	action cedar.EntityUID,
+	execute func(*Context, Req) (Res, error),
+	req Req,
+) (Res, error) {
+	var out Res
+
+	resource := req.CedarEntity()
 	err := Command.Execute(ctx, action, resource, func(c *Context) error {
 		res, err := execute(c, req)
 		if err != nil {

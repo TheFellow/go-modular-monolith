@@ -13,11 +13,13 @@ type ListResponse struct {
 }
 
 func (m *Module) List(ctx *middleware.Context, req ListRequest) (ListResponse, error) {
-	return middleware.RunQuery(ctx, authz.ActionList, func(mctx *middleware.Context, _ ListRequest) (ListResponse, error) {
-		is, err := m.queries.List(mctx)
-		if err != nil {
-			return ListResponse{}, err
-		}
-		return ListResponse{Ingredients: is}, nil
-	}, req)
+	return middleware.RunQuery(ctx, authz.ActionList, m.list, req)
+}
+
+func (m *Module) list(ctx *middleware.Context, _ ListRequest) (ListResponse, error) {
+	is, err := m.queries.List(ctx)
+	if err != nil {
+		return ListResponse{}, err
+	}
+	return ListResponse{Ingredients: is}, nil
 }

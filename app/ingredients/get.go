@@ -16,11 +16,13 @@ type GetResponse struct {
 }
 
 func (m *Module) Get(ctx *middleware.Context, req GetRequest) (GetResponse, error) {
-	return middleware.RunQuery(ctx, authz.ActionGet, func(mctx *middleware.Context, req GetRequest) (GetResponse, error) {
-		i, err := m.queries.Get(mctx, req.ID)
-		if err != nil {
-			return GetResponse{}, err
-		}
-		return GetResponse{Ingredient: i}, nil
-	}, req)
+	return middleware.RunQuery(ctx, authz.ActionGet, m.get, req)
+}
+
+func (m *Module) get(ctx *middleware.Context, req GetRequest) (GetResponse, error) {
+	i, err := m.queries.Get(ctx, req.ID)
+	if err != nil {
+		return GetResponse{}, err
+	}
+	return GetResponse{Ingredient: i}, nil
 }
