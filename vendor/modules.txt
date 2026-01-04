@@ -43,6 +43,10 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
+# github.com/nishanths/exhaustive v0.12.0
+## explicit; go 1.18
+github.com/nishanths/exhaustive
+github.com/nishanths/exhaustive/cmd/exhaustive
 # github.com/urfave/cli/v3 v3.6.1
 ## explicit; go 1.22
 github.com/urfave/cli/v3
@@ -74,6 +78,15 @@ golang.org/x/sys/windows
 ## explicit; go 1.24.0
 # golang.org/x/tools v0.39.0
 ## explicit; go 1.24.0
+golang.org/x/tools/go/analysis
+golang.org/x/tools/go/analysis/checker
+golang.org/x/tools/go/analysis/internal
+golang.org/x/tools/go/analysis/internal/analysisflags
+golang.org/x/tools/go/analysis/internal/checker
+golang.org/x/tools/go/analysis/passes/inspect
+golang.org/x/tools/go/analysis/singlechecker
+golang.org/x/tools/go/analysis/unitchecker
+golang.org/x/tools/go/ast/astutil
 golang.org/x/tools/go/ast/edge
 golang.org/x/tools/go/ast/inspector
 golang.org/x/tools/go/gcexportdata
@@ -81,10 +94,15 @@ golang.org/x/tools/go/packages
 golang.org/x/tools/go/types/objectpath
 golang.org/x/tools/go/types/typeutil
 golang.org/x/tools/internal/aliases
+golang.org/x/tools/internal/analysis/driverutil
+golang.org/x/tools/internal/astutil/free
+golang.org/x/tools/internal/diff
+golang.org/x/tools/internal/diff/lcs
 golang.org/x/tools/internal/event
 golang.org/x/tools/internal/event/core
 golang.org/x/tools/internal/event/keys
 golang.org/x/tools/internal/event/label
+golang.org/x/tools/internal/facts
 golang.org/x/tools/internal/gcimporter
 golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/packagesinternal

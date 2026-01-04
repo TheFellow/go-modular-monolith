@@ -6,6 +6,8 @@ tool github.com/TheFellow/arch-lint
 
 tool github.com/alecthomas/go-check-sumtype/cmd/go-check-sumtype
 
+tool github.com/nishanths/exhaustive/cmd/exhaustive
+
 require (
 	github.com/cedar-policy/cedar-go v1.3.1
 	github.com/google/go-cmp v0.7.0
@@ -18,6 +20,7 @@ require (
 	github.com/alecthomas/go-check-sumtype v0.3.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.8.1 // indirect
 	github.com/goccy/go-yaml v1.17.1 // indirect
+	github.com/nishanths/exhaustive v0.12.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
