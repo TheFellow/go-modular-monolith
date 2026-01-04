@@ -1,7 +1,9 @@
 package commands
 
 import (
+	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/drinks/internal/dao"
@@ -11,36 +13,29 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type UpdateRecipeParams struct {
-	DrinkID cedar.EntityUID
-	Recipe  models.Recipe
-}
-
-func (p UpdateRecipeParams) CedarEntity() cedar.Entity {
-	uid := p.DrinkID
-	if string(uid.ID) == "" {
-		uid = cedar.NewEntityUID(models.DrinkEntityType, cedar.String(""))
-	}
-	return cedar.Entity{
-		UID:        uid,
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
-	}
-}
-
-func (c *Commands) UpdateRecipe(ctx *middleware.Context, params UpdateRecipeParams) (models.Drink, error) {
-	if string(params.DrinkID.ID) == "" {
+func (c *Commands) Update(ctx *middleware.Context, drink models.Drink) (models.Drink, error) {
+	if string(drink.ID.ID) == "" {
 		return models.Drink{}, errors.Invalidf("drink id is required")
 	}
-	if err := params.Recipe.Validate(); err != nil {
+
+	drink.Name = strings.TrimSpace(drink.Name)
+	if drink.Name == "" {
+		return models.Drink{}, errors.Invalidf("name is required")
+	}
+	if err := drink.Category.Validate(); err != nil {
+		return models.Drink{}, err
+	}
+	if err := drink.Glass.Validate(); err != nil {
+		return models.Drink{}, err
+	}
+	if err := drink.Recipe.Validate(); err != nil {
 		return models.Drink{}, err
 	}
 	if c.ingredients == nil {
 		return models.Drink{}, errors.Internalf("missing ingredients dependency")
 	}
 
-	for _, ing := range params.Recipe.Ingredients {
+	for _, ing := range drink.Recipe.Ingredients {
 		if _, err := c.ingredients.Get(ctx, ing.IngredientID); err != nil {
 			if ing.Optional {
 				continue
@@ -62,35 +57,40 @@ func (c *Commands) UpdateRecipe(ctx *middleware.Context, params UpdateRecipePara
 		return models.Drink{}, errors.Internalf("register dao: %w", err)
 	}
 
-	existing, found, err := c.dao.Get(ctx, string(params.DrinkID.ID))
+	existing, found, err := c.dao.Get(ctx, string(drink.ID.ID))
 	if err != nil {
-		return models.Drink{}, errors.Internalf("get drink %s: %w", string(params.DrinkID.ID), err)
+		return models.Drink{}, errors.Internalf("get drink %s: %w", string(drink.ID.ID), err)
 	}
 	if !found {
-		return models.Drink{}, errors.NotFoundf("drink %s not found", string(params.DrinkID.ID))
+		return models.Drink{}, errors.NotFoundf("drink %s not found", string(drink.ID.ID))
 	}
 
 	previous := existing.ToDomain()
-	previous.ID = params.DrinkID
+	previous.ID = drink.ID
 
-	existing.Recipe = dao.FromDomain(models.Drink{Recipe: params.Recipe}).Recipe
+	existing.Name = drink.Name
+	existing.Category = string(drink.Category)
+	existing.Glass = string(drink.Glass)
+	existing.Description = strings.TrimSpace(drink.Description)
+	existing.Recipe = dao.FromDomain(models.Drink{Recipe: drink.Recipe}).Recipe
 	if err := c.dao.Update(ctx, existing); err != nil {
 		return models.Drink{}, err
 	}
 
 	updated := existing.ToDomain()
-	updated.ID = params.DrinkID
+	updated.ID = drink.ID
 
 	added, removed := diffIngredientIDs(previous.Recipe, updated.Recipe)
-
-	ctx.AddEvent(events.DrinkRecipeUpdated{
-		DrinkID:            params.DrinkID,
-		Name:               updated.Name,
-		PreviousRecipe:     previous.Recipe,
-		NewRecipe:          updated.Recipe,
-		AddedIngredients:   added,
-		RemovedIngredients: removed,
-	})
+	if !reflect.DeepEqual(previous.Recipe, updated.Recipe) {
+		ctx.AddEvent(events.DrinkRecipeUpdated{
+			DrinkID:            drink.ID,
+			Name:               updated.Name,
+			PreviousRecipe:     previous.Recipe,
+			NewRecipe:          updated.Recipe,
+			AddedIngredients:   added,
+			RemovedIngredients: removed,
+		})
+	}
 
 	return updated, nil
 }

@@ -23,7 +23,7 @@ func (f fakeIngredientsOK) Get(_ context.Context, _ cedar.EntityUID) (ingredient
 	return ingredientsmodels.Ingredient{}, nil
 }
 
-func TestUpdateRecipe_PersistsAndEmitsEvent(t *testing.T) {
+func TestUpdate_PersistsAndEmitsEvent(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -33,6 +33,8 @@ func TestUpdateRecipe_PersistsAndEmitsEvent(t *testing.T) {
   {
     "id": "margarita",
     "name": "Margarita",
+    "category": "cocktail",
+    "glass": "coupe",
     "recipe": {
       "ingredients": [
         { "ingredient_id": "lime-juice", "amount": 1.0, "unit": "oz" }
@@ -55,8 +57,11 @@ func TestUpdateRecipe_PersistsAndEmitsEvent(t *testing.T) {
 	ctx = middleware.NewContext(ctx, middleware.WithUnitOfWork(tx))
 
 	cmds := commands.NewWithDependencies(d, fakeIngredientsOK{})
-	updated, err := cmds.UpdateRecipe(ctx, commands.UpdateRecipeParams{
-		DrinkID: drinksmodels.NewDrinkID("margarita"),
+	updated, err := cmds.Update(ctx, drinksmodels.Drink{
+		ID:       drinksmodels.NewDrinkID("margarita"),
+		Name:     "Margarita",
+		Category: drinksmodels.DrinkCategoryCocktail,
+		Glass:    drinksmodels.GlassTypeCoupe,
 		Recipe: drinksmodels.Recipe{
 			Ingredients: []drinksmodels.RecipeIngredient{
 				{

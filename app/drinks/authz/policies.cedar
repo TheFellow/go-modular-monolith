@@ -22,6 +22,6 @@ permit(
 
 permit(
     principal == Mixology::Actor::"owner",
-    action == Mixology::Drink::Action::"update_recipe",
+    action == Mixology::Drink::Action::"update",
     resource
 );

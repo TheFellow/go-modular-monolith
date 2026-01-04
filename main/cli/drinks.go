@@ -101,10 +101,10 @@ func (c *CLI) drinksCommands() *cli.Command {
 				}),
 			},
 			{
-				Name:  "update-recipe",
-				Usage: "Update a drink's recipe",
+				Name:  "update",
+				Usage: "Update a drink",
 				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "id", UsageText: "Drink ID", Min: 1, Max: 1},
+					&cli.StringArgs{Name: "args", Max: 0},
 				},
 				Flags: []cli.Flag{
 					TemplateFlag,
@@ -114,15 +114,15 @@ func (c *CLI) drinksCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
-						return writeJSON(cmd.Writer, drinkscli.TemplateRecipe())
+						return writeJSON(cmd.Writer, drinkscli.TemplateUpdateDrink())
 					}
 
-					recipe, err := readRecipeInput(cmd)
+					updated, err := readDrinkUpdateInput(cmd)
 					if err != nil {
 						return err
 					}
 
-					res, err := c.app.Drinks().UpdateRecipe(ctx, drinksmodels.NewDrinkID(cmd.StringArgs("id")[0]), recipe)
+					res, err := c.app.Drinks().Update(ctx, updated)
 					if err != nil {
 						return err
 					}
@@ -137,38 +137,6 @@ func (c *CLI) drinksCommands() *cli.Command {
 			},
 		},
 	}
-}
-
-func readRecipeInput(cmd *cli.Command) (drinksmodels.Recipe, error) {
-	fromStdin := cmd.Bool("stdin")
-	fromFile := strings.TrimSpace(cmd.String("file"))
-	if fromStdin && fromFile != "" {
-		return drinksmodels.Recipe{}, fmt.Errorf("set only one of --stdin or --file")
-	}
-	if !fromStdin && fromFile == "" {
-		return drinksmodels.Recipe{}, fmt.Errorf("missing recipe input: set --stdin or --file (or use --template)")
-	}
-
-	var r io.Reader
-	if fromStdin {
-		b, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return drinksmodels.Recipe{}, err
-		}
-		if len(bytes.TrimSpace(b)) == 0 {
-			return drinksmodels.Recipe{}, fmt.Errorf("stdin is empty")
-		}
-		r = bytes.NewReader(b)
-	} else {
-		f, err := os.Open(fromFile)
-		if err != nil {
-			return drinksmodels.Recipe{}, err
-		}
-		defer f.Close()
-		r = f
-	}
-
-	return drinkscli.DecodeRecipeJSON(r)
 }
 
 func readDrinkCreateInput(cmd *cli.Command) (drinksmodels.Drink, error) {
@@ -201,4 +169,36 @@ func readDrinkCreateInput(cmd *cli.Command) (drinksmodels.Drink, error) {
 	}
 
 	return drinkscli.DecodeCreateDrinkJSON(r)
+}
+
+func readDrinkUpdateInput(cmd *cli.Command) (drinksmodels.Drink, error) {
+	fromStdin := cmd.Bool("stdin")
+	fromFile := strings.TrimSpace(cmd.String("file"))
+	if fromStdin && fromFile != "" {
+		return drinksmodels.Drink{}, fmt.Errorf("set only one of --stdin or --file")
+	}
+	if !fromStdin && fromFile == "" {
+		return drinksmodels.Drink{}, fmt.Errorf("missing input: set --stdin or --file (or use --template)")
+	}
+
+	var r io.Reader
+	if fromStdin {
+		b, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return drinksmodels.Drink{}, err
+		}
+		if len(bytes.TrimSpace(b)) == 0 {
+			return drinksmodels.Drink{}, fmt.Errorf("stdin is empty")
+		}
+		r = bytes.NewReader(b)
+	} else {
+		f, err := os.Open(fromFile)
+		if err != nil {
+			return drinksmodels.Drink{}, err
+		}
+		defer f.Close()
+		r = f
+	}
+
+	return drinkscli.DecodeUpdateDrinkJSON(r)
 }
