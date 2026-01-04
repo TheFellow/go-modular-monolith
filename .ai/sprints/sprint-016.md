@@ -6,15 +6,15 @@ Create an Orders context that records drink orders. Handlers in other contexts r
 
 ## Tasks
 
-- [ ] Create `app/domains/orders/models/order.go` with Order, OrderItem models
-- [ ] Create `app/domains/orders/internal/dao/dao.go` with file-based DAO
-- [ ] Create `app/domains/orders/authz/` with actions and policies
-- [ ] Create `app/domains/orders/queries/queries.go` with Get, List methods
-- [ ] Create `app/domains/orders/internal/commands/commands.go` with Place, Complete, Cancel methods
-- [ ] Create `app/domains/orders/events/` with order events
-- [ ] Create `app/domains/inventory/handlers/order_completed.go` - updates stock directly (no events)
-- [ ] Create `app/domains/menu/handlers/order_completed.go` - recalculates availability directly (no events)
-- [ ] Add order subcommands to CLI
+- [x] Create `app/domains/orders/models/order.go` with Order, OrderItem models
+- [x] Create `app/domains/orders/internal/dao/dao.go` with file-based DAO
+- [x] Create `app/domains/orders/authz/` with actions and policies
+- [x] Create `app/domains/orders/queries/queries.go` with Get, List methods
+- [x] Create `app/domains/orders/internal/commands/commands.go` with Place, Complete, Cancel methods
+- [x] Create `app/domains/orders/events/` with order events
+- [x] Create `app/domains/inventory/handlers/order_completed.go` - updates stock directly (no events)
+- [x] Create `app/domains/menu/handlers/order_completed.go` - recalculates availability directly (no events)
+- [x] Add order subcommands to CLI
 
 ## Domain Model
 

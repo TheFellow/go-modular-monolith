@@ -6,7 +6,9 @@ import (
 	domains_events "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
 	domains_handlers "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/handlers"
 	domains_events2 "github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
+	domains_handlers3 "github.com/TheFellow/go-modular-monolith/app/domains/inventory/handlers"
 	domains_handlers2 "github.com/TheFellow/go-modular-monolith/app/domains/menu/handlers"
+	domains_events3 "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
 	middleware "github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -25,6 +27,17 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 		}
 	case domains_events2.StockAdjusted:
 		if err := domains_handlers2.NewStockAdjustedMenuUpdater().Handle(ctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+	case domains_events3.OrderCompleted:
+		if err := domains_handlers3.NewOrderCompletedStockUpdater().Handle(ctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := domains_handlers2.NewOrderCompletedMenuUpdater().Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}

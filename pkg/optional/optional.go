@@ -5,8 +5,11 @@ type Value[T any] struct {
 	v     T
 }
 
-func Some[T any](v T) Value[T] { return Value[T]{valid: true, v: v} }
-func None[T any]() Value[T]    { return Value[T]{} }
+func NewSome[T any](v T) Value[T] { return Value[T]{valid: true, v: v} }
+func NewNone[T any]() Value[T]    { return Value[T]{} }
+
+func Some[T any](v T) Value[T] { return NewSome(v) }
+func None[T any]() Value[T]    { return NewNone[T]() }
 
 func (v Value[T]) IsSome() bool { return v.valid }
 func (v Value[T]) IsNone() bool { return !v.valid }
@@ -17,7 +20,7 @@ func (v Value[T]) Unwrap() (T, bool) {
 
 func (v Value[T]) Must() T {
 	if !v.valid {
-		panic("option is None")
+		panic("optional: called Must on None")
 	}
 	return v.v
 }
@@ -38,14 +41,14 @@ func (v Value[T]) OrElse(fallback func() T) T {
 
 func Map[T, U any](v Value[T], f func(T) U) Value[U] {
 	if x, ok := v.Unwrap(); ok {
-		return Some(f(x))
+		return NewSome(f(x))
 	}
-	return None[U]()
+	return NewNone[U]()
 }
 
 func FlatMap[T, U any](v Value[T], f func(T) Value[U]) Value[U] {
 	if x, ok := v.Unwrap(); ok {
 		return f(x)
 	}
-	return None[U]()
+	return NewNone[U]()
 }
