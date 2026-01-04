@@ -25,13 +25,13 @@ func New() *App {
 		middleware.Dispatcher(dispatcher.New()),
 	)
 
-	im := ingredients.NewModule()
-	dm := drinks.NewModule()
-	invm := inventory.NewModule()
-	mm := menu.NewModule()
-	om := orders.NewModule()
-
-	return &App{drinks: dm, ingredients: im, inventory: invm, menu: mm, orders: om}
+	return &App{
+		drinks:      drinks.NewModule(),
+		ingredients: ingredients.NewModule(),
+		inventory:   inventory.NewModule(),
+		menu:        menu.NewModule(),
+		orders:      orders.NewModule(),
+	}
 }
 
 func (a *App) Drinks() *drinks.Module {
