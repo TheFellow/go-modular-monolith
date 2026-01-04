@@ -14,6 +14,7 @@ sprint-011,completed,2026-01-03,2026-01-03,Inventory management context (file DA
 sprint-012,completed,2026-01-03,2026-01-03,Menu reacts to StockAdjusted + dispatcher integration test
 sprint-012b,completed,2026-01-03,2026-01-03,CLI idioms cleanup (typed args + validators + CLI struct)
 sprint-013,completed,2026-01-03,2026-01-03,Rich drink recipes + recipe validation + update command + CLI recipe json
+sprint-013b,completed,2026-01-03,2026-01-03,Arch-lint rules + CI workflow to enforce architecture
 sprint-014,pending,,,Menu curation context
 sprint-015,pending,,,Advanced business rules & cost analysis
 sprint-016,pending,,,Orders & inventory consumption

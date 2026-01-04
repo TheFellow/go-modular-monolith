@@ -1,0 +1,46 @@
+specs:
+  # Handlers cannot call commands (prevents cascading events)
+  - name: handlers-no-commands
+    packages:
+      include:
+        - "app/*/handlers/**"
+    rules:
+      forbid:
+        - "app/*/internal/commands"
+        - "app/*/internal/commands/**"
+
+  # Internal packages are module-private
+  - name: no-cross-module-internal
+    packages:
+      include:
+        - "app/{module}/**"
+    rules:
+      forbid:
+        - "app/{!module}/internal/**"
+
+  # Events are public contracts - no internal dependencies
+  - name: events-no-internal
+    packages:
+      include:
+        - "app/*/events/**"
+    rules:
+      forbid:
+        - "app/*/internal/**"
+
+  # Queries are read-only - no command imports
+  - name: queries-no-commands
+    packages:
+      include:
+        - "app/*/queries/**"
+    rules:
+      forbid:
+        - "app/*/internal/commands/**"
+
+  # Models are dependency-free within module
+  - name: models-no-internal
+    packages:
+      include:
+        - "app/*/models/**"
+    rules:
+      forbid:
+        - "app/*/internal/**"

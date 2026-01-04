@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: ["**"]
+
+jobs:
+  build-test-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Generate
+        run: go generate ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Arch Lint
+        run: go tool arch-lint -config=.arch-lint.yaml
+
+      - name: Test
+        run: go test ./...
+
