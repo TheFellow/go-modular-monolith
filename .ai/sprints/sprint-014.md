@@ -6,15 +6,15 @@ Create the Menu bounded context for curating drink menus with availability track
 
 ## Tasks
 
-- [ ] Create `app/menu/models/menu.go` with Menu, MenuItem models
-- [ ] Create `app/menu/internal/dao/dao.go` with file-based DAO
-- [ ] Create `app/menu/authz/` with actions and policies
-- [ ] Create `app/menu/queries/queries.go` with Get, List methods
-- [ ] Create `app/menu/internal/commands/commands.go` with Create, AddDrink, RemoveDrink, Publish methods
-- [ ] Create `app/menu/handlers/stock_adjusted.go` for inventory events
-- [ ] Create `app/menu/events/` with menu-related events
-- [ ] Create `app/menu/module.go` exposing public API
-- [ ] Add menu subcommands to CLI
+- [x] Create `app/menu/models/menu.go` with Menu, MenuItem models
+- [x] Create `app/menu/internal/dao/dao.go` with file-based DAO
+- [x] Create `app/menu/authz/` with actions and policies
+- [x] Create `app/menu/queries/queries.go` with Get, List methods
+- [x] Create `app/menu/internal/commands/commands.go` with Create, AddDrink, RemoveDrink, Publish methods
+- [x] Create `app/menu/handlers/stock_adjusted.go` for inventory events
+- [x] Create `app/menu/events/` with menu-related events
+- [x] Create `app/menu/module.go` exposing public API
+- [x] Add menu subcommands to CLI
 
 ## Domain Model
 

@@ -4,6 +4,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/inventory"
+	"github.com/TheFellow/go-modular-monolith/app/menu"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/uow"
@@ -13,6 +14,7 @@ type App struct {
 	drinks      *drinks.Module
 	ingredients *ingredients.Module
 	inventory   *inventory.Module
+	menu        *menu.Module
 }
 
 func New() *App {
@@ -25,8 +27,9 @@ func New() *App {
 	im := ingredients.NewModule()
 	dm := drinks.NewModule()
 	invm := inventory.NewModule()
+	mm := menu.NewModule()
 
-	return &App{drinks: dm, ingredients: im, inventory: invm}
+	return &App{drinks: dm, ingredients: im, inventory: invm, menu: mm}
 }
 
 func (a *App) Drinks() *drinks.Module {
@@ -39,4 +42,8 @@ func (a *App) Ingredients() *ingredients.Module {
 
 func (a *App) Inventory() *inventory.Module {
 	return a.inventory
+}
+
+func (a *App) Menu() *menu.Module {
+	return a.menu
 }

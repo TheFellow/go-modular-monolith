@@ -57,6 +57,7 @@ func (c *CLI) Command() *cli.Command {
 			c.drinksCommands(),
 			c.ingredientsCommands(),
 			c.inventoryCommands(),
+			c.menuCommands(),
 		},
 	}
 }
