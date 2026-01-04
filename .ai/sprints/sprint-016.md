@@ -150,5 +150,6 @@ mixology order cancel <order-id>
 
 - Sprint 013c (Simplified constructors)
 - Sprint 013d (Unified Commands object)
+- Sprint 013e (No Request/Response wrappers)
 - Sprint 014 (Menu curation)
 - Sprint 015 (Cost/substitution logic)
