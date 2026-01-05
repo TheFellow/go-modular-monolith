@@ -33,8 +33,9 @@ func NewFixture(t testing.TB) *Fixture {
 	t.Helper()
 
 	path := filepath.Join(t.TempDir(), "mixology.test.db")
-	a, err := app.Open(path)
+	s, err := store.Open(path)
 	Ok(t, err)
+	a := app.New(app.WithStore(s))
 	t.Cleanup(func() { _ = a.Close() })
 
 	p, err := authn.ParseActor("owner")
@@ -43,7 +44,7 @@ func NewFixture(t testing.TB) *Fixture {
 
 	return &Fixture{
 		T:     t,
-		Store: a.Store,
+		Store: s,
 		App:   a,
 		Ctx:   ctx,
 

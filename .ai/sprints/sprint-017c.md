@@ -52,54 +52,67 @@ func TestCreateDrink(t *testing.T) {
 package testutil
 
 import (
-    "testing"
+	"context"
+	"path/filepath"
+	"testing"
 
-    "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
-    "github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
-    "github.com/TheFellow/go-modular-monolith/app/domains/inventory"
-    "github.com/TheFellow/go-modular-monolith/app/domains/menu"
-    "github.com/TheFellow/go-modular-monolith/app/domains/orders"
-    "github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/app"
+	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
+	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
+	"github.com/TheFellow/go-modular-monolith/app/domains/menu"
+	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
+	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-// Fixture provides a complete test environment with isolated database.
 type Fixture struct {
-    T   testing.TB
-    Ctx *middleware.Context
+	T     testing.TB
+	Store *store.Store
+	App   *app.App
+	Ctx   *middleware.Context
 
-    // All domain modules, ready to use
-    Drinks      *drinks.Module
-    Ingredients *ingredients.Module
-    Inventory   *inventory.Module
-    Menu        *menu.Module
-    Orders      *orders.Module
+	Drinks      *drinks.Module
+	Ingredients *ingredients.Module
+	Inventory   *inventory.Module
+	Menu        *menu.Module
+	Orders      *orders.Module
 }
 
-// NewFixture creates an isolated test environment.
-// Each test gets its own database file via t.TempDir().
 func NewFixture(t testing.TB) *Fixture {
-    t.Helper()
+	t.Helper()
 
-    // Create isolated database in temp directory
-    OpenStore(t)  // Uses t.TempDir(), registers cleanup
+	path := filepath.Join(t.TempDir(), "mixology.test.db")
+	s, err := store.Open(path)
+	Ok(t, err)
 
-    // Create context with test principal
-    ctx := ActorContext(t, "owner")
+	a := app.New(app.WithStore(s))
+	t.Cleanup(func() { _ = a.Close() })
 
-    return &Fixture{
-        T:           t,
-        Ctx:         ctx,
-        Drinks:      drinks.NewModule(),
-        Ingredients: ingredients.NewModule(),
-        Inventory:   inventory.NewModule(),
-        Menu:        menu.NewModule(),
-        Orders:      orders.NewModule(),
-    }
+	p, err := authn.ParseActor("owner")
+	Ok(t, err)
+	ctx := a.Context(context.Background(), p)
+
+	return &Fixture{
+		T:     t,
+		Store: s,
+		App:   a,
+		Ctx:   ctx,
+
+		Drinks:      a.Drinks,
+		Ingredients: a.Ingredients,
+		Inventory:   a.Inventory,
+		Menu:        a.Menu,
+		Orders:      a.Orders,
+	}
 }
 
-// AsActor returns a new context with the specified actor.
 func (f *Fixture) AsActor(actor string) *middleware.Context {
-    return ActorContext(f.T, actor)
+	f.T.Helper()
+	p, err := authn.ParseActor(actor)
+	Ok(f.T, err)
+	return f.App.Context(context.Background(), p)
 }
 ```
 

@@ -17,6 +17,7 @@ type Context struct {
 type ContextOpt func(*Context)
 
 type principalKey struct{}
+type dispatcherKey struct{}
 
 func WithPrincipal(p cedar.EntityUID) ContextOpt {
 	return func(c *Context) {
@@ -34,6 +35,20 @@ func WithStore(s *store.Store) ContextOpt {
 	return func(c *Context) {
 		c.Context = store.WithStore(c.Context, s)
 	}
+}
+
+func WithEventDispatcher(d EventDispatcher) ContextOpt {
+	return func(c *Context) {
+		c.Context = context.WithValue(c.Context, dispatcherKey{}, d)
+	}
+}
+
+func DispatcherFromContext(ctx context.Context) (EventDispatcher, bool) {
+	if ctx == nil {
+		return nil, false
+	}
+	d, ok := ctx.Value(dispatcherKey{}).(EventDispatcher)
+	return d, ok
 }
 
 func ContextWithPrincipal(ctx context.Context, p cedar.EntityUID) context.Context {

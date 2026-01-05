@@ -2,24 +2,9 @@ package middleware
 
 import (
 	"log"
-	"sync"
 
 	cedar "github.com/cedar-policy/cedar-go"
 )
-
-var (
-	dispatcherOnce sync.Once
-	dispatcher     EventDispatcher
-)
-
-// SetEventDispatcher configures the process-wide event dispatcher used by the
-// default command chain. It is safe to call multiple times; only the first call
-// wins.
-func SetEventDispatcher(d EventDispatcher) {
-	dispatcherOnce.Do(func() {
-		dispatcher = d
-	})
-}
 
 // DispatchEvents dispatches any events collected on the middleware context
 // after the command completes.
@@ -29,12 +14,13 @@ func DispatchEvents() CommandMiddleware {
 			return err
 		}
 
-		if dispatcher == nil {
+		d, ok := DispatcherFromContext(ctx.Context)
+		if !ok || d == nil {
 			return nil
 		}
 
 		for _, event := range ctx.Events() {
-			if err := dispatcher.Dispatch(ctx, event); err != nil {
+			if err := d.Dispatch(ctx, event); err != nil {
 				log.Printf("handler error for %T: %v", event, err)
 			}
 		}
