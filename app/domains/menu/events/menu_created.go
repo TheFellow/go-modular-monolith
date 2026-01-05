@@ -1,8 +1,7 @@
 package events
 
-import cedar "github.com/cedar-policy/cedar-go"
+import "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 
 type MenuCreated struct {
-	MenuID cedar.EntityUID
-	Name   string
+	Menu models.Menu
 }

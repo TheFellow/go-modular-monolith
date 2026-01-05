@@ -42,8 +42,7 @@ func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (models.Me
 	}
 
 	ctx.AddEvent(events.MenuPublished{
-		MenuID:      menuID,
-		PublishedAt: now,
+		Menu: menu,
 	})
 
 	return menu, nil

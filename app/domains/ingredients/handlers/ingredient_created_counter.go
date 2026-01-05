@@ -18,7 +18,8 @@ func NewIngredientCreatedCounter() *IngredientCreatedCounter {
 	return &IngredientCreatedCounter{}
 }
 
-func (h *IngredientCreatedCounter) Handle(_ *middleware.Context, _ events.IngredientCreated) error {
+func (h *IngredientCreatedCounter) Handle(_ *middleware.Context, e events.IngredientCreated) error {
+	_ = e.Ingredient
 	IngredientCreatedCount.Add(1)
 	return nil
 }
@@ -29,7 +30,8 @@ func NewIngredientCreatedAudit() *IngredientCreatedAudit {
 	return &IngredientCreatedAudit{}
 }
 
-func (h *IngredientCreatedAudit) Handle(_ *middleware.Context, _ events.IngredientCreated) error {
+func (h *IngredientCreatedAudit) Handle(_ *middleware.Context, e events.IngredientCreated) error {
+	_ = e.Ingredient
 	IngredientCreatedAuditCount.Add(1)
 	return nil
 }

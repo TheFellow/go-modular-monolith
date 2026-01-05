@@ -41,9 +41,7 @@ func (c *Commands) Cancel(ctx *middleware.Context, order models.Order) (models.O
 	}
 
 	ctx.AddEvent(events.OrderCancelled{
-		OrderID: existing.ID,
-		MenuID:  existing.MenuID,
-		At:      time.Now().UTC(),
+		Order: existing,
 	})
 	return existing, nil
 }

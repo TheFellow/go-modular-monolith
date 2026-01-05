@@ -154,16 +154,16 @@ Update any handlers that reference the old event field names:
 
 ## Tasks
 
-- [ ] Update `IngredientCreated` to fat event with full `models.Ingredient`
-- [ ] Update `IngredientUpdated` to fat event with `Previous` and `Current` models
-- [ ] Update ingredient handlers to use new event structure
-- [ ] Update `MenuCreated` to fat event with full `models.Menu`
-- [ ] Update `MenuPublished` to fat event with full `models.Menu`
-- [ ] Update `DrinkAddedToMenu` to fat event with Menu and MenuItem
-- [ ] Update `DrinkRemovedFromMenu` to fat event with Menu and removed MenuItem
-- [ ] Update `OrderCancelled` to fat event with full `models.Order`
-- [ ] Update all commands that emit these events
-- [ ] Verify `go test ./...` passes
+- [x] Update `IngredientCreated` to fat event with full `models.Ingredient`
+- [x] Update `IngredientUpdated` to fat event with `Previous` and `Current` models
+- [x] Update ingredient handlers to use new event structure
+- [x] Update `MenuCreated` to fat event with full `models.Menu`
+- [x] Update `MenuPublished` to fat event with full `models.Menu`
+- [x] Update `DrinkAddedToMenu` to fat event with Menu and MenuItem
+- [x] Update `DrinkRemovedFromMenu` to fat event with Menu and removed MenuItem
+- [x] Update `OrderCancelled` to fat event with full `models.Order`
+- [x] Update all commands that emit these events
+- [x] Verify `go test ./...` passes
 
 ## Acceptance Criteria
 

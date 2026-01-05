@@ -20,8 +20,10 @@ func TestDispatcher_DispatchesToHandlers(t *testing.T) {
 	ctx := middleware.NewContext(context.Background())
 
 	err := d.Dispatch(ctx, events.IngredientCreated{
-		IngredientID: models.NewIngredientID("vodka"),
-		Name:         "Vodka",
+		Ingredient: models.Ingredient{
+			ID:   models.NewIngredientID("vodka"),
+			Name: "Vodka",
+		},
 	})
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)

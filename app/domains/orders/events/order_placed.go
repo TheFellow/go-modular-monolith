@@ -22,9 +22,7 @@ type OrderItemPlaced struct {
 }
 
 type OrderCancelled struct {
-	OrderID cedar.EntityUID
-	MenuID  cedar.EntityUID
-	At      time.Time
+	Order models.Order
 }
 
 type OrderCompleted struct {

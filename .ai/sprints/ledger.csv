@@ -32,3 +32,4 @@ sprint-019,completed,2026-01-05,2026-01-05,OpenTelemetry metrics via middleware 
 sprint-020,completed,2026-01-05,2026-01-05,Single-responsibility middleware refactor: pure authz + AuthZ/Event subchains
 sprint-021,completed,2026-01-05,2026-01-05,Drinks delete + filtered list + Menu reacts to DrinkDeleted
 sprint-022,completed,2026-01-05,2026-01-05,DAO ListFilter support across domains + CLI list filters
+sprint-023,completed,2026-01-05,2026-01-05,Fat events: embed full models in events

@@ -22,6 +22,8 @@ func (c *Commands) Update(ctx *middleware.Context, ingredient models.Ingredient)
 		return models.Ingredient{}, errors.NotFoundf("ingredient %s not found", ingredient.ID)
 	}
 
+	previous := existing
+
 	if name := strings.TrimSpace(ingredient.Name); name != "" {
 		existing.Name = name
 	}
@@ -40,9 +42,8 @@ func (c *Commands) Update(ctx *middleware.Context, ingredient models.Ingredient)
 	}
 
 	ctx.AddEvent(events.IngredientUpdated{
-		IngredientID: existing.ID,
-		Name:         existing.Name,
-		Category:     existing.Category,
+		Previous: previous,
+		Current:  existing,
 	})
 
 	return existing, nil

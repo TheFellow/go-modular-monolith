@@ -1,12 +1,9 @@
 package events
 
 import (
-	"time"
-
-	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 )
 
 type MenuPublished struct {
-	MenuID      cedar.EntityUID
-	PublishedAt time.Time
+	Menu models.Menu
 }

@@ -48,6 +48,7 @@ func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChan
 		Availability: c.availability.Calculate(ctx, change.DrinkID),
 		SortOrder:    nextSort,
 	})
+	added := menu.Items[len(menu.Items)-1]
 
 	if err := menu.Validate(); err != nil {
 		return models.Menu{}, err
@@ -58,8 +59,8 @@ func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChan
 	}
 
 	ctx.AddEvent(events.DrinkAddedToMenu{
-		MenuID:  change.MenuID,
-		DrinkID: change.DrinkID,
+		Menu: menu,
+		Item: added,
 	})
 
 	return menu, nil

@@ -24,9 +24,11 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, change models.MenuDrinkC
 	}
 
 	var out []models.MenuItem
+	var removedItem models.MenuItem
 	var removed bool
 	for _, item := range menu.Items {
 		if string(item.DrinkID.ID) == string(change.DrinkID.ID) {
+			removedItem = item
 			removed = true
 			continue
 		}
@@ -46,8 +48,8 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, change models.MenuDrinkC
 	}
 
 	ctx.AddEvent(events.DrinkRemovedFromMenu{
-		MenuID:  change.MenuID,
-		DrinkID: change.DrinkID,
+		Menu: menu,
+		Item: removedItem,
 	})
 
 	return menu, nil

@@ -41,9 +41,7 @@ func (c *Commands) Create(ctx *middleware.Context, ingredient models.Ingredient)
 	}
 
 	ctx.AddEvent(events.IngredientCreated{
-		IngredientID: uid,
-		Name:         name,
-		Category:     ingredient.Category,
+		Ingredient: created,
 	})
 
 	return created, nil

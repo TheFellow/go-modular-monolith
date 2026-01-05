@@ -47,8 +47,7 @@ func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (models.Men
 	}
 
 	ctx.AddEvent(events.MenuCreated{
-		MenuID: uid,
-		Name:   created.Name,
+		Menu: created,
 	})
 
 	return created, nil
