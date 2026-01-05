@@ -45,7 +45,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						})
 					}
 
-					created, err := c.app.Orders().Place(ctx, ordersmodels.Order{
+					created, err := c.app.Orders.Place(ctx, ordersmodels.Order{
 						MenuID: menuID,
 						Items:  items,
 					})
@@ -61,7 +61,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List orders",
 				Action: c.action(func(ctx *middleware.Context, _ *cli.Command) error {
-					res, err := c.app.Orders().List(ctx, orders.ListRequest{})
+					res, err := c.app.Orders.List(ctx, orders.ListRequest{})
 					if err != nil {
 						return err
 					}
@@ -79,7 +79,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("order_id")[0]
-					res, err := c.app.Orders().Get(ctx, orders.GetRequest{ID: ordersmodels.NewOrderID(id)})
+					res, err := c.app.Orders.Get(ctx, orders.GetRequest{ID: ordersmodels.NewOrderID(id)})
 					if err != nil {
 						return err
 					}
@@ -109,7 +109,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("order_id")[0]
-					updated, err := c.app.Orders().Complete(ctx, ordersmodels.Order{ID: ordersmodels.NewOrderID(id)})
+					updated, err := c.app.Orders.Complete(ctx, ordersmodels.Order{ID: ordersmodels.NewOrderID(id)})
 					if err != nil {
 						return err
 					}
@@ -125,7 +125,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("order_id")[0]
-					updated, err := c.app.Orders().Cancel(ctx, ordersmodels.Order{ID: ordersmodels.NewOrderID(id)})
+					updated, err := c.app.Orders.Cancel(ctx, ordersmodels.Order{ID: ordersmodels.NewOrderID(id)})
 					if err != nil {
 						return err
 					}

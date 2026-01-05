@@ -19,7 +19,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List ingredients",
 				Action: c.action(func(ctx *middleware.Context, _ *cli.Command) error {
-					res, err := c.app.Ingredients().List(ctx, ingredients.ListRequest{})
+					res, err := c.app.Ingredients.List(ctx, ingredients.ListRequest{})
 					if err != nil {
 						return err
 					}
@@ -38,7 +38,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("id")[0]
-					res, err := c.app.Ingredients().Get(ctx, ingredients.GetRequest{ID: models.NewIngredientID(id)})
+					res, err := c.app.Ingredients.Get(ctx, ingredients.GetRequest{ID: models.NewIngredientID(id)})
 					if err != nil {
 						return err
 					}
@@ -87,7 +87,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					name := cmd.StringArgs("name")[0]
-					res, err := c.app.Ingredients().Create(ctx, models.Ingredient{
+					res, err := c.app.Ingredients.Create(ctx, models.Ingredient{
 						Name:        name,
 						Category:    models.Category(cmd.String("category")),
 						Unit:        models.Unit(cmd.String("unit")),
@@ -136,7 +136,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					res, err := c.app.Ingredients().Update(ctx, models.Ingredient{
+					res, err := c.app.Ingredients.Update(ctx, models.Ingredient{
 						ID:          models.NewIngredientID(cmd.StringArgs("id")[0]),
 						Name:        cmd.String("name"),
 						Category:    models.Category(cmd.String("category")),

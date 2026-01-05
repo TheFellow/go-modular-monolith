@@ -21,7 +21,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List stock levels",
 				Action: c.action(func(ctx *middleware.Context, _ *cli.Command) error {
-					res, err := c.app.Inventory().List(ctx, inventory.ListRequest{})
+					res, err := c.app.Inventory.List(ctx, inventory.ListRequest{})
 					if err != nil {
 						return err
 					}
@@ -40,7 +40,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("ingredient_id")[0]
-					res, err := c.app.Inventory().Get(ctx, inventory.GetRequest{IngredientID: models.NewIngredientID(id)})
+					res, err := c.app.Inventory.Get(ctx, inventory.GetRequest{IngredientID: models.NewIngredientID(id)})
 					if err != nil {
 						return err
 					}
@@ -95,7 +95,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						cost = optional.Some(p)
 					}
 
-					res, err := c.app.Inventory().Adjust(ctx, inventorymodels.StockPatch{
+					res, err := c.app.Inventory.Adjust(ctx, inventorymodels.StockPatch{
 						IngredientID: models.NewIngredientID(ingredientID),
 						Delta:        delta,
 						CostPerUnit:  cost,
@@ -132,7 +132,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return err
 					}
 
-					res, err := c.app.Inventory().Set(ctx, inventorymodels.StockUpdate{
+					res, err := c.app.Inventory.Set(ctx, inventorymodels.StockUpdate{
 						IngredientID: models.NewIngredientID(ingredientID),
 						Quantity:     qty,
 						CostPerUnit:  cost,

@@ -23,7 +23,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Usage: "List menus",
 				Flags: []cli.Flag{JSONFlag, CostsFlag, TargetMarginFlag},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					res, err := c.app.Menu().List(ctx, menu.ListRequest{})
+					res, err := c.app.Menu.List(ctx, menu.ListRequest{})
 					if err != nil {
 						return err
 					}
@@ -62,7 +62,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("menu_id")[0]
-					res, err := c.app.Menu().Get(ctx, menu.GetRequest{ID: menumodels.NewMenuID(id)})
+					res, err := c.app.Menu.Get(ctx, menu.GetRequest{ID: menumodels.NewMenuID(id)})
 					if err != nil {
 						return err
 					}
@@ -141,7 +141,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Flags: []cli.Flag{JSONFlag},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					name := cmd.StringArgs("name")[0]
-					created, err := c.app.Menu().Create(ctx, menumodels.Menu{Name: name})
+					created, err := c.app.Menu.Create(ctx, menumodels.Menu{Name: name})
 					if err != nil {
 						return err
 					}
@@ -165,7 +165,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					menuID := menumodels.NewMenuID(cmd.StringArgs("menu_id")[0])
 					drinkID := drinksmodels.NewDrinkID(cmd.StringArgs("drink_id")[0])
-					updated, err := c.app.Menu().AddDrink(ctx, menumodels.MenuDrinkChange{
+					updated, err := c.app.Menu.AddDrink(ctx, menumodels.MenuDrinkChange{
 						MenuID:  menuID,
 						DrinkID: drinkID,
 					})
@@ -192,7 +192,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					menuID := menumodels.NewMenuID(cmd.StringArgs("menu_id")[0])
 					drinkID := drinksmodels.NewDrinkID(cmd.StringArgs("drink_id")[0])
-					updated, err := c.app.Menu().RemoveDrink(ctx, menumodels.MenuDrinkChange{
+					updated, err := c.app.Menu.RemoveDrink(ctx, menumodels.MenuDrinkChange{
 						MenuID:  menuID,
 						DrinkID: drinkID,
 					})
@@ -217,7 +217,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Flags: []cli.Flag{JSONFlag},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					menuID := cmd.StringArgs("menu_id")[0]
-					published, err := c.app.Menu().Publish(ctx, menumodels.Menu{ID: menumodels.NewMenuID(menuID)})
+					published, err := c.app.Menu.Publish(ctx, menumodels.Menu{ID: menumodels.NewMenuID(menuID)})
 					if err != nil {
 						return err
 					}

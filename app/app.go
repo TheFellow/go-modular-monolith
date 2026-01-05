@@ -11,11 +11,11 @@ import (
 )
 
 type App struct {
-	drinks      *drinks.Module
-	ingredients *ingredients.Module
-	inventory   *inventory.Module
-	menu        *menu.Module
-	orders      *orders.Module
+	Drinks      *drinks.Module
+	Ingredients *ingredients.Module
+	Inventory   *inventory.Module
+	Menu        *menu.Module
+	Orders      *orders.Module
 }
 
 func New() *App {
@@ -26,30 +26,10 @@ func New() *App {
 	)
 
 	return &App{
-		drinks:      drinks.NewModule(),
-		ingredients: ingredients.NewModule(),
-		inventory:   inventory.NewModule(),
-		menu:        menu.NewModule(),
-		orders:      orders.NewModule(),
+		Drinks:      drinks.NewModule(),
+		Ingredients: ingredients.NewModule(),
+		Inventory:   inventory.NewModule(),
+		Menu:        menu.NewModule(),
+		Orders:      orders.NewModule(),
 	}
-}
-
-func (a *App) Drinks() *drinks.Module {
-	return a.drinks
-}
-
-func (a *App) Ingredients() *ingredients.Module {
-	return a.ingredients
-}
-
-func (a *App) Inventory() *inventory.Module {
-	return a.inventory
-}
-
-func (a *App) Menu() *menu.Module {
-	return a.menu
-}
-
-func (a *App) Orders() *orders.Module {
-	return a.orders
 }

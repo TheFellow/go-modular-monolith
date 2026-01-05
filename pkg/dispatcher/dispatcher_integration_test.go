@@ -30,7 +30,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	}
 	ctx := middleware.NewContext(context.Background(), middleware.WithPrincipal(owner))
 
-	ingredient, err := a.Ingredients().Create(ctx, ingredientsmodels.Ingredient{
+	ingredient, err := a.Ingredients.Create(ctx, ingredientsmodels.Ingredient{
 		Name:     "Vodka",
 		Category: ingredientsmodels.CategorySpirit,
 		Unit:     ingredientsmodels.UnitOz,
@@ -39,7 +39,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("create ingredient: %v", err)
 	}
 
-	_, err = a.Inventory().Set(ctx, inventorymodels.StockUpdate{
+	_, err = a.Inventory.Set(ctx, inventorymodels.StockUpdate{
 		IngredientID: ingredient.ID,
 		Quantity:     10,
 		CostPerUnit:  money.Price{Amount: 100, Currency: "USD"},
@@ -48,7 +48,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("set stock: %v", err)
 	}
 
-	drink, err := a.Drinks().Create(ctx, models.Drink{
+	drink, err := a.Drinks.Create(ctx, models.Drink{
 		Name:     "Margarita",
 		Category: models.DrinkCategoryCocktail,
 		Glass:    models.GlassTypeCoupe,
@@ -63,15 +63,15 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("create drink: %v", err)
 	}
 
-	m0, err := a.Menu().Create(ctx, menumodels.Menu{Name: "Happy Hour"})
+	m0, err := a.Menu.Create(ctx, menumodels.Menu{Name: "Happy Hour"})
 	if err != nil {
 		t.Fatalf("create menu: %v", err)
 	}
-	m1, err := a.Menu().AddDrink(ctx, menumodels.MenuDrinkChange{MenuID: m0.ID, DrinkID: drink.ID})
+	m1, err := a.Menu.AddDrink(ctx, menumodels.MenuDrinkChange{MenuID: m0.ID, DrinkID: drink.ID})
 	if err != nil {
 		t.Fatalf("add drink: %v", err)
 	}
-	m2, err := a.Menu().Publish(ctx, menumodels.Menu{ID: m1.ID})
+	m2, err := a.Menu.Publish(ctx, menumodels.Menu{ID: m1.ID})
 	if err != nil {
 		t.Fatalf("publish menu: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("dispatch: %v", err)
 	}
 
-	got, err := a.Menu().Get(ctx, menu.GetRequest{ID: m2.ID})
+	got, err := a.Menu.Get(ctx, menu.GetRequest{ID: m2.ID})
 	if err != nil {
 		t.Fatalf("get menu: %v", err)
 	}

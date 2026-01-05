@@ -24,7 +24,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 				Usage: "List drinks",
 				Flags: []cli.Flag{JSONFlag},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					res, err := c.app.Drinks().List(ctx, drinks.ListRequest{})
+					res, err := c.app.Drinks.List(ctx, drinks.ListRequest{})
 					if err != nil {
 						return err
 					}
@@ -52,7 +52,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("id")[0]
-					res, err := c.app.Drinks().Get(ctx, drinks.GetRequest{ID: drinksmodels.NewDrinkID(id)})
+					res, err := c.app.Drinks.Get(ctx, drinks.GetRequest{ID: drinksmodels.NewDrinkID(id)})
 					if err != nil {
 						return err
 					}
@@ -87,7 +87,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return err
 					}
 
-					res, err := c.app.Drinks().Create(ctx, created)
+					res, err := c.app.Drinks.Create(ctx, created)
 					if err != nil {
 						return err
 					}
@@ -122,7 +122,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return err
 					}
 
-					res, err := c.app.Drinks().Update(ctx, updated)
+					res, err := c.app.Drinks.Update(ctx, updated)
 					if err != nil {
 						return err
 					}
