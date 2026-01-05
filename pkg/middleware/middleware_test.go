@@ -73,194 +73,13 @@ func newTestContext(logBuf *testLogBuffer, mem *telemetry.MemoryMetrics) *middle
 	)
 }
 
-// --- AuthZ Chain Tests ---
-
-func TestAuthZChain_AllowedDecision_LogsAndRecordsMetrics(t *testing.T) {
-	t.Parallel()
-
-	logBuf := &testLogBuffer{}
-	mem := telemetry.Memory()
-	mctx := newTestContext(logBuf, mem)
-
-	action := drinksauthz.ActionList
-
-	// Anonymous can list - should be allowed
-	chain := middleware.NewAuthZChain(
-		middleware.AuthZLogging(),
-		middleware.AuthZMetrics(),
-	)
-
-	err := chain.Execute(mctx, action, func() error {
-		return nil // Simulate allowed
-	})
-
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	// Check logging
-	if !logBuf.Contains("authorization allowed") {
-		t.Errorf("expected 'authorization allowed' log, got: %s", logBuf.String())
-	}
-	if logBuf.Contains("authorization denied") {
-		t.Errorf("unexpected 'authorization denied' log, got: %s", logBuf.String())
-	}
-
-	// Check metrics
-	allowCount := mem.CounterValue(telemetry.MetricAuthZTotal, "Drink.list", "allow")
-	if allowCount != 1 {
-		t.Errorf("expected 1 allow decision, got %v", allowCount)
-	}
-
-	latencyCount := mem.HistogramCount(telemetry.MetricAuthZLatency, "Drink.list")
-	if latencyCount != 1 {
-		t.Errorf("expected 1 latency observation, got %v", latencyCount)
-	}
-}
-
-func TestAuthZChain_DeniedDecision_LogsAndRecordsMetrics(t *testing.T) {
-	t.Parallel()
-
-	logBuf := &testLogBuffer{}
-	mem := telemetry.Memory()
-	mctx := newTestContext(logBuf, mem)
-
-	action := drinksauthz.ActionCreate
-
-	chain := middleware.NewAuthZChain(
-		middleware.AuthZLogging(),
-		middleware.AuthZMetrics(),
-	)
-
-	err := chain.Execute(mctx, action, func() error {
-		return errors.Permissionf("denied") // Simulate denial
-	})
-
-	if !errors.IsPermission(err) {
-		t.Fatalf("expected permission error, got %v", err)
-	}
-
-	// Check logging
-	if !logBuf.Contains("authorization denied") {
-		t.Errorf("expected 'authorization denied' log, got: %s", logBuf.String())
-	}
-
-	// Check metrics
-	denyCount := mem.CounterValue(telemetry.MetricAuthZTotal, "Drink.create", "deny")
-	if denyCount != 1 {
-		t.Errorf("expected 1 deny decision, got %v", denyCount)
-	}
-
-	deniedCount := mem.CounterValue(telemetry.MetricAuthZDenied, "Drink.create")
-	if deniedCount != 1 {
-		t.Errorf("expected 1 denied counter, got %v", deniedCount)
-	}
-}
-
-func TestAuthZChain_ErrorDecision_LogsAndRecordsMetrics(t *testing.T) {
-	t.Parallel()
-
-	logBuf := &testLogBuffer{}
-	mem := telemetry.Memory()
-	mctx := newTestContext(logBuf, mem)
-
-	action := drinksauthz.ActionCreate
-
-	chain := middleware.NewAuthZChain(
-		middleware.AuthZLogging(),
-		middleware.AuthZMetrics(),
-	)
-
-	err := chain.Execute(mctx, action, func() error {
-		return errors.Internalf("something went wrong") // Simulate error
-	})
-
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	// Check logging
-	if !logBuf.Contains("authorization error") {
-		t.Errorf("expected 'authorization error' log, got: %s", logBuf.String())
-	}
-
-	// Check metrics
-	errorCount := mem.CounterValue(telemetry.MetricAuthZTotal, "Drink.create", "error")
-	if errorCount != 1 {
-		t.Errorf("expected 1 error decision, got %v", errorCount)
-	}
-}
-
-// --- Event Chain Tests ---
-
 type testEvent struct {
 	Name string
 }
 
-func TestEventChain_SuccessfulDispatch_RecordsMetrics(t *testing.T) {
-	t.Parallel()
-
-	logBuf := &testLogBuffer{}
-	mem := telemetry.Memory()
-	mctx := newTestContext(logBuf, mem)
-
-	event := testEvent{Name: "test"}
-
-	chain := middleware.NewEventChain(
-		middleware.EventMetrics(),
-	)
-
-	err := chain.Execute(mctx, event, func() error {
-		return nil
-	})
-
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	// Check metrics - event type includes package name
-	dispatchedCount := mem.CounterValue(telemetry.MetricEventsDispatched, "middleware_test.testEvent")
-	if dispatchedCount != 1 {
-		t.Errorf("expected 1 dispatched event, got %v", dispatchedCount)
-	}
-
-	durationCount := mem.HistogramCount(telemetry.MetricEventsDuration, "middleware_test.testEvent")
-	if durationCount != 1 {
-		t.Errorf("expected 1 duration observation, got %v", durationCount)
-	}
-}
-
-func TestEventChain_FailedDispatch_RecordsMetrics(t *testing.T) {
-	t.Parallel()
-
-	logBuf := &testLogBuffer{}
-	mem := telemetry.Memory()
-	mctx := newTestContext(logBuf, mem)
-
-	event := testEvent{Name: "test"}
-
-	chain := middleware.NewEventChain(
-		middleware.EventMetrics(),
-	)
-
-	err := chain.Execute(mctx, event, func() error {
-		return errors.Internalf("handler failed")
-	})
-
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	// Check metrics
-	errorCount := mem.CounterValue(telemetry.MetricEventsErrors, "middleware_test.testEvent")
-	if errorCount != 1 {
-		t.Errorf("expected 1 event error, got %v", errorCount)
-	}
-}
-
 // --- Request Logging Tests (Permission Error Handling) ---
 
-func TestQueryLogging_PermissionError_SkipsLogging(t *testing.T) {
+func TestQueryLogging_PermissionError_LogsDenied(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &testLogBuffer{}
@@ -281,10 +100,8 @@ func TestQueryLogging_PermissionError_SkipsLogging(t *testing.T) {
 		t.Fatalf("expected permission error, got %v", err)
 	}
 
-	// Request logging should NOT log permission errors
-	// (AuthZ logging handles those)
-	if logBuf.Contains("query failed") {
-		t.Errorf("request logging should not log permission errors, got: %s", logBuf.String())
+	if !logBuf.Contains("query denied") {
+		t.Errorf("expected 'query denied' log, got: %s", logBuf.String())
 	}
 
 	// But it should log the start
@@ -320,7 +137,7 @@ func TestQueryLogging_OtherError_Logs(t *testing.T) {
 	}
 }
 
-func TestCommandLogging_PermissionError_SkipsLogging(t *testing.T) {
+func TestCommandLogging_PermissionError_LogsDenied(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &testLogBuffer{}
@@ -347,15 +164,14 @@ func TestCommandLogging_PermissionError_SkipsLogging(t *testing.T) {
 		t.Fatalf("expected permission error, got %v", err)
 	}
 
-	// Request logging should NOT log permission errors
-	if logBuf.Contains("command failed") {
-		t.Errorf("request logging should not log permission errors, got: %s", logBuf.String())
+	if !logBuf.Contains("command denied") {
+		t.Errorf("expected 'command denied' log, got: %s", logBuf.String())
 	}
 }
 
 // --- Full Chain Integration Tests ---
 
-func TestQueryChain_WithAuthZ_ExactlyOnceLoggingForDenial(t *testing.T) {
+func TestQueryChain_WithAuthZ_Denial_LogsOnceAndRecordsRequestMetrics(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &testLogBuffer{}
@@ -384,21 +200,19 @@ func TestQueryChain_WithAuthZ_ExactlyOnceLoggingForDenial(t *testing.T) {
 		t.Fatalf("expected permission error, got %v", err)
 	}
 
-	// Check exactly-once logging for denial
-	denialCount := logBuf.Count("authorization denied")
+	denialCount := logBuf.Count("query denied")
 	if denialCount != 1 {
-		t.Errorf("expected exactly 1 'authorization denied' log, got %d", denialCount)
+		t.Errorf("expected exactly 1 'query denied' log, got %d", denialCount)
 	}
 
-	// Query logging should NOT log the denial
-	if logBuf.Contains("query failed") {
-		t.Errorf("query logging should not log permission errors (handled by authz logging)")
+	queryTotal := mem.CounterValue(telemetry.MetricQueryTotal, "Drink.create", "error")
+	if queryTotal != 1 {
+		t.Errorf("expected 1 query error metric, got %v", queryTotal)
 	}
 
-	// Check metrics are recorded
-	denyMetric := mem.CounterValue(telemetry.MetricAuthZTotal, "Drink.create", "deny")
-	if denyMetric != 1 {
-		t.Errorf("expected 1 authz deny metric, got %v", denyMetric)
+	queryDuration := mem.HistogramCount(telemetry.MetricQueryDuration, "Drink.create")
+	if queryDuration != 1 {
+		t.Errorf("expected 1 query duration observation, got %v", queryDuration)
 	}
 }
 
@@ -444,17 +258,6 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	if queryDuration != 1 {
 		t.Errorf("expected 1 query duration observation, got %v", queryDuration)
 	}
-
-	// Check authz metrics
-	authzAllow := mem.CounterValue(telemetry.MetricAuthZTotal, "Drink.list", "allow")
-	if authzAllow != 1 {
-		t.Errorf("expected 1 authz allow metric, got %v", authzAllow)
-	}
-
-	authzDuration := mem.HistogramCount(telemetry.MetricAuthZLatency, "Drink.list")
-	if authzDuration != 1 {
-		t.Errorf("expected 1 authz duration observation, got %v", authzDuration)
-	}
 }
 
 // --- Test Event Dispatch Through Full Command Chain ---
@@ -468,7 +271,7 @@ func (m *mockDispatcher) Dispatch(_ *middleware.Context, event any) error {
 	return nil
 }
 
-func TestDispatchEvents_RecordsMetrics(t *testing.T) {
+func TestDispatchEvents_DispatchesEvents(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &testLogBuffer{}
@@ -495,9 +298,9 @@ func TestDispatchEvents_RecordsMetrics(t *testing.T) {
 		Tags:       cedar.NewRecord(nil),
 	}
 
-	// Use just DispatchEvents middleware to test event chain
+	// Use just DispatchEvents middleware to test dispatch behavior
 	chain := middleware.NewCommandChain(
-		middleware.DispatchEvents(middleware.EventMetrics()),
+		middleware.DispatchEvents(),
 	)
 
 	event := testEvent{Name: "created"}
@@ -513,16 +316,5 @@ func TestDispatchEvents_RecordsMetrics(t *testing.T) {
 
 	if len(dispatcher.dispatched) != 1 {
 		t.Errorf("expected 1 dispatched event, got %d", len(dispatcher.dispatched))
-	}
-
-	// Check event metrics
-	dispatchedCount := mem.CounterValue(telemetry.MetricEventsDispatched, "middleware_test.testEvent")
-	if dispatchedCount != 1 {
-		t.Errorf("expected 1 event dispatched metric, got %v", dispatchedCount)
-	}
-
-	durationCount := mem.HistogramCount(telemetry.MetricEventsDuration, "middleware_test.testEvent")
-	if durationCount != 1 {
-		t.Errorf("expected 1 event duration observation, got %v", durationCount)
 	}
 }

@@ -5,45 +5,33 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-// QueryAuthorize authorizes a query action using an AuthZ subchain for observability.
-// Pass AuthZ middleware (e.g., AuthZLogging/AuthZMetrics) explicitly to avoid hidden defaults.
-func QueryAuthorize(authzMiddlewares ...AuthZMiddleware) QueryMiddleware {
-	authzChain := NewAuthZChain(authzMiddlewares...)
+// QueryAuthorize authorizes a query action.
+// Observability is handled by the top-level query logging/metrics middleware.
+func QueryAuthorize() QueryMiddleware {
 	return func(ctx *Context, action cedar.EntityUID, next QueryNext) error {
-		err := authzChain.Execute(ctx, action, func() error {
-			return authz.Authorize(ctx.Principal(), action)
-		})
-		if err != nil {
+		if err := authz.Authorize(ctx.Principal(), action); err != nil {
 			return err
 		}
 		return next(ctx)
 	}
 }
 
-// QueryWithResourceAuthorize authorizes a query action with a resource using an AuthZ subchain.
-// Pass AuthZ middleware (e.g., AuthZLogging/AuthZMetrics) explicitly to avoid hidden defaults.
-func QueryWithResourceAuthorize(authzMiddlewares ...AuthZMiddleware) QueryWithResourceMiddleware {
-	authzChain := NewAuthZChain(authzMiddlewares...)
+// QueryWithResourceAuthorize authorizes a query action with a resource.
+// Observability is handled by the top-level query logging/metrics middleware.
+func QueryWithResourceAuthorize() QueryWithResourceMiddleware {
 	return func(ctx *Context, action cedar.EntityUID, resource cedar.Entity, next QueryWithResourceNext) error {
-		err := authzChain.Execute(ctx, action, func() error {
-			return authz.AuthorizeWithEntity(ctx.Principal(), action, resource)
-		})
-		if err != nil {
+		if err := authz.AuthorizeWithEntity(ctx.Principal(), action, resource); err != nil {
 			return err
 		}
 		return next(ctx)
 	}
 }
 
-// CommandAuthorize authorizes a command action with a resource using an AuthZ subchain.
-// Pass AuthZ middleware (e.g., AuthZLogging/AuthZMetrics) explicitly to avoid hidden defaults.
-func CommandAuthorize(authzMiddlewares ...AuthZMiddleware) CommandMiddleware {
-	authzChain := NewAuthZChain(authzMiddlewares...)
+// CommandAuthorize authorizes a command action with a resource.
+// Observability is handled by the top-level command logging/metrics middleware.
+func CommandAuthorize() CommandMiddleware {
 	return func(ctx *Context, action cedar.EntityUID, resource cedar.Entity, next CommandNext) error {
-		err := authzChain.Execute(ctx, action, func() error {
-			return authz.AuthorizeWithEntity(ctx.Principal(), action, resource)
-		})
-		if err != nil {
+		if err := authz.AuthorizeWithEntity(ctx.Principal(), action, resource); err != nil {
 			return err
 		}
 		return next(ctx)

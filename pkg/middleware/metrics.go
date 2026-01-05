@@ -1,11 +1,10 @@
 package middleware
 
 import (
-	"reflect"
 	"strings"
 	"time"
 
-	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/cedar-policy/cedar-go"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 )
@@ -18,10 +17,6 @@ type MetricsCollector struct {
 	queryTotal    telemetry.Counter
 	queryDuration telemetry.Histogram
 	queryErrors   telemetry.Counter
-
-	eventsDispatched telemetry.Counter
-	eventsDuration   telemetry.Histogram
-	eventsErrors     telemetry.Counter
 }
 
 func NewMetricsCollector(m telemetry.Metrics) *MetricsCollector {
@@ -36,10 +31,6 @@ func NewMetricsCollector(m telemetry.Metrics) *MetricsCollector {
 		queryTotal:    m.Counter(telemetry.MetricQueryTotal, telemetry.LabelAction, telemetry.LabelResult),
 		queryDuration: m.Histogram(telemetry.MetricQueryDuration, telemetry.LabelAction),
 		queryErrors:   m.Counter(telemetry.MetricQueryErrors, telemetry.LabelAction),
-
-		eventsDispatched: m.Counter(telemetry.MetricEventsDispatched, telemetry.LabelEventType),
-		eventsDuration:   m.Histogram(telemetry.MetricEventsDuration, telemetry.LabelEventType),
-		eventsErrors:     m.Counter(telemetry.MetricEventsErrors, telemetry.LabelEventType),
 	}
 }
 
@@ -114,18 +105,6 @@ func QueryWithResourceMetrics() QueryWithResourceMiddleware {
 	}
 }
 
-func (mc *MetricsCollector) RecordEvent(event any, duration time.Duration, err error) {
-	if mc == nil {
-		return
-	}
-	et := eventTypeLabel(event)
-	mc.eventsDispatched.Inc(et)
-	mc.eventsDuration.Observe(duration.Seconds(), et)
-	if err != nil {
-		mc.eventsErrors.Inc(et)
-	}
-}
-
 func actionLabel(action cedar.EntityUID) string {
 	// Mixology::Drink::Action::"create" -> Drink.create
 	s := action.String()
@@ -136,24 +115,4 @@ func actionLabel(action cedar.EntityUID) string {
 	domain := parts[1]
 	id := strings.Trim(parts[len(parts)-1], `"`)
 	return domain + "." + id
-}
-
-func eventTypeLabel(event any) string {
-	t := reflect.TypeOf(event)
-	if t == nil {
-		return ""
-	}
-	for t.Kind() == reflect.Pointer {
-		t = t.Elem()
-	}
-	pkg := t.PkgPath()
-	if pkg != "" {
-		if i := strings.LastIndex(pkg, "/"); i >= 0 && i < len(pkg)-1 {
-			pkg = pkg[i+1:]
-		}
-	}
-	if pkg == "" {
-		return t.Name()
-	}
-	return pkg + "." + t.Name()
 }

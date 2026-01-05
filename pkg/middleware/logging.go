@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"time"
 
-	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/cedar-policy/cedar-go"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
@@ -19,15 +19,15 @@ func CommandLogging() CommandMiddleware {
 		logger.Debug("command started")
 
 		err := next(ctx)
+		duration := time.Since(start)
 
-		if errors.IsPermission(err) {
-			return err
-		}
-
-		if err != nil {
-			logger.Error("command failed", slog.Duration("duration", time.Since(start)), log.Err(err))
-		} else {
-			logger.Info("command completed", slog.Duration("duration", time.Since(start)))
+		switch {
+		case err == nil:
+			logger.Info("command completed", slog.Duration("duration", duration))
+		case errors.IsPermission(err):
+			logger.Info("command denied", slog.Duration("duration", duration), log.Err(err))
+		default:
+			logger.Error("command failed", slog.Duration("duration", duration), log.Err(err))
 		}
 		return err
 	}
@@ -42,15 +42,15 @@ func QueryLogging() QueryMiddleware {
 		logger.Debug("query started")
 
 		err := next(ctx)
+		duration := time.Since(start)
 
-		if errors.IsPermission(err) {
-			return err
-		}
-
-		if err != nil {
-			logger.Warn("query failed", slog.Duration("duration", time.Since(start)), log.Err(err))
-		} else {
-			logger.Debug("query completed", slog.Duration("duration", time.Since(start)))
+		switch {
+		case err == nil:
+			logger.Debug("query completed", slog.Duration("duration", duration))
+		case errors.IsPermission(err):
+			logger.Info("query denied", slog.Duration("duration", duration), log.Err(err))
+		default:
+			logger.Warn("query failed", slog.Duration("duration", duration), log.Err(err))
 		}
 		return err
 	}
@@ -65,15 +65,15 @@ func QueryWithResourceLogging() QueryWithResourceMiddleware {
 		logger.Debug("query started")
 
 		err := next(ctx)
+		duration := time.Since(start)
 
-		if errors.IsPermission(err) {
-			return err
-		}
-
-		if err != nil {
-			logger.Warn("query failed", slog.Duration("duration", time.Since(start)), log.Err(err))
-		} else {
-			logger.Debug("query completed", slog.Duration("duration", time.Since(start)))
+		switch {
+		case err == nil:
+			logger.Debug("query completed", slog.Duration("duration", duration))
+		case errors.IsPermission(err):
+			logger.Info("query denied", slog.Duration("duration", duration), log.Err(err))
+		default:
+			logger.Warn("query failed", slog.Duration("duration", duration), log.Err(err))
 		}
 		return err
 	}
