@@ -4,8 +4,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	"github.com/mjl-/bstore"
 )
 
@@ -50,14 +52,20 @@ func (s *Store) Read(ctx context.Context, fn func(*bstore.Tx) error) error {
 	if s == nil || s.db == nil {
 		return errors.Internalf("store not initialized")
 	}
-	return s.db.Read(ctx, fn)
+	start := time.Now()
+	err := s.db.Read(ctx, fn)
+	telemetry.FromContext(ctx).Histogram(telemetry.MetricStoreReadDuration).ObserveDuration(start)
+	return err
 }
 
 func (s *Store) Write(ctx context.Context, fn func(*bstore.Tx) error) error {
 	if s == nil || s.db == nil {
 		return errors.Internalf("store not initialized")
 	}
-	return s.db.Write(ctx, fn)
+	start := time.Now()
+	err := s.db.Write(ctx, fn)
+	telemetry.FromContext(ctx).Histogram(telemetry.MetricStoreWriteDuration).ObserveDuration(start)
+	return err
 }
 
 func (s *Store) DB() *bstore.DB {

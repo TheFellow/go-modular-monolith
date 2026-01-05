@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
@@ -9,26 +10,34 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
+	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type App struct {
 	Store       optional.Value[*store.Store]
 	Dispatcher  middleware.EventDispatcher
+	Logger      *slog.Logger
+	Metrics     telemetry.Metrics
 	Drinks      *drinks.Module
 	Ingredients *ingredients.Module
 	Inventory   *inventory.Module
 	Menu        *menu.Module
 	Orders      *orders.Module
+
+	metricsCollector *middleware.MetricsCollector
 }
 
 func New(opts ...Option) *App {
 	a := &App{
 		Store:       optional.None[*store.Store](),
 		Dispatcher:  dispatcher.New(),
+		Logger:      slog.Default(),
+		Metrics:     telemetry.Nop(),
 		Drinks:      drinks.NewModule(),
 		Ingredients: ingredients.NewModule(),
 		Inventory:   inventory.NewModule(),
@@ -41,6 +50,15 @@ func New(opts ...Option) *App {
 			opt(a)
 		}
 	}
+
+	if a.Logger == nil {
+		a.Logger = slog.Default()
+	}
+	if a.Metrics == nil {
+		a.Metrics = telemetry.Nop()
+	}
+	a.metricsCollector = middleware.NewMetricsCollector(a.Metrics)
+
 	return a
 }
 
@@ -56,6 +74,15 @@ func (a *App) Close() error {
 }
 
 func (a *App) Context(parent context.Context, principal cedar.EntityUID) *middleware.Context {
+	if parent == nil {
+		parent = context.Background()
+	}
+
+	if a != nil {
+		parent = pkglog.WithLogger(parent, a.Logger.With(pkglog.Args(pkglog.Actor(principal))...))
+		parent = telemetry.WithMetrics(parent, a.Metrics)
+	}
+
 	opts := []middleware.ContextOpt{
 		middleware.WithPrincipal(principal),
 	}
@@ -65,6 +92,9 @@ func (a *App) Context(parent context.Context, principal cedar.EntityUID) *middle
 		}
 		if a.Dispatcher != nil {
 			opts = append(opts, middleware.WithEventDispatcher(a.Dispatcher))
+		}
+		if a.metricsCollector != nil {
+			opts = append(opts, middleware.WithMetricsCollector(a.metricsCollector))
 		}
 	}
 	return middleware.NewContext(parent, opts...)

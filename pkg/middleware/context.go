@@ -7,6 +7,7 @@ import (
 	"github.com/mjl-/bstore"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 )
 
 type Context struct {
@@ -18,6 +19,7 @@ type ContextOpt func(*Context)
 
 type principalKey struct{}
 type dispatcherKey struct{}
+type metricsCollectorKey struct{}
 
 func WithPrincipal(p cedar.EntityUID) ContextOpt {
 	return func(c *Context) {
@@ -49,6 +51,26 @@ func DispatcherFromContext(ctx context.Context) (EventDispatcher, bool) {
 	}
 	d, ok := ctx.Value(dispatcherKey{}).(EventDispatcher)
 	return d, ok
+}
+
+func WithMetrics(m telemetry.Metrics) ContextOpt {
+	return func(c *Context) {
+		c.Context = telemetry.WithMetrics(c.Context, m)
+	}
+}
+
+func MetricsCollectorFromContext(ctx context.Context) (*MetricsCollector, bool) {
+	if ctx == nil {
+		return nil, false
+	}
+	mc, ok := ctx.Value(metricsCollectorKey{}).(*MetricsCollector)
+	return mc, ok
+}
+
+func WithMetricsCollector(mc *MetricsCollector) ContextOpt {
+	return func(c *Context) {
+		c.Context = context.WithValue(c.Context, metricsCollectorKey{}, mc)
+	}
 }
 
 func ContextWithPrincipal(ctx context.Context, p cedar.EntityUID) context.Context {

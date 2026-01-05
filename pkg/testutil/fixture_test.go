@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
+	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
@@ -43,4 +44,17 @@ func TestFixture_IsolatedParallelStores(t *testing.T) {
 		testutil.Ok(t, err)
 		testutil.ErrorIf(t, len(res.Drinks) != 1, "expected 1 drink, got %d", len(res.Drinks))
 	})
+}
+
+func TestFixture_RecordsMetrics(t *testing.T) {
+	t.Parallel()
+
+	fix := testutil.NewFixture(t)
+	fix.Bootstrap().WithBasicIngredients()
+
+	_, err := fix.Drinks.List(fix.Ctx, drinks.ListRequest{})
+	testutil.Ok(t, err)
+
+	got := fix.Metrics.CounterValue(telemetry.MetricQueryTotal, "Drink.list", "success")
+	testutil.ErrorIf(t, got < 1, "expected query metric increment, got %v", got)
 }

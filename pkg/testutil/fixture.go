@@ -2,6 +2,8 @@ package testutil
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"path/filepath"
 	"testing"
 
@@ -14,13 +16,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 )
 
 type Fixture struct {
-	T     testing.TB
-	Store *store.Store
-	App   *app.App
-	Ctx   *middleware.Context
+	T       testing.TB
+	Store   *store.Store
+	App     *app.App
+	Ctx     *middleware.Context
+	Metrics *telemetry.MemoryMetrics
 
 	Drinks      *drinks.Module
 	Ingredients *ingredients.Module
@@ -35,7 +39,14 @@ func NewFixture(t testing.TB) *Fixture {
 	path := filepath.Join(t.TempDir(), "mixology.test.db")
 	s, err := store.Open(path)
 	Ok(t, err)
-	a := app.New(app.WithStore(s))
+
+	metrics := telemetry.Memory()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	a := app.New(
+		app.WithStore(s),
+		app.WithLogger(logger),
+		app.WithMetrics(metrics),
+	)
 	t.Cleanup(func() { _ = a.Close() })
 
 	p, err := authn.ParseActor("owner")
@@ -43,10 +54,11 @@ func NewFixture(t testing.TB) *Fixture {
 	ctx := a.Context(context.Background(), p)
 
 	return &Fixture{
-		T:     t,
-		Store: s,
-		App:   a,
-		Ctx:   ctx,
+		T:       t,
+		Store:   s,
+		App:     a,
+		Ctx:     ctx,
+		Metrics: metrics,
 
 		Drinks:      a.Drinks,
 		Ingredients: a.Ingredients,
