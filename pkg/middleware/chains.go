@@ -4,17 +4,17 @@ var (
 	Query = NewQueryChain(
 		QueryLogging(),
 		QueryMetrics(),
-		QueryAuthZ(),
+		QueryAuthorize(),
 	)
 	QueryWithResource = NewQueryWithResourceChain(
 		QueryWithResourceLogging(),
 		QueryWithResourceMetrics(),
-		QueryAuthZWithResource(),
+		QueryWithResourceAuthorize(),
 	)
 	Command = NewCommandChain(
 		CommandLogging(),
 		CommandMetrics(),
-		CommandAuthZ(),
+		CommandAuthorize(),
 		UnitOfWork(),
 		DispatchEvents(),
 	)

@@ -1,16 +1,17 @@
 package middleware
 
 import (
-	"log/slog"
-	"time"
-
 	cedar "github.com/cedar-policy/cedar-go"
-
-	"github.com/TheFellow/go-modular-monolith/pkg/log"
 )
 
+// EventDispatcher dispatches domain events to their handlers.
+type EventDispatcher interface {
+	Dispatch(ctx *Context, event any) error
+}
+
 // DispatchEvents dispatches any events collected on the middleware context
-// after the command completes.
+// after the command completes. Each event is dispatched through the event
+// chain which handles logging and metrics.
 func DispatchEvents() CommandMiddleware {
 	return func(ctx *Context, _ cedar.EntityUID, _ cedar.Entity, next CommandNext) error {
 		if err := next(ctx); err != nil {
@@ -22,26 +23,12 @@ func DispatchEvents() CommandMiddleware {
 			return nil
 		}
 
-		mc, _ := MetricsCollectorFromContext(ctx.Context)
-
 		for _, event := range ctx.Events() {
-			base := ctx.Context
-			eventType := eventTypeLabel(event)
-			ctx.Context = log.WithLogAttrs(base, log.EventType(eventType))
-
-			logger := log.FromContext(ctx)
-			start := time.Now()
-			logger.Debug("dispatching event")
-			if err := d.Dispatch(ctx, event); err != nil {
-				logger.Error("event handler failed", slog.Duration("duration", time.Since(start)), log.Err(err))
-				if mc != nil {
-					mc.RecordEvent(event, time.Since(start), err)
-				}
+			err := DefaultEventChain.Execute(ctx, event, func() error {
+				return d.Dispatch(ctx, event)
+			})
+			if err != nil {
 				return err
-			}
-			logger.Debug("event dispatched", slog.Duration("duration", time.Since(start)))
-			if mc != nil {
-				mc.RecordEvent(event, time.Since(start), nil)
 			}
 		}
 		return nil

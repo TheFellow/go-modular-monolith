@@ -1,7 +1,6 @@
 package authz_test
 
 import (
-	"context"
 	"testing"
 
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
@@ -14,7 +13,7 @@ import (
 func TestAuthorize_AllowsAnonymousList(t *testing.T) {
 	t.Parallel()
 
-	err := authz.Authorize(context.Background(), authn.Anonymous(), drinksauthz.ActionList)
+	err := authz.Authorize(authn.Anonymous(), drinksauthz.ActionList)
 	if err != nil {
 		t.Fatalf("expected allow, got %v", err)
 	}
@@ -30,7 +29,7 @@ func TestAuthorizeWithEntity_DeniesAnonymousCreate(t *testing.T) {
 		Tags:       cedar.NewRecord(nil),
 	}
 
-	err := authz.AuthorizeWithEntity(context.Background(), authn.Anonymous(), drinksauthz.ActionCreate, resource)
+	err := authz.AuthorizeWithEntity(authn.Anonymous(), drinksauthz.ActionCreate, resource)
 	if !errorspkg.IsPermission(err) {
 		t.Fatalf("expected IsPermission, got %v", err)
 	}
@@ -46,7 +45,7 @@ func TestAuthorizeWithEntity_AllowsOwnerCreate(t *testing.T) {
 		Tags:       cedar.NewRecord(nil),
 	}
 
-	err := authz.AuthorizeWithEntity(context.Background(), authn.Owner(), drinksauthz.ActionCreate, resource)
+	err := authz.AuthorizeWithEntity(authn.Owner(), drinksauthz.ActionCreate, resource)
 	if err != nil {
 		t.Fatalf("expected allow, got %v", err)
 	}
