@@ -3,18 +3,17 @@ package ingredients_test
 import (
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestPermissions_Ingredients(t *testing.T) {
-	testutil.OpenStore(t)
-	a := app.New()
+	fix := testutil.NewFixture(t)
+	a := fix.App
 
-	owner := testutil.ActorContext(t, "owner")
-	anon := testutil.ActorContext(t, "anonymous")
+	owner := fix.Ctx
+	anon := fix.AsActor("anonymous")
 
 	t.Run("owner", func(t *testing.T) {
 		_, err := a.Ingredients.List(owner, ingredients.ListRequest{})

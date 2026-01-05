@@ -10,11 +10,12 @@ import (
 
 func UnitOfWork() CommandMiddleware {
 	return func(ctx *Context, _ cedar.EntityUID, _ cedar.Entity, next CommandNext) error {
-		if store.DB == nil {
-			return errors.Internalf("store not initialized")
+		s, ok := store.FromContext(ctx.Context)
+		if !ok || s == nil {
+			return errors.Internalf("store missing from context")
 		}
 
-		return store.DB.Write(ctx, func(tx *bstore.Tx) error {
+		return s.Write(ctx, func(tx *bstore.Tx) error {
 			txCtx := NewContext(ctx, WithTransaction(tx))
 			return next(txCtx)
 		})

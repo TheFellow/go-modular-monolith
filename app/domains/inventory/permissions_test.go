@@ -3,7 +3,6 @@ package inventory_test
 import (
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
@@ -12,11 +11,11 @@ import (
 )
 
 func TestPermissions_Inventory(t *testing.T) {
-	testutil.OpenStore(t)
-	a := app.New()
+	fix := testutil.NewFixture(t)
+	a := fix.App
 
-	owner := testutil.ActorContext(t, "owner")
-	anon := testutil.ActorContext(t, "anonymous")
+	owner := fix.Ctx
+	anon := fix.AsActor("anonymous")
 
 	t.Run("owner", func(t *testing.T) {
 		_, err := a.Inventory.List(owner, inventory.ListRequest{})

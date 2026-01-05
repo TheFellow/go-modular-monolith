@@ -30,6 +30,12 @@ func WithTransaction(tx *bstore.Tx) ContextOpt {
 	}
 }
 
+func WithStore(s *store.Store) ContextOpt {
+	return func(c *Context) {
+		c.Context = store.WithStore(c.Context, s)
+	}
+}
+
 func ContextWithPrincipal(ctx context.Context, p cedar.EntityUID) context.Context {
 	if ctx == nil {
 		ctx = context.Background()

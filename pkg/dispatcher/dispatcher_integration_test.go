@@ -1,10 +1,8 @@
 package dispatcher_test
 
 import (
-	"context"
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
@@ -12,23 +10,16 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/app/money"
-	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/mjl-/bstore"
 )
 
 func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
-	testutil.OpenStore(t)
-
-	a := app.New()
-	owner, err := authn.ParseActor("owner")
-	if err != nil {
-		t.Fatalf("parse actor: %v", err)
-	}
-	ctx := middleware.NewContext(context.Background(), middleware.WithPrincipal(owner))
+	fix := testutil.NewFixture(t)
+	a := fix.App
+	ctx := fix.Ctx
 
 	ingredient, err := a.Ingredients.Create(ctx, ingredientsmodels.Ingredient{
 		Name:     "Vodka",
@@ -80,7 +71,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	}
 
 	d := dispatcher.New()
-	err = store.DB.Write(ctx, func(tx *bstore.Tx) error {
+	err = fix.Store.Write(ctx, func(tx *bstore.Tx) error {
 		txCtx := middleware.NewContext(ctx, middleware.WithTransaction(tx))
 		return d.Dispatch(txCtx, events.StockAdjusted{
 			IngredientID: ingredient.ID,

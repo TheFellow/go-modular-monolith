@@ -13,7 +13,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
@@ -26,11 +25,11 @@ func (fakeIngredients) Get(_ context.Context, _ cedar.EntityUID) (ingredientsmod
 }
 
 func TestAdjust_EmitsStockAdjusted(t *testing.T) {
-	testutil.OpenStore(t)
+	fix := testutil.NewFixture(t)
 
 	d := dao.New()
-	err := store.DB.Write(context.Background(), func(tx *bstore.Tx) error {
-		ctx := middleware.NewContext(context.Background(), middleware.WithTransaction(tx))
+	err := fix.Store.Write(context.Background(), func(tx *bstore.Tx) error {
+		ctx := middleware.NewContext(fix.Ctx, middleware.WithTransaction(tx))
 		return d.Upsert(ctx, models.Stock{
 			IngredientID: ingredientsmodels.NewIngredientID("vodka"),
 			Quantity:     1.0,
@@ -45,8 +44,8 @@ func TestAdjust_EmitsStockAdjusted(t *testing.T) {
 	ingredientID := ingredientsmodels.NewIngredientID("vodka")
 
 	var evts []any
-	err = store.DB.Write(context.Background(), func(tx *bstore.Tx) error {
-		ctx := middleware.NewContext(context.Background(), middleware.WithTransaction(tx))
+	err = fix.Store.Write(context.Background(), func(tx *bstore.Tx) error {
+		ctx := middleware.NewContext(fix.Ctx, middleware.WithTransaction(tx))
 		_, err := cmds.Adjust(ctx, models.StockPatch{
 			IngredientID: ingredientID,
 			Delta:        optional.Some(-2.0),

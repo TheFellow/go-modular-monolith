@@ -6,11 +6,11 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
-	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type App struct {
+	Store       *store.Store
 	Drinks      *drinks.Module
 	Ingredients *ingredients.Module
 	Inventory   *inventory.Module
@@ -19,12 +19,6 @@ type App struct {
 }
 
 func New() *App {
-	middleware.Command = middleware.NewCommandChain(
-		middleware.CommandAuthZ(),
-		middleware.UnitOfWork(),
-		middleware.Dispatcher(dispatcher.New()),
-	)
-
 	return &App{
 		Drinks:      drinks.NewModule(),
 		Ingredients: ingredients.NewModule(),

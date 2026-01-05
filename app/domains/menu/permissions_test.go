@@ -3,7 +3,6 @@ package menu_test
 import (
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/app"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
@@ -11,11 +10,11 @@ import (
 )
 
 func TestPermissions_Menu(t *testing.T) {
-	testutil.OpenStore(t)
-	a := app.New()
+	fix := testutil.NewFixture(t)
+	a := fix.App
 
-	owner := testutil.ActorContext(t, "owner")
-	anon := testutil.ActorContext(t, "anonymous")
+	owner := fix.Ctx
+	anon := fix.AsActor("anonymous")
 
 	t.Run("owner", func(t *testing.T) {
 		_, err := a.Menu.List(owner, menu.ListRequest{})

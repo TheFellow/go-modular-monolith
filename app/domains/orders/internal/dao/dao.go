@@ -20,10 +20,11 @@ func (d *DAO) read(ctx context.Context, f func(*bstore.Tx) error) error {
 	if tx, ok := store.TxFromContext(ctx); ok && tx != nil {
 		return f(tx)
 	}
-	if store.DB == nil {
-		return errors.Internalf("store not initialized")
+	s, ok := store.FromContext(ctx)
+	if !ok || s == nil {
+		return errors.Internalf("store missing from context")
 	}
-	return store.DB.Read(ctx, func(tx *bstore.Tx) error {
+	return s.Read(ctx, func(tx *bstore.Tx) error {
 		return f(tx)
 	})
 }

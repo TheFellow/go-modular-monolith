@@ -10,7 +10,6 @@ import (
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
@@ -23,13 +22,13 @@ func (f fakeIngredientsOK) Get(_ context.Context, _ cedar.EntityUID) (ingredient
 }
 
 func TestUpdate_PersistsAndEmitsEvent(t *testing.T) {
-	testutil.OpenStore(t)
+	fix := testutil.NewFixture(t)
 
 	d := dao.New()
 	cmds := commands.NewWithDependencies(d, fakeIngredientsOK{})
 
-	err := store.DB.Write(context.Background(), func(tx *bstore.Tx) error {
-		ctx := middleware.NewContext(context.Background(), middleware.WithTransaction(tx))
+	err := fix.Store.Write(context.Background(), func(tx *bstore.Tx) error {
+		ctx := middleware.NewContext(fix.Ctx, middleware.WithTransaction(tx))
 		seed := drinksmodels.Drink{
 			ID:       drinksmodels.NewDrinkID("margarita"),
 			Name:     "Margarita",
@@ -54,8 +53,8 @@ func TestUpdate_PersistsAndEmitsEvent(t *testing.T) {
 		updated drinksmodels.Drink
 		evts    []any
 	)
-	err = store.DB.Write(context.Background(), func(tx *bstore.Tx) error {
-		ctx := middleware.NewContext(context.Background(), middleware.WithTransaction(tx))
+	err = fix.Store.Write(context.Background(), func(tx *bstore.Tx) error {
+		ctx := middleware.NewContext(fix.Ctx, middleware.WithTransaction(tx))
 
 		var err error
 		updated, err = cmds.Update(ctx, drinksmodels.Drink{
@@ -90,7 +89,7 @@ func TestUpdate_PersistsAndEmitsEvent(t *testing.T) {
 	}
 	testutil.ErrorIf(t, !saw, "expected DrinkRecipeUpdated event")
 
-	got, ok, err := d.Get(context.Background(), drinksmodels.NewDrinkID("margarita"))
+	got, ok, err := d.Get(fix.Ctx, drinksmodels.NewDrinkID("margarita"))
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, !ok, "expected margarita to exist")
 	testutil.ErrorIf(t, string(got.Recipe.Ingredients[0].IngredientID.ID) != "lemon-juice", "expected lemon-juice in persisted recipe")

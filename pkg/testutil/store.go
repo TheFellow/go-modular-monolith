@@ -7,12 +7,14 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-func OpenStore(t testing.TB) {
+func OpenStore(t testing.TB) *store.Store {
 	t.Helper()
 
 	path := filepath.Join(t.TempDir(), "mixology.test.db")
-	Ok(t, store.Open(path))
+	s, err := store.Open(path)
+	Ok(t, err)
 	t.Cleanup(func() {
-		_ = store.Close()
+		_ = s.Close()
 	})
+	return s
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/urfave/cli/v3"
 )
 
@@ -18,10 +17,11 @@ type CLI struct {
 }
 
 func NewCLI() (*CLI, error) {
-	if err := store.Open("data/mixology.db"); err != nil {
+	a, err := app.Open("data/mixology.db")
+	if err != nil {
 		return nil, err
 	}
-	return &CLI{app: app.New(), actor: "owner"}, nil
+	return &CLI{app: a, actor: "owner"}, nil
 }
 
 func (c *CLI) action(fn func(*middleware.Context, *cli.Command) error) cli.ActionFunc {
@@ -51,7 +51,7 @@ func (c *CLI) Command() *cli.Command {
 			if err != nil {
 				return ctx, err
 			}
-			return middleware.NewContext(ctx, middleware.WithPrincipal(p)), nil
+			return c.app.Context(ctx, p), nil
 		},
 		ExitErrHandler: func(_ context.Context, _ *cli.Command, _ error) {},
 		OnUsageError: func(_ context.Context, _ *cli.Command, err error, _ bool) error {

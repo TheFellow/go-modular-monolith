@@ -3,18 +3,17 @@ package drinks_test
 import (
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestPermissions_Drinks(t *testing.T) {
-	testutil.OpenStore(t)
-	a := app.New()
+	fix := testutil.NewFixture(t)
+	a := fix.App
 
-	owner := testutil.ActorContext(t, "owner")
-	anon := testutil.ActorContext(t, "anonymous")
+	owner := fix.Ctx
+	anon := fix.AsActor("anonymous")
 
 	t.Run("owner", func(t *testing.T) {
 		_, err := a.Drinks.List(owner, drinks.ListRequest{})

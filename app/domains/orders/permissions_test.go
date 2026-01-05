@@ -3,7 +3,6 @@ package orders_test
 import (
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/app"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
@@ -12,11 +11,11 @@ import (
 )
 
 func TestPermissions_Orders(t *testing.T) {
-	testutil.OpenStore(t)
-	a := app.New()
+	fix := testutil.NewFixture(t)
+	a := fix.App
 
-	owner := testutil.ActorContext(t, "owner")
-	anon := testutil.ActorContext(t, "anonymous")
+	owner := fix.Ctx
+	anon := fix.AsActor("anonymous")
 
 	t.Run("owner", func(t *testing.T) {
 		_, err := a.Orders.List(owner, orders.ListRequest{})

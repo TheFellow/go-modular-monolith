@@ -9,7 +9,6 @@ import (
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
@@ -22,14 +21,14 @@ func (f fakeIngredients) Get(_ context.Context, _ cedar.EntityUID) (ingredientsm
 }
 
 func TestCreate_PersistsOnCommit(t *testing.T) {
-	testutil.OpenStore(t)
+	fix := testutil.NewFixture(t)
 
 	d := dao.New()
 	cmds := commands.NewWithDependencies(d, fakeIngredients{})
 
 	var created drinksmodels.Drink
-	err := store.DB.Write(context.Background(), func(tx *bstore.Tx) error {
-		ctx := middleware.NewContext(context.Background(), middleware.WithTransaction(tx))
+	err := fix.Store.Write(context.Background(), func(tx *bstore.Tx) error {
+		ctx := middleware.NewContext(fix.Ctx, middleware.WithTransaction(tx))
 
 		var err error
 		created, err = cmds.Create(ctx, drinksmodels.Drink{
@@ -53,7 +52,7 @@ func TestCreate_PersistsOnCommit(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, string(created.ID.ID) == "", "expected id to be set")
 
-	drinks, err := d.List(context.Background())
+	drinks, err := d.List(fix.Ctx)
 	testutil.Ok(t, err)
 
 	testutil.ErrorIf(t, len(drinks) != 1, "expected 1 drink, got %d", len(drinks))
