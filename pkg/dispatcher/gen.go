@@ -425,7 +425,7 @@ func defaultAlias(modulePath, importPath string) string {
 	}
 
 	rel := strings.TrimPrefix(importPath, modulePath+"/")
-	rel = strings.TrimPrefix(rel, "app/")
+	rel = strings.TrimPrefix(rel, "app/domains/")
 	parts := strings.Split(rel, "/")
 	if len(parts) >= 2 {
 		return parts[0] + "_" + parts[len(parts)-1]
