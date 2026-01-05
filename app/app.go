@@ -10,12 +10,12 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
-	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
+	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
-	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/cedar-policy/cedar-go"
 )
 
 type App struct {
@@ -79,7 +79,7 @@ func (a *App) Context(parent context.Context, principal cedar.EntityUID) *middle
 	}
 
 	if a != nil {
-		parent = pkglog.WithLogger(parent, a.Logger.With(pkglog.Args(pkglog.Actor(principal))...))
+		parent = log.ToContext(parent, a.Logger.With(log.Actor(principal)))
 		parent = telemetry.WithMetrics(parent, a.Metrics)
 	}
 

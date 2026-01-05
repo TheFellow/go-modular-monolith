@@ -41,12 +41,12 @@ package log
 
 import (
     "log/slog"
-    "time"
 
     cedar "github.com/cedar-policy/cedar-go"
 )
 
 // Domain-specific attribute constructors for consistent keys.
+// For one-off attributes, use slog directly: slog.String(), slog.Duration(), etc.
 
 func Actor(p cedar.EntityUID) slog.Attr {
     return slog.String("actor", p.String())
@@ -70,10 +70,6 @@ func EventType(name string) slog.Attr {
 
 func RequestID(id string) slog.Attr {
     return slog.String("request_id", id)
-}
-
-func Duration(d time.Duration) slog.Attr {
-    return slog.Duration("duration", d)
 }
 
 func Allowed(v bool) slog.Attr {
@@ -101,8 +97,12 @@ import (
 
 type loggerKey struct{}
 
-// WithLogger attaches a logger to the context.
-func WithLogger(ctx context.Context, l *slog.Logger) context.Context {
+// ToContext attaches a logger to the context.
+// Use this to enrich the logger as it flows through middleware:
+//
+//     ctx = log.ToContext(ctx, log.FromContext(ctx).With(log.Actor(principal)))
+//
+func ToContext(ctx context.Context, l *slog.Logger) context.Context {
     return context.WithValue(ctx, loggerKey{}, l)
 }
 
@@ -115,14 +115,10 @@ func FromContext(ctx context.Context) *slog.Logger {
     return slog.Default()
 }
 
-// With returns a new context with additional attributes attached to the logger.
-func With(ctx context.Context, attrs ...slog.Attr) context.Context {
-    logger := FromContext(ctx)
-    args := make([]any, len(attrs))
-    for i, a := range attrs {
-        args[i] = a
-    }
-    return WithLogger(ctx, logger.With(args...))
+// With enriches the context's logger with additional attributes.
+// Shorthand for: ToContext(ctx, FromContext(ctx).With(attrs...))
+func With(ctx context.Context, attrs ...any) context.Context {
+    return ToContext(ctx, FromContext(ctx).With(attrs...))
 }
 ```
 
@@ -189,29 +185,29 @@ import (
     "github.com/TheFellow/go-modular-monolith/pkg/log"
 )
 
-// CommandLogging logs command execution.
+// CommandLogging logs command execution and enriches context for downstream.
 func CommandLogging() CommandMiddleware {
     return func(ctx *Context, action cedar.EntityUID, resource cedar.Entity, next CommandNext) error {
-        logger := log.FromContext(ctx).With(
+        // Enrich context - downstream middleware/handlers inherit these attributes
+        ctx.Context = log.With(ctx.Context,
             log.Action(action),
             log.Resource(resource.UID),
-            log.Actor(ctx.Principal()),
         )
 
+        logger := log.FromContext(ctx)
         start := time.Now()
         logger.Debug("command started")
 
         err := next(ctx)
 
-        duration := time.Since(start)
         if err != nil {
             logger.Error("command failed",
-                log.Duration(duration),
+                slog.Duration("duration", time.Since(start)),
                 log.Err(err),
             )
         } else {
             logger.Info("command completed",
-                log.Duration(duration),
+                slog.Duration("duration", time.Since(start)),
             )
         }
 
@@ -219,28 +215,26 @@ func CommandLogging() CommandMiddleware {
     }
 }
 
-// QueryLogging logs query execution.
+// QueryLogging logs query execution and enriches context for downstream.
 func QueryLogging() QueryMiddleware {
     return func(ctx *Context, action cedar.EntityUID, next QueryNext) error {
-        logger := log.FromContext(ctx).With(
-            log.Action(action),
-            log.Actor(ctx.Principal()),
-        )
+        // Enrich context - downstream middleware/handlers inherit these attributes
+        ctx.Context = log.With(ctx.Context, log.Action(action))
 
+        logger := log.FromContext(ctx)
         start := time.Now()
         logger.Debug("query started")
 
         err := next(ctx)
 
-        duration := time.Since(start)
         if err != nil {
             logger.Warn("query failed",
-                log.Duration(duration),
+                slog.Duration("duration", time.Since(start)),
                 log.Err(err),
             )
         } else {
             logger.Debug("query completed",
-                log.Duration(duration),
+                slog.Duration("duration", time.Since(start)),
             )
         }
 
@@ -263,30 +257,30 @@ import (
     "github.com/TheFellow/go-modular-monolith/pkg/log"
 )
 
-func logDecision(logger *slog.Logger, principal, action cedar.EntityUID, resource *cedar.Entity, allowed bool, duration time.Duration, err error) {
-    attrs := []slog.Attr{
-        log.Actor(principal),
-        log.Action(action),
-        log.Allowed(allowed),
-        log.Duration(duration),
-    }
-
-    if resource != nil {
-        attrs = append(attrs, log.Resource(resource.UID))
-    }
-
+// logDecision logs an authorization decision.
+// The logger already has action/resource from upstream middleware.
+func logDecision(logger *slog.Logger, allowed bool, duration time.Duration, err error) {
     if err != nil {
-        attrs = append(attrs, log.Err(err))
-        logger.LogAttrs(nil, slog.LevelWarn, "authorization error", attrs...)
+        logger.Warn("authorization error",
+            log.Allowed(allowed),
+            slog.Duration("duration", duration),
+            log.Err(err),
+        )
         return
     }
 
     if !allowed {
-        logger.LogAttrs(nil, slog.LevelInfo, "authorization denied", attrs...)
+        logger.Info("authorization denied",
+            log.Allowed(allowed),
+            slog.Duration("duration", duration),
+        )
         return
     }
 
-    logger.LogAttrs(nil, slog.LevelDebug, "authorization allowed", attrs...)
+    logger.Debug("authorization allowed",
+        log.Allowed(allowed),
+        slog.Duration("duration", duration),
+    )
 }
 ```
 
@@ -306,25 +300,25 @@ import (
 )
 
 func (d *Dispatcher) dispatchWithLogging(ctx *middleware.Context, event any) error {
-    logger := log.FromContext(ctx)
     eventType := reflect.TypeOf(event).String()
 
+    // Enrich context for this event dispatch
+    ctx.Context = log.With(ctx.Context, log.EventType(eventType))
+
+    logger := log.FromContext(ctx)
     start := time.Now()
-    logger.Debug("dispatching event", log.EventType(eventType))
+    logger.Debug("dispatching event")
 
     err := d.dispatch(ctx, event)
 
-    duration := time.Since(start)
     if err != nil {
         logger.Error("event handler failed",
-            log.EventType(eventType),
-            log.Duration(duration),
+            slog.Duration("duration", time.Since(start)),
             log.Err(err),
         )
     } else {
         logger.Debug("event dispatched",
-            log.EventType(eventType),
-            log.Duration(duration),
+            slog.Duration("duration", time.Since(start)),
         )
     }
 
@@ -392,9 +386,11 @@ func New(opts ...Option) *App {
     // ...
 }
 
+// Context creates a middleware context with the logger seeded for this request.
+// The actor is attached to the logger so all downstream logs include it.
 func (a *App) Context(ctx context.Context, principal cedar.EntityUID) *middleware.Context {
-    // Attach logger with actor to context
-    ctx = log.WithLogger(ctx, a.logger.With(log.Actor(principal)))
+    // Seed logger with actor - middleware will enrich further
+    ctx = log.ToContext(ctx, a.logger.With(log.Actor(principal)))
     return middleware.NewContext(ctx, middleware.WithPrincipal(principal))
 }
 
@@ -402,6 +398,30 @@ func (a *App) Logger() *slog.Logger {
     return a.logger
 }
 ```
+
+### How Context Enrichment Flows
+
+```
+App.Context()
+    └─> logger.With(Actor) ─────────────────────────────────┐
+                                                            │
+CommandLogging middleware                                   │
+    └─> log.With(Action, Resource) ─────────────────────────┤
+                                                            │
+AuthZ middleware                                            │
+    └─> log.FromContext() ──→ has: Actor, Action, Resource  │
+                                                            │
+UnitOfWork middleware                                       │
+    └─> log.FromContext() ──→ has: Actor, Action, Resource  │
+                                                            │
+DispatchEvents middleware                                   │
+    └─> log.With(EventType) ────────────────────────────────┤
+                                                            │
+Event handler                                               │
+    └─> log.FromContext() ──→ has: Actor, Action, Resource, EventType
+```
+
+All logs automatically include accumulated context without explicit passing.
 
 ## Middleware Chain Updates
 
@@ -425,14 +445,17 @@ Command = NewCommandChain(
 ### Text Format (Development)
 ```
 time=2024-01-05T10:30:00.000Z level=DEBUG msg="command started" actor=Mixology::Actor::"owner" action=Mixology::Drink::Action::"create" resource=Mixology::Drink::""
-time=2024-01-05T10:30:00.001Z level=DEBUG msg="authorization allowed" actor=Mixology::Actor::"owner" action=Mixology::Drink::Action::"create" allowed=true duration=500µs
-time=2024-01-05T10:30:00.005Z level=INFO msg="command completed" actor=Mixology::Actor::"owner" action=Mixology::Drink::Action::"create" duration=5ms
-time=2024-01-05T10:30:00.005Z level=DEBUG msg="dispatching event" event_type=events.DrinkCreated
+time=2024-01-05T10:30:00.001Z level=DEBUG msg="authorization allowed" actor=Mixology::Actor::"owner" action=Mixology::Drink::Action::"create" resource=Mixology::Drink::"" allowed=true duration=500µs
+time=2024-01-05T10:30:00.005Z level=INFO msg="command completed" actor=Mixology::Actor::"owner" action=Mixology::Drink::Action::"create" resource=Mixology::Drink::"" duration=5ms
+time=2024-01-05T10:30:00.006Z level=DEBUG msg="dispatching event" actor=Mixology::Actor::"owner" action=Mixology::Drink::Action::"create" resource=Mixology::Drink::"abc123" event_type=events.DrinkCreated
+time=2024-01-05T10:30:00.006Z level=DEBUG msg="event dispatched" actor=Mixology::Actor::"owner" action=Mixology::Drink::Action::"create" resource=Mixology::Drink::"abc123" event_type=events.DrinkCreated duration=200µs
 ```
+
+Note: All logs include `actor`, `action`, `resource` because context is enriched through the middleware chain.
 
 ### JSON Format (Production)
 ```json
-{"time":"2024-01-05T10:30:00.005Z","level":"INFO","msg":"command completed","actor":"Mixology::Actor::\"owner\"","action":"Mixology::Drink::Action::\"create\"","duration":"5ms"}
+{"time":"2024-01-05T10:30:00.005Z","level":"INFO","msg":"command completed","actor":"Mixology::Actor::\"owner\"","action":"Mixology::Drink::Action::\"create\"","resource":"Mixology::Drink::\"abc123\"","duration":"5ms"}
 ```
 
 ## Test Utilities

@@ -2,7 +2,6 @@ package log
 
 import (
 	"log/slog"
-	"time"
 
 	"github.com/cedar-policy/cedar-go"
 )
@@ -31,14 +30,13 @@ func RequestID(id string) slog.Attr {
 	return slog.String("request_id", id)
 }
 
-func Duration(d time.Duration) slog.Attr {
-	return slog.Duration("duration", d)
-}
-
 func Allowed(v bool) slog.Attr {
 	return slog.Bool("allowed", v)
 }
 
 func Err(err error) slog.Attr {
-	return slog.Any("err", err)
+	if err == nil {
+		return slog.Attr{}
+	}
+	return slog.Any("error", err)
 }

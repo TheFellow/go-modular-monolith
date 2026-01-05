@@ -7,12 +7,16 @@ import (
 
 type loggerKey struct{}
 
-func WithLogger(ctx context.Context, l *slog.Logger) context.Context {
+// ToContext attaches a logger to the context.
+func ToContext(ctx context.Context, l *slog.Logger) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	return context.WithValue(ctx, loggerKey{}, l)
 }
+
+// WithLogger is kept for backwards-compatibility; prefer ToContext.
+func WithLogger(ctx context.Context, l *slog.Logger) context.Context { return ToContext(ctx, l) }
 
 func FromContext(ctx context.Context) *slog.Logger {
 	if ctx != nil {
@@ -23,18 +27,7 @@ func FromContext(ctx context.Context) *slog.Logger {
 	return slog.Default()
 }
 
-func With(ctx context.Context, attrs ...slog.Attr) context.Context {
-	logger := FromContext(ctx).With(Args(attrs...)...)
-	return WithLogger(ctx, logger)
-}
-
-func Args(attrs ...slog.Attr) []any {
-	args := make([]any, 0, len(attrs))
-	for _, a := range attrs {
-		if a.Key == "" {
-			continue
-		}
-		args = append(args, a)
-	}
-	return args
+// With enriches the context's logger with additional attributes.
+func WithLogAttrs(ctx context.Context, attrs ...any) context.Context {
+	return ToContext(ctx, FromContext(ctx).With(attrs...))
 }

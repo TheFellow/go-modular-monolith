@@ -3,10 +3,12 @@ package authz
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -45,6 +47,7 @@ func Authorize(ctx context.Context, principal cedar.EntityUID, action cedar.Enti
 	ps, err := getPolicySet()
 	if err != nil {
 		recordAuthZ(ctx, action, start, err)
+		logDecision(log.FromContext(ctx), false, time.Since(start), err)
 		return err
 	}
 
@@ -76,6 +79,7 @@ func Authorize(ctx context.Context, principal cedar.EntityUID, action cedar.Enti
 	if len(diagnostic.Errors) > 0 {
 		err := errors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
 		recordAuthZ(ctx, action, start, err)
+		logDecision(log.FromContext(ctx), false, time.Since(start), err)
 		return err
 	}
 	if decision == cedar.Deny {
@@ -86,9 +90,11 @@ func Authorize(ctx context.Context, principal cedar.EntityUID, action cedar.Enti
 			resource.Type, resource.ID,
 		)
 		recordAuthZ(ctx, action, start, err)
+		logDecision(log.FromContext(ctx), false, time.Since(start), nil)
 		return err
 	}
 	recordAuthZ(ctx, action, start, nil)
+	logDecision(log.FromContext(ctx), true, time.Since(start), nil)
 	return nil
 }
 
@@ -98,6 +104,7 @@ func AuthorizeWithEntity(ctx context.Context, principal cedar.EntityUID, action 
 	ps, err := getPolicySet()
 	if err != nil {
 		recordAuthZ(ctx, action, start, err)
+		logDecision(log.FromContext(ctx), false, time.Since(start), err)
 		return err
 	}
 
@@ -122,6 +129,7 @@ func AuthorizeWithEntity(ctx context.Context, principal cedar.EntityUID, action 
 	if len(diagnostic.Errors) > 0 {
 		err := errors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
 		recordAuthZ(ctx, action, start, err)
+		logDecision(log.FromContext(ctx), false, time.Since(start), err)
 		return err
 	}
 	if decision == cedar.Deny {
@@ -132,15 +140,17 @@ func AuthorizeWithEntity(ctx context.Context, principal cedar.EntityUID, action 
 			resource.UID.Type, resource.UID.ID,
 		)
 		recordAuthZ(ctx, action, start, err)
+		logDecision(log.FromContext(ctx), false, time.Since(start), nil)
 		return err
 	}
 	recordAuthZ(ctx, action, start, nil)
+	logDecision(log.FromContext(ctx), true, time.Since(start), nil)
 	return nil
 }
 
 func recordAuthZ(ctx context.Context, action cedar.EntityUID, start time.Time, err error) {
 	m := telemetry.FromContext(ctx)
-	actionLabel := action.String()
+	actionLabel := actionLabel(action)
 
 	m.Histogram(telemetry.MetricAuthZLatency, telemetry.LabelAction).
 		ObserveDuration(start, actionLabel)
@@ -158,4 +168,16 @@ func recordAuthZ(ctx context.Context, action cedar.EntityUID, start time.Time, e
 		m.Counter(telemetry.MetricAuthZTotal, telemetry.LabelAction, telemetry.LabelDecision).
 			Inc(actionLabel, "error")
 	}
+}
+
+func actionLabel(action cedar.EntityUID) string {
+	// Mixology::Drink::Action::"create" -> Drink.create
+	s := action.String()
+	parts := strings.Split(s, "::")
+	if len(parts) < 4 {
+		return s
+	}
+	domain := parts[1]
+	id := strings.Trim(parts[len(parts)-1], `"`)
+	return domain + "." + id
 }

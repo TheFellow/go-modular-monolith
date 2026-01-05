@@ -3,7 +3,6 @@
 package dispatcher
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 
@@ -20,15 +19,6 @@ func New() *Dispatcher {
 // handlerError is called when a handler returns an error.
 // Return a non-nil error to stop dispatch immediately.
 func (d *Dispatcher) handlerError(ctx *middleware.Context, event any, err error) error {
-	if ctx != nil {
-		log.FromContext(ctx).Error(
-			"event handler error",
-			log.Args(
-				log.EventType(eventTypeLabel(event)),
-				log.Err(err),
-			)...,
-		)
-	}
 	return err
 }
 
@@ -37,7 +27,7 @@ func (d *Dispatcher) unhandledEvent(ctx *middleware.Context, event any) error {
 	if ctx != nil {
 		log.FromContext(ctx).Warn(
 			"unhandled event",
-			log.Args(log.EventType(fmt.Sprintf("%T", event)))...,
+			log.EventType(eventTypeLabel(event)),
 		)
 	}
 	return nil

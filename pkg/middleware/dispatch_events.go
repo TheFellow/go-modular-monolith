@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log/slog"
 	"time"
 
 	cedar "github.com/cedar-policy/cedar-go"
@@ -24,14 +25,21 @@ func DispatchEvents() CommandMiddleware {
 		mc, _ := MetricsCollectorFromContext(ctx.Context)
 
 		for _, event := range ctx.Events() {
+			base := ctx.Context
+			eventType := eventTypeLabel(event)
+			ctx.Context = log.WithLogAttrs(base, log.EventType(eventType))
+
+			logger := log.FromContext(ctx)
 			start := time.Now()
-			log.FromContext(ctx).Debug("dispatching event", log.Args(log.EventType(eventTypeLabel(event)))...)
+			logger.Debug("dispatching event")
 			if err := d.Dispatch(ctx, event); err != nil {
+				logger.Error("event handler failed", slog.Duration("duration", time.Since(start)), log.Err(err))
 				if mc != nil {
 					mc.RecordEvent(event, time.Since(start), err)
 				}
 				return err
 			}
+			logger.Debug("event dispatched", slog.Duration("duration", time.Since(start)))
 			if mc != nil {
 				mc.RecordEvent(event, time.Since(start), nil)
 			}
