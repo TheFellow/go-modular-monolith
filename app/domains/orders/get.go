@@ -16,7 +16,7 @@ type GetResponse struct {
 }
 
 func (m *Module) Get(ctx *middleware.Context, req GetRequest) (GetResponse, error) {
-	return middleware.RunQuery(ctx, authz.ActionGet, m.get, req)
+	return middleware.RunQueryWithResource(ctx, authz.ActionGet, m.get, req)
 }
 
 func (m *Module) get(ctx *middleware.Context, req GetRequest) (GetResponse, error) {
@@ -25,4 +25,17 @@ func (m *Module) get(ctx *middleware.Context, req GetRequest) (GetResponse, erro
 		return GetResponse{}, err
 	}
 	return GetResponse{Order: o}, nil
+}
+
+func (r GetRequest) CedarEntity() cedar.Entity {
+	uid := r.ID
+	if string(uid.ID) == "" {
+		uid = cedar.NewEntityUID(models.OrderEntityType, cedar.String(""))
+	}
+	return cedar.Entity{
+		UID:        uid,
+		Parents:    cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(nil),
+	}
 }
