@@ -4,8 +4,10 @@ import (
 	"context"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -38,10 +40,11 @@ func getPolicySet() (*cedar.PolicySet, error) {
 }
 
 func Authorize(ctx context.Context, principal cedar.EntityUID, action cedar.EntityUID) error {
-	_ = ctx
+	start := time.Now()
 
 	ps, err := getPolicySet()
 	if err != nil {
+		recordAuthZ(ctx, action, start, err)
 		return err
 	}
 
@@ -71,24 +74,30 @@ func Authorize(ctx context.Context, principal cedar.EntityUID, action cedar.Enti
 
 	decision, diagnostic := cedar.Authorize(ps, entities, req)
 	if len(diagnostic.Errors) > 0 {
-		return errors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
+		err := errors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
+		recordAuthZ(ctx, action, start, err)
+		return err
 	}
 	if decision == cedar.Deny {
-		return errors.Permissionf(
+		err := errors.Permissionf(
 			"authz denied principal=%s::%q action=%s::%q resource=%s::%q",
 			principal.Type, principal.ID,
 			action.Type, action.ID,
 			resource.Type, resource.ID,
 		)
+		recordAuthZ(ctx, action, start, err)
+		return err
 	}
+	recordAuthZ(ctx, action, start, nil)
 	return nil
 }
 
 func AuthorizeWithEntity(ctx context.Context, principal cedar.EntityUID, action cedar.EntityUID, resource cedar.Entity) error {
-	_ = ctx
+	start := time.Now()
 
 	ps, err := getPolicySet()
 	if err != nil {
+		recordAuthZ(ctx, action, start, err)
 		return err
 	}
 
@@ -111,15 +120,42 @@ func AuthorizeWithEntity(ctx context.Context, principal cedar.EntityUID, action 
 
 	decision, diagnostic := cedar.Authorize(ps, entities, req)
 	if len(diagnostic.Errors) > 0 {
-		return errors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
+		err := errors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
+		recordAuthZ(ctx, action, start, err)
+		return err
 	}
 	if decision == cedar.Deny {
-		return errors.Permissionf(
+		err := errors.Permissionf(
 			"authz denied principal=%s::%q action=%s::%q resource=%s::%q",
 			principal.Type, principal.ID,
 			action.Type, action.ID,
 			resource.UID.Type, resource.UID.ID,
 		)
+		recordAuthZ(ctx, action, start, err)
+		return err
 	}
+	recordAuthZ(ctx, action, start, nil)
 	return nil
+}
+
+func recordAuthZ(ctx context.Context, action cedar.EntityUID, start time.Time, err error) {
+	m := telemetry.FromContext(ctx)
+	actionLabel := action.String()
+
+	m.Histogram(telemetry.MetricAuthZLatency, telemetry.LabelAction).
+		ObserveDuration(start, actionLabel)
+
+	switch {
+	case err == nil:
+		m.Counter(telemetry.MetricAuthZTotal, telemetry.LabelAction, telemetry.LabelDecision).
+			Inc(actionLabel, "allow")
+	case errors.IsPermission(err):
+		m.Counter(telemetry.MetricAuthZTotal, telemetry.LabelAction, telemetry.LabelDecision).
+			Inc(actionLabel, "deny")
+		m.Counter(telemetry.MetricAuthZDenied, telemetry.LabelAction).
+			Inc(actionLabel)
+	default:
+		m.Counter(telemetry.MetricAuthZTotal, telemetry.LabelAction, telemetry.LabelDecision).
+			Inc(actionLabel, "error")
+	}
 }

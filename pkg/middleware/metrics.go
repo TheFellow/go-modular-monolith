@@ -7,7 +7,6 @@ import (
 
 	cedar "github.com/cedar-policy/cedar-go"
 
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 )
 
@@ -19,10 +18,6 @@ type MetricsCollector struct {
 	queryTotal    telemetry.Counter
 	queryDuration telemetry.Histogram
 	queryErrors   telemetry.Counter
-
-	authzTotal   telemetry.Counter
-	authzDenied  telemetry.Counter
-	authzLatency telemetry.Histogram
 
 	eventsDispatched telemetry.Counter
 	eventsDuration   telemetry.Histogram
@@ -41,10 +36,6 @@ func NewMetricsCollector(m telemetry.Metrics) *MetricsCollector {
 		queryTotal:    m.Counter(telemetry.MetricQueryTotal, telemetry.LabelAction, telemetry.LabelResult),
 		queryDuration: m.Histogram(telemetry.MetricQueryDuration, telemetry.LabelAction),
 		queryErrors:   m.Counter(telemetry.MetricQueryErrors, telemetry.LabelAction),
-
-		authzTotal:   m.Counter(telemetry.MetricAuthZTotal, telemetry.LabelAction, telemetry.LabelDecision),
-		authzDenied:  m.Counter(telemetry.MetricAuthZDenied, telemetry.LabelAction),
-		authzLatency: m.Histogram(telemetry.MetricAuthZLatency, telemetry.LabelAction),
 
 		eventsDispatched: m.Counter(telemetry.MetricEventsDispatched, telemetry.LabelEventType),
 		eventsDuration:   m.Histogram(telemetry.MetricEventsDuration, telemetry.LabelEventType),
@@ -120,24 +111,6 @@ func QueryWithResourceMetrics() QueryWithResourceMiddleware {
 			mc.queryTotal.Inc(actionLabel, "success")
 		}
 		return err
-	}
-}
-
-func (mc *MetricsCollector) RecordAuthZ(action cedar.EntityUID, duration time.Duration, err error) {
-	if mc == nil {
-		return
-	}
-	actionLabel := actionLabel(action)
-	mc.authzLatency.Observe(duration.Seconds(), actionLabel)
-
-	switch {
-	case err == nil:
-		mc.authzTotal.Inc(actionLabel, "allow")
-	case errors.IsPermission(err):
-		mc.authzTotal.Inc(actionLabel, "deny")
-		mc.authzDenied.Inc(actionLabel)
-	default:
-		mc.authzTotal.Inc(actionLabel, "error")
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 
 	cedar "github.com/cedar-policy/cedar-go"
 
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 )
 
@@ -20,6 +21,11 @@ func CommandLogging() CommandMiddleware {
 		logger.Debug("command started")
 
 		err := next(ctx)
+
+		if errors.IsPermission(err) {
+			logger.Info("authorization denied", log.Args(log.Duration(time.Since(start)), log.Err(err))...)
+			return err
+		}
 
 		if err != nil {
 			logger.Error("command failed", log.Args(log.Duration(time.Since(start)), log.Err(err))...)
@@ -42,6 +48,11 @@ func QueryLogging() QueryMiddleware {
 
 		err := next(ctx)
 
+		if errors.IsPermission(err) {
+			logger.Info("authorization denied", log.Args(log.Duration(time.Since(start)), log.Err(err))...)
+			return err
+		}
+
 		if err != nil {
 			logger.Warn("query failed", log.Args(log.Duration(time.Since(start)), log.Err(err))...)
 		} else {
@@ -63,6 +74,11 @@ func QueryWithResourceLogging() QueryWithResourceMiddleware {
 		logger.Debug("query started")
 
 		err := next(ctx)
+
+		if errors.IsPermission(err) {
+			logger.Info("authorization denied", log.Args(log.Duration(time.Since(start)), log.Err(err))...)
+			return err
+		}
 
 		if err != nil {
 			logger.Warn("query failed", log.Args(log.Duration(time.Since(start)), log.Err(err))...)
