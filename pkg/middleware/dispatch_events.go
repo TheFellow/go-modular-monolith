@@ -10,9 +10,10 @@ type EventDispatcher interface {
 }
 
 // DispatchEvents dispatches any events collected on the middleware context
-// after the command completes. Each event is dispatched through the event
-// chain which handles logging and metrics.
-func DispatchEvents() CommandMiddleware {
+// after the command completes. Each event may be dispatched through optional
+// event middleware (e.g., metrics) passed explicitly by the caller.
+func DispatchEvents(eventMiddlewares ...EventMiddleware) CommandMiddleware {
+	eventChain := NewEventChain(eventMiddlewares...)
 	return func(ctx *Context, _ cedar.EntityUID, _ cedar.Entity, next CommandNext) error {
 		if err := next(ctx); err != nil {
 			return err
@@ -24,10 +25,9 @@ func DispatchEvents() CommandMiddleware {
 		}
 
 		for _, event := range ctx.Events() {
-			err := DefaultEventChain.Execute(ctx, event, func() error {
+			if err := eventChain.Execute(ctx, event, func() error {
 				return d.Dispatch(ctx, event)
-			})
-			if err != nil {
+			}); err != nil {
 				return err
 			}
 		}

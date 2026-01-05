@@ -1,10 +1,7 @@
 package middleware
 
 import (
-	"log/slog"
 	"time"
-
-	"github.com/TheFellow/go-modular-monolith/pkg/log"
 )
 
 // EventNext is the continuation function for event middleware.
@@ -36,40 +33,6 @@ func (c *EventChain) Execute(ctx *Context, event any, final EventNext) error {
 	return next()
 }
 
-// EventLogging logs event dispatch with duration.
-// Sets the event_type attribute in the log context.
-func EventLogging() EventMiddleware {
-	return func(ctx *Context, event any, next EventNext) error {
-		eventType := eventTypeLabel(event)
-
-		// Add event_type to log context
-		base := ctx.Context
-		ctx.Context = log.WithLogAttrs(base, log.EventType(eventType))
-		defer func() { ctx.Context = base }()
-
-		logger := log.FromContext(ctx)
-		start := time.Now()
-
-		logger.Debug("dispatching event")
-
-		err := next()
-		duration := time.Since(start)
-
-		if err != nil {
-			logger.Error("event handler failed",
-				slog.Duration("duration", duration),
-				log.Err(err),
-			)
-			return err
-		}
-
-		logger.Debug("event dispatched",
-			slog.Duration("duration", duration),
-		)
-		return nil
-	}
-}
-
 // EventMetrics records event dispatch metrics (count, latency, errors).
 func EventMetrics() EventMiddleware {
 	return func(ctx *Context, event any, next EventNext) error {
@@ -86,9 +49,3 @@ func EventMetrics() EventMiddleware {
 		return err
 	}
 }
-
-// DefaultEventChain is the standard event chain with logging and metrics.
-var DefaultEventChain = NewEventChain(
-	EventLogging(),
-	EventMetrics(),
-)

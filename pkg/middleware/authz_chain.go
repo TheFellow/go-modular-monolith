@@ -102,9 +102,3 @@ func AuthZMetrics() AuthZMiddleware {
 		return err
 	}
 }
-
-// DefaultAuthZChain is the standard AuthZ chain with logging and metrics.
-var DefaultAuthZChain = NewAuthZChain(
-	AuthZLogging(),
-	AuthZMetrics(),
-)

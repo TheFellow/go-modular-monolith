@@ -197,7 +197,7 @@ type testEvent struct {
 	Name string
 }
 
-func TestEventChain_SuccessfulDispatch_LogsAndRecordsMetrics(t *testing.T) {
+func TestEventChain_SuccessfulDispatch_RecordsMetrics(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &testLogBuffer{}
@@ -207,7 +207,6 @@ func TestEventChain_SuccessfulDispatch_LogsAndRecordsMetrics(t *testing.T) {
 	event := testEvent{Name: "test"}
 
 	chain := middleware.NewEventChain(
-		middleware.EventLogging(),
 		middleware.EventMetrics(),
 	)
 
@@ -217,14 +216,6 @@ func TestEventChain_SuccessfulDispatch_LogsAndRecordsMetrics(t *testing.T) {
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
-	}
-
-	// Check logging
-	if !logBuf.Contains("dispatching event") {
-		t.Errorf("expected 'dispatching event' log, got: %s", logBuf.String())
-	}
-	if !logBuf.Contains("event dispatched") {
-		t.Errorf("expected 'event dispatched' log, got: %s", logBuf.String())
 	}
 
 	// Check metrics - event type includes package name
@@ -239,7 +230,7 @@ func TestEventChain_SuccessfulDispatch_LogsAndRecordsMetrics(t *testing.T) {
 	}
 }
 
-func TestEventChain_FailedDispatch_LogsAndRecordsMetrics(t *testing.T) {
+func TestEventChain_FailedDispatch_RecordsMetrics(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &testLogBuffer{}
@@ -249,7 +240,6 @@ func TestEventChain_FailedDispatch_LogsAndRecordsMetrics(t *testing.T) {
 	event := testEvent{Name: "test"}
 
 	chain := middleware.NewEventChain(
-		middleware.EventLogging(),
 		middleware.EventMetrics(),
 	)
 
@@ -259,11 +249,6 @@ func TestEventChain_FailedDispatch_LogsAndRecordsMetrics(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
-	}
-
-	// Check logging
-	if !logBuf.Contains("event handler failed") {
-		t.Errorf("expected 'event handler failed' log, got: %s", logBuf.String())
 	}
 
 	// Check metrics
@@ -483,7 +468,7 @@ func (m *mockDispatcher) Dispatch(_ *middleware.Context, event any) error {
 	return nil
 }
 
-func TestDispatchEvents_ThroughEventChain_MetricsRecorded(t *testing.T) {
+func TestDispatchEvents_RecordsMetrics(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &testLogBuffer{}
@@ -512,7 +497,7 @@ func TestDispatchEvents_ThroughEventChain_MetricsRecorded(t *testing.T) {
 
 	// Use just DispatchEvents middleware to test event chain
 	chain := middleware.NewCommandChain(
-		middleware.DispatchEvents(),
+		middleware.DispatchEvents(middleware.EventMetrics()),
 	)
 
 	event := testEvent{Name: "created"}
@@ -539,13 +524,5 @@ func TestDispatchEvents_ThroughEventChain_MetricsRecorded(t *testing.T) {
 	durationCount := mem.HistogramCount(telemetry.MetricEventsDuration, "middleware_test.testEvent")
 	if durationCount != 1 {
 		t.Errorf("expected 1 event duration observation, got %v", durationCount)
-	}
-
-	// Check logging
-	if !logBuf.Contains("dispatching event") {
-		t.Errorf("expected 'dispatching event' log")
-	}
-	if !logBuf.Contains("event dispatched") {
-		t.Errorf("expected 'event dispatched' log")
 	}
 }
