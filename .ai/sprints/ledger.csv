@@ -30,3 +30,4 @@ sprint-017c,completed,2026-01-05,2026-01-05,Test fixtures: isolated per-test bst
 sprint-018,completed,2026-01-05,2026-01-05,Structured slog logging via middleware + CLI flags
 sprint-019,completed,2026-01-05,2026-01-05,OpenTelemetry metrics via middleware + optional Prometheus /metrics endpoint
 sprint-020,completed,2026-01-05,2026-01-05,Single-responsibility middleware refactor: pure authz + AuthZ/Event subchains
+sprint-021,completed,2026-01-05,2026-01-05,Drinks delete + filtered list + Menu reacts to DrinkDeleted

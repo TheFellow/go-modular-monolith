@@ -52,7 +52,7 @@ func TestCreate_PersistsOnCommit(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, string(created.ID.ID) == "", "expected id to be set")
 
-	drinks, err := d.List(fix.Ctx)
+	drinks, err := d.List(fix.Ctx, dao.ListFilter{})
 	testutil.Ok(t, err)
 
 	testutil.ErrorIf(t, len(drinks) != 1, "expected 1 drink, got %d", len(drinks))

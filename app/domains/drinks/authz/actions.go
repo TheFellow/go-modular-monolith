@@ -7,4 +7,5 @@ var (
 	ActionGet    = cedar.NewEntityUID(cedar.EntityType("Mixology::Drink::Action"), cedar.String("get"))
 	ActionCreate = cedar.NewEntityUID(cedar.EntityType("Mixology::Drink::Action"), cedar.String("create"))
 	ActionUpdate = cedar.NewEntityUID(cedar.EntityType("Mixology::Drink::Action"), cedar.String("update"))
+	ActionDelete = cedar.NewEntityUID(cedar.EntityType("Mixology::Drink::Action"), cedar.String("delete"))
 )

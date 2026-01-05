@@ -25,3 +25,9 @@ permit(
     action == Mixology::Drink::Action::"update",
     resource
 );
+
+permit(
+    principal == Mixology::Actor::"owner",
+    action == Mixology::Drink::Action::"delete",
+    resource
+);

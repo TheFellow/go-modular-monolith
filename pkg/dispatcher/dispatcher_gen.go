@@ -3,41 +3,48 @@
 package dispatcher
 
 import (
-	domains_events "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
-	domains_handlers "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/handlers"
-	domains_events2 "github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
+	domains_events "github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
+	domains_events2 "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
+	domains_handlers2 "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/handlers"
+	domains_events3 "github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
 	domains_handlers3 "github.com/TheFellow/go-modular-monolith/app/domains/inventory/handlers"
-	domains_handlers2 "github.com/TheFellow/go-modular-monolith/app/domains/menu/handlers"
-	domains_events3 "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
+	domains_handlers "github.com/TheFellow/go-modular-monolith/app/domains/menu/handlers"
+	domains_events4 "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
 	middleware "github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
 func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	switch e := event.(type) {
-	case domains_events.IngredientCreated:
-		if err := domains_handlers.NewIngredientCreatedAudit().Handle(ctx, e); err != nil {
+	case domains_events.DrinkDeleted:
+		if err := domains_handlers.NewDrinkDeletedMenuUpdater().Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-		if err := domains_handlers.NewIngredientCreatedCounter().Handle(ctx, e); err != nil {
+	case domains_events2.IngredientCreated:
+		if err := domains_handlers2.NewIngredientCreatedAudit().Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-	case domains_events2.StockAdjusted:
-		if err := domains_handlers2.NewStockAdjustedMenuUpdater().Handle(ctx, e); err != nil {
+		if err := domains_handlers2.NewIngredientCreatedCounter().Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-	case domains_events3.OrderCompleted:
+	case domains_events3.StockAdjusted:
+		if err := domains_handlers.NewStockAdjustedMenuUpdater().Handle(ctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+	case domains_events4.OrderCompleted:
 		if err := domains_handlers3.NewOrderCompletedStockUpdater().Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-		if err := domains_handlers2.NewOrderCompletedMenuUpdater().Handle(ctx, e); err != nil {
+		if err := domains_handlers.NewOrderCompletedMenuUpdater().Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}

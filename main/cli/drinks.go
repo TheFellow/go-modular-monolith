@@ -22,9 +22,14 @@ func (c *CLI) drinksCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List drinks",
-				Flags: []cli.Flag{JSONFlag},
+				Flags: []cli.Flag{
+					JSONFlag,
+					&cli.StringFlag{Name: "name", Usage: "Filter by exact name match"},
+				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					res, err := c.app.Drinks.List(ctx, drinks.ListRequest{})
+					res, err := c.app.Drinks.List(ctx, drinks.ListRequest{
+						Name: cmd.String("name"),
+					})
 					if err != nil {
 						return err
 					}
@@ -132,6 +137,28 @@ func (c *CLI) drinksCommands() *cli.Command {
 					}
 
 					fmt.Printf("%s\t%s\n", string(res.ID.ID), res.Name)
+					return nil
+				}),
+			},
+			{
+				Name:  "delete",
+				Usage: "Delete a drink by ID",
+				Flags: []cli.Flag{JSONFlag},
+				Arguments: []cli.Argument{
+					&cli.StringArgs{Name: "id", UsageText: "Drink ID", Min: 1, Max: 1},
+				},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					id := cmd.StringArgs("id")[0]
+					res, err := c.app.Drinks.Delete(ctx, drinks.DeleteRequest{ID: drinksmodels.NewDrinkID(id)})
+					if err != nil {
+						return err
+					}
+
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(res.Drink))
+					}
+
+					fmt.Printf("deleted %s\t%s\n", string(res.Drink.ID.ID), res.Drink.Name)
 					return nil
 				}),
 			},
