@@ -2,12 +2,16 @@ package orders
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
+	"github.com/TheFellow/go-modular-monolith/app/domains/orders/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type ListRequest struct{}
+type ListRequest struct {
+	Status models.OrderStatus
+	MenuID cedar.EntityUID
+}
 
 type ListResponse struct {
 	Orders []models.Order
@@ -17,8 +21,8 @@ func (m *Module) List(ctx *middleware.Context, req ListRequest) (ListResponse, e
 	return middleware.RunQueryWithResource(ctx, authz.ActionList, m.list, req)
 }
 
-func (m *Module) list(ctx *middleware.Context, _ ListRequest) (ListResponse, error) {
-	os, err := m.queries.List(ctx)
+func (m *Module) list(ctx *middleware.Context, req ListRequest) (ListResponse, error) {
+	os, err := m.queries.List(ctx, dao.ListFilter{Status: req.Status, MenuID: req.MenuID})
 	if err != nil {
 		return ListResponse{}, err
 	}

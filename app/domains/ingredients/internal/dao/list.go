@@ -7,10 +7,24 @@ import (
 	"github.com/mjl-/bstore"
 )
 
-func (d *DAO) List(ctx context.Context) ([]models.Ingredient, error) {
+// ListFilter specifies optional filters for listing ingredients.
+type ListFilter struct {
+	Category models.Category
+	Name     string // Exact match on Name (uses bstore unique index)
+}
+
+func (d *DAO) List(ctx context.Context, filter ListFilter) ([]models.Ingredient, error) {
 	var out []models.Ingredient
 	err := d.read(ctx, func(tx *bstore.Tx) error {
-		rows, err := bstore.QueryTx[IngredientRow](tx).List()
+		q := bstore.QueryTx[IngredientRow](tx)
+		if filter.Category != "" {
+			q = q.FilterEqual("Category", string(filter.Category))
+		}
+		if filter.Name != "" {
+			q = q.FilterEqual("Name", filter.Name)
+		}
+
+		rows, err := q.SortAsc("Name").List()
 		if err != nil {
 			return err
 		}

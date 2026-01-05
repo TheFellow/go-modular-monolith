@@ -3,12 +3,13 @@ package queries
 import (
 	"context"
 
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
-func (q *Queries) List(ctx context.Context) ([]models.Ingredient, error) {
-	ingredients, err := q.dao.List(ctx)
+func (q *Queries) List(ctx context.Context, filter dao.ListFilter) ([]models.Ingredient, error) {
+	ingredients, err := q.dao.List(ctx, filter)
 	if err != nil {
 		return nil, errors.Internalf("list ingredients: %w", err)
 	}

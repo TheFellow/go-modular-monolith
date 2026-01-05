@@ -25,10 +25,28 @@ func (c *CLI) drinksCommands() *cli.Command {
 				Flags: []cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{Name: "name", Usage: "Filter by exact name match"},
+					&cli.StringFlag{
+						Name:    "category",
+						Aliases: []string{"c"},
+						Usage:   "Filter by category (e.g. cocktail, mocktail, tiki)",
+						Validator: func(s string) error {
+							return drinksmodels.DrinkCategory(strings.TrimSpace(s)).Validate()
+						},
+					},
+					&cli.StringFlag{
+						Name:    "glass",
+						Aliases: []string{"g"},
+						Usage:   "Filter by glass (e.g. coupe, rocks)",
+						Validator: func(s string) error {
+							return drinksmodels.GlassType(strings.TrimSpace(s)).Validate()
+						},
+					},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					res, err := c.app.Drinks.List(ctx, drinks.ListRequest{
-						Name: cmd.String("name"),
+						Name:     cmd.String("name"),
+						Category: drinksmodels.DrinkCategory(cmd.String("category")),
+						Glass:    drinksmodels.GlassType(cmd.String("glass")),
 					})
 					if err != nil {
 						return err

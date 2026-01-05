@@ -4,7 +4,7 @@ type DrinkRow struct {
 	ID          string
 	Name        string `bstore:"unique"`
 	Category    string `bstore:"index"`
-	Glass       string
+	Glass       string `bstore:"index"`
 	Recipe      RecipeRow
 	Description string
 }

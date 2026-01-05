@@ -21,9 +21,26 @@ func (c *CLI) menuCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List menus",
-				Flags: []cli.Flag{JSONFlag, CostsFlag, TargetMarginFlag},
+				Flags: []cli.Flag{
+					JSONFlag,
+					CostsFlag,
+					TargetMarginFlag,
+					&cli.StringFlag{
+						Name:  "status",
+						Usage: "Filter by status (draft|published|archived)",
+						Validator: func(s string) error {
+							s = strings.TrimSpace(s)
+							if s == "" {
+								return nil
+							}
+							return menumodels.MenuStatus(s).Validate()
+						},
+					},
+				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					res, err := c.app.Menu.List(ctx, menu.ListRequest{})
+					res, err := c.app.Menu.List(ctx, menu.ListRequest{
+						Status: menumodels.MenuStatus(cmd.String("status")),
+					})
 					if err != nil {
 						return err
 					}

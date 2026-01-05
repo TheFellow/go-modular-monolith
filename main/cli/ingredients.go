@@ -18,8 +18,20 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List ingredients",
-				Action: c.action(func(ctx *middleware.Context, _ *cli.Command) error {
-					res, err := c.app.Ingredients.List(ctx, ingredients.ListRequest{})
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "category",
+						Aliases: []string{"c"},
+						Usage:   ingredientscli.CategoryUsage(),
+						Validator: func(s string) error {
+							return ingredientscli.ValidateCategory(s)
+						},
+					},
+				},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					res, err := c.app.Ingredients.List(ctx, ingredients.ListRequest{
+						Category: models.Category(cmd.String("category")),
+					})
 					if err != nil {
 						return err
 					}

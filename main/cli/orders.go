@@ -60,8 +60,23 @@ func (c *CLI) ordersCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List orders",
-				Action: c.action(func(ctx *middleware.Context, _ *cli.Command) error {
-					res, err := c.app.Orders.List(ctx, orders.ListRequest{})
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "status",
+						Usage: "Filter by status (pending|preparing|completed|cancelled)",
+						Validator: func(s string) error {
+							s = strings.TrimSpace(s)
+							if s == "" {
+								return nil
+							}
+							return ordersmodels.OrderStatus(s).Validate()
+						},
+					},
+				},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					res, err := c.app.Orders.List(ctx, orders.ListRequest{
+						Status: ordersmodels.OrderStatus(cmd.String("status")),
+					})
 					if err != nil {
 						return err
 					}

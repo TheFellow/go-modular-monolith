@@ -20,8 +20,19 @@ func (c *CLI) inventoryCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List stock levels",
-				Action: c.action(func(ctx *middleware.Context, _ *cli.Command) error {
-					res, err := c.app.Inventory.List(ctx, inventory.ListRequest{})
+				Flags: []cli.Flag{
+					&cli.Float64Flag{
+						Name:  "low-stock",
+						Usage: "Show items with quantity <= threshold",
+						Value: -1,
+					},
+				},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					var req inventory.ListRequest
+					if v := cmd.Float64("low-stock"); v >= 0 {
+						req.LowStock = optional.Some(v)
+					}
+					res, err := c.app.Inventory.List(ctx, req)
 					if err != nil {
 						return err
 					}

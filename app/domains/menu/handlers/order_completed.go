@@ -37,16 +37,12 @@ func (h *OrderCompletedMenuUpdater) Handle(ctx *middleware.Context, e orderseven
 		return nil
 	}
 
-	menus, err := h.menuDAO.List(ctx)
+	menus, err := h.menuDAO.List(ctx, dao.ListFilter{Status: models.MenuStatusPublished})
 	if err != nil {
 		return err
 	}
 
 	for _, menu := range menus {
-		if menu.Status != models.MenuStatusPublished {
-			continue
-		}
-
 		changed := false
 		for i := range menu.Items {
 			item := menu.Items[i]

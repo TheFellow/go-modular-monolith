@@ -7,10 +7,20 @@ import (
 	"github.com/mjl-/bstore"
 )
 
-func (d *DAO) List(ctx context.Context) ([]models.Menu, error) {
+// ListFilter specifies optional filters for listing menus.
+type ListFilter struct {
+	Status models.MenuStatus // Exact match on Status (uses bstore index)
+}
+
+func (d *DAO) List(ctx context.Context, filter ListFilter) ([]models.Menu, error) {
 	var out []models.Menu
 	err := d.read(ctx, func(tx *bstore.Tx) error {
-		rows, err := bstore.QueryTx[MenuRow](tx).List()
+		q := bstore.QueryTx[MenuRow](tx)
+		if filter.Status != "" {
+			q = q.FilterEqual("Status", string(filter.Status))
+		}
+
+		rows, err := q.List()
 		if err != nil {
 			return err
 		}

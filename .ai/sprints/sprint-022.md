@@ -102,17 +102,17 @@ Update CLI commands to expose new filters:
 
 ## Tasks
 
-- [ ] Menu DAO: Add `ListFilter` with Status field
-- [ ] Menu handlers: Update `order_completed.go` and `stock_adjusted.go` to use filtered List
-- [ ] Inventory DAO: Add `ListFilter` with quantity threshold filters
-- [ ] Inventory CLI: Add `--low-stock` flag
-- [ ] Orders DAO: Add `ListFilter` with Status and MenuID fields
-- [ ] Orders CLI: Add `--status` flag
-- [ ] Ingredients DAO: Add `ListFilter` with Category field
-- [ ] Ingredients CLI: Add `--category` flag
-- [ ] Drinks DAO: Extend `ListFilter` with Category and Glass fields
-- [ ] Drinks CLI: Add `--category` and `--glass` flags
-- [ ] Verify `go test ./...` passes
+- [x] Menu DAO: Add `ListFilter` with Status field
+- [x] Menu handlers: Update `order_completed.go` and `stock_adjusted.go` to use filtered List
+- [x] Inventory DAO: Add `ListFilter` with quantity threshold filters
+- [x] Inventory CLI: Add `--low-stock` flag
+- [x] Orders DAO: Add `ListFilter` with Status and MenuID fields
+- [x] Orders CLI: Add `--status` flag
+- [x] Ingredients DAO: Add `ListFilter` with Category field
+- [x] Ingredients CLI: Add `--category` flag
+- [x] Drinks DAO: Extend `ListFilter` with Category and Glass fields
+- [x] Drinks CLI: Add `--category` and `--glass` flags
+- [x] Verify `go test ./...` passes
 
 ## Acceptance Criteria
 

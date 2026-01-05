@@ -9,7 +9,9 @@ import (
 
 // ListFilter specifies optional filters for listing drinks.
 type ListFilter struct {
-	Name string // Exact match on Name (uses bstore unique index)
+	Name     string               // Exact match on Name (uses bstore unique index)
+	Category models.DrinkCategory // Exact match on Category (uses bstore index)
+	Glass    models.GlassType     // Exact match on Glass
 }
 
 func (d *DAO) List(ctx context.Context, filter ListFilter) ([]models.Drink, error) {
@@ -19,6 +21,12 @@ func (d *DAO) List(ctx context.Context, filter ListFilter) ([]models.Drink, erro
 
 		if filter.Name != "" {
 			q = q.FilterEqual("Name", filter.Name)
+		}
+		if filter.Category != "" {
+			q = q.FilterEqual("Category", string(filter.Category))
+		}
+		if filter.Glass != "" {
+			q = q.FilterEqual("Glass", string(filter.Glass))
 		}
 
 		rows, err := q.SortAsc("Name").List()

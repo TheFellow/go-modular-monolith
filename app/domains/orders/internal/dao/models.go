@@ -8,7 +8,7 @@ import (
 
 type OrderRow struct {
 	ID          string
-	MenuID      string
+	MenuID      string `bstore:"index"`
 	Items       []OrderItemRow
 	Status      string    `bstore:"index"`
 	CreatedAt   time.Time `bstore:"index"`
