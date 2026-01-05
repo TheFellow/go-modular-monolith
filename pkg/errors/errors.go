@@ -33,12 +33,13 @@ type ErrorKind struct {
 //	20 - Not found error
 //	50 - Internal error
 const (
-	ExitSuccess  = 0
-	ExitGeneral  = 1
-	ExitUsage    = 2
-	ExitInvalid  = 10
-	ExitNotFound = 20
-	ExitInternal = 50
+	ExitSuccess    = 0
+	ExitGeneral    = 1
+	ExitUsage      = 2
+	ExitInvalid    = 10
+	ExitNotFound   = 20
+	ExitPermission = 30
+	ExitInternal   = 50
 )
 
 var (
@@ -56,6 +57,13 @@ var (
 		GRPCCode: codes.NotFound,
 		CLICode:  ExitNotFound,
 	}
+	ErrPermission = ErrorKind{
+		Name:     "Permission",
+		Message:  "permission denied",
+		HTTPCode: http.StatusForbidden,
+		GRPCCode: codes.PermissionDenied,
+		CLICode:  ExitPermission,
+	}
 	ErrInternal = ErrorKind{
 		Name:     "Internal",
 		Message:  "internal error",
@@ -64,7 +72,7 @@ var (
 		CLICode:  ExitInternal,
 	}
 
-	ErrorKinds = []ErrorKind{ErrInvalid, ErrNotFound, ErrInternal}
+	ErrorKinds = []ErrorKind{ErrInvalid, ErrNotFound, ErrPermission, ErrInternal}
 )
 
 func formatf(format string, args ...any) (msg string, cause error) {

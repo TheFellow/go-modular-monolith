@@ -70,6 +70,38 @@ func IsNotFound(err error) bool {
 	return stderrors.As(err, &target)
 }
 
+type PermissionError struct {
+	msg   string
+	cause error
+}
+
+func (e *PermissionError) Error() string {
+	if e == nil {
+		return ErrPermission.Message
+	}
+	if e.msg != "" {
+		return e.msg
+	}
+	return ErrPermission.Message
+}
+
+func (e *PermissionError) Unwrap() error        { return e.cause }
+func (e *PermissionError) Kind() ErrorKind      { return ErrPermission }
+func (e *PermissionError) HTTPCode() httpCode   { return ErrPermission.HTTPCode }
+func (e *PermissionError) GRPCCode() codes.Code { return ErrPermission.GRPCCode }
+func (e *PermissionError) CLICode() int         { return ErrPermission.CLICode }
+func (e *PermissionError) ExitCode() int        { return ErrPermission.CLICode }
+
+func Permissionf(format string, args ...any) error {
+	msg, cause := formatf(format, args...)
+	return &PermissionError{msg: msg, cause: cause}
+}
+
+func IsPermission(err error) bool {
+	var target *PermissionError
+	return stderrors.As(err, &target)
+}
+
 type InternalError struct {
 	msg   string
 	cause error

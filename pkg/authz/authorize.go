@@ -2,39 +2,12 @@ package authz
 
 import (
 	"context"
-	goerrors "errors"
-	"fmt"
 	"sort"
-	"strings"
 	"sync"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	cedar "github.com/cedar-policy/cedar-go"
 )
-
-var ErrDenied = goerrors.New("authorization denied")
-
-type DeniedError struct {
-	Principal  cedar.EntityUID
-	Action     cedar.EntityUID
-	Resource   cedar.EntityUID
-	Diagnostic cedar.Diagnostic
-}
-
-func (e DeniedError) Error() string {
-	parts := []string{
-		"authz denied",
-		fmt.Sprintf("principal=%s::%q", e.Principal.Type, e.Principal.ID),
-		fmt.Sprintf("action=%s::%q", e.Action.Type, e.Action.ID),
-		fmt.Sprintf("resource=%s::%q", e.Resource.Type, e.Resource.ID),
-	}
-	if len(e.Diagnostic.Errors) > 0 {
-		parts = append(parts, fmt.Sprintf("errors=%d", len(e.Diagnostic.Errors)))
-	}
-	return strings.Join(parts, " ")
-}
-
-func (e DeniedError) Unwrap() error { return ErrDenied }
 
 var (
 	policiesOnce sync.Once
@@ -101,12 +74,12 @@ func Authorize(ctx context.Context, principal cedar.EntityUID, action cedar.Enti
 		return errors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
 	}
 	if decision == cedar.Deny {
-		return DeniedError{
-			Principal:  principal,
-			Action:     action,
-			Resource:   resource,
-			Diagnostic: diagnostic,
-		}
+		return errors.Permissionf(
+			"authz denied principal=%s::%q action=%s::%q resource=%s::%q",
+			principal.Type, principal.ID,
+			action.Type, action.ID,
+			resource.Type, resource.ID,
+		)
 	}
 	return nil
 }
@@ -141,12 +114,12 @@ func AuthorizeWithEntity(ctx context.Context, principal cedar.EntityUID, action 
 		return errors.Internalf("authz evaluation error: %s", diagnostic.Errors[0].Message)
 	}
 	if decision == cedar.Deny {
-		return DeniedError{
-			Principal:  principal,
-			Action:     action,
-			Resource:   resource.UID,
-			Diagnostic: diagnostic,
-		}
+		return errors.Permissionf(
+			"authz denied principal=%s::%q action=%s::%q resource=%s::%q",
+			principal.Type, principal.ID,
+			action.Type, action.ID,
+			resource.UID.Type, resource.UID.ID,
+		)
 	}
 	return nil
 }

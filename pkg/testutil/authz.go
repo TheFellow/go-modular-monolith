@@ -2,11 +2,10 @@ package testutil
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	"github.com/TheFellow/go-modular-monolith/pkg/authz"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -18,20 +17,16 @@ func ActorContext(t testing.TB, actor string) *middleware.Context {
 	return middleware.NewContext(context.Background(), middleware.WithPrincipal(p))
 }
 
-func IsDenied(err error) bool {
-	return errors.Is(err, authz.ErrDenied)
-}
-
 func RequireDenied(t testing.TB, err error) {
 	t.Helper()
-	if err == nil || !IsDenied(err) {
+	if err == nil || !errors.IsPermission(err) {
 		t.Fatalf("expected authz denied error, got %v", err)
 	}
 }
 
 func RequireNotDenied(t testing.TB, err error) {
 	t.Helper()
-	if IsDenied(err) {
+	if errors.IsPermission(err) {
 		t.Fatalf("unexpected authz denied error: %v", err)
 	}
 }

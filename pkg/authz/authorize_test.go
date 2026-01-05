@@ -2,12 +2,12 @@ package authz_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/authz"
+	errorspkg "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -31,8 +31,8 @@ func TestAuthorizeWithEntity_DeniesAnonymousCreate(t *testing.T) {
 	}
 
 	err := authz.AuthorizeWithEntity(context.Background(), authn.Anonymous(), drinksauthz.ActionCreate, resource)
-	if !errors.Is(err, authz.ErrDenied) {
-		t.Fatalf("expected ErrDenied, got %v", err)
+	if !errorspkg.IsPermission(err) {
+		t.Fatalf("expected IsPermission, got %v", err)
 	}
 }
 
