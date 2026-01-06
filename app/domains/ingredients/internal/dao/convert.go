@@ -1,6 +1,9 @@
 package dao
 
-import "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+import (
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+)
 
 func toRow(i models.Ingredient) IngredientRow {
 	return IngredientRow{
@@ -14,7 +17,7 @@ func toRow(i models.Ingredient) IngredientRow {
 
 func toModel(r IngredientRow) models.Ingredient {
 	return models.Ingredient{
-		ID:          models.NewIngredientID(r.ID),
+		ID:          entity.IngredientID(r.ID),
 		Name:        r.Name,
 		Category:    models.Category(r.Category),
 		Unit:        models.Unit(r.Unit),

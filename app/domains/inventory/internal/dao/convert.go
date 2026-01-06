@@ -1,8 +1,9 @@
 package dao
 
 import (
-	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 )
 
 func toRow(s inventorymodels.Stock) StockRow {
@@ -17,9 +18,9 @@ func toRow(s inventorymodels.Stock) StockRow {
 
 func toModel(r StockRow) inventorymodels.Stock {
 	return inventorymodels.Stock{
-		IngredientID: models.NewIngredientID(r.IngredientID),
+		IngredientID: entity.IngredientID(r.IngredientID),
 		Quantity:     r.Quantity,
-		Unit:         models.Unit(r.Unit),
+		Unit:         measurement.Unit(r.Unit),
 		CostPerUnit:  r.CostPerUnit,
 		LastUpdated:  r.LastUpdated,
 	}
