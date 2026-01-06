@@ -3,7 +3,7 @@ package dao
 import (
 	"time"
 
-	"github.com/TheFellow/go-modular-monolith/app/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 

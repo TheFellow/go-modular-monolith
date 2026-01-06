@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/TheFellow/go-modular-monolith/app/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )

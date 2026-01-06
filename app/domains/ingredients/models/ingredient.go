@@ -3,15 +3,11 @@ package models
 import (
 	"strings"
 
+	kernelentity "github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/cedar-policy/cedar-go"
 )
-
-const IngredientEntityType = cedar.EntityType("Mixology::Ingredient")
-
-func NewIngredientID(id string) cedar.EntityUID {
-	return cedar.NewEntityUID(IngredientEntityType, cedar.String(id))
-}
 
 type Ingredient struct {
 	ID          cedar.EntityUID
@@ -28,7 +24,7 @@ func (i Ingredient) EntityUID() cedar.EntityUID {
 func (i Ingredient) CedarEntity() cedar.Entity {
 	uid := i.ID
 	if string(uid.ID) == "" {
-		uid = cedar.NewEntityUID(IngredientEntityType, cedar.String(""))
+		uid = kernelentity.IngredientID("")
 	}
 	return cedar.Entity{
 		UID:        uid,
@@ -75,35 +71,14 @@ func (c Category) Validate() error {
 	return errors.Invalidf("invalid category %q", string(c))
 }
 
-type Unit string
+type Unit = measurement.Unit
 
 const (
-	UnitOz     Unit = "oz"
-	UnitMl     Unit = "ml"
-	UnitDash   Unit = "dash"
-	UnitPiece  Unit = "piece"
-	UnitSplash Unit = "splash"
+	UnitOz     = measurement.UnitOz
+	UnitMl     = measurement.UnitMl
+	UnitDash   = measurement.UnitDash
+	UnitPiece  = measurement.UnitPiece
+	UnitSplash = measurement.UnitSplash
 )
 
-func AllUnits() []Unit {
-	return []Unit{
-		UnitOz,
-		UnitMl,
-		UnitDash,
-		UnitPiece,
-		UnitSplash,
-	}
-}
-
-func (u Unit) Validate() error {
-	u = Unit(strings.TrimSpace(string(u)))
-	if u == "" {
-		return errors.Invalidf("unit is required")
-	}
-	for _, v := range AllUnits() {
-		if u == v {
-			return nil
-		}
-	}
-	return errors.Invalidf("invalid unit %q", string(u))
-}
+func AllUnits() []Unit { return measurement.AllUnits() }

@@ -2,8 +2,9 @@ package dao
 
 import (
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/cedar-policy/cedar-go"
 )
 
 func toRow(d drinksmodels.Drink) DrinkRow {
@@ -61,12 +62,12 @@ func toRecipeModel(r RecipeRow) drinksmodels.Recipe {
 	for _, ri := range r.Ingredients {
 		subs := make([]cedar.EntityUID, 0, len(ri.Substitutes))
 		for _, sub := range ri.Substitutes {
-			subs = append(subs, ingredientsmodels.NewIngredientID(sub))
+			subs = append(subs, entity.IngredientID(sub))
 		}
 		ingredients = append(ingredients, drinksmodels.RecipeIngredient{
-			IngredientID: ingredientsmodels.NewIngredientID(ri.IngredientID),
+			IngredientID: entity.IngredientID(ri.IngredientID),
 			Amount:       ri.Amount,
-			Unit:         ingredientsmodels.Unit(ri.Unit),
+			Unit:         measurement.Unit(ri.Unit),
 			Optional:     ri.Optional,
 			Substitutes:  subs,
 		})

@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 
-	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	"github.com/TheFellow/go-modular-monolith/app/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/urfave/cli/v3"
@@ -51,7 +51,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("ingredient_id")[0]
-					res, err := c.app.Inventory.Get(ctx, inventory.GetRequest{IngredientID: models.NewIngredientID(id)})
+					res, err := c.app.Inventory.Get(ctx, inventory.GetRequest{IngredientID: entity.IngredientID(id)})
 					if err != nil {
 						return err
 					}
@@ -107,7 +107,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					res, err := c.app.Inventory.Adjust(ctx, inventorymodels.StockPatch{
-						IngredientID: models.NewIngredientID(ingredientID),
+						IngredientID: entity.IngredientID(ingredientID),
 						Delta:        delta,
 						CostPerUnit:  cost,
 						Reason:       inventorymodels.AdjustmentReason(cmd.String("reason")),
@@ -144,7 +144,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					res, err := c.app.Inventory.Set(ctx, inventorymodels.StockUpdate{
-						IngredientID: models.NewIngredientID(ingredientID),
+						IngredientID: entity.IngredientID(ingredientID),
 						Quantity:     qty,
 						CostPerUnit:  cost,
 					})

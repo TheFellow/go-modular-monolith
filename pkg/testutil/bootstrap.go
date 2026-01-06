@@ -6,7 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	"github.com/TheFellow/go-modular-monolith/app/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 )
 
 type Bootstrap struct {

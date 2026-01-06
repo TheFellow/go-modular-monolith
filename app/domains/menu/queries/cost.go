@@ -7,7 +7,7 @@ import (
 	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	inventoryq "github.com/TheFellow/go-modular-monolith/app/domains/inventory/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/availability"
-	"github.com/TheFellow/go-modular-monolith/app/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	cedar "github.com/cedar-policy/cedar-go"

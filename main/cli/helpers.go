@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/TheFellow/go-modular-monolith/app/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/urfave/cli/v3"
 )

@@ -5,9 +5,9 @@ import (
 	"time"
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -116,7 +116,7 @@ func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		if stock.Unit != ingredientsmodels.Unit(u.Unit) {
+		if stock.Unit != measurement.Unit(u.Unit) {
 			return nil, nil, nil, errors.Invalidf("unit mismatch for ingredient %s: recipe %s vs stock %s", u.IngredientID.ID, u.Unit, stock.Unit)
 		}
 		newQty := stock.Quantity - u.Amount

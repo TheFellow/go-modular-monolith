@@ -5,7 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	"github.com/TheFellow/go-modular-monolith/app/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"

@@ -9,6 +9,7 @@ import (
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -38,7 +39,7 @@ func TestList_FilterByName(t *testing.T) {
 			Glass:    drinksmodels.GlassTypeCoupe,
 			Recipe: drinksmodels.Recipe{
 				Ingredients: []drinksmodels.RecipeIngredient{
-					{IngredientID: ingredientsmodels.NewIngredientID("tequila"), Amount: 2, Unit: ingredientsmodels.UnitOz},
+					{IngredientID: entity.IngredientID("tequila"), Amount: 2, Unit: ingredientsmodels.UnitOz},
 				},
 				Steps: []string{"Shake"},
 			},
@@ -53,7 +54,7 @@ func TestList_FilterByName(t *testing.T) {
 			Glass:    drinksmodels.GlassTypeMartini,
 			Recipe: drinksmodels.Recipe{
 				Ingredients: []drinksmodels.RecipeIngredient{
-					{IngredientID: ingredientsmodels.NewIngredientID("vodka"), Amount: 1.5, Unit: ingredientsmodels.UnitOz},
+					{IngredientID: entity.IngredientID("vodka"), Amount: 1.5, Unit: ingredientsmodels.UnitOz},
 				},
 				Steps: []string{"Shake"},
 			},
@@ -68,7 +69,7 @@ func TestList_FilterByName(t *testing.T) {
 			Glass:    drinksmodels.GlassTypeRocks,
 			Recipe: drinksmodels.Recipe{
 				Ingredients: []drinksmodels.RecipeIngredient{
-					{IngredientID: ingredientsmodels.NewIngredientID("bourbon"), Amount: 2, Unit: ingredientsmodels.UnitOz},
+					{IngredientID: entity.IngredientID("bourbon"), Amount: 2, Unit: ingredientsmodels.UnitOz},
 				},
 				Steps: []string{"Stir"},
 			},

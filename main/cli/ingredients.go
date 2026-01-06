@@ -6,6 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	ingredientscli "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/cli"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -50,7 +51,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("id")[0]
-					res, err := c.app.Ingredients.Get(ctx, ingredients.GetRequest{ID: models.NewIngredientID(id)})
+					res, err := c.app.Ingredients.Get(ctx, ingredients.GetRequest{ID: entity.IngredientID(id)})
 					if err != nil {
 						return err
 					}
@@ -149,7 +150,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					res, err := c.app.Ingredients.Update(ctx, models.Ingredient{
-						ID:          models.NewIngredientID(cmd.StringArgs("id")[0]),
+						ID:          entity.IngredientID(cmd.StringArgs("id")[0]),
 						Name:        cmd.String("name"),
 						Category:    models.Category(cmd.String("category")),
 						Unit:        models.Unit(cmd.String("unit")),

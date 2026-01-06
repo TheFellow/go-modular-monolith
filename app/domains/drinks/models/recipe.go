@@ -3,7 +3,7 @@ package models
 import (
 	"strings"
 
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -17,7 +17,7 @@ type Recipe struct {
 type RecipeIngredient struct {
 	IngredientID cedar.EntityUID
 	Amount       float64
-	Unit         ingredientsmodels.Unit
+	Unit         measurement.Unit
 	Optional     bool
 	Substitutes  []cedar.EntityUID
 }

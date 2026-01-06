@@ -10,7 +10,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/commands"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	"github.com/TheFellow/go-modular-monolith/app/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
@@ -31,7 +32,7 @@ func TestAdjust_EmitsStockAdjusted(t *testing.T) {
 	err := fix.Store.Write(context.Background(), func(tx *bstore.Tx) error {
 		ctx := middleware.NewContext(fix.Ctx, middleware.WithTransaction(tx))
 		return d.Upsert(ctx, models.Stock{
-			IngredientID: ingredientsmodels.NewIngredientID("vodka"),
+			IngredientID: entity.IngredientID("vodka"),
 			Quantity:     1.0,
 			Unit:         ingredientsmodels.UnitOz,
 			CostPerUnit:  optional.None[money.Price](),
@@ -41,7 +42,7 @@ func TestAdjust_EmitsStockAdjusted(t *testing.T) {
 	testutil.Ok(t, err)
 
 	cmds := commands.NewWithDependencies(d, fakeIngredients{})
-	ingredientID := ingredientsmodels.NewIngredientID("vodka")
+	ingredientID := entity.IngredientID("vodka")
 
 	var evts []any
 	err = fix.Store.Write(context.Background(), func(tx *bstore.Tx) error {

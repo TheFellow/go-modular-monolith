@@ -7,6 +7,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/handlers"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -21,7 +22,7 @@ func TestDispatcher_DispatchesToHandlers(t *testing.T) {
 
 	err := d.Dispatch(ctx, events.IngredientCreated{
 		Ingredient: models.Ingredient{
-			ID:   models.NewIngredientID("vodka"),
+			ID:   entity.IngredientID("vodka"),
 			Name: "Vodka",
 		},
 	})

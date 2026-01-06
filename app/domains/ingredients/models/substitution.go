@@ -3,39 +3,19 @@ package models
 import (
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/quality"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type Quality string
+type Quality = quality.Quality
 
 const (
-	QualityEquivalent Quality = "equivalent"
-	QualitySimilar    Quality = "similar"
-	QualityDifferent  Quality = "different"
+	QualityEquivalent = quality.Equivalent
+	QualitySimilar    = quality.Similar
+	QualityDifferent  = quality.Different
 )
-
-func (q Quality) Rank() int {
-	switch q {
-	case QualityEquivalent:
-		return 3
-	case QualitySimilar:
-		return 2
-	case QualityDifferent:
-		return 1
-	default:
-		return 0
-	}
-}
-
-func (q Quality) Validate() error {
-	switch q {
-	case QualityEquivalent, QualitySimilar, QualityDifferent:
-		return nil
-	default:
-		return errors.Invalidf("invalid quality %q", string(q))
-	}
-}
 
 type SubstitutionRule struct {
 	IngredientID  cedar.EntityUID
@@ -64,36 +44,36 @@ func (r SubstitutionRule) Validate() error {
 func DefaultSubstitutionRules() []SubstitutionRule {
 	return []SubstitutionRule{
 		{
-			IngredientID:  NewIngredientID("lime-juice"),
-			SubstituteID:  NewIngredientID("lemon-juice"),
+			IngredientID:  entity.IngredientID("lime-juice"),
+			SubstituteID:  entity.IngredientID("lemon-juice"),
 			Ratio:         1.0,
 			QualityImpact: QualitySimilar,
 			Notes:         "Citrus swap; expect a slightly different profile",
 		},
 		{
-			IngredientID:  NewIngredientID("lemon-juice"),
-			SubstituteID:  NewIngredientID("lime-juice"),
+			IngredientID:  entity.IngredientID("lemon-juice"),
+			SubstituteID:  entity.IngredientID("lime-juice"),
 			Ratio:         1.0,
 			QualityImpact: QualitySimilar,
 			Notes:         "Citrus swap; expect a slightly different profile",
 		},
 		{
-			IngredientID:  NewIngredientID("simple-syrup"),
-			SubstituteID:  NewIngredientID("honey-syrup"),
+			IngredientID:  entity.IngredientID("simple-syrup"),
+			SubstituteID:  entity.IngredientID("honey-syrup"),
 			Ratio:         0.75,
 			QualityImpact: QualityDifferent,
 			Notes:         "Honey is sweeter; reduce amount",
 		},
 		{
-			IngredientID:  NewIngredientID("bourbon"),
-			SubstituteID:  NewIngredientID("rye-whiskey"),
+			IngredientID:  entity.IngredientID("bourbon"),
+			SubstituteID:  entity.IngredientID("rye-whiskey"),
 			Ratio:         1.0,
 			QualityImpact: QualityEquivalent,
 			Notes:         "Comparable spirit substitution",
 		},
 		{
-			IngredientID:  NewIngredientID("fresh-mint"),
-			SubstituteID:  NewIngredientID("dried-mint"),
+			IngredientID:  entity.IngredientID("fresh-mint"),
+			SubstituteID:  entity.IngredientID("dried-mint"),
 			Ratio:         0.5,
 			QualityImpact: QualityDifferent,
 			Notes:         "Dried herbs are more concentrated",

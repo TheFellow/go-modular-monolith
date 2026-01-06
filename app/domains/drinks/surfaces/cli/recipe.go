@@ -6,6 +6,8 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -62,13 +64,13 @@ func (r Recipe) ToDomain() (models.Recipe, error) {
 	for _, ing := range r.Ingredients {
 		subUIDs := make([]cedar.EntityUID, 0, len(ing.Substitutes))
 		for _, sub := range ing.Substitutes {
-			subUIDs = append(subUIDs, ingredientsmodels.NewIngredientID(sub))
+			subUIDs = append(subUIDs, entity.IngredientID(sub))
 		}
 
 		out.Ingredients = append(out.Ingredients, models.RecipeIngredient{
-			IngredientID: ingredientsmodels.NewIngredientID(ing.IngredientID),
+			IngredientID: entity.IngredientID(ing.IngredientID),
 			Amount:       ing.Amount,
-			Unit:         ingredientsmodels.Unit(ing.Unit),
+			Unit:         measurement.Unit(ing.Unit),
 			Optional:     ing.Optional,
 			Substitutes:  subUIDs,
 		})

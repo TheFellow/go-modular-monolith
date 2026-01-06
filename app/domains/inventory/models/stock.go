@@ -3,8 +3,8 @@ package models
 import (
 	"time"
 
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	"github.com/TheFellow/go-modular-monolith/app/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -18,7 +18,7 @@ func NewStockID(ingredientID cedar.EntityUID) cedar.EntityUID {
 type Stock struct {
 	IngredientID cedar.EntityUID
 	Quantity     float64
-	Unit         ingredientsmodels.Unit
+	Unit         measurement.Unit
 	CostPerUnit  optional.Value[money.Price]
 	LastUpdated  time.Time
 }

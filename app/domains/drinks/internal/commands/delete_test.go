@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
@@ -32,7 +33,7 @@ func TestDelete_RemovesDrink(t *testing.T) {
 			Recipe: drinksmodels.Recipe{
 				Ingredients: []drinksmodels.RecipeIngredient{
 					{
-						IngredientID: ingredientsmodels.NewIngredientID("lime-juice"),
+						IngredientID: entity.IngredientID("lime-juice"),
 						Amount:       1.0,
 						Unit:         ingredientsmodels.UnitOz,
 					},
@@ -103,7 +104,7 @@ func TestDelete_EmitsDrinkDeletedEvent(t *testing.T) {
 			Recipe: drinksmodels.Recipe{
 				Ingredients: []drinksmodels.RecipeIngredient{
 					{
-						IngredientID: ingredientsmodels.NewIngredientID("vodka"),
+						IngredientID: entity.IngredientID("vodka"),
 						Amount:       1.5,
 						Unit:         ingredientsmodels.UnitOz,
 					},
