@@ -33,5 +33,6 @@ sprint-020,completed,2026-01-05,2026-01-05,Single-responsibility middleware refa
 sprint-021,completed,2026-01-05,2026-01-05,Drinks delete + filtered list + Menu reacts to DrinkDeleted
 sprint-022,completed,2026-01-05,2026-01-05,DAO ListFilter support across domains + CLI list filters
 sprint-023,completed,2026-01-05,2026-01-05,Fat events: embed full models in events
-sprint-024,in-progress,2026-01-06,,Shared Kernel Packages
-sprint-025,in-progress,2026-01-06,,Cedar-go v1.4.0 + store embedded EntityUID fields via BinaryMarshaler (PKs remain strings)
+sprint-024,completed,2026-01-06,2026-01-06,Shared Kernel Packages
+sprint-025,completed,2026-01-06,2026-01-06,Cedar-go v1.4.0; store embedded EntityUID fields via BinaryMarshaler (PKs remain strings; requires DB reset)
+sprint-026,completed,2026-01-06,2026-01-06,Decimal money.Price with half-up display rounding + menu cost/margin updates

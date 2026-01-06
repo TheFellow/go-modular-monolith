@@ -2,6 +2,7 @@ package queries
 
 import (
 	"fmt"
+	"strconv"
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
@@ -11,6 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/govalues/decimal"
 )
 
 type CostCalculator struct {
@@ -93,7 +95,11 @@ func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID cedar.Entity
 			return DrinkCost{}, err
 		}
 
-		ingredientCost, err := cpu.MulFloat(pick.RequiredQty)
+		qty, err := decimal.Parse(strconv.FormatFloat(pick.RequiredQty, 'f', -1, 64))
+		if err != nil {
+			return DrinkCost{}, errors.Invalidf("invalid required quantity %.6f: %w", pick.RequiredQty, err)
+		}
+		ingredientCost, err := cpu.Mul(qty)
 		if err != nil {
 			return DrinkCost{}, err
 		}

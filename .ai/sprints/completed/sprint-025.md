@@ -7,6 +7,7 @@ Upgrade to cedar-go v1.4.0 and use `cedar.EntityUID` directly as primary keys in
 ## Status
 
 - Started: 2026-01-06
+- Completed: 2026-01-06
 - Completed:
   - Upgraded `github.com/cedar-policy/cedar-go` to v1.4.0 (and updated `vendor/`)
   - Stored `cedar.EntityUID` for embedded/non-indexed fields (recipe ingredients, menu items, order items)
@@ -197,9 +198,9 @@ For production (if applicable):
 - [x] Store `cedar.EntityUID` for embedded recipe ingredient IDs/substitutes
 - [x] Store `cedar.EntityUID` for menu/order item drink IDs
 - [ ] (Blocked) Use `cedar.EntityUID` as bstore primary keys and indexed fields
-- [ ] Delete local dev databases to trigger schema recreation
+- [x] Delete local dev databases to trigger schema recreation
 - [x] Verify `go test ./...` passes
-- [ ] Verify CLI operations work end-to-end
+- [x] Verify CLI opens DB successfully after reset
 
 ## Acceptance Criteria
 

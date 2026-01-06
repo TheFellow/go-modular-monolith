@@ -211,27 +211,27 @@ Once all imports are updated, remove the original type definitions from domain p
 
 ## Tasks
 
-- [ ] Create `app/kernel/readme.md` documenting kernel conventions
-- [ ] Add arch-lint rule `kernel-no-project-imports` to enforce kernel isolation
-- [ ] Create `app/kernel/measurement` package with Unit type and tests
-- [ ] Create `app/kernel/quality` package with Quality type and tests
-- [ ] Move `app/money` to `app/kernel/money` (with existing tests)
-- [ ] Create `app/kernel/entity` package with entity types and ID factories
-  - [ ] `TypeDrink`, `DrinkID()`
-  - [ ] `TypeIngredient`, `IngredientID()`
-  - [ ] `TypeMenu`, `MenuID()`
-  - [ ] `TypeOrder`, `OrderID()`
-  - [ ] `TypeStock`, `StockID()`
-- [ ] Update ingredients domain to import from kernel (remove local Unit, Quality)
-- [ ] Update drinks domain to import from kernel
-- [ ] Update inventory domain to import from kernel
-- [ ] Update menu domain to import from kernel
-- [ ] Update orders domain to import from kernel
-- [ ] Update all DAOs and internal code to use kernel imports
-- [ ] Delete old `app/money` directory
-- [ ] Verify all kernel methods have test coverage
-- [ ] Run arch-lint to verify kernel has no project imports
-- [ ] Verify `go test ./...` passes
+- [x] Create `app/kernel/readme.md` documenting kernel conventions
+- [x] Add arch-lint rule `kernel-no-project-imports` to enforce kernel isolation
+- [x] Create `app/kernel/measurement` package with Unit type and tests
+- [x] Create `app/kernel/quality` package with Quality type and tests
+- [x] Move `app/money` to `app/kernel/money` (with existing tests)
+- [x] Create `app/kernel/entity` package with entity types and ID factories
+  - [x] `TypeDrink`, `DrinkID()`
+  - [x] `TypeIngredient`, `IngredientID()`
+  - [x] `TypeMenu`, `MenuID()`
+  - [x] `TypeOrder`, `OrderID()`
+  - [x] `TypeStock`, `StockID()`
+- [x] Update ingredients domain to import from kernel (remove local Unit, Quality)
+- [x] Update drinks domain to import from kernel
+- [x] Update inventory domain to import from kernel
+- [x] Update menu domain to import from kernel
+- [x] Update orders domain to import from kernel
+- [x] Update all DAOs and internal code to use kernel imports
+- [x] Delete old `app/money` directory
+- [x] Verify all kernel methods have test coverage
+- [x] Run arch-lint to verify kernel has no project imports
+- [x] Verify `go test ./...` passes
 
 ## Acceptance Criteria
 

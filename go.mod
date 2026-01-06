@@ -10,6 +10,7 @@ tool github.com/nishanths/exhaustive/cmd/exhaustive
 
 require (
 	github.com/cedar-policy/cedar-go v1.4.0
+	github.com/govalues/decimal v0.1.36
 	github.com/google/go-cmp v0.7.0
 	github.com/mjl-/bstore v0.0.10
 	github.com/urfave/cli/v3 v3.6.1

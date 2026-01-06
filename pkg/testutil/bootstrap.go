@@ -41,7 +41,7 @@ func (b *Bootstrap) WithStock(quantity float64) *Bootstrap {
 		_, err := b.fix.Inventory.Set(b.fix.Ctx, inventorymodels.StockUpdate{
 			IngredientID: ing.ID,
 			Quantity:     quantity,
-			CostPerUnit:  money.Price{Amount: 100, Currency: "USD"},
+			CostPerUnit:  money.NewPriceFromCents(100, "USD"),
 		})
 		Ok(b.fix.T, err)
 	}

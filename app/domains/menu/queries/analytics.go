@@ -86,11 +86,19 @@ func (a *AnalyticsCalculator) Analyze(ctx *middleware.Context, menu models.Menu,
 		}
 
 		var margin *float64
-		if menuPrice != nil && cost.IngredientCost != nil && !cost.UnknownCost && menuPrice.Amount > 0 {
-			m := float64(menuPrice.Amount-cost.IngredientCost.Amount) / float64(menuPrice.Amount)
-			margin = &m
-			marginSum += m
-			marginN++
+		if menuPrice != nil && cost.IngredientCost != nil && !cost.UnknownCost && !menuPrice.Amount.IsZero() {
+			profit, err := menuPrice.Amount.Sub(cost.IngredientCost.Amount)
+			if err == nil {
+				m, err := profit.Quo(menuPrice.Amount)
+				if err == nil {
+					f, ok := m.Float64()
+					if ok {
+						margin = &f
+						marginSum += f
+						marginN++
+					}
+				}
+			}
 		}
 
 		items = append(items, MenuItemAnalytics{

@@ -34,7 +34,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	_, err = a.Inventory.Set(ctx, inventorymodels.StockUpdate{
 		IngredientID: ingredient.ID,
 		Quantity:     10,
-		CostPerUnit:  money.Price{Amount: 100, Currency: "USD"},
+		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
 	})
 	if err != nil {
 		t.Fatalf("set stock: %v", err)

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"io"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -38,12 +37,7 @@ func parsePrice(s string) (money.Price, error) {
 	}
 
 	if strings.HasPrefix(s, "$") {
-		amount, err := parseDecimalToCents(strings.TrimPrefix(s, "$"))
-		if err != nil {
-			return money.Price{}, err
-		}
-		p := money.Price{Amount: amount, Currency: "USD"}
-		return p, p.Validate()
+		return money.NewPrice(strings.TrimPrefix(s, "$"), "USD")
 	}
 
 	parts := strings.Fields(s)
@@ -60,12 +54,7 @@ func parsePrice(s string) (money.Price, error) {
 		return money.Price{}, errors.Invalidf("invalid price %q (expected \"$1.23\" or \"USD 1.23\" or \"1.23 USD\")", s)
 	}
 
-	amount, err := parseDecimalToCents(number)
-	if err != nil {
-		return money.Price{}, err
-	}
-	p := money.Price{Amount: amount, Currency: strings.ToUpper(currency)}
-	return p, p.Validate()
+	return money.NewPrice(number, currency)
 }
 
 func isCurrency(s string) bool {
@@ -78,57 +67,4 @@ func isCurrency(s string) bool {
 		}
 	}
 	return true
-}
-
-func parseDecimalToCents(s string) (int, error) {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return 0, errors.Invalidf("amount is required")
-	}
-	if strings.HasPrefix(s, "+") {
-		s = strings.TrimPrefix(s, "+")
-	}
-	if strings.HasPrefix(s, "-") {
-		return 0, errors.Invalidf("amount must be >= 0")
-	}
-
-	parts := strings.Split(s, ".")
-	if len(parts) > 2 {
-		return 0, errors.Invalidf("invalid amount %q", s)
-	}
-
-	wholeStr := parts[0]
-	fracStr := ""
-	if len(parts) == 2 {
-		fracStr = parts[1]
-	}
-
-	if wholeStr == "" {
-		wholeStr = "0"
-	}
-	whole, err := strconv.Atoi(wholeStr)
-	if err != nil || whole < 0 {
-		return 0, errors.Invalidf("invalid amount %q", s)
-	}
-
-	if len(fracStr) > 2 {
-		return 0, errors.Invalidf("invalid amount %q (too many decimal places)", s)
-	}
-	for _, r := range fracStr {
-		if r < '0' || r > '9' {
-			return 0, errors.Invalidf("invalid amount %q", s)
-		}
-	}
-	if len(fracStr) == 1 {
-		fracStr = fracStr + "0"
-	}
-	if fracStr == "" {
-		fracStr = "00"
-	}
-	frac, err := strconv.Atoi(fracStr)
-	if err != nil || frac < 0 {
-		return 0, errors.Invalidf("invalid amount %q", s)
-	}
-
-	return whole*100 + frac, nil
 }
