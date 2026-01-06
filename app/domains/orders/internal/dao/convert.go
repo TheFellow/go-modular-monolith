@@ -1,7 +1,6 @@
 package dao
 
 import (
-	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 )
@@ -10,7 +9,7 @@ func toRow(o models.Order) OrderRow {
 	items := make([]OrderItemRow, 0, len(o.Items))
 	for _, it := range o.Items {
 		items = append(items, OrderItemRow{
-			DrinkID:  string(it.DrinkID.ID),
+			DrinkID:  it.DrinkID,
 			Quantity: it.Quantity,
 			Notes:    it.Notes,
 		})
@@ -31,7 +30,7 @@ func toModel(r OrderRow) models.Order {
 	items := make([]models.OrderItem, 0, len(r.Items))
 	for _, it := range r.Items {
 		items = append(items, models.OrderItem{
-			DrinkID:  drinksmodels.NewDrinkID(it.DrinkID),
+			DrinkID:  it.DrinkID,
 			Quantity: it.Quantity,
 			Notes:    it.Notes,
 		})

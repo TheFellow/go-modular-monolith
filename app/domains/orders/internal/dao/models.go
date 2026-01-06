@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type OrderRow struct {
@@ -17,7 +18,7 @@ type OrderRow struct {
 }
 
 type OrderItemRow struct {
-	DrinkID  string
+	DrinkID  cedar.EntityUID
 	Quantity int
 	Notes    string
 }

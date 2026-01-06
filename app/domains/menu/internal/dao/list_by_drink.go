@@ -9,13 +9,11 @@ import (
 )
 
 func (d *DAO) ListByDrink(ctx context.Context, drinkID cedar.EntityUID) ([]models.Menu, error) {
-	targetID := string(drinkID.ID)
-
 	var out []models.Menu
 	err := d.read(ctx, func(tx *bstore.Tx) error {
 		rows, err := bstore.QueryTx[MenuRow](tx).FilterFn(func(r MenuRow) bool {
 			for _, item := range r.Items {
-				if item.DrinkID == targetID {
+				if item.DrinkID == drinkID {
 					return true
 				}
 			}

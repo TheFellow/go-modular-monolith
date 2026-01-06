@@ -1,7 +1,6 @@
 package dao
 
 import (
-	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -18,7 +17,7 @@ func toRow(m menumodels.Menu) MenuRow {
 		}
 
 		items = append(items, MenuItemRow{
-			DrinkID:      string(it.DrinkID.ID),
+			DrinkID:      it.DrinkID,
 			DisplayName:  it.DisplayName,
 			Price:        price,
 			Featured:     it.Featured,
@@ -49,7 +48,7 @@ func toModel(r MenuRow) menumodels.Menu {
 		}
 
 		items = append(items, menumodels.MenuItem{
-			DrinkID:      models.NewDrinkID(it.DrinkID),
+			DrinkID:      it.DrinkID,
 			DisplayName:  it.DisplayName,
 			Price:        price,
 			Featured:     it.Featured,

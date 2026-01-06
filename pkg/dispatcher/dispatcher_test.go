@@ -12,8 +12,6 @@ import (
 )
 
 func TestDispatcher_DispatchesToHandlers(t *testing.T) {
-	t.Parallel()
-
 	handlers.IngredientCreatedCount.Store(0)
 	handlers.IngredientCreatedAuditCount.Store(0)
 
@@ -39,8 +37,6 @@ func TestDispatcher_DispatchesToHandlers(t *testing.T) {
 }
 
 func TestDispatcher_IgnoresUnknownEvents(t *testing.T) {
-	t.Parallel()
-
 	handlers.IngredientCreatedCount.Store(0)
 	handlers.IngredientCreatedAuditCount.Store(0)
 

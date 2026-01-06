@@ -2,9 +2,8 @@ package dao
 
 import (
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	"github.com/cedar-policy/cedar-go"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 func toRow(d drinksmodels.Drink) DrinkRow {
@@ -35,12 +34,12 @@ func toRecipeRow(r drinksmodels.Recipe) RecipeRow {
 		ingredients = make([]RecipeIngredientRow, 0, len(r.Ingredients))
 	}
 	for _, ri := range r.Ingredients {
-		subs := make([]string, 0, len(ri.Substitutes))
+		subs := make([]cedar.EntityUID, 0, len(ri.Substitutes))
 		for _, sub := range ri.Substitutes {
-			subs = append(subs, string(sub.ID))
+			subs = append(subs, sub)
 		}
 		ingredients = append(ingredients, RecipeIngredientRow{
-			IngredientID: string(ri.IngredientID.ID),
+			IngredientID: ri.IngredientID,
 			Amount:       ri.Amount,
 			Unit:         string(ri.Unit),
 			Optional:     ri.Optional,
@@ -60,16 +59,12 @@ func toRecipeModel(r RecipeRow) drinksmodels.Recipe {
 		ingredients = make([]drinksmodels.RecipeIngredient, 0, len(r.Ingredients))
 	}
 	for _, ri := range r.Ingredients {
-		subs := make([]cedar.EntityUID, 0, len(ri.Substitutes))
-		for _, sub := range ri.Substitutes {
-			subs = append(subs, entity.IngredientID(sub))
-		}
 		ingredients = append(ingredients, drinksmodels.RecipeIngredient{
-			IngredientID: entity.IngredientID(ri.IngredientID),
+			IngredientID: ri.IngredientID,
 			Amount:       ri.Amount,
 			Unit:         measurement.Unit(ri.Unit),
 			Optional:     ri.Optional,
-			Substitutes:  subs,
+			Substitutes:  ri.Substitutes,
 		})
 	}
 	return drinksmodels.Recipe{

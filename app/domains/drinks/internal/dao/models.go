@@ -1,5 +1,7 @@
 package dao
 
+import cedar "github.com/cedar-policy/cedar-go"
+
 type DrinkRow struct {
 	ID          string
 	Name        string `bstore:"unique"`
@@ -16,9 +18,9 @@ type RecipeRow struct {
 }
 
 type RecipeIngredientRow struct {
-	IngredientID string
+	IngredientID cedar.EntityUID
 	Amount       float64
 	Unit         string
 	Optional     bool
-	Substitutes  []string
+	Substitutes  []cedar.EntityUID
 }

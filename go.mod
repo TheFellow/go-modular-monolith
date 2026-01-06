@@ -9,7 +9,7 @@ tool github.com/alecthomas/go-check-sumtype/cmd/go-check-sumtype
 tool github.com/nishanths/exhaustive/cmd/exhaustive
 
 require (
-	github.com/cedar-policy/cedar-go v1.3.1
+	github.com/cedar-policy/cedar-go v1.4.0
 	github.com/google/go-cmp v0.7.0
 	github.com/mjl-/bstore v0.0.10
 	github.com/urfave/cli/v3 v3.6.1

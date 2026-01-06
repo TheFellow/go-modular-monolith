@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type MenuRow struct {
@@ -18,7 +19,7 @@ type MenuRow struct {
 }
 
 type MenuItemRow struct {
-	DrinkID      string
+	DrinkID      cedar.EntityUID
 	DisplayName  optional.Value[string]
 	Price        optional.Value[money.Price]
 	Featured     bool
