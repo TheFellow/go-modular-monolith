@@ -9,13 +9,6 @@ import (
 )
 
 func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChange) (models.Menu, error) {
-	if string(change.MenuID.ID) == "" {
-		return models.Menu{}, errors.Invalidf("menu id is required")
-	}
-	if string(change.DrinkID.ID) == "" {
-		return models.Menu{}, errors.Invalidf("drink id is required")
-	}
-
 	if _, err := c.drinks.Get(ctx, change.DrinkID); err != nil {
 		return models.Menu{}, err
 	}

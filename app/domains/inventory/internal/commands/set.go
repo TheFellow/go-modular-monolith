@@ -11,9 +11,6 @@ import (
 )
 
 func (c *Commands) Set(ctx *middleware.Context, update models.StockUpdate) (models.Stock, error) {
-	if string(update.IngredientID.ID) == "" {
-		return models.Stock{}, errors.Invalidf("ingredient id is required")
-	}
 	if update.Quantity < 0 {
 		update.Quantity = 0
 	}

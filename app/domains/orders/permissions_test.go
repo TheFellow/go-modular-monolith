@@ -25,6 +25,7 @@ func TestPermissions_Orders(t *testing.T) {
 		testutil.RequireNotDenied(t, err)
 
 		_, err = a.Orders.Place(owner, ordersmodels.Order{
+			ID:     ordersmodels.NewOrderID(""),
 			MenuID: menumodels.NewMenuID("does-not-exist"),
 			Items: []ordersmodels.OrderItem{
 				{DrinkID: drinksmodels.NewDrinkID("does-not-exist"), Quantity: 1},
@@ -47,6 +48,7 @@ func TestPermissions_Orders(t *testing.T) {
 		testutil.RequireNotDenied(t, err)
 
 		_, err = a.Orders.Place(anon, ordersmodels.Order{
+			ID:     ordersmodels.NewOrderID(""),
 			MenuID: menumodels.NewMenuID("does-not-exist"),
 			Items: []ordersmodels.OrderItem{
 				{DrinkID: drinksmodels.NewDrinkID("does-not-exist"), Quantity: 1},

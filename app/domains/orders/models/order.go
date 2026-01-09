@@ -30,12 +30,8 @@ func (o Order) EntityUID() cedar.EntityUID {
 }
 
 func (o Order) CedarEntity() cedar.Entity {
-	uid := o.ID
-	if string(uid.ID) == "" {
-		uid = cedar.NewEntityUID(OrderEntityType, cedar.String(""))
-	}
 	return cedar.Entity{
-		UID:        uid,
+		UID:        o.ID,
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),
@@ -43,7 +39,7 @@ func (o Order) CedarEntity() cedar.Entity {
 }
 
 func (o Order) Validate() error {
-	if string(o.MenuID.ID) == "" {
+	if o.MenuID.ID == "" {
 		return errors.Invalidf("menu id is required")
 	}
 	if err := o.Status.Validate(); err != nil {
@@ -68,7 +64,7 @@ type OrderItem struct {
 }
 
 func (i OrderItem) Validate() error {
-	if string(i.DrinkID.ID) == "" {
+	if i.DrinkID.ID == "" {
 		return errors.Invalidf("drink id is required")
 	}
 	if i.Quantity <= 0 {

@@ -8,13 +8,6 @@ import (
 )
 
 func (c *Commands) RemoveDrink(ctx *middleware.Context, change models.MenuDrinkChange) (models.Menu, error) {
-	if string(change.MenuID.ID) == "" {
-		return models.Menu{}, errors.Invalidf("menu id is required")
-	}
-	if string(change.DrinkID.ID) == "" {
-		return models.Menu{}, errors.Invalidf("drink id is required")
-	}
-
 	menu, found, err := c.dao.Get(ctx, change.MenuID)
 	if err != nil {
 		return models.Menu{}, errors.Internalf("get menu %s: %w", change.MenuID.ID, err)

@@ -16,12 +16,8 @@ func (u StockUpdate) EntityUID() cedar.EntityUID {
 }
 
 func (u StockUpdate) CedarEntity() cedar.Entity {
-	uid := u.EntityUID()
-	if string(uid.ID) == "" {
-		uid = cedar.NewEntityUID(StockEntityType, cedar.String(""))
-	}
 	return cedar.Entity{
-		UID:        uid,
+		UID:        u.EntityUID(),
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),

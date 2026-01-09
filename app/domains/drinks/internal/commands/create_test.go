@@ -9,6 +9,7 @@ import (
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -51,7 +52,7 @@ func TestCreate_PersistsOnCommit(t *testing.T) {
 		return err
 	})
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, string(created.ID.ID) == "", "expected id to be set")
+	testutil.ErrorIf(t, created.ID.ID == "", "expected id to be set")
 
 	drinks, err := d.List(fix.Ctx, dao.ListFilter{})
 	testutil.Ok(t, err)
@@ -60,4 +61,15 @@ func TestCreate_PersistsOnCommit(t *testing.T) {
 	testutil.ErrorIf(t, drinks[0].Name != "Margarita", "expected Margarita, got %q", drinks[0].Name)
 	testutil.ErrorIf(t, drinks[0].Recipe.Ingredients == nil || len(drinks[0].Recipe.Ingredients) != 1, "expected 1 recipe ingredient")
 	testutil.ErrorIf(t, string(drinks[0].Recipe.Ingredients[0].IngredientID.ID) != "lime-juice", "expected lime-juice, got %q", string(drinks[0].Recipe.Ingredients[0].IngredientID.ID))
+}
+
+func TestCreate_RejectsIDProvided(t *testing.T) {
+	cmds := commands.NewWithDependencies(dao.New(), fakeIngredients{})
+	ctx := middleware.NewContext(context.Background())
+
+	_, err := cmds.Create(ctx, drinksmodels.Drink{
+		ID:   drinksmodels.NewDrinkID("explicit-id"),
+		Name: "Margarita",
+	})
+	testutil.ErrorIf(t, err == nil || !errors.IsInvalid(err), "expected invalid error, got %v", err)
 }

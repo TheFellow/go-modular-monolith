@@ -12,9 +12,6 @@ import (
 )
 
 func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (models.Stock, error) {
-	if string(patch.IngredientID.ID) == "" {
-		return models.Stock{}, errors.Invalidf("ingredient id is required")
-	}
 	if patch.Reason == "" {
 		return models.Stock{}, errors.Invalidf("reason is required")
 	}

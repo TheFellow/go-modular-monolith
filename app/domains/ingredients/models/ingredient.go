@@ -3,7 +3,6 @@ package models
 import (
 	"strings"
 
-	kernelentity "github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/cedar-policy/cedar-go"
@@ -22,12 +21,8 @@ func (i Ingredient) EntityUID() cedar.EntityUID {
 }
 
 func (i Ingredient) CedarEntity() cedar.Entity {
-	uid := i.ID
-	if string(uid.ID) == "" {
-		uid = kernelentity.IngredientID("")
-	}
 	return cedar.Entity{
-		UID:        uid,
+		UID:        i.ID,
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),

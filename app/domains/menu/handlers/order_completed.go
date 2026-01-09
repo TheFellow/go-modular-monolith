@@ -28,9 +28,6 @@ func (h *OrderCompletedMenuUpdater) Handle(ctx *middleware.Context, e orderseven
 
 	depleted := make(map[string]struct{}, len(e.DepletedIngredients))
 	for _, id := range e.DepletedIngredients {
-		if string(id.ID) == "" {
-			continue
-		}
 		depleted[string(id.ID)] = struct{}{}
 	}
 	if len(depleted) == 0 {

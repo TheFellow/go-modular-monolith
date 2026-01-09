@@ -8,10 +8,6 @@ import (
 )
 
 func (q *Queries) Get(ctx *middleware.Context, id cedar.EntityUID) (models.Order, error) {
-	if string(id.ID) == "" {
-		return models.Order{}, errors.Invalidf("id is required")
-	}
-
 	record, found, err := q.dao.Get(ctx, id)
 	if err != nil {
 		return models.Order{}, err

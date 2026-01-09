@@ -12,7 +12,10 @@ import (
 )
 
 func (c *Commands) Place(ctx *middleware.Context, order models.Order) (models.Order, error) {
-	if string(order.MenuID.ID) == "" {
+	if order.ID.ID != "" {
+		return models.Order{}, errors.Invalidf("id must be empty for place")
+	}
+	if order.MenuID.ID == "" {
 		return models.Order{}, errors.Invalidf("menu id is required")
 	}
 	if len(order.Items) == 0 {

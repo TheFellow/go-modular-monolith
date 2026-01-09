@@ -13,8 +13,8 @@ import (
 )
 
 func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (models.Menu, error) {
-	if string(menu.ID.ID) != "" {
-		return models.Menu{}, errors.Invalidf("id must be empty")
+	if menu.ID.ID != "" {
+		return models.Menu{}, errors.Invalidf("id must be empty for create")
 	}
 
 	menu.Name = strings.TrimSpace(menu.Name)

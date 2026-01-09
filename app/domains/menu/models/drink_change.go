@@ -12,12 +12,8 @@ func (c MenuDrinkChange) EntityUID() cedar.EntityUID {
 }
 
 func (c MenuDrinkChange) CedarEntity() cedar.Entity {
-	uid := c.MenuID
-	if string(uid.ID) == "" {
-		uid = cedar.NewEntityUID(MenuEntityType, cedar.String(""))
-	}
 	return cedar.Entity{
-		UID:        uid,
+		UID:        c.MenuID,
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),

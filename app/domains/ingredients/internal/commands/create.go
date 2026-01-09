@@ -12,8 +12,8 @@ import (
 )
 
 func (c *Commands) Create(ctx *middleware.Context, ingredient models.Ingredient) (models.Ingredient, error) {
-	if string(ingredient.ID.ID) != "" {
-		return models.Ingredient{}, errors.Invalidf("id must be empty")
+	if ingredient.ID.ID != "" {
+		return models.Ingredient{}, errors.Invalidf("id must be empty for create")
 	}
 
 	name := strings.TrimSpace(ingredient.Name)

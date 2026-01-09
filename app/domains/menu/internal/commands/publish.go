@@ -11,10 +11,6 @@ import (
 )
 
 func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (models.Menu, error) {
-	if string(menu.ID.ID) == "" {
-		return models.Menu{}, errors.Invalidf("menu id is required")
-	}
-
 	menuID := menu.ID
 	record, found, err := c.dao.Get(ctx, menuID)
 	if err != nil {

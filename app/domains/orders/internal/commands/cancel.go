@@ -11,10 +11,6 @@ import (
 )
 
 func (c *Commands) Cancel(ctx *middleware.Context, order models.Order) (models.Order, error) {
-	if string(order.ID.ID) == "" {
-		return models.Order{}, errors.Invalidf("id is required")
-	}
-
 	existing, found, err := c.dao.Get(ctx, order.ID)
 	if err != nil {
 		return models.Order{}, err

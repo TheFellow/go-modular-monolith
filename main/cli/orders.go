@@ -46,6 +46,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 					}
 
 					created, err := c.app.Orders.Place(ctx, ordersmodels.Order{
+						ID:     ordersmodels.NewOrderID(""),
 						MenuID: menuID,
 						Items:  items,
 					})

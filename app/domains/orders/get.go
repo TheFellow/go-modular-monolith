@@ -28,12 +28,8 @@ func (m *Module) get(ctx *middleware.Context, req GetRequest) (GetResponse, erro
 }
 
 func (r GetRequest) CedarEntity() cedar.Entity {
-	uid := r.ID
-	if string(uid.ID) == "" {
-		uid = cedar.NewEntityUID(models.OrderEntityType, cedar.String(""))
-	}
 	return cedar.Entity{
-		UID:        uid,
+		UID:        r.ID,
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),

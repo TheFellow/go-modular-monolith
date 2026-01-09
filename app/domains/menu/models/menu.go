@@ -31,12 +31,8 @@ func (m Menu) EntityUID() cedar.EntityUID {
 }
 
 func (m Menu) CedarEntity() cedar.Entity {
-	uid := m.ID
-	if string(uid.ID) == "" {
-		uid = cedar.NewEntityUID(MenuEntityType, cedar.String(""))
-	}
 	return cedar.Entity{
-		UID:        uid,
+		UID:        m.ID,
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),
@@ -69,7 +65,7 @@ type MenuItem struct {
 }
 
 func (i MenuItem) Validate() error {
-	if string(i.DrinkID.ID) == "" {
+	if i.DrinkID.ID == "" {
 		return errors.Invalidf("drink id is required")
 	}
 	if err := i.Availability.Validate(); err != nil {
