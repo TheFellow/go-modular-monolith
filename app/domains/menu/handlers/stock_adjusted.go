@@ -22,8 +22,8 @@ func NewStockAdjustedMenuUpdater() *StockAdjustedMenuUpdater {
 }
 
 func (h *StockAdjustedMenuUpdater) Handle(ctx *middleware.Context, e inventoryevents.StockAdjusted) error {
-	depleted := e.NewQty == 0
-	restocked := e.PreviousQty == 0 && e.NewQty > 0
+	depleted := e.Current.Quantity == 0
+	restocked := e.Previous.Quantity == 0 && e.Current.Quantity > 0
 	if !depleted && !restocked {
 		return nil
 	}
@@ -37,7 +37,7 @@ func (h *StockAdjustedMenuUpdater) Handle(ctx *middleware.Context, e inventoryev
 		changed := false
 		for i := range menu.Items {
 			item := menu.Items[i]
-			if !h.drinkUsesIngredient(ctx, item.DrinkID, e.IngredientID) {
+			if !h.drinkUsesIngredient(ctx, item.DrinkID, e.Current.IngredientID) {
 				continue
 			}
 

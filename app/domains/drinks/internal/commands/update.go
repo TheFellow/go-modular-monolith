@@ -2,14 +2,12 @@ package commands
 
 import (
 	"reflect"
-	"sort"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
 func (c *Commands) Update(ctx *middleware.Context, drink models.Drink) (models.Drink, error) {
@@ -65,44 +63,12 @@ func (c *Commands) Update(ctx *middleware.Context, drink models.Drink) (models.D
 		return models.Drink{}, err
 	}
 
-	added, removed := diffIngredientIDs(previous.Recipe, updated.Recipe)
 	if !reflect.DeepEqual(previous.Recipe, updated.Recipe) {
 		ctx.AddEvent(events.DrinkRecipeUpdated{
-			DrinkID:            drink.ID,
-			Name:               updated.Name,
-			PreviousRecipe:     previous.Recipe,
-			NewRecipe:          updated.Recipe,
-			AddedIngredients:   added,
-			RemovedIngredients: removed,
+			Previous: previous,
+			Current:  updated,
 		})
 	}
 
 	return updated, nil
-}
-
-func diffIngredientIDs(prev, next models.Recipe) (added []cedar.EntityUID, removed []cedar.EntityUID) {
-	prevSet := map[string]cedar.EntityUID{}
-	nextSet := map[string]cedar.EntityUID{}
-
-	for _, ing := range prev.Ingredients {
-		prevSet[string(ing.IngredientID.ID)] = ing.IngredientID
-	}
-	for _, ing := range next.Ingredients {
-		nextSet[string(ing.IngredientID.ID)] = ing.IngredientID
-	}
-
-	for id, uid := range nextSet {
-		if _, ok := prevSet[id]; !ok {
-			added = append(added, uid)
-		}
-	}
-	for id, uid := range prevSet {
-		if _, ok := nextSet[id]; !ok {
-			removed = append(removed, uid)
-		}
-	}
-
-	sort.Slice(added, func(i, j int) bool { return string(added[i].ID) < string(added[j].ID) })
-	sort.Slice(removed, func(i, j int) bool { return string(removed[i].ID) < string(removed[j].ID) })
-	return added, removed
 }

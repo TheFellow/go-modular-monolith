@@ -54,6 +54,6 @@ func (c *Commands) Place(ctx *middleware.Context, order models.Order) (models.Or
 		return models.Order{}, err
 	}
 
-	ctx.AddEvent(events.OrderPlacedFromDomain(order))
+	ctx.AddEvent(events.OrderPlaced{Order: order})
 	return order, nil
 }

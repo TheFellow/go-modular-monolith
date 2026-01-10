@@ -75,11 +75,9 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	err = fix.Store.Write(ctx, func(tx *bstore.Tx) error {
 		txCtx := middleware.NewContext(ctx, middleware.WithTransaction(tx))
 		return d.Dispatch(txCtx, inventoryevents.StockAdjusted{
-			IngredientID: ingredient.ID,
-			PreviousQty:  10,
-			NewQty:       0,
-			Delta:        -10,
-			Reason:       "used",
+			Previous: inventorymodels.Stock{IngredientID: ingredient.ID, Quantity: 10, Unit: ingredientsmodels.UnitOz},
+			Current:  inventorymodels.Stock{IngredientID: ingredient.ID, Quantity: 0, Unit: ingredientsmodels.UnitOz},
+			Reason:   "used",
 		})
 	})
 	if err != nil {

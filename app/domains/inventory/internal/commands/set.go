@@ -43,11 +43,9 @@ func (c *Commands) Set(ctx *middleware.Context, update models.StockUpdate) (mode
 		}
 	}
 
-	previousQty := existing.Quantity
-	newQty := update.Quantity
-	delta := newQty - previousQty
+	previous := existing
 
-	existing.Quantity = newQty
+	existing.Quantity = update.Quantity
 	existing.Unit = ingredient.Unit
 	existing.CostPerUnit = optional.Some(update.CostPerUnit)
 	existing.LastUpdated = time.Now().UTC()
@@ -56,12 +54,11 @@ func (c *Commands) Set(ctx *middleware.Context, update models.StockUpdate) (mode
 		return models.Stock{}, err
 	}
 
+	current := existing
 	ctx.AddEvent(events.StockAdjusted{
-		IngredientID: update.IngredientID,
-		PreviousQty:  previousQty,
-		NewQty:       newQty,
-		Delta:        delta,
-		Reason:       "set",
+		Previous: previous,
+		Current:  current,
+		Reason:   "set",
 	})
 
 	return existing, nil

@@ -37,3 +37,4 @@ sprint-024,completed,2026-01-06,2026-01-06,Shared Kernel Packages
 sprint-025,completed,2026-01-06,2026-01-06,Cedar-go v1.4.0; store embedded EntityUID fields via BinaryMarshaler (PKs remain strings; requires DB reset)
 sprint-026,completed,2026-01-06,2026-01-06,Decimal money.Price with half-up display rounding + menu cost/margin updates
 sprint-027,completed,2026-01-08,2026-01-09,Rich Domain Models with Enforced Identity Invariants
+sprint-028,completed,2026-01-09,2026-01-10,Fat Events with Embedded Domain Models

@@ -35,7 +35,7 @@ func (c *Commands) Complete(ctx *middleware.Context, order models.Order) (models
 
 	now := time.Now().UTC()
 
-	items, ingredientUsage, depleted, err := c.enrichCompletion(ctx, existing)
+	ingredientUsage, depleted, err := c.enrichCompletion(ctx, existing)
 	if err != nil {
 		return models.Order{}, err
 	}
@@ -48,23 +48,19 @@ func (c *Commands) Complete(ctx *middleware.Context, order models.Order) (models
 	}
 
 	ctx.AddEvent(events.OrderCompleted{
-		OrderID:             existing.ID,
-		MenuID:              existing.MenuID,
-		Items:               items,
+		Order:               existing,
 		IngredientUsage:     ingredientUsage,
 		DepletedIngredients: depleted,
-		At:                  now,
 	})
 
 	return existing, nil
 }
 
-func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]events.OrderItemCompleted, []events.IngredientUsage, []cedar.EntityUID, error) {
+func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]events.IngredientUsage, []cedar.EntityUID, error) {
 	if c.drinks == nil || c.ingredients == nil || c.inventory == nil {
-		return nil, nil, nil, errors.Internalf("missing dependencies")
+		return nil, nil, errors.Internalf("missing dependencies")
 	}
 
-	itemEvents := make([]events.OrderItemCompleted, 0, len(o.Items))
 	type usageKey struct {
 		id string
 	}
@@ -73,18 +69,12 @@ func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]
 	for _, item := range o.Items {
 		drink, err := c.drinks.Get(ctx, item.DrinkID)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
-		itemEvents = append(itemEvents, events.OrderItemCompleted{
-			DrinkID:   item.DrinkID,
-			Name:      drink.Name,
-			Quantity:  item.Quantity,
-			ItemNotes: item.Notes,
-		})
 
 		usage, err := c.computeUsageForDrink(ctx, drink, item.Quantity)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 		for _, u := range usage {
 			k := usageKey{id: string(u.IngredientID.ID)}
@@ -110,14 +100,14 @@ func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]
 	for _, u := range ingredientUsage {
 		stock, err := c.inventory.Get(ctx, u.IngredientID)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 		if stock.Unit != measurement.Unit(u.Unit) {
-			return nil, nil, nil, errors.Invalidf("unit mismatch for ingredient %s: recipe %s vs stock %s", u.IngredientID.ID, u.Unit, stock.Unit)
+			return nil, nil, errors.Invalidf("unit mismatch for ingredient %s: recipe %s vs stock %s", u.IngredientID.ID, u.Unit, stock.Unit)
 		}
 		newQty := stock.Quantity - u.Amount
 		if newQty < 0 {
-			return nil, nil, nil, errors.Invalidf("insufficient stock for ingredient %s: need %.2f %s, have %.2f %s", u.IngredientID.ID, u.Amount, u.Unit, stock.Quantity, stock.Unit)
+			return nil, nil, errors.Invalidf("insufficient stock for ingredient %s: need %.2f %s, have %.2f %s", u.IngredientID.ID, u.Amount, u.Unit, stock.Quantity, stock.Unit)
 		}
 		if newQty <= 0 {
 			depleted = append(depleted, stock.IngredientID)
@@ -125,7 +115,7 @@ func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]
 	}
 
 	sort.Slice(depleted, func(i, j int) bool { return string(depleted[i].ID) < string(depleted[j].ID) })
-	return itemEvents, ingredientUsage, depleted, nil
+	return ingredientUsage, depleted, nil
 }
 
 func (c *Commands) computeUsageForDrink(ctx *middleware.Context, drink drinksmodels.Drink, quantity int) ([]events.IngredientUsage, error) {

@@ -62,10 +62,11 @@ func TestAdjust_EmitsStockAdjusted(t *testing.T) {
 		switch got := e.(type) {
 		case events.StockAdjusted:
 			sawAdjusted = true
-			testutil.ErrorIf(t, got.IngredientID != ingredientID, "unexpected ingredient id: %v", got.IngredientID)
-			testutil.ErrorIf(t, got.PreviousQty != 1.0, "unexpected previous qty: %v", got.PreviousQty)
-			testutil.ErrorIf(t, got.NewQty != 0.0, "unexpected new qty: %v", got.NewQty)
-			testutil.ErrorIf(t, got.Delta != -1.0, "unexpected delta: %v", got.Delta)
+			testutil.ErrorIf(t, got.Current.IngredientID != ingredientID, "unexpected ingredient id: %v", got.Current.IngredientID)
+			testutil.ErrorIf(t, got.Previous.Quantity != 1.0, "unexpected previous qty: %v", got.Previous.Quantity)
+			testutil.ErrorIf(t, got.Current.Quantity != 0.0, "unexpected new qty: %v", got.Current.Quantity)
+			testutil.ErrorIf(t, got.Current.Quantity-got.Previous.Quantity != -1.0, "unexpected delta: %v", got.Current.Quantity-got.Previous.Quantity)
+			testutil.ErrorIf(t, got.Reason != "used", "unexpected reason: %v", got.Reason)
 		}
 	}
 	testutil.ErrorIf(t, !sawAdjusted, "expected StockAdjusted event")

@@ -61,12 +61,7 @@ func (c *Commands) Create(ctx *middleware.Context, drink models.Drink) (models.D
 	}
 
 	ctx.AddEvent(events.DrinkCreated{
-		DrinkID:     uid,
-		Name:        created.Name,
-		Category:    created.Category,
-		Glass:       created.Glass,
-		Recipe:      created.Recipe,
-		Description: created.Description,
+		Drink: created,
 	})
 
 	return created, nil

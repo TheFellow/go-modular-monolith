@@ -68,15 +68,15 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (mod
 		}
 	}
 
+	previous := existing
+
 	previousQty := existing.Quantity
 	newQty := previousQty
-	appliedDelta := 0.0
 	if hasDelta {
 		newQty = previousQty + delta
 		if newQty < 0 {
 			newQty = 0
 		}
-		appliedDelta = newQty - previousQty
 	}
 
 	if hasDelta {
@@ -94,11 +94,9 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (mod
 
 	if hasDelta {
 		ctx.AddEvent(events.StockAdjusted{
-			IngredientID: patch.IngredientID,
-			PreviousQty:  previousQty,
-			NewQty:       newQty,
-			Delta:        appliedDelta,
-			Reason:       string(patch.Reason),
+			Previous: previous,
+			Current:  existing,
+			Reason:   string(patch.Reason),
 		})
 	}
 
