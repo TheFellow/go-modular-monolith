@@ -1,21 +1,13 @@
 package commands
 
 import (
-	"context"
-
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type Commands struct {
 	dao         *dao.DAO
-	ingredients ingredientReader
-}
-
-type ingredientReader interface {
-	Get(ctx context.Context, id cedar.EntityUID) (ingredientsmodels.Ingredient, error)
+	ingredients *ingredientsqueries.Queries
 }
 
 func New() *Commands {
@@ -23,8 +15,4 @@ func New() *Commands {
 		dao:         dao.New(),
 		ingredients: ingredientsqueries.New(),
 	}
-}
-
-func NewWithDependencies(d *dao.DAO, ingredients ingredientReader) *Commands {
-	return &Commands{dao: d, ingredients: ingredients}
 }

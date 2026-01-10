@@ -1,10 +1,15 @@
 package authz
 
-import "github.com/cedar-policy/cedar-go"
+import (
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/cedar-policy/cedar-go"
+)
+
+const StockAction cedar.EntityType = entity.TypeStock + "::Action"
 
 var (
-	ActionList   = cedar.NewEntityUID(cedar.EntityType("Mixology::Stock::Action"), cedar.String("list"))
-	ActionGet    = cedar.NewEntityUID(cedar.EntityType("Mixology::Stock::Action"), cedar.String("get"))
-	ActionAdjust = cedar.NewEntityUID(cedar.EntityType("Mixology::Stock::Action"), cedar.String("adjust"))
-	ActionSet    = cedar.NewEntityUID(cedar.EntityType("Mixology::Stock::Action"), cedar.String("set"))
+	ActionList   = cedar.NewEntityUID(StockAction, "list")
+	ActionGet    = cedar.NewEntityUID(StockAction, "get")
+	ActionAdjust = cedar.NewEntityUID(StockAction, "adjust")
+	ActionSet    = cedar.NewEntityUID(StockAction, "set")
 )

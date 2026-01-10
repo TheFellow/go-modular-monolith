@@ -3,9 +3,11 @@ package testutil
 import (
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 )
 
@@ -49,6 +51,44 @@ func (b *Bootstrap) WithStock(quantity float64) *Bootstrap {
 }
 
 func (b *Bootstrap) WithNoStock() *Bootstrap { return b.WithStock(0) }
+
+func (b *Bootstrap) WithIngredient(name string, unit ingredientsmodels.Unit) ingredientsmodels.Ingredient {
+	b.fix.T.Helper()
+
+	res, err := b.fix.Ingredients.List(b.fix.Ctx, ingredients.ListRequest{})
+	Ok(b.fix.T, err)
+
+	want := normalizeName(name)
+	for _, ing := range res.Ingredients {
+		if normalizeName(ing.Name) == want {
+			return ing
+		}
+	}
+
+	created, err := b.fix.Ingredients.Create(b.fix.Ctx, ingredientsmodels.Ingredient{
+		Name:     name,
+		Category: ingredientsmodels.CategoryOther,
+		Unit:     unit,
+	})
+	Ok(b.fix.T, err)
+	return created
+}
+
+func (b *Bootstrap) WithDrink(drink models.Drink) models.Drink {
+	b.fix.T.Helper()
+
+	created, err := b.fix.Drinks.Create(b.fix.Ctx, drink)
+	Ok(b.fix.T, err)
+	return created
+}
+
+func (b *Bootstrap) WithMenu(name string) menumodels.Menu {
+	b.fix.T.Helper()
+
+	created, err := b.fix.Menu.Create(b.fix.Ctx, menumodels.Menu{Name: name})
+	Ok(b.fix.T, err)
+	return created
+}
 
 func normalizeName(s string) string {
 	return strings.ToLower(strings.TrimSpace(s))

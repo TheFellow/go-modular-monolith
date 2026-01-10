@@ -26,13 +26,3 @@ func New() *Commands {
 		inventory:   inventoryq.New(),
 	}
 }
-
-func NewWithDependencies(d *dao.DAO, menus *menuq.Queries, drinks *drinksq.Queries, ingredients *ingredientsq.Queries, inventory *inventoryq.Queries) *Commands {
-	return &Commands{
-		dao:         d,
-		menus:       menus,
-		drinks:      drinks,
-		ingredients: ingredients,
-		inventory:   inventory,
-	}
-}

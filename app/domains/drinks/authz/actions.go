@@ -5,12 +5,12 @@ import (
 	"github.com/cedar-policy/cedar-go"
 )
 
-const MixologyDrinkAction cedar.EntityType = entity.TypeDrink + "::Action"
+const DrinkAction cedar.EntityType = entity.TypeDrink + "::Action"
 
 var (
-	ActionList   = cedar.NewEntityUID(MixologyDrinkAction, "list")
-	ActionGet    = cedar.NewEntityUID(MixologyDrinkAction, "get")
-	ActionCreate = cedar.NewEntityUID(MixologyDrinkAction, "create")
-	ActionUpdate = cedar.NewEntityUID(MixologyDrinkAction, "update")
-	ActionDelete = cedar.NewEntityUID(MixologyDrinkAction, "delete")
+	ActionList   = cedar.NewEntityUID(DrinkAction, "list")
+	ActionGet    = cedar.NewEntityUID(DrinkAction, "get")
+	ActionCreate = cedar.NewEntityUID(DrinkAction, "create")
+	ActionUpdate = cedar.NewEntityUID(DrinkAction, "update")
+	ActionDelete = cedar.NewEntityUID(DrinkAction, "delete")
 )
