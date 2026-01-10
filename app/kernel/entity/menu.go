@@ -1,6 +1,6 @@
 package entity
 
-import cedar "github.com/cedar-policy/cedar-go"
+import "github.com/cedar-policy/cedar-go"
 
 const TypeMenu = cedar.EntityType("Mixology::Menu")
 

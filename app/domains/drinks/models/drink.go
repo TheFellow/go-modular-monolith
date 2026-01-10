@@ -1,6 +1,6 @@
 package models
 
-import cedar "github.com/cedar-policy/cedar-go"
+import "github.com/cedar-policy/cedar-go"
 
 const DrinkEntityType = cedar.EntityType("Mixology::Drink")
 

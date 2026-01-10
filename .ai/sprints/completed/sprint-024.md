@@ -96,7 +96,7 @@ Each entity type gets its own file with the Cedar entity type constant and ID fa
 // drink.go
 package entity
 
-import cedar "github.com/cedar-policy/cedar-go"
+import "github.com/cedar-policy/cedar-go"
 
 const TypeDrink = cedar.EntityType("Mixology::Drink")
 

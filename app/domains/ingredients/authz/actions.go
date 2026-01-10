@@ -1,6 +1,6 @@
 package authz
 
-import cedar "github.com/cedar-policy/cedar-go"
+import "github.com/cedar-policy/cedar-go"
 
 var (
 	ActionList   = cedar.NewEntityUID(cedar.EntityType("Mixology::Ingredient::Action"), cedar.String("list"))

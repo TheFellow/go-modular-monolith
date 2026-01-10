@@ -1,6 +1,6 @@
 package middleware
 
-import cedar "github.com/cedar-policy/cedar-go"
+import "github.com/cedar-policy/cedar-go"
 
 type CommandNext func(*Context) error
 
