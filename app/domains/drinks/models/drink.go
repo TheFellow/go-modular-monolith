@@ -1,6 +1,11 @@
 package models
 
-import "github.com/cedar-policy/cedar-go"
+import (
+	"time"
+
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/cedar-policy/cedar-go"
+)
 
 const DrinkEntityType = cedar.EntityType("Mixology::Drink")
 
@@ -15,6 +20,7 @@ type Drink struct {
 	Glass       GlassType
 	Recipe      Recipe
 	Description string
+	DeletedAt   optional.Value[time.Time]
 }
 
 func (d Drink) EntityUID() cedar.EntityUID {

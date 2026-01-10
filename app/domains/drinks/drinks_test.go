@@ -32,11 +32,11 @@ func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, created.ID.ID == "", "expected id to be set")
 
-	got, err := fix.Drinks.Get(fix.Ctx, drinks.GetRequest{ID: created.ID})
+	got, err := fix.Drinks.Get(fix.Ctx, created.ID)
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, got.Drink.Name != "Margarita", "expected Margarita, got %q", got.Drink.Name)
-	testutil.ErrorIf(t, len(got.Drink.Recipe.Ingredients) != 1, "expected 1 ingredient")
-	testutil.ErrorIf(t, got.Drink.Recipe.Ingredients[0].IngredientID != lime.ID, "unexpected ingredient id")
+	testutil.ErrorIf(t, got.Name != "Margarita", "expected Margarita, got %q", got.Name)
+	testutil.ErrorIf(t, len(got.Recipe.Ingredients) != 1, "expected 1 ingredient")
+	testutil.ErrorIf(t, got.Recipe.Ingredients[0].IngredientID != lime.ID, "unexpected ingredient id")
 
 	updated, err := fix.Drinks.Update(fix.Ctx, models.Drink{
 		ID:       created.ID,
@@ -53,14 +53,15 @@ func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, updated.Recipe.Ingredients[0].IngredientID != lemon.ID, "expected lemon ingredient")
 
-	got, err = fix.Drinks.Get(fix.Ctx, drinks.GetRequest{ID: created.ID})
+	got, err = fix.Drinks.Get(fix.Ctx, created.ID)
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, got.Drink.Recipe.Ingredients[0].IngredientID != lemon.ID, "expected lemon ingredient after update")
+	testutil.ErrorIf(t, got.Recipe.Ingredients[0].IngredientID != lemon.ID, "expected lemon ingredient after update")
 
-	_, err = fix.Drinks.Delete(fix.Ctx, drinks.DeleteRequest{ID: created.ID})
+	deleted, err := fix.Drinks.Delete(fix.Ctx, created.ID)
 	testutil.Ok(t, err)
+	testutil.ErrorIf(t, !deleted.DeletedAt.IsSome(), "expected DeletedAt to be set")
 
-	_, err = fix.Drinks.Get(fix.Ctx, drinks.GetRequest{ID: created.ID})
+	_, err = fix.Drinks.Get(fix.Ctx, created.ID)
 	testutil.ErrorIf(t, !errors.IsNotFound(err), "expected NotFound, got %v", err)
 }
 
@@ -115,10 +116,10 @@ func TestDrinks_ListFiltersByName(t *testing.T) {
 
 	all, err := fix.Drinks.List(fix.Ctx, drinks.ListRequest{})
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, len(all.Drinks) != 3, "expected 3 drinks, got %d", len(all.Drinks))
+	testutil.ErrorIf(t, len(all) != 3, "expected 3 drinks, got %d", len(all))
 
 	filtered, err := fix.Drinks.List(fix.Ctx, drinks.ListRequest{Name: "Margarita"})
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, len(filtered.Drinks) != 1, "expected 1 drink, got %d", len(filtered.Drinks))
-	testutil.ErrorIf(t, filtered.Drinks[0].Name != "Margarita", "expected Margarita, got %q", filtered.Drinks[0].Name)
+	testutil.ErrorIf(t, len(filtered) != 1, "expected 1 drink, got %d", len(filtered))
+	testutil.ErrorIf(t, filtered[0].Name != "Margarita", "expected Margarita, got %q", filtered[0].Name)
 }

@@ -21,7 +21,7 @@ func TestPermissions_Orders(t *testing.T) {
 		_, err := a.Orders.List(owner, orders.ListRequest{})
 		testutil.RequireNotDenied(t, err)
 
-		_, err = a.Orders.Get(owner, orders.GetRequest{ID: ordersmodels.NewOrderID("does-not-exist")})
+		_, err = a.Orders.Get(owner, ordersmodels.NewOrderID("does-not-exist"))
 		testutil.RequireNotDenied(t, err)
 
 		_, err = a.Orders.Place(owner, ordersmodels.Order{
@@ -44,7 +44,7 @@ func TestPermissions_Orders(t *testing.T) {
 		_, err := a.Orders.List(anon, orders.ListRequest{})
 		testutil.RequireNotDenied(t, err)
 
-		_, err = a.Orders.Get(anon, orders.GetRequest{ID: ordersmodels.NewOrderID("does-not-exist")})
+		_, err = a.Orders.Get(anon, ordersmodels.NewOrderID("does-not-exist"))
 		testutil.RequireNotDenied(t, err)
 
 		_, err = a.Orders.Place(anon, ordersmodels.Order{

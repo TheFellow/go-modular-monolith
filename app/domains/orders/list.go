@@ -13,20 +13,16 @@ type ListRequest struct {
 	MenuID cedar.EntityUID
 }
 
-type ListResponse struct {
-	Orders []models.Order
-}
-
-func (m *Module) List(ctx *middleware.Context, req ListRequest) (ListResponse, error) {
+func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.Order, error) {
 	return middleware.RunQueryWithResource(ctx, authz.ActionList, m.list, req)
 }
 
-func (m *Module) list(ctx *middleware.Context, req ListRequest) (ListResponse, error) {
+func (m *Module) list(ctx *middleware.Context, req ListRequest) ([]*models.Order, error) {
 	os, err := m.queries.List(ctx, dao.ListFilter{Status: req.Status, MenuID: req.MenuID})
 	if err != nil {
-		return ListResponse{}, err
+		return nil, err
 	}
-	return ListResponse{Orders: os}, nil
+	return os, nil
 }
 
 func (ListRequest) CedarEntity() cedar.Entity {

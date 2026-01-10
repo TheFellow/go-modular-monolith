@@ -11,18 +11,14 @@ type ListRequest struct {
 	Status models.MenuStatus // Optional filter
 }
 
-type ListResponse struct {
-	Menus []models.Menu
-}
-
-func (m *Module) List(ctx *middleware.Context, req ListRequest) (ListResponse, error) {
+func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.Menu, error) {
 	return middleware.RunQuery(ctx, authz.ActionList, m.list, req)
 }
 
-func (m *Module) list(ctx *middleware.Context, req ListRequest) (ListResponse, error) {
+func (m *Module) list(ctx *middleware.Context, req ListRequest) ([]*models.Menu, error) {
 	menus, err := m.queries.List(ctx, dao.ListFilter{Status: req.Status})
 	if err != nil {
-		return ListResponse{}, err
+		return nil, err
 	}
-	return ListResponse{Menus: menus}, nil
+	return menus, nil
 }

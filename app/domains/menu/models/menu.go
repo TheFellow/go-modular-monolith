@@ -24,6 +24,7 @@ type Menu struct {
 	Status      MenuStatus
 	CreatedAt   time.Time
 	PublishedAt optional.Value[time.Time]
+	DeletedAt   optional.Value[time.Time]
 }
 
 func (m Menu) EntityUID() cedar.EntityUID {

@@ -29,7 +29,7 @@ func (b *DrinkBuilder) With(ingredientName string, amount float64) *DrinkBuilder
 	return b
 }
 
-func (b *DrinkBuilder) Build() models.Drink {
+func (b *DrinkBuilder) Build() *models.Drink {
 	b.fix.T.Helper()
 
 	var recipeIngredients []models.RecipeIngredient
@@ -55,14 +55,14 @@ func (b *DrinkBuilder) Build() models.Drink {
 	return drink
 }
 
-func (f *Fixture) findOrCreateIngredient(name string) ingredientsmodels.Ingredient {
+func (f *Fixture) findOrCreateIngredient(name string) *ingredientsmodels.Ingredient {
 	f.T.Helper()
 
-	res, err := f.Ingredients.List(f.Ctx, ingredients.ListRequest{})
+	ings, err := f.Ingredients.List(f.Ctx, ingredients.ListRequest{})
 	Ok(f.T, err)
 
 	want := normalizeName(name)
-	for _, ing := range res.Ingredients {
+	for _, ing := range ings {
 		if normalizeName(ing.Name) == want {
 			return ing
 		}

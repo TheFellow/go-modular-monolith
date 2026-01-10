@@ -1,6 +1,8 @@
 package errors
 
 import (
+	"errors"
+
 	"github.com/urfave/cli/v3"
 )
 
@@ -10,7 +12,8 @@ func ToCLIExit(err error) error {
 		return nil
 	}
 
-	if _, ok := err.(cli.ExitCoder); ok {
+	var exitCoder cli.ExitCoder
+	if errors.As(err, &exitCoder) {
 		return err
 	}
 

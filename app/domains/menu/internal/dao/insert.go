@@ -4,12 +4,13 @@ import (
 	"context"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/mjl-/bstore"
 )
 
 func (d *DAO) Insert(ctx context.Context, menu models.Menu) error {
 	return d.write(ctx, func(tx *bstore.Tx) error {
 		row := toRow(menu)
-		return tx.Insert(&row)
+		return store.MapError(tx.Insert(&row), "insert menu %q", menu.Name)
 	})
 }

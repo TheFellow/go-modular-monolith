@@ -37,7 +37,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return err
 					}
 
-					for _, i := range res.Ingredients {
+					for _, i := range res {
 						fmt.Printf("%s\t%s\t%s\t%s\n", string(i.ID.ID), i.Name, i.Category, i.Unit)
 					}
 					return nil
@@ -51,12 +51,12 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("id")[0]
-					res, err := c.app.Ingredients.Get(ctx, ingredients.GetRequest{ID: entity.IngredientID(id)})
+					res, err := c.app.Ingredients.Get(ctx, entity.IngredientID(id))
 					if err != nil {
 						return err
 					}
 
-					i := res.Ingredient
+					i := res
 					fmt.Printf("ID:          %s\n", string(i.ID.ID))
 					fmt.Printf("Name:        %s\n", i.Name)
 					fmt.Printf("Category:    %s\n", i.Category)

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/mjl-/bstore"
 )
 
@@ -12,10 +13,12 @@ type ListFilter struct {
 	Name     string               // Exact match on Name (uses bstore unique index)
 	Category models.DrinkCategory // Exact match on Category (uses bstore index)
 	Glass    models.GlassType     // Exact match on Glass
+	// IncludeDeleted includes soft-deleted rows (DeletedAt != nil).
+	IncludeDeleted bool
 }
 
-func (d *DAO) List(ctx context.Context, filter ListFilter) ([]models.Drink, error) {
-	var out []models.Drink
+func (d *DAO) List(ctx context.Context, filter ListFilter) ([]*models.Drink, error) {
+	var out []*models.Drink
 	err := d.read(ctx, func(tx *bstore.Tx) error {
 		q := bstore.QueryTx[DrinkRow](tx)
 
@@ -31,11 +34,15 @@ func (d *DAO) List(ctx context.Context, filter ListFilter) ([]models.Drink, erro
 
 		rows, err := q.SortAsc("Name").List()
 		if err != nil {
-			return err
+			return store.MapError(err, "list drinks")
 		}
-		drinks := make([]models.Drink, 0, len(rows))
+		drinks := make([]*models.Drink, 0, len(rows))
 		for _, r := range rows {
-			drinks = append(drinks, toModel(r))
+			if !filter.IncludeDeleted && r.DeletedAt != nil {
+				continue
+			}
+			d := toModel(r)
+			drinks = append(drinks, &d)
 		}
 		out = drinks
 		return nil

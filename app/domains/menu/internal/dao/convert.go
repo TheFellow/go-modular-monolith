@@ -1,12 +1,18 @@
 package dao
 
 import (
+	"time"
+
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
 func toRow(m menumodels.Menu) MenuRow {
+	var deletedAt *time.Time
+	if t, ok := m.DeletedAt.Unwrap(); ok {
+		deletedAt = &t
+	}
 	items := make([]MenuItemRow, 0, len(m.Items))
 	for _, it := range m.Items {
 		var price optional.Value[money.Price]
@@ -34,10 +40,17 @@ func toRow(m menumodels.Menu) MenuRow {
 		Status:      string(m.Status),
 		CreatedAt:   m.CreatedAt,
 		PublishedAt: m.PublishedAt,
+		DeletedAt:   deletedAt,
 	}
 }
 
 func toModel(r MenuRow) menumodels.Menu {
+	var deletedAt optional.Value[time.Time]
+	if r.DeletedAt != nil {
+		deletedAt = optional.Some(*r.DeletedAt)
+	} else {
+		deletedAt = optional.None[time.Time]()
+	}
 	items := make([]menumodels.MenuItem, 0, len(r.Items))
 	for _, it := range r.Items {
 		var price optional.Value[menumodels.Price]
@@ -65,5 +78,6 @@ func toModel(r MenuRow) menumodels.Menu {
 		Status:      menumodels.MenuStatus(r.Status),
 		CreatedAt:   r.CreatedAt,
 		PublishedAt: r.PublishedAt,
+		DeletedAt:   deletedAt,
 	}
 }

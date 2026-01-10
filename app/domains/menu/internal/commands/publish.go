@@ -5,22 +5,18 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (models.Menu, error) {
+func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (*models.Menu, error) {
 	menuID := menu.ID
-	record, found, err := c.dao.Get(ctx, menuID)
+	record, err := c.dao.Get(ctx, menuID)
 	if err != nil {
-		return models.Menu{}, errors.Internalf("get menu %s: %w", menuID, err)
-	}
-	if !found {
-		return models.Menu{}, errors.NotFoundf("menu %s not found", menuID)
+		return nil, err
 	}
 
-	menu = record
+	menu = *record
 
 	now := time.Now().UTC()
 	menu.Status = models.MenuStatusPublished
@@ -30,16 +26,16 @@ func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (models.Me
 	}
 
 	if err := menu.Validate(); err != nil {
-		return models.Menu{}, err
+		return nil, err
 	}
 
 	if err := c.dao.Update(ctx, menu); err != nil {
-		return models.Menu{}, err
+		return nil, err
 	}
 
 	ctx.AddEvent(events.MenuPublished{
 		Menu: menu,
 	})
 
-	return menu, nil
+	return &menu, nil
 }

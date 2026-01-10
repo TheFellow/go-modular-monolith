@@ -6,6 +6,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (m *Module) AddDrink(ctx *middleware.Context, change models.MenuDrinkChange) (models.Menu, error) {
+func (m *Module) AddDrink(ctx *middleware.Context, change models.MenuDrinkChange) (*models.Menu, error) {
 	return middleware.RunCommand(ctx, authz.ActionAddDrink, m.commands.AddDrink, change)
 }

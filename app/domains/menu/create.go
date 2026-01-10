@@ -6,6 +6,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (m *Module) Create(ctx *middleware.Context, menu models.Menu) (models.Menu, error) {
+func (m *Module) Create(ctx *middleware.Context, menu models.Menu) (*models.Menu, error) {
 	return middleware.RunCommand(ctx, authz.ActionCreate, m.commands.Create, menu)
 }

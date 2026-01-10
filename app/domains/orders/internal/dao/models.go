@@ -15,6 +15,7 @@ type OrderRow struct {
 	CreatedAt   time.Time `bstore:"index"`
 	CompletedAt optional.Value[time.Time]
 	Notes       string
+	DeletedAt   *time.Time
 }
 
 type OrderItemRow struct {

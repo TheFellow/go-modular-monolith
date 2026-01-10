@@ -37,7 +37,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return err
 					}
 
-					for _, s := range res.Stock {
+					for _, s := range res {
 						fmt.Printf("%s\t%.2f\t%s\n", string(s.IngredientID.ID), s.Quantity, s.Unit)
 					}
 					return nil
@@ -51,12 +51,12 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("ingredient_id")[0]
-					res, err := c.app.Inventory.Get(ctx, inventory.GetRequest{IngredientID: entity.IngredientID(id)})
+					res, err := c.app.Inventory.Get(ctx, entity.IngredientID(id))
 					if err != nil {
 						return err
 					}
 
-					s := res.Stock
+					s := res
 					fmt.Printf("%s\t%.2f\t%s\n", string(s.IngredientID.ID), s.Quantity, s.Unit)
 					return nil
 				}),

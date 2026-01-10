@@ -2,9 +2,11 @@ package models
 
 import (
 	"strings"
+	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/cedar-policy/cedar-go"
 )
 
@@ -14,6 +16,7 @@ type Ingredient struct {
 	Category    Category
 	Unit        Unit
 	Description string
+	DeletedAt   optional.Value[time.Time]
 }
 
 func (i Ingredient) EntityUID() cedar.EntityUID {

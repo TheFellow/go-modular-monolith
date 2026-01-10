@@ -19,9 +19,9 @@ func TestFixture_CreateDrinkRoundTrip(t *testing.T) {
 		With("Lime Juice", 1.0).
 		Build()
 
-	res, err := fix.Drinks.Get(fix.Ctx, drinks.GetRequest{ID: created.ID})
+	res, err := fix.Drinks.Get(fix.Ctx, created.ID)
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, res.Drink.Name != "Margarita", "expected Margarita, got %q", res.Drink.Name)
+	testutil.ErrorIf(t, res.Name != "Margarita", "expected Margarita, got %q", res.Name)
 }
 
 func TestFixture_IsolatedParallelStores(t *testing.T) {
@@ -32,7 +32,7 @@ func TestFixture_IsolatedParallelStores(t *testing.T) {
 		fix.CreateDrink("A").With("Gin", 2.0).Build()
 		res, err := fix.Drinks.List(fix.Ctx, drinks.ListRequest{})
 		testutil.Ok(t, err)
-		testutil.ErrorIf(t, len(res.Drinks) != 1, "expected 1 drink, got %d", len(res.Drinks))
+		testutil.ErrorIf(t, len(res) != 1, "expected 1 drink, got %d", len(res))
 	})
 
 	t.Run("B", func(t *testing.T) {
@@ -42,7 +42,7 @@ func TestFixture_IsolatedParallelStores(t *testing.T) {
 		fix.CreateDrink("B").With("Vodka", 2.0).Build()
 		res, err := fix.Drinks.List(fix.Ctx, drinks.ListRequest{})
 		testutil.Ok(t, err)
-		testutil.ErrorIf(t, len(res.Drinks) != 1, "expected 1 drink, got %d", len(res.Drinks))
+		testutil.ErrorIf(t, len(res) != 1, "expected 1 drink, got %d", len(res))
 	})
 }
 

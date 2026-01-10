@@ -1,6 +1,10 @@
 package dao
 
-import "github.com/cedar-policy/cedar-go"
+import (
+	"time"
+
+	"github.com/cedar-policy/cedar-go"
+)
 
 type DrinkRow struct {
 	ID          string
@@ -9,6 +13,7 @@ type DrinkRow struct {
 	Glass       string `bstore:"index"`
 	Recipe      RecipeRow
 	Description string
+	DeletedAt   *time.Time
 }
 
 type RecipeRow struct {

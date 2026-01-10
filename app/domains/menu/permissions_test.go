@@ -20,7 +20,7 @@ func TestPermissions_Menu(t *testing.T) {
 		_, err := a.Menu.List(owner, menu.ListRequest{})
 		testutil.RequireNotDenied(t, err)
 
-		_, err = a.Menu.Get(owner, menu.GetRequest{ID: menumodels.NewMenuID("does-not-exist")})
+		_, err = a.Menu.Get(owner, menumodels.NewMenuID("does-not-exist"))
 		testutil.RequireNotDenied(t, err)
 
 		_, err = a.Menu.Create(owner, menumodels.Menu{})
@@ -46,7 +46,7 @@ func TestPermissions_Menu(t *testing.T) {
 		_, err := a.Menu.List(anon, menu.ListRequest{})
 		testutil.RequireNotDenied(t, err)
 
-		_, err = a.Menu.Get(anon, menu.GetRequest{ID: menumodels.NewMenuID("does-not-exist")})
+		_, err = a.Menu.Get(anon, menumodels.NewMenuID("does-not-exist"))
 		testutil.RequireNotDenied(t, err)
 
 		_, err = a.Menu.Create(anon, menumodels.Menu{})

@@ -53,14 +53,14 @@ func (c *CLI) drinksCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						out := make([]drinkscli.Drink, 0, len(res.Drinks))
-						for _, d := range res.Drinks {
-							out = append(out, drinkscli.FromDomainDrink(d))
+						out := make([]drinkscli.Drink, 0, len(res))
+						for _, d := range res {
+							out = append(out, drinkscli.FromDomainDrink(*d))
 						}
 						return writeJSON(cmd.Writer, out)
 					}
 
-					for _, d := range res.Drinks {
+					for _, d := range res {
 						fmt.Printf("%s\t%s\n", string(d.ID.ID), d.Name)
 					}
 					return nil
@@ -75,16 +75,16 @@ func (c *CLI) drinksCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("id")[0]
-					res, err := c.app.Drinks.Get(ctx, drinks.GetRequest{ID: drinksmodels.NewDrinkID(id)})
+					res, err := c.app.Drinks.Get(ctx, drinksmodels.NewDrinkID(id))
 					if err != nil {
 						return err
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(res.Drink))
+						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					fmt.Printf("%s\t%s\n", string(res.Drink.ID.ID), res.Drink.Name)
+					fmt.Printf("%s\t%s\n", string(res.ID.ID), res.Name)
 					return nil
 				}),
 			},
@@ -116,7 +116,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(res))
+						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
 					fmt.Printf("%s\t%s\n", string(res.ID.ID), res.Name)
@@ -151,7 +151,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(res))
+						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
 					fmt.Printf("%s\t%s\n", string(res.ID.ID), res.Name)
@@ -167,16 +167,16 @@ func (c *CLI) drinksCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("id")[0]
-					res, err := c.app.Drinks.Delete(ctx, drinks.DeleteRequest{ID: drinksmodels.NewDrinkID(id)})
+					res, err := c.app.Drinks.Delete(ctx, drinksmodels.NewDrinkID(id))
 					if err != nil {
 						return err
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(res.Drink))
+						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					fmt.Printf("deleted %s\t%s\n", string(res.Drink.ID.ID), res.Drink.Name)
+					fmt.Printf("deleted %s\t%s\n", string(res.ID.ID), res.Name)
 					return nil
 				}),
 			},

@@ -16,10 +16,6 @@ type ListRequest struct {
 	LowStock optional.Value[float64]
 }
 
-type ListResponse struct {
-	Stock []models.Stock
-}
-
 func (ListRequest) CedarEntity() cedar.Entity {
 	return cedar.Entity{
 		UID:        cedar.NewEntityUID(models.StockEntityType, cedar.String("")),
@@ -29,18 +25,18 @@ func (ListRequest) CedarEntity() cedar.Entity {
 	}
 }
 
-func (m *Module) List(ctx *middleware.Context, req ListRequest) (ListResponse, error) {
+func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.Stock, error) {
 	return middleware.RunQueryWithResource(ctx, authz.ActionList, m.list, req)
 }
 
-func (m *Module) list(ctx *middleware.Context, req ListRequest) (ListResponse, error) {
+func (m *Module) list(ctx *middleware.Context, req ListRequest) ([]*models.Stock, error) {
 	filter := dao.ListFilter{
 		IngredientID: req.IngredientID,
 		MaxQuantity:  req.LowStock,
 	}
 	stock, err := m.queries.List(ctx, filter)
 	if err != nil {
-		return ListResponse{}, err
+		return nil, err
 	}
-	return ListResponse{Stock: stock}, nil
+	return stock, nil
 }

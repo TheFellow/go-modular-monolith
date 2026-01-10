@@ -10,56 +10,57 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Set(ctx *middleware.Context, update models.StockUpdate) (models.Stock, error) {
+func (c *Commands) Set(ctx *middleware.Context, update models.StockUpdate) (*models.Stock, error) {
 	if update.Quantity < 0 {
 		update.Quantity = 0
 	}
 	if err := update.CostPerUnit.Validate(); err != nil {
-		return models.Stock{}, err
+		return nil, err
 	}
 	if c.ingredients == nil {
-		return models.Stock{}, errors.Internalf("missing ingredients dependency")
+		return nil, errors.Internalf("missing ingredients dependency")
 	}
 
 	ingredient, err := c.ingredients.Get(ctx, update.IngredientID)
 	if err != nil {
-		return models.Stock{}, err
+		return nil, err
 	}
 	if ingredient.Unit == "" {
-		return models.Stock{}, errors.Invalidf("ingredient unit is required")
+		return nil, errors.Invalidf("ingredient unit is required")
 	}
 
-	ingredientIDStr := string(update.IngredientID.ID)
-	existing, found, err := c.dao.Get(ctx, update.IngredientID)
+	existing, err := c.dao.Get(ctx, update.IngredientID)
+	var current models.Stock
 	if err != nil {
-		return models.Stock{}, errors.Internalf("get stock %s: %w", ingredientIDStr, err)
-	}
-	if !found {
-		existing = models.Stock{
+		if !errors.IsNotFound(err) {
+			return nil, err
+		}
+		current = models.Stock{
 			IngredientID: update.IngredientID,
 			Quantity:     0,
 			Unit:         ingredient.Unit,
 			LastUpdated:  time.Time{},
 		}
+	} else {
+		current = *existing
 	}
 
-	previous := existing
+	previous := current
 
-	existing.Quantity = update.Quantity
-	existing.Unit = ingredient.Unit
-	existing.CostPerUnit = optional.Some(update.CostPerUnit)
-	existing.LastUpdated = time.Now().UTC()
+	current.Quantity = update.Quantity
+	current.Unit = ingredient.Unit
+	current.CostPerUnit = optional.Some(update.CostPerUnit)
+	current.LastUpdated = time.Now().UTC()
 
-	if err := c.dao.Upsert(ctx, existing); err != nil {
-		return models.Stock{}, err
+	if err := c.dao.Upsert(ctx, current); err != nil {
+		return nil, err
 	}
 
-	current := existing
 	ctx.AddEvent(events.StockAdjusted{
 		Previous: previous,
 		Current:  current,
 		Reason:   "set",
 	})
 
-	return existing, nil
+	return &current, nil
 }

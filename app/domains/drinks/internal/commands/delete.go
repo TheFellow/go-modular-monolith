@@ -1,31 +1,38 @@
 package commands
 
 import (
+	"time"
+
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (c *Commands) Delete(ctx *middleware.Context, id cedar.EntityUID) (models.Drink, error) {
+func (c *Commands) Delete(ctx *middleware.Context, id cedar.EntityUID) (*models.Drink, error) {
 	if string(id.ID) == "" {
-		return models.Drink{}, errors.Invalidf("id is required")
+		return nil, errors.Invalidf("id is required")
 	}
 
-	drink, found, err := c.dao.Get(ctx, id)
+	drink, err := c.dao.Get(ctx, id)
 	if err != nil {
-		return models.Drink{}, errors.Internalf("get drink: %w", err)
-	}
-	if !found {
-		return models.Drink{}, errors.NotFoundf("drink %s not found", string(id.ID))
+		return nil, err
 	}
 
-	if err := c.dao.Delete(ctx, id); err != nil {
-		return models.Drink{}, errors.Internalf("delete drink: %w", err)
+	now := time.Now().UTC()
+	deleted := *drink
+	deleted.DeletedAt = optional.Some(now)
+
+	if err := c.dao.Update(ctx, deleted); err != nil {
+		return nil, err
 	}
 
-	ctx.AddEvent(events.DrinkDeleted{Drink: drink})
+	ctx.AddEvent(events.DrinkDeleted{
+		Drink:     deleted,
+		DeletedAt: now,
+	})
 
-	return drink, nil
+	return &deleted, nil
 }

@@ -14,46 +14,44 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (c *Commands) Complete(ctx *middleware.Context, order models.Order) (models.Order, error) {
-	existing, found, err := c.dao.Get(ctx, order.ID)
+func (c *Commands) Complete(ctx *middleware.Context, order models.Order) (*models.Order, error) {
+	existing, err := c.dao.Get(ctx, order.ID)
 	if err != nil {
-		return models.Order{}, err
-	}
-	if !found {
-		return models.Order{}, errors.NotFoundf("order %q not found", order.ID.ID)
+		return nil, err
 	}
 
 	switch existing.Status {
 	case models.OrderStatusCompleted:
 		return existing, nil
 	case models.OrderStatusCancelled:
-		return models.Order{}, errors.Invalidf("order %q is cancelled", existing.ID.ID)
+		return nil, errors.Invalidf("order %q is cancelled", existing.ID.ID)
 	case models.OrderStatusPending, models.OrderStatusPreparing:
 	default:
-		return models.Order{}, errors.Invalidf("unexpected status %q", existing.Status)
+		return nil, errors.Invalidf("unexpected status %q", existing.Status)
 	}
 
 	now := time.Now().UTC()
 
-	ingredientUsage, depleted, err := c.enrichCompletion(ctx, existing)
+	ingredientUsage, depleted, err := c.enrichCompletion(ctx, *existing)
 	if err != nil {
-		return models.Order{}, err
+		return nil, err
 	}
 
-	existing.Status = models.OrderStatusCompleted
-	existing.CompletedAt = optional.NewSome(now)
+	updated := *existing
+	updated.Status = models.OrderStatusCompleted
+	updated.CompletedAt = optional.NewSome(now)
 
-	if err := c.dao.Update(ctx, existing); err != nil {
-		return models.Order{}, err
+	if err := c.dao.Update(ctx, updated); err != nil {
+		return nil, err
 	}
 
 	ctx.AddEvent(events.OrderCompleted{
-		Order:               existing,
+		Order:               updated,
 		IngredientUsage:     ingredientUsage,
 		DepletedIngredients: depleted,
 	})
 
-	return existing, nil
+	return &updated, nil
 }
 
 func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]events.IngredientUsage, []cedar.EntityUID, error) {
@@ -118,7 +116,7 @@ func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]
 	return ingredientUsage, depleted, nil
 }
 
-func (c *Commands) computeUsageForDrink(ctx *middleware.Context, drink drinksmodels.Drink, quantity int) ([]events.IngredientUsage, error) {
+func (c *Commands) computeUsageForDrink(ctx *middleware.Context, drink *drinksmodels.Drink, quantity int) ([]events.IngredientUsage, error) {
 	if quantity <= 0 {
 		return nil, errors.Invalidf("quantity must be > 0")
 	}

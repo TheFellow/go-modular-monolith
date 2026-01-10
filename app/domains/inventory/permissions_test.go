@@ -21,7 +21,7 @@ func TestPermissions_Inventory(t *testing.T) {
 		_, err := a.Inventory.List(owner, inventory.ListRequest{})
 		testutil.RequireNotDenied(t, err)
 
-		_, err = a.Inventory.Get(owner, inventory.GetRequest{IngredientID: entity.IngredientID("does-not-exist")})
+		_, err = a.Inventory.Get(owner, entity.IngredientID("does-not-exist"))
 		testutil.RequireNotDenied(t, err)
 
 		_, err = a.Inventory.Adjust(owner, inventorymodels.StockPatch{
@@ -42,7 +42,7 @@ func TestPermissions_Inventory(t *testing.T) {
 		_, err := a.Inventory.List(anon, inventory.ListRequest{})
 		testutil.RequireNotDenied(t, err)
 
-		_, err = a.Inventory.Get(anon, inventory.GetRequest{IngredientID: entity.IngredientID("does-not-exist")})
+		_, err = a.Inventory.Get(anon, entity.IngredientID("does-not-exist"))
 		testutil.RequireNotDenied(t, err)
 
 		_, err = a.Inventory.Adjust(anon, inventorymodels.StockPatch{

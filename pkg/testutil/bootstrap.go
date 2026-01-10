@@ -36,10 +36,10 @@ func (b *Bootstrap) WithBasicIngredients() *Bootstrap {
 func (b *Bootstrap) WithStock(quantity float64) *Bootstrap {
 	b.fix.T.Helper()
 
-	res, err := b.fix.Ingredients.List(b.fix.Ctx, ingredients.ListRequest{})
+	ings, err := b.fix.Ingredients.List(b.fix.Ctx, ingredients.ListRequest{})
 	Ok(b.fix.T, err)
 
-	for _, ing := range res.Ingredients {
+	for _, ing := range ings {
 		_, err := b.fix.Inventory.Set(b.fix.Ctx, inventorymodels.StockUpdate{
 			IngredientID: ing.ID,
 			Quantity:     quantity,
@@ -52,14 +52,14 @@ func (b *Bootstrap) WithStock(quantity float64) *Bootstrap {
 
 func (b *Bootstrap) WithNoStock() *Bootstrap { return b.WithStock(0) }
 
-func (b *Bootstrap) WithIngredient(name string, unit ingredientsmodels.Unit) ingredientsmodels.Ingredient {
+func (b *Bootstrap) WithIngredient(name string, unit ingredientsmodels.Unit) *ingredientsmodels.Ingredient {
 	b.fix.T.Helper()
 
-	res, err := b.fix.Ingredients.List(b.fix.Ctx, ingredients.ListRequest{})
+	ings, err := b.fix.Ingredients.List(b.fix.Ctx, ingredients.ListRequest{})
 	Ok(b.fix.T, err)
 
 	want := normalizeName(name)
-	for _, ing := range res.Ingredients {
+	for _, ing := range ings {
 		if normalizeName(ing.Name) == want {
 			return ing
 		}
@@ -74,7 +74,7 @@ func (b *Bootstrap) WithIngredient(name string, unit ingredientsmodels.Unit) ing
 	return created
 }
 
-func (b *Bootstrap) WithDrink(drink models.Drink) models.Drink {
+func (b *Bootstrap) WithDrink(drink models.Drink) *models.Drink {
 	b.fix.T.Helper()
 
 	created, err := b.fix.Drinks.Create(b.fix.Ctx, drink)
@@ -82,7 +82,7 @@ func (b *Bootstrap) WithDrink(drink models.Drink) models.Drink {
 	return created
 }
 
-func (b *Bootstrap) WithMenu(name string) menumodels.Menu {
+func (b *Bootstrap) WithMenu(name string) *menumodels.Menu {
 	b.fix.T.Helper()
 
 	created, err := b.fix.Menu.Create(b.fix.Ctx, menumodels.Menu{Name: name})

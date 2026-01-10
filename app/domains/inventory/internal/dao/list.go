@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
@@ -16,8 +17,8 @@ type ListFilter struct {
 	MinQuantity  optional.Value[float64]
 }
 
-func (d *DAO) List(ctx context.Context, filter ListFilter) ([]models.Stock, error) {
-	var out []models.Stock
+func (d *DAO) List(ctx context.Context, filter ListFilter) ([]*models.Stock, error) {
+	var out []*models.Stock
 	err := d.read(ctx, func(tx *bstore.Tx) error {
 		q := bstore.QueryTx[StockRow](tx)
 
@@ -33,11 +34,12 @@ func (d *DAO) List(ctx context.Context, filter ListFilter) ([]models.Stock, erro
 
 		rows, err := q.List()
 		if err != nil {
-			return err
+			return store.MapError(err, "list stock")
 		}
-		stock := make([]models.Stock, 0, len(rows))
+		stock := make([]*models.Stock, 0, len(rows))
 		for _, r := range rows {
-			stock = append(stock, toModel(r))
+			s := toModel(r)
+			stock = append(stock, &s)
 		}
 		out = stock
 		return nil

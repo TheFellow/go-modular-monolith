@@ -81,7 +81,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					for _, o := range res.Orders {
+					for _, o := range res {
 						fmt.Printf("%s\t%s\t%s\t%s\n", string(o.ID.ID), string(o.MenuID.ID), o.Status, o.CreatedAt.Format(time.RFC3339))
 					}
 					return nil
@@ -95,11 +95,11 @@ func (c *CLI) ordersCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("order_id")[0]
-					res, err := c.app.Orders.Get(ctx, orders.GetRequest{ID: ordersmodels.NewOrderID(id)})
+					res, err := c.app.Orders.Get(ctx, ordersmodels.NewOrderID(id))
 					if err != nil {
 						return err
 					}
-					o := res.Order
+					o := res
 					fmt.Printf("ID:        %s\n", string(o.ID.ID))
 					fmt.Printf("MenuID:    %s\n", string(o.MenuID.ID))
 					fmt.Printf("Status:    %s\n", o.Status)

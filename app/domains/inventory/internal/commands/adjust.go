@@ -11,9 +11,9 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (models.Stock, error) {
+func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (*models.Stock, error) {
 	if patch.Reason == "" {
-		return models.Stock{}, errors.Invalidf("reason is required")
+		return nil, errors.Invalidf("reason is required")
 	}
 
 	var (
@@ -31,46 +31,48 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (mod
 	)
 	if v, ok := patch.CostPerUnit.Unwrap(); ok {
 		if err := v.Validate(); err != nil {
-			return models.Stock{}, err
+			return nil, err
 		}
 		hasCost = true
 		cost = v
 	}
 
 	if !hasDelta && !hasCost {
-		return models.Stock{}, errors.Invalidf("at least one of delta or cost_per_unit is required")
+		return nil, errors.Invalidf("at least one of delta or cost_per_unit is required")
 	}
 
 	if c.ingredients == nil {
-		return models.Stock{}, errors.Internalf("missing ingredients dependency")
+		return nil, errors.Internalf("missing ingredients dependency")
 	}
 
 	ingredient, err := c.ingredients.Get(ctx, patch.IngredientID)
 	if err != nil {
-		return models.Stock{}, err
+		return nil, err
 	}
 	if ingredient.Unit == "" {
-		return models.Stock{}, errors.Invalidf("ingredient unit is required")
+		return nil, errors.Invalidf("ingredient unit is required")
 	}
 
-	ingredientIDStr := string(patch.IngredientID.ID)
-	existing, found, err := c.dao.Get(ctx, patch.IngredientID)
+	existing, err := c.dao.Get(ctx, patch.IngredientID)
+	var current models.Stock
 	if err != nil {
-		return models.Stock{}, errors.Internalf("get stock %s: %w", ingredientIDStr, err)
-	}
-	if !found {
-		existing = models.Stock{
+		if !errors.IsNotFound(err) {
+			return nil, err
+		}
+		current = models.Stock{
 			IngredientID: patch.IngredientID,
 			Quantity:     0,
 			Unit:         ingredient.Unit,
 			CostPerUnit:  optional.None[money.Price](),
 			LastUpdated:  time.Time{},
 		}
+	} else {
+		current = *existing
 	}
 
-	previous := existing
+	previous := current
 
-	previousQty := existing.Quantity
+	previousQty := current.Quantity
 	newQty := previousQty
 	if hasDelta {
 		newQty = previousQty + delta
@@ -80,25 +82,25 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (mod
 	}
 
 	if hasDelta {
-		existing.Quantity = newQty
+		current.Quantity = newQty
 	}
-	existing.Unit = ingredient.Unit
+	current.Unit = ingredient.Unit
 	if hasCost {
-		existing.CostPerUnit = optional.Some(cost)
+		current.CostPerUnit = optional.Some(cost)
 	}
-	existing.LastUpdated = time.Now().UTC()
+	current.LastUpdated = time.Now().UTC()
 
-	if err := c.dao.Upsert(ctx, existing); err != nil {
-		return models.Stock{}, err
+	if err := c.dao.Upsert(ctx, current); err != nil {
+		return nil, err
 	}
 
 	if hasDelta {
 		ctx.AddEvent(events.StockAdjusted{
 			Previous: previous,
-			Current:  existing,
+			Current:  current,
 			Reason:   string(patch.Reason),
 		})
 	}
 
-	return existing, nil
+	return &current, nil
 }

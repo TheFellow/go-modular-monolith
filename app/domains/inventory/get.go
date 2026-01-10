@@ -7,15 +7,11 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type GetRequest struct {
+type getRequest struct {
 	IngredientID cedar.EntityUID
 }
 
-type GetResponse struct {
-	Stock models.Stock
-}
-
-func (r GetRequest) CedarEntity() cedar.Entity {
+func (r getRequest) CedarEntity() cedar.Entity {
 	return cedar.Entity{
 		UID:        models.NewStockID(r.IngredientID),
 		Parents:    cedar.NewEntityUIDSet(),
@@ -24,14 +20,10 @@ func (r GetRequest) CedarEntity() cedar.Entity {
 	}
 }
 
-func (m *Module) Get(ctx *middleware.Context, req GetRequest) (GetResponse, error) {
-	return middleware.RunQueryWithResource(ctx, authz.ActionGet, m.get, req)
+func (m *Module) Get(ctx *middleware.Context, ingredientID cedar.EntityUID) (*models.Stock, error) {
+	return middleware.RunQueryWithResource(ctx, authz.ActionGet, m.get, getRequest{IngredientID: ingredientID})
 }
 
-func (m *Module) get(ctx *middleware.Context, req GetRequest) (GetResponse, error) {
-	s, err := m.queries.Get(ctx, req.IngredientID)
-	if err != nil {
-		return GetResponse{}, err
-	}
-	return GetResponse{Stock: s}, nil
+func (m *Module) get(ctx *middleware.Context, req getRequest) (*models.Stock, error) {
+	return m.queries.Get(ctx, req.IngredientID)
 }

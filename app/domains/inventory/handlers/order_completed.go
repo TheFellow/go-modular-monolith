@@ -26,25 +26,26 @@ func (h *OrderCompletedStockUpdater) Handle(ctx *middleware.Context, e orderseve
 
 	for _, usage := range e.IngredientUsage {
 		ingredientID := string(usage.IngredientID.ID)
-		existing, found, err := h.stockDAO.Get(ctx, usage.IngredientID)
+		existing, err := h.stockDAO.Get(ctx, usage.IngredientID)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				return errors.NotFoundf("stock for ingredient %q not found", ingredientID)
+			}
 			return err
-		}
-		if !found {
-			return errors.NotFoundf("stock for ingredient %q not found", ingredientID)
 		}
 
 		if string(existing.Unit) != usage.Unit {
 			return errors.Invalidf("unit mismatch for ingredient %s: order %s vs stock %s", ingredientID, usage.Unit, existing.Unit)
 		}
 
-		existing.Quantity = existing.Quantity - usage.Amount
-		if existing.Quantity < 0 {
-			existing.Quantity = 0
+		updated := *existing
+		updated.Quantity = updated.Quantity - usage.Amount
+		if updated.Quantity < 0 {
+			updated.Quantity = 0
 		}
-		existing.LastUpdated = now
+		updated.LastUpdated = now
 
-		if err := h.stockDAO.Upsert(ctx, existing); err != nil {
+		if err := h.stockDAO.Upsert(ctx, updated); err != nil {
 			return err
 		}
 	}

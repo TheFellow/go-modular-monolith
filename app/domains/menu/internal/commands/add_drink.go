@@ -8,22 +8,20 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChange) (models.Menu, error) {
+func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChange) (*models.Menu, error) {
 	if _, err := c.drinks.Get(ctx, change.DrinkID); err != nil {
-		return models.Menu{}, err
+		return nil, err
 	}
 
-	menu, found, err := c.dao.Get(ctx, change.MenuID)
+	menu, err := c.dao.Get(ctx, change.MenuID)
 	if err != nil {
-		return models.Menu{}, errors.Internalf("get menu %s: %w", change.MenuID.ID, err)
-	}
-	if !found {
-		return models.Menu{}, errors.NotFoundf("menu %s not found", change.MenuID.ID)
+		return nil, err
 	}
 
+	updated := *menu
 	for _, item := range menu.Items {
 		if string(item.DrinkID.ID) == string(change.DrinkID.ID) {
-			return models.Menu{}, errors.Invalidf("drink already in menu")
+			return nil, errors.Invalidf("drink already in menu")
 		}
 	}
 
@@ -34,27 +32,27 @@ func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChan
 		}
 	}
 
-	menu.Items = append(menu.Items, models.MenuItem{
+	updated.Items = append(updated.Items, models.MenuItem{
 		DrinkID:      change.DrinkID,
 		DisplayName:  optional.None[string](),
 		Price:        optional.None[models.Price](),
 		Availability: c.availability.Calculate(ctx, change.DrinkID),
 		SortOrder:    nextSort,
 	})
-	added := menu.Items[len(menu.Items)-1]
+	added := updated.Items[len(updated.Items)-1]
 
-	if err := menu.Validate(); err != nil {
-		return models.Menu{}, err
+	if err := updated.Validate(); err != nil {
+		return nil, err
 	}
 
-	if err := c.dao.Update(ctx, menu); err != nil {
-		return models.Menu{}, err
+	if err := c.dao.Update(ctx, updated); err != nil {
+		return nil, err
 	}
 
 	ctx.AddEvent(events.DrinkAddedToMenu{
-		Menu: menu,
+		Menu: updated,
 		Item: added,
 	})
 
-	return menu, nil
+	return &updated, nil
 }

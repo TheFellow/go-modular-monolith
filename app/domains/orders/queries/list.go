@@ -8,7 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (q *Queries) List(ctx *middleware.Context, filter dao.ListFilter) ([]models.Order, error) {
+func (q *Queries) List(ctx *middleware.Context, filter dao.ListFilter) ([]*models.Order, error) {
 	out, err := q.dao.List(ctx, filter)
 	if err != nil {
 		return nil, err

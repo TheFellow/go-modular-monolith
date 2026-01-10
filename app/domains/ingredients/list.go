@@ -11,18 +11,14 @@ type ListRequest struct {
 	Category models.Category
 }
 
-type ListResponse struct {
-	Ingredients []models.Ingredient
-}
-
-func (m *Module) List(ctx *middleware.Context, req ListRequest) (ListResponse, error) {
+func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.Ingredient, error) {
 	return middleware.RunQuery(ctx, authz.ActionList, m.list, req)
 }
 
-func (m *Module) list(ctx *middleware.Context, req ListRequest) (ListResponse, error) {
+func (m *Module) list(ctx *middleware.Context, req ListRequest) ([]*models.Ingredient, error) {
 	is, err := m.queries.List(ctx, dao.ListFilter{Category: req.Category})
 	if err != nil {
-		return ListResponse{}, err
+		return nil, err
 	}
-	return ListResponse{Ingredients: is}, nil
+	return is, nil
 }

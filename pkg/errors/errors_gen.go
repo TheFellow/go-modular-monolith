@@ -102,6 +102,38 @@ func IsPermission(err error) bool {
 	return stderrors.As(err, &target)
 }
 
+type ConflictError struct {
+	msg   string
+	cause error
+}
+
+func (e *ConflictError) Error() string {
+	if e == nil {
+		return ErrConflict.Message
+	}
+	if e.msg != "" {
+		return e.msg
+	}
+	return ErrConflict.Message
+}
+
+func (e *ConflictError) Unwrap() error        { return e.cause }
+func (e *ConflictError) Kind() ErrorKind      { return ErrConflict }
+func (e *ConflictError) HTTPCode() httpCode   { return ErrConflict.HTTPCode }
+func (e *ConflictError) GRPCCode() codes.Code { return ErrConflict.GRPCCode }
+func (e *ConflictError) CLICode() int         { return ErrConflict.CLICode }
+func (e *ConflictError) ExitCode() int        { return ErrConflict.CLICode }
+
+func Conflictf(format string, args ...any) error {
+	msg, cause := formatf(format, args...)
+	return &ConflictError{msg: msg, cause: cause}
+}
+
+func IsConflict(err error) bool {
+	var target *ConflictError
+	return stderrors.As(err, &target)
+}
+
 type InternalError struct {
 	msg   string
 	cause error

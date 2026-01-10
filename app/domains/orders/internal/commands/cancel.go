@@ -10,34 +10,32 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Cancel(ctx *middleware.Context, order models.Order) (models.Order, error) {
-	existing, found, err := c.dao.Get(ctx, order.ID)
+func (c *Commands) Cancel(ctx *middleware.Context, order models.Order) (*models.Order, error) {
+	existing, err := c.dao.Get(ctx, order.ID)
 	if err != nil {
-		return models.Order{}, err
-	}
-	if !found {
-		return models.Order{}, errors.NotFoundf("order %q not found", order.ID.ID)
+		return nil, err
 	}
 
 	switch existing.Status {
 	case models.OrderStatusCompleted:
-		return models.Order{}, errors.Invalidf("order %q is already completed", existing.ID)
+		return nil, errors.Invalidf("order %q is already completed", existing.ID)
 	case models.OrderStatusCancelled:
 		return existing, nil
 	case models.OrderStatusPending, models.OrderStatusPreparing:
 	default:
-		return models.Order{}, errors.Invalidf("unexpected status %q", existing.Status)
+		return nil, errors.Invalidf("unexpected status %q", existing.Status)
 	}
 
-	existing.Status = models.OrderStatusCancelled
-	existing.CompletedAt = optional.NewNone[time.Time]()
+	updated := *existing
+	updated.Status = models.OrderStatusCancelled
+	updated.CompletedAt = optional.NewNone[time.Time]()
 
-	if err := c.dao.Update(ctx, existing); err != nil {
-		return models.Order{}, err
+	if err := c.dao.Update(ctx, updated); err != nil {
+		return nil, err
 	}
 
 	ctx.AddEvent(events.OrderCancelled{
-		Order: existing,
+		Order: updated,
 	})
-	return existing, nil
+	return &updated, nil
 }

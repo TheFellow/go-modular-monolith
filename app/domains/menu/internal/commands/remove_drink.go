@@ -7,13 +7,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (c *Commands) RemoveDrink(ctx *middleware.Context, change models.MenuDrinkChange) (models.Menu, error) {
-	menu, found, err := c.dao.Get(ctx, change.MenuID)
+func (c *Commands) RemoveDrink(ctx *middleware.Context, change models.MenuDrinkChange) (*models.Menu, error) {
+	menu, err := c.dao.Get(ctx, change.MenuID)
 	if err != nil {
-		return models.Menu{}, errors.Internalf("get menu %s: %w", change.MenuID.ID, err)
-	}
-	if !found {
-		return models.Menu{}, errors.NotFoundf("menu %s not found", change.MenuID.ID)
+		return nil, err
 	}
 
 	var out []models.MenuItem
@@ -28,22 +25,23 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, change models.MenuDrinkC
 		out = append(out, item)
 	}
 	if !removed {
-		return models.Menu{}, errors.NotFoundf("drink not in menu")
+		return nil, errors.NotFoundf("drink not in menu")
 	}
-	menu.Items = out
+	updated := *menu
+	updated.Items = out
 
-	if err := menu.Validate(); err != nil {
-		return models.Menu{}, err
+	if err := updated.Validate(); err != nil {
+		return nil, err
 	}
 
-	if err := c.dao.Update(ctx, menu); err != nil {
-		return models.Menu{}, err
+	if err := c.dao.Update(ctx, updated); err != nil {
+		return nil, err
 	}
 
 	ctx.AddEvent(events.DrinkRemovedFromMenu{
-		Menu: menu,
+		Menu: updated,
 		Item: removedItem,
 	})
 
-	return menu, nil
+	return &updated, nil
 }

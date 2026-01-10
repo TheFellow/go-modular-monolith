@@ -12,19 +12,19 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (models.Menu, error) {
+func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (*models.Menu, error) {
 	if menu.ID.ID != "" {
-		return models.Menu{}, errors.Invalidf("id must be empty for create")
+		return nil, errors.Invalidf("id must be empty for create")
 	}
 
 	menu.Name = strings.TrimSpace(menu.Name)
 	if menu.Name == "" {
-		return models.Menu{}, errors.Invalidf("name is required")
+		return nil, errors.Invalidf("name is required")
 	}
 
 	uid, err := ids.New(models.MenuEntityType)
 	if err != nil {
-		return models.Menu{}, errors.Internalf("generate id: %w", err)
+		return nil, errors.Internalf("generate id: %w", err)
 	}
 
 	now := time.Now().UTC()
@@ -39,16 +39,16 @@ func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (models.Men
 	}
 
 	if err := created.Validate(); err != nil {
-		return models.Menu{}, err
+		return nil, err
 	}
 
 	if err := c.dao.Insert(ctx, created); err != nil {
-		return models.Menu{}, err
+		return nil, err
 	}
 
 	ctx.AddEvent(events.MenuCreated{
 		Menu: created,
 	})
 
-	return created, nil
+	return &created, nil
 }

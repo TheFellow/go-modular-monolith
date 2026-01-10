@@ -7,22 +7,10 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type GetRequest struct {
-	ID cedar.EntityUID
+func (m *Module) Get(ctx *middleware.Context, id cedar.EntityUID) (*models.Menu, error) {
+	return middleware.RunQuery(ctx, authz.ActionGet, m.get, id)
 }
 
-type GetResponse struct {
-	Menu models.Menu
-}
-
-func (m *Module) Get(ctx *middleware.Context, req GetRequest) (GetResponse, error) {
-	return middleware.RunQuery(ctx, authz.ActionGet, m.get, req)
-}
-
-func (m *Module) get(ctx *middleware.Context, req GetRequest) (GetResponse, error) {
-	menu, err := m.queries.Get(ctx, req.ID)
-	if err != nil {
-		return GetResponse{}, err
-	}
-	return GetResponse{Menu: menu}, nil
+func (m *Module) get(ctx *middleware.Context, id cedar.EntityUID) (*models.Menu, error) {
+	return m.queries.Get(ctx, id)
 }

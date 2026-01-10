@@ -46,17 +46,17 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						out := make([]menucli.Menu, 0, len(res.Menus))
-						for _, m := range res.Menus {
-							out = append(out, menucli.FromDomainMenu(m))
+						out := make([]menucli.Menu, 0, len(res))
+						for _, m := range res {
+							out = append(out, menucli.FromDomainMenu(*m))
 						}
 						return writeJSON(cmd.Writer, out)
 					}
 
-					for _, m := range res.Menus {
+					for _, m := range res {
 						fmt.Printf("%s\t%s\t%s\t%d\n", string(m.ID.ID), m.Name, m.Status, len(m.Items))
 						if cmd.Bool("costs") && len(m.Items) > 0 {
-							an, err := menuqueries.NewAnalyticsCalculator().Analyze(ctx, m, cmd.Float64("target-margin"))
+							an, err := menuqueries.NewAnalyticsCalculator().Analyze(ctx, *m, cmd.Float64("target-margin"))
 							if err != nil {
 								return err
 							}
@@ -79,23 +79,23 @@ func (c *CLI) menuCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("menu_id")[0]
-					res, err := c.app.Menu.Get(ctx, menu.GetRequest{ID: menumodels.NewMenuID(id)})
+					res, err := c.app.Menu.Get(ctx, menumodels.NewMenuID(id))
 					if err != nil {
 						return err
 					}
 
 					if cmd.Bool("json") {
 						if cmd.Bool("costs") {
-							an, err := menuqueries.NewAnalyticsCalculator().Analyze(ctx, res.Menu, cmd.Float64("target-margin"))
+							an, err := menuqueries.NewAnalyticsCalculator().Analyze(ctx, *res, cmd.Float64("target-margin"))
 							if err != nil {
 								return err
 							}
 							return writeJSON(cmd.Writer, an)
 						}
-						return writeJSON(cmd.Writer, menucli.FromDomainMenu(res.Menu))
+						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*res))
 					}
 
-					m := res.Menu
+					m := *res
 					fmt.Printf("ID:          %s\n", string(m.ID.ID))
 					fmt.Printf("Name:        %s\n", m.Name)
 					if m.Description != "" {
@@ -164,7 +164,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, menucli.FromDomainMenu(created))
+						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*created))
 					}
 
 					fmt.Printf("%s\t%s\n", string(created.ID.ID), created.Name)
@@ -191,7 +191,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, menucli.FromDomainMenu(updated))
+						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
 					}
 
 					fmt.Printf("%s\t%s\t%d\n", string(updated.ID.ID), updated.Name, len(updated.Items))
@@ -218,7 +218,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, menucli.FromDomainMenu(updated))
+						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
 					}
 
 					fmt.Printf("%s\t%s\t%d\n", string(updated.ID.ID), updated.Name, len(updated.Items))
@@ -240,7 +240,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, menucli.FromDomainMenu(published))
+						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*published))
 					}
 
 					fmt.Printf("%s\t%s\t%s\n", string(published.ID.ID), published.Name, published.Status)

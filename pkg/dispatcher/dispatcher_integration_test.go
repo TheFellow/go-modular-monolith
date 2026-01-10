@@ -2,13 +2,13 @@ package dispatcher_test
 
 import (
 	"testing"
+	"time"
 
 	drinksevents "github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventoryevents "github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menu"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
@@ -84,16 +84,16 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("dispatch: %v", err)
 	}
 
-	got, err := a.Menu.Get(ctx, menu.GetRequest{ID: m2.ID})
+	got, err := a.Menu.Get(ctx, m2.ID)
 	if err != nil {
 		t.Fatalf("get menu: %v", err)
 	}
 
-	if len(got.Menu.Items) != 1 {
-		t.Fatalf("expected 1 menu item, got %d", len(got.Menu.Items))
+	if len(got.Items) != 1 {
+		t.Fatalf("expected 1 menu item, got %d", len(got.Items))
 	}
-	if got.Menu.Items[0].Availability != menumodels.AvailabilityUnavailable {
-		t.Fatalf("expected menu item availability unavailable, got %q", got.Menu.Items[0].Availability)
+	if got.Items[0].Availability != menumodels.AvailabilityUnavailable {
+		t.Fatalf("expected menu item availability unavailable, got %q", got.Items[0].Availability)
 	}
 }
 
@@ -167,23 +167,23 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	d := dispatcher.New()
 	err = fix.Store.Write(ctx, func(tx *bstore.Tx) error {
 		txCtx := middleware.NewContext(ctx, middleware.WithTransaction(tx))
-		return d.Dispatch(txCtx, drinksevents.DrinkDeleted{Drink: drink1})
+		return d.Dispatch(txCtx, drinksevents.DrinkDeleted{Drink: *drink1, DeletedAt: time.Now().UTC()})
 	})
 	if err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 
 	// Verify menu now has only drink2
-	got, err := a.Menu.Get(ctx, menu.GetRequest{ID: m2.ID})
+	got, err := a.Menu.Get(ctx, m2.ID)
 	if err != nil {
 		t.Fatalf("get menu: %v", err)
 	}
 
-	if len(got.Menu.Items) != 1 {
-		t.Fatalf("expected 1 menu item after delete, got %d", len(got.Menu.Items))
+	if len(got.Items) != 1 {
+		t.Fatalf("expected 1 menu item after delete, got %d", len(got.Items))
 	}
 
-	if string(got.Menu.Items[0].DrinkID.ID) != string(drink2.ID.ID) {
-		t.Fatalf("expected remaining item to be drink2, got %s", string(got.Menu.Items[0].DrinkID.ID))
+	if string(got.Items[0].DrinkID.ID) != string(drink2.ID.ID) {
+		t.Fatalf("expected remaining item to be drink2, got %s", string(got.Items[0].DrinkID.ID))
 	}
 }

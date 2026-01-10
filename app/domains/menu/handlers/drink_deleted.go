@@ -33,7 +33,7 @@ func (h *DrinkDeletedMenuUpdater) Handle(ctx *middleware.Context, e drinksevents
 			}
 		}
 		menu.Items = filtered
-		if err := h.menuDAO.Update(ctx, menu); err != nil {
+		if err := h.menuDAO.Update(ctx, *menu); err != nil {
 			return err
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
@@ -12,10 +13,12 @@ import (
 type ListFilter struct {
 	Status models.OrderStatus
 	MenuID cedar.EntityUID
+	// IncludeDeleted includes soft-deleted rows (DeletedAt != nil).
+	IncludeDeleted bool
 }
 
-func (d *DAO) List(ctx context.Context, filter ListFilter) ([]models.Order, error) {
-	var out []models.Order
+func (d *DAO) List(ctx context.Context, filter ListFilter) ([]*models.Order, error) {
+	var out []*models.Order
 	err := d.read(ctx, func(tx *bstore.Tx) error {
 		q := bstore.QueryTx[OrderRow](tx)
 		if filter.Status != "" {
@@ -27,11 +30,15 @@ func (d *DAO) List(ctx context.Context, filter ListFilter) ([]models.Order, erro
 
 		rows, err := q.List()
 		if err != nil {
-			return err
+			return store.MapError(err, "list orders")
 		}
-		orders := make([]models.Order, 0, len(rows))
+		orders := make([]*models.Order, 0, len(rows))
 		for _, r := range rows {
-			orders = append(orders, toModel(r))
+			if !filter.IncludeDeleted && r.DeletedAt != nil {
+				continue
+			}
+			o := toModel(r)
+			orders = append(orders, &o)
 		}
 		out = orders
 		return nil
