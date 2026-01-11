@@ -10,7 +10,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Set(ctx *middleware.Context, update models.StockUpdate) (*models.Stock, error) {
+func (c *Commands) Set(ctx *middleware.Context, update models.Update) (*models.Inventory, error) {
 	if update.Quantity < 0 {
 		update.Quantity = 0
 	}
@@ -30,12 +30,12 @@ func (c *Commands) Set(ctx *middleware.Context, update models.StockUpdate) (*mod
 	}
 
 	existing, err := c.dao.Get(ctx, update.IngredientID)
-	var current models.Stock
+	var current models.Inventory
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, err
 		}
-		current = models.Stock{
+		current = models.Inventory{
 			IngredientID: update.IngredientID,
 			Quantity:     0,
 			Unit:         ingredient.Unit,

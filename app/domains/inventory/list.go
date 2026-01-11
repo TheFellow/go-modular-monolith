@@ -25,11 +25,11 @@ func (ListRequest) CedarEntity() cedar.Entity {
 	}
 }
 
-func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.Stock, error) {
+func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.Inventory, error) {
 	return middleware.RunQueryWithResource(ctx, authz.ActionList, m.list, req)
 }
 
-func (m *Module) list(ctx *middleware.Context, req ListRequest) ([]*models.Stock, error) {
+func (m *Module) list(ctx *middleware.Context, req ListRequest) ([]*models.Inventory, error) {
 	filter := dao.ListFilter{
 		IngredientID: req.IngredientID,
 		MaxQuantity:  req.LowStock,

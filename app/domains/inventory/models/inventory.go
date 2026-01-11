@@ -15,7 +15,7 @@ func NewInventoryID(ingredientID cedar.EntityUID) cedar.EntityUID {
 	return cedar.NewEntityUID(InventoryEntityType, ingredientID.ID)
 }
 
-type Stock struct {
+type Inventory struct {
 	IngredientID cedar.EntityUID
 	Quantity     float64
 	Unit         measurement.Unit
@@ -23,11 +23,11 @@ type Stock struct {
 	LastUpdated  time.Time
 }
 
-func (s Stock) EntityUID() cedar.EntityUID {
+func (s Inventory) EntityUID() cedar.EntityUID {
 	return NewInventoryID(s.IngredientID)
 }
 
-func (s Stock) CedarEntity() cedar.Entity {
+func (s Inventory) CedarEntity() cedar.Entity {
 	return cedar.Entity{
 		UID:        s.EntityUID(),
 		Parents:    cedar.NewEntityUIDSet(),

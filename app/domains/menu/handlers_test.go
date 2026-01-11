@@ -27,7 +27,7 @@ func TestDrinkRecipeUpdatedMenuUpdater_MarksUnavailableWhenNewIngredientOutOfSto
 	})
 	testutil.Ok(t, err)
 
-	_, err = fix.Inventory.Set(ctx, inventorymodels.StockUpdate{
+	_, err = fix.Inventory.Set(ctx, inventorymodels.Update{
 		IngredientID: base.ID,
 		Quantity:     10,
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),

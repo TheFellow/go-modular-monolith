@@ -31,7 +31,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("create ingredient: %v", err)
 	}
 
-	_, err = a.Inventory.Set(ctx, inventorymodels.StockUpdate{
+	_, err = a.Inventory.Set(ctx, inventorymodels.Update{
 		IngredientID: ingredient.ID,
 		Quantity:     10,
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
@@ -75,8 +75,8 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	err = fix.Store.Write(ctx, func(tx *bstore.Tx) error {
 		txCtx := middleware.NewContext(ctx, middleware.WithTransaction(tx))
 		return d.Dispatch(txCtx, inventoryevents.StockAdjusted{
-			Previous: inventorymodels.Stock{IngredientID: ingredient.ID, Quantity: 10, Unit: ingredientsmodels.UnitOz},
-			Current:  inventorymodels.Stock{IngredientID: ingredient.ID, Quantity: 0, Unit: ingredientsmodels.UnitOz},
+			Previous: inventorymodels.Inventory{IngredientID: ingredient.ID, Quantity: 10, Unit: ingredientsmodels.UnitOz},
+			Current:  inventorymodels.Inventory{IngredientID: ingredient.ID, Quantity: 0, Unit: ingredientsmodels.UnitOz},
 			Reason:   "used",
 		})
 	})

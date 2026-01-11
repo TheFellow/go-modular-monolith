@@ -106,7 +106,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						cost = optional.Some(p)
 					}
 
-					res, err := c.app.Inventory.Adjust(ctx, inventorymodels.StockPatch{
+					res, err := c.app.Inventory.Adjust(ctx, inventorymodels.Patch{
 						IngredientID: entity.IngredientID(ingredientID),
 						Delta:        delta,
 						CostPerUnit:  cost,
@@ -143,7 +143,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return err
 					}
 
-					res, err := c.app.Inventory.Set(ctx, inventorymodels.StockUpdate{
+					res, err := c.app.Inventory.Set(ctx, inventorymodels.Update{
 						IngredientID: entity.IngredientID(ingredientID),
 						Quantity:     qty,
 						CostPerUnit:  cost,

@@ -40,7 +40,7 @@ func (b *Bootstrap) WithStock(quantity float64) *Bootstrap {
 	Ok(b.fix.T, err)
 
 	for _, ing := range ings {
-		_, err := b.fix.Inventory.Set(b.fix.Ctx, inventorymodels.StockUpdate{
+		_, err := b.fix.Inventory.Set(b.fix.Ctx, inventorymodels.Update{
 			IngredientID: ing.ID,
 			Quantity:     quantity,
 			CostPerUnit:  money.NewPriceFromCents(100, "USD"),

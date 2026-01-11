@@ -24,14 +24,14 @@ func TestPermissions_Inventory(t *testing.T) {
 		_, err = a.Inventory.Get(owner, entity.IngredientID("does-not-exist"))
 		testutil.RequireNotDenied(t, err)
 
-		_, err = a.Inventory.Adjust(owner, inventorymodels.StockPatch{
+		_, err = a.Inventory.Adjust(owner, inventorymodels.Patch{
 			IngredientID: entity.IngredientID("does-not-exist"),
 			Delta:        optional.Some(1.0),
 			Reason:       inventorymodels.ReasonCorrected,
 		})
 		testutil.RequireNotDenied(t, err)
 
-		_, err = a.Inventory.Set(owner, inventorymodels.StockUpdate{
+		_, err = a.Inventory.Set(owner, inventorymodels.Update{
 			IngredientID: entity.IngredientID("does-not-exist"),
 			Quantity:     1.0,
 		})
@@ -45,14 +45,14 @@ func TestPermissions_Inventory(t *testing.T) {
 		_, err = a.Inventory.Get(anon, entity.IngredientID("does-not-exist"))
 		testutil.RequireNotDenied(t, err)
 
-		_, err = a.Inventory.Adjust(anon, inventorymodels.StockPatch{
+		_, err = a.Inventory.Adjust(anon, inventorymodels.Patch{
 			IngredientID: entity.IngredientID("does-not-exist"),
 			Delta:        optional.Some(1.0),
 			Reason:       inventorymodels.ReasonCorrected,
 		})
 		testutil.RequireDenied(t, err)
 
-		_, err = a.Inventory.Set(anon, inventorymodels.StockUpdate{
+		_, err = a.Inventory.Set(anon, inventorymodels.Update{
 			IngredientID: entity.IngredientID("does-not-exist"),
 			Quantity:     1.0,
 		})

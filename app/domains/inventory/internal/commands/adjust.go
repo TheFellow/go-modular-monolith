@@ -11,7 +11,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (*models.Stock, error) {
+func (c *Commands) Adjust(ctx *middleware.Context, patch models.Patch) (*models.Inventory, error) {
 	if patch.Reason == "" {
 		return nil, errors.Invalidf("reason is required")
 	}
@@ -54,12 +54,12 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch models.StockPatch) (*mo
 	}
 
 	existing, err := c.dao.Get(ctx, patch.IngredientID)
-	var current models.Stock
+	var current models.Inventory
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, err
 		}
-		current = models.Stock{
+		current = models.Inventory{
 			IngredientID: patch.IngredientID,
 			Quantity:     0,
 			Unit:         ingredient.Unit,

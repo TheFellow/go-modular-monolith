@@ -3,64 +3,63 @@ package ingredients_test
 import (
 	"testing"
 
-	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	drinksM "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventoryM "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
-	fix := testutil.NewFixture(t)
-	ctx := fix.Ctx
+	f := testutil.NewFixture(t)
 
-	ingredient, err := fix.Ingredients.Create(ctx, ingredientsmodels.Ingredient{
+	ingredient, err := f.Ingredients.Create(f.Ctx, ingredientsM.Ingredient{
 		Name:     "Vodka",
-		Category: ingredientsmodels.CategorySpirit,
-		Unit:     ingredientsmodels.UnitOz,
+		Category: ingredientsM.CategorySpirit,
+		Unit:     ingredientsM.UnitOz,
 	})
 	testutil.Ok(t, err)
 
-	_, err = fix.Inventory.Set(ctx, inventorymodels.StockUpdate{
+	_, err = f.Inventory.Set(f.Ctx, inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Quantity:     10,
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
 	})
 	testutil.Ok(t, err)
 
-	drink, err := fix.Drinks.Create(ctx, drinksmodels.Drink{
+	drink, err := f.Drinks.Create(f.Ctx, drinksM.Drink{
 		Name:     "Vodka Soda",
-		Category: drinksmodels.DrinkCategoryCocktail,
-		Glass:    drinksmodels.GlassTypeRocks,
-		Recipe: drinksmodels.Recipe{
-			Ingredients: []drinksmodels.RecipeIngredient{
-				{IngredientID: ingredient.ID, Amount: 1, Unit: ingredientsmodels.UnitOz},
+		Category: drinksM.DrinkCategoryCocktail,
+		Glass:    drinksM.GlassTypeRocks,
+		Recipe: drinksM.Recipe{
+			Ingredients: []drinksM.RecipeIngredient{
+				{IngredientID: ingredient.ID, Amount: 1, Unit: ingredientsM.UnitOz},
 			},
 			Steps: []string{"build"},
 		},
 	})
 	testutil.Ok(t, err)
 
-	menu, err := fix.Menu.Create(ctx, menumodels.Menu{Name: "Test Menu"})
+	menu, err := f.Menu.Create(f.Ctx, menuM.Menu{Name: "Test Menu"})
 	testutil.Ok(t, err)
-	menu, err = fix.Menu.AddDrink(ctx, menumodels.MenuDrinkChange{MenuID: menu.ID, DrinkID: drink.ID})
+	menu, err = f.Menu.AddDrink(f.Ctx, menuM.MenuDrinkChange{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
-	menu, err = fix.Menu.Publish(ctx, menumodels.Menu{ID: menu.ID})
+	menu, err = f.Menu.Publish(f.Ctx, menuM.Menu{ID: menu.ID})
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(menu.Items) != 1, "expected 1 menu item, got %d", len(menu.Items))
 
-	_, err = fix.Ingredients.Delete(ctx, ingredient.ID)
+	_, err = f.Ingredients.Delete(f.Ctx, ingredient.ID)
 	testutil.Ok(t, err)
 
-	_, err = fix.Inventory.Get(ctx, ingredient.ID)
+	_, err = f.Inventory.Get(f.Ctx, ingredient.ID)
 	testutil.ErrorIf(t, !errors.IsNotFound(err), "expected stock not found, got %v", err)
 
-	_, err = fix.Drinks.Get(ctx, drink.ID)
+	_, err = f.Drinks.Get(f.Ctx, drink.ID)
 	testutil.ErrorIf(t, !errors.IsNotFound(err), "expected drink not found, got %v", err)
 
-	gotMenu, err := fix.Menu.Get(ctx, menu.ID)
+	gotMenu, err := f.Menu.Get(f.Ctx, menu.ID)
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(gotMenu.Items) != 0, "expected menu items to be removed, got %d", len(gotMenu.Items))
 }

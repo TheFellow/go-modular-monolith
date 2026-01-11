@@ -7,6 +7,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 )
 
-func (q *Queries) List(ctx context.Context, filter dao.ListFilter) ([]*models.Stock, error) {
+func (q *Queries) List(ctx context.Context, filter dao.ListFilter) ([]*models.Inventory, error) {
 	return q.dao.List(ctx, filter)
 }

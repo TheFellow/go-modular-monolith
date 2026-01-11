@@ -5,17 +5,17 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type StockUpdate struct {
+type Update struct {
 	IngredientID cedar.EntityUID
 	Quantity     float64
 	CostPerUnit  money.Price
 }
 
-func (u StockUpdate) EntityUID() cedar.EntityUID {
+func (u Update) EntityUID() cedar.EntityUID {
 	return NewInventoryID(u.IngredientID)
 }
 
-func (u StockUpdate) CedarEntity() cedar.Entity {
+func (u Update) CedarEntity() cedar.Entity {
 	return cedar.Entity{
 		UID:        u.EntityUID(),
 		Parents:    cedar.NewEntityUIDSet(),

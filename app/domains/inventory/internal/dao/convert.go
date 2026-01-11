@@ -6,7 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 )
 
-func toRow(s inventorymodels.Stock) StockRow {
+func toRow(s inventorymodels.Inventory) StockRow {
 	return StockRow{
 		IngredientID: string(s.IngredientID.ID),
 		Quantity:     s.Quantity,
@@ -16,8 +16,8 @@ func toRow(s inventorymodels.Stock) StockRow {
 	}
 }
 
-func toModel(r StockRow) inventorymodels.Stock {
-	return inventorymodels.Stock{
+func toModel(r StockRow) inventorymodels.Inventory {
+	return inventorymodels.Inventory{
 		IngredientID: entity.IngredientID(r.IngredientID),
 		Quantity:     r.Quantity,
 		Unit:         measurement.Unit(r.Unit),

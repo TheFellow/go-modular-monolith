@@ -17,8 +17,8 @@ type ListFilter struct {
 	MinQuantity  optional.Value[float64]
 }
 
-func (d *DAO) List(ctx context.Context, filter ListFilter) ([]*models.Stock, error) {
-	var out []*models.Stock
+func (d *DAO) List(ctx context.Context, filter ListFilter) ([]*models.Inventory, error) {
+	var out []*models.Inventory
 	err := d.read(ctx, func(tx *bstore.Tx) error {
 		q := bstore.QueryTx[StockRow](tx)
 
@@ -36,7 +36,7 @@ func (d *DAO) List(ctx context.Context, filter ListFilter) ([]*models.Stock, err
 		if err != nil {
 			return store.MapError(err, "list stock")
 		}
-		stock := make([]*models.Stock, 0, len(rows))
+		stock := make([]*models.Inventory, 0, len(rows))
 		for _, r := range rows {
 			s := toModel(r)
 			stock = append(stock, &s)

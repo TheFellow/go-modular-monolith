@@ -7,6 +7,6 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (q *Queries) Get(ctx context.Context, ingredientID cedar.EntityUID) (*models.Stock, error) {
+func (q *Queries) Get(ctx context.Context, ingredientID cedar.EntityUID) (*models.Inventory, error) {
 	return q.dao.Get(ctx, ingredientID)
 }

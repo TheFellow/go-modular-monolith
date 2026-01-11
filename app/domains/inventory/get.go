@@ -20,10 +20,10 @@ func (r getRequest) CedarEntity() cedar.Entity {
 	}
 }
 
-func (m *Module) Get(ctx *middleware.Context, ingredientID cedar.EntityUID) (*models.Stock, error) {
+func (m *Module) Get(ctx *middleware.Context, ingredientID cedar.EntityUID) (*models.Inventory, error) {
 	return middleware.RunQueryWithResource(ctx, authz.ActionGet, m.get, getRequest{IngredientID: ingredientID})
 }
 
-func (m *Module) get(ctx *middleware.Context, req getRequest) (*models.Stock, error) {
+func (m *Module) get(ctx *middleware.Context, req getRequest) (*models.Inventory, error) {
 	return m.queries.Get(ctx, req.IngredientID)
 }

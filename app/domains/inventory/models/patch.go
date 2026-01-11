@@ -6,21 +6,21 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type StockPatch struct {
+type Patch struct {
 	IngredientID cedar.EntityUID
 	Reason       AdjustmentReason
 	Delta        optional.Value[float64]
 	CostPerUnit  optional.Value[money.Price]
 }
 
-func (p StockPatch) EntityUID() cedar.EntityUID {
+func (p Patch) EntityUID() cedar.EntityUID {
 	_ = p.Reason
 	_ = p.Delta
 	_ = p.CostPerUnit
 	return NewInventoryID(p.IngredientID)
 }
 
-func (p StockPatch) CedarEntity() cedar.Entity {
+func (p Patch) CedarEntity() cedar.Entity {
 	return cedar.Entity{
 		UID:        p.EntityUID(),
 		Parents:    cedar.NewEntityUIDSet(),

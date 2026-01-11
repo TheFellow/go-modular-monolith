@@ -9,7 +9,7 @@ import (
 	"github.com/mjl-/bstore"
 )
 
-func (d *DAO) Get(ctx context.Context, ingredientID cedar.EntityUID) (*models.Stock, error) {
+func (d *DAO) Get(ctx context.Context, ingredientID cedar.EntityUID) (*models.Inventory, error) {
 	var row StockRow
 	err := d.read(ctx, func(tx *bstore.Tx) error {
 		row = StockRow{IngredientID: string(ingredientID.ID)}
