@@ -12,8 +12,8 @@ func TestPermissions_Drinks(t *testing.T) {
 	fix := testutil.NewFixture(t)
 	a := fix.App
 
-	owner := fix.Ctx
-	anon := fix.AsActor("anonymous")
+	owner := fix.OwnerContext()
+	anon := fix.ActorContext("anonymous")
 
 	t.Run("owner", func(t *testing.T) {
 		_, err := a.Drinks.List(owner, drinks.ListRequest{})

@@ -13,8 +13,8 @@ func TestPermissions_Ingredients(t *testing.T) {
 	fix := testutil.NewFixture(t)
 	a := fix.App
 
-	owner := fix.Ctx
-	anon := fix.AsActor("anonymous")
+	owner := fix.OwnerContext()
+	anon := fix.ActorContext("anonymous")
 
 	t.Run("owner", func(t *testing.T) {
 		_, err := a.Ingredients.List(owner, ingredients.ListRequest{})

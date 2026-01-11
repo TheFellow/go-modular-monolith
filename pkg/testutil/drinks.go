@@ -42,7 +42,7 @@ func (b *DrinkBuilder) Build() *models.Drink {
 		})
 	}
 
-	drink, err := b.fix.Drinks.Create(b.fix.Ctx, models.Drink{
+	drink, err := b.fix.Drinks.Create(b.fix.OwnerContext(), models.Drink{
 		Name:     b.name,
 		Category: models.DrinkCategoryCocktail,
 		Glass:    models.GlassTypeCoupe,
@@ -58,7 +58,7 @@ func (b *DrinkBuilder) Build() *models.Drink {
 func (f *Fixture) findOrCreateIngredient(name string) *ingredientsmodels.Ingredient {
 	f.T.Helper()
 
-	ings, err := f.Ingredients.List(f.Ctx, ingredients.ListRequest{})
+	ings, err := f.Ingredients.List(f.OwnerContext(), ingredients.ListRequest{})
 	Ok(f.T, err)
 
 	want := normalizeName(name)
@@ -68,7 +68,7 @@ func (f *Fixture) findOrCreateIngredient(name string) *ingredientsmodels.Ingredi
 		}
 	}
 
-	created, err := f.Ingredients.Create(f.Ctx, ingredientsmodels.Ingredient{
+	created, err := f.Ingredients.Create(f.OwnerContext(), ingredientsmodels.Ingredient{
 		Name:     name,
 		Category: ingredientsmodels.CategorySpirit,
 		Unit:     ingredientsmodels.UnitOz,

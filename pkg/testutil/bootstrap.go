@@ -17,6 +17,7 @@ type Bootstrap struct {
 
 func (b *Bootstrap) WithBasicIngredients() *Bootstrap {
 	b.fix.T.Helper()
+	ctx := b.fix.OwnerContext()
 
 	basics := []ingredientsmodels.Ingredient{
 		{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: ingredientsmodels.UnitOz},
@@ -27,7 +28,7 @@ func (b *Bootstrap) WithBasicIngredients() *Bootstrap {
 		{Name: "Gin", Category: ingredientsmodels.CategorySpirit, Unit: ingredientsmodels.UnitOz},
 	}
 	for _, ing := range basics {
-		_, err := b.fix.Ingredients.Create(b.fix.Ctx, ing)
+		_, err := b.fix.Ingredients.Create(ctx, ing)
 		Ok(b.fix.T, err)
 	}
 	return b
@@ -35,12 +36,13 @@ func (b *Bootstrap) WithBasicIngredients() *Bootstrap {
 
 func (b *Bootstrap) WithStock(quantity float64) *Bootstrap {
 	b.fix.T.Helper()
+	ctx := b.fix.OwnerContext()
 
-	ings, err := b.fix.Ingredients.List(b.fix.Ctx, ingredients.ListRequest{})
+	ings, err := b.fix.Ingredients.List(ctx, ingredients.ListRequest{})
 	Ok(b.fix.T, err)
 
 	for _, ing := range ings {
-		_, err := b.fix.Inventory.Set(b.fix.Ctx, inventorymodels.Update{
+		_, err := b.fix.Inventory.Set(ctx, inventorymodels.Update{
 			IngredientID: ing.ID,
 			Quantity:     quantity,
 			CostPerUnit:  money.NewPriceFromCents(100, "USD"),
@@ -54,8 +56,9 @@ func (b *Bootstrap) WithNoStock() *Bootstrap { return b.WithStock(0) }
 
 func (b *Bootstrap) WithIngredient(name string, unit ingredientsmodels.Unit) *ingredientsmodels.Ingredient {
 	b.fix.T.Helper()
+	ctx := b.fix.OwnerContext()
 
-	ings, err := b.fix.Ingredients.List(b.fix.Ctx, ingredients.ListRequest{})
+	ings, err := b.fix.Ingredients.List(ctx, ingredients.ListRequest{})
 	Ok(b.fix.T, err)
 
 	want := normalizeName(name)
@@ -65,7 +68,7 @@ func (b *Bootstrap) WithIngredient(name string, unit ingredientsmodels.Unit) *in
 		}
 	}
 
-	created, err := b.fix.Ingredients.Create(b.fix.Ctx, ingredientsmodels.Ingredient{
+	created, err := b.fix.Ingredients.Create(ctx, ingredientsmodels.Ingredient{
 		Name:     name,
 		Category: ingredientsmodels.CategoryOther,
 		Unit:     unit,
@@ -77,7 +80,7 @@ func (b *Bootstrap) WithIngredient(name string, unit ingredientsmodels.Unit) *in
 func (b *Bootstrap) WithDrink(drink models.Drink) *models.Drink {
 	b.fix.T.Helper()
 
-	created, err := b.fix.Drinks.Create(b.fix.Ctx, drink)
+	created, err := b.fix.Drinks.Create(b.fix.OwnerContext(), drink)
 	Ok(b.fix.T, err)
 	return created
 }
@@ -85,7 +88,7 @@ func (b *Bootstrap) WithDrink(drink models.Drink) *models.Drink {
 func (b *Bootstrap) WithMenu(name string) *menumodels.Menu {
 	b.fix.T.Helper()
 
-	created, err := b.fix.Menu.Create(b.fix.Ctx, menumodels.Menu{Name: name})
+	created, err := b.fix.Menu.Create(b.fix.OwnerContext(), menumodels.Menu{Name: name})
 	Ok(b.fix.T, err)
 	return created
 }

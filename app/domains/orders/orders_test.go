@@ -11,6 +11,6 @@ import (
 func TestOrders_PlaceRejectsIDProvided(t *testing.T) {
 	fix := testutil.NewFixture(t)
 
-	_, err := fix.Orders.Place(fix.Ctx, models.Order{ID: models.NewOrderID("explicit-id")})
+	_, err := fix.Orders.Place(fix.OwnerContext(), models.Order{ID: models.NewOrderID("explicit-id")})
 	testutil.ErrorIf(t, err == nil || !errors.IsInvalid(err), "expected invalid error, got %v", err)
 }

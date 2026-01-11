@@ -20,8 +20,9 @@ import (
 func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	f := testutil.NewFixture(t)
 	a := f.App
+	ctx := f.OwnerContext()
 
-	ingredient, err := a.Ingredients.Create(f.Ctx, ingredientsM.Ingredient{
+	ingredient, err := a.Ingredients.Create(ctx, ingredientsM.Ingredient{
 		Name:     "Vodka",
 		Category: ingredientsM.CategorySpirit,
 		Unit:     ingredientsM.UnitOz,
@@ -30,7 +31,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("create ingredient: %v", err)
 	}
 
-	_, err = a.Inventory.Set(f.Ctx, inventoryM.Update{
+	_, err = a.Inventory.Set(ctx, inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Quantity:     10,
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
@@ -39,7 +40,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("set stock: %v", err)
 	}
 
-	drink, err := a.Drinks.Create(f.Ctx, drinksM.Drink{
+	drink, err := a.Drinks.Create(ctx, drinksM.Drink{
 		Name:     "Margarita",
 		Category: drinksM.DrinkCategoryCocktail,
 		Glass:    drinksM.GlassTypeCoupe,
@@ -54,15 +55,15 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("create drink: %v", err)
 	}
 
-	m0, err := a.Menu.Create(f.Ctx, menuM.Menu{Name: "Happy Hour"})
+	m0, err := a.Menu.Create(ctx, menuM.Menu{Name: "Happy Hour"})
 	if err != nil {
 		t.Fatalf("create menu: %v", err)
 	}
-	m1, err := a.Menu.AddDrink(f.Ctx, menuM.MenuDrinkChange{MenuID: m0.ID, DrinkID: drink.ID})
+	m1, err := a.Menu.AddDrink(ctx, menuM.MenuDrinkChange{MenuID: m0.ID, DrinkID: drink.ID})
 	if err != nil {
 		t.Fatalf("add drink: %v", err)
 	}
-	m2, err := a.Menu.Publish(f.Ctx, menuM.Menu{ID: m1.ID})
+	m2, err := a.Menu.Publish(ctx, menuM.Menu{ID: m1.ID})
 	if err != nil {
 		t.Fatalf("publish menu: %v", err)
 	}
@@ -71,8 +72,8 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	}
 
 	d := dispatcher.New()
-	err = f.Store.Write(f.Ctx, func(tx *bstore.Tx) error {
-		txCtx := middleware.NewContext(f.Ctx, middleware.WithTransaction(tx))
+	err = f.Store.Write(ctx, func(tx *bstore.Tx) error {
+		txCtx := middleware.NewContext(ctx, middleware.WithTransaction(tx))
 		return d.Dispatch(txCtx, inventoryevents.StockAdjusted{
 			Previous: inventoryM.Inventory{IngredientID: ingredient.ID, Quantity: 10, Unit: ingredientsM.UnitOz},
 			Current:  inventoryM.Inventory{IngredientID: ingredient.ID, Quantity: 0, Unit: ingredientsM.UnitOz},
@@ -83,7 +84,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("dispatch: %v", err)
 	}
 
-	got, err := a.Menu.Get(f.Ctx, m2.ID)
+	got, err := a.Menu.Get(ctx, m2.ID)
 	if err != nil {
 		t.Fatalf("get menu: %v", err)
 	}
@@ -99,9 +100,10 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	f := testutil.NewFixture(t)
 	a := f.App
+	ctx := f.OwnerContext()
 
 	// Create an ingredient to make recipes valid
-	ingredient, err := a.Ingredients.Create(f.Ctx, ingredientsM.Ingredient{
+	ingredient, err := a.Ingredients.Create(ctx, ingredientsM.Ingredient{
 		Name:     "Vodka",
 		Category: ingredientsM.CategorySpirit,
 		Unit:     ingredientsM.UnitOz,
@@ -111,7 +113,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	}
 
 	// Create two drinks
-	drink1, err := a.Drinks.Create(f.Ctx, drinksM.Drink{
+	drink1, err := a.Drinks.Create(ctx, drinksM.Drink{
 		Name:     "Martini",
 		Category: drinksM.DrinkCategoryCocktail,
 		Glass:    drinksM.GlassTypeMartini,
@@ -126,7 +128,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 		t.Fatalf("create drink1: %v", err)
 	}
 
-	drink2, err := a.Drinks.Create(f.Ctx, drinksM.Drink{
+	drink2, err := a.Drinks.Create(ctx, drinksM.Drink{
 		Name:     "Cosmopolitan",
 		Category: drinksM.DrinkCategoryCocktail,
 		Glass:    drinksM.GlassTypeMartini,
@@ -142,17 +144,17 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	}
 
 	// Create a menu with both drinks
-	m0, err := a.Menu.Create(f.Ctx, menuM.Menu{Name: "Cocktail Menu"})
+	m0, err := a.Menu.Create(ctx, menuM.Menu{Name: "Cocktail Menu"})
 	if err != nil {
 		t.Fatalf("create menu: %v", err)
 	}
 
-	m1, err := a.Menu.AddDrink(f.Ctx, menuM.MenuDrinkChange{MenuID: m0.ID, DrinkID: drink1.ID})
+	m1, err := a.Menu.AddDrink(ctx, menuM.MenuDrinkChange{MenuID: m0.ID, DrinkID: drink1.ID})
 	if err != nil {
 		t.Fatalf("add drink1: %v", err)
 	}
 
-	m2, err := a.Menu.AddDrink(f.Ctx, menuM.MenuDrinkChange{MenuID: m1.ID, DrinkID: drink2.ID})
+	m2, err := a.Menu.AddDrink(ctx, menuM.MenuDrinkChange{MenuID: m1.ID, DrinkID: drink2.ID})
 	if err != nil {
 		t.Fatalf("add drink2: %v", err)
 	}
@@ -163,8 +165,8 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 
 	// Dispatch DrinkDeleted event for drink1
 	d := dispatcher.New()
-	err = f.Store.Write(f.Ctx, func(tx *bstore.Tx) error {
-		txCtx := middleware.NewContext(f.Ctx, middleware.WithTransaction(tx))
+	err = f.Store.Write(ctx, func(tx *bstore.Tx) error {
+		txCtx := middleware.NewContext(ctx, middleware.WithTransaction(tx))
 		return d.Dispatch(txCtx, drinksevents.DrinkDeleted{Drink: *drink1, DeletedAt: time.Now().UTC()})
 	})
 	if err != nil {
@@ -172,7 +174,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	}
 
 	// Verify menu now has only drink2
-	got, err := a.Menu.Get(f.Ctx, m2.ID)
+	got, err := a.Menu.Get(ctx, m2.ID)
 	if err != nil {
 		t.Fatalf("get menu: %v", err)
 	}

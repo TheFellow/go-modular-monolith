@@ -13,8 +13,8 @@ func TestPermissions_Menu(t *testing.T) {
 	f := testutil.NewFixture(t)
 	a := f.App
 
-	owner := f.Ctx
-	anon := f.AsActor("anonymous")
+	owner := f.OwnerContext()
+	anon := f.ActorContext("anonymous")
 
 	t.Run("owner", func(t *testing.T) {
 		_, err := a.Menu.List(owner, menu.ListRequest{})

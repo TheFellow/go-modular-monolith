@@ -23,7 +23,6 @@ type Fixture struct {
 	T       testing.TB
 	Store   *store.Store
 	App     *app.App
-	Ctx     *middleware.Context
 	Metrics *telemetry.MemoryMetrics
 
 	Drinks      *drinks.Module
@@ -31,6 +30,8 @@ type Fixture struct {
 	Inventory   *inventory.Module
 	Menu        *menu.Module
 	Orders      *orders.Module
+
+	ownerCtx *middleware.Context
 }
 
 func NewFixture(t testing.TB) *Fixture {
@@ -51,13 +52,12 @@ func NewFixture(t testing.TB) *Fixture {
 
 	p, err := authn.ParseActor("owner")
 	Ok(t, err)
-	ctx := a.Context(context.Background(), p)
+	ownerCtx := a.Context(context.Background(), p)
 
 	return &Fixture{
 		T:       t,
 		Store:   s,
 		App:     a,
-		Ctx:     ctx,
 		Metrics: metrics,
 
 		Drinks:      a.Drinks,
@@ -65,14 +65,26 @@ func NewFixture(t testing.TB) *Fixture {
 		Inventory:   a.Inventory,
 		Menu:        a.Menu,
 		Orders:      a.Orders,
+
+		ownerCtx: ownerCtx,
 	}
 }
 
-func (f *Fixture) AsActor(actor string) *middleware.Context {
+func (f *Fixture) OwnerContext() *middleware.Context {
+	f.T.Helper()
+	return f.ownerCtx
+}
+
+func (f *Fixture) ActorContext(actor string) *middleware.Context {
 	f.T.Helper()
 	p, err := authn.ParseActor(actor)
 	Ok(f.T, err)
 	return f.App.Context(context.Background(), p)
+}
+
+func (f *Fixture) AsActor(actor string) *middleware.Context {
+	f.T.Helper()
+	return f.ActorContext(actor)
 }
 
 func (f *Fixture) Bootstrap() *Bootstrap {

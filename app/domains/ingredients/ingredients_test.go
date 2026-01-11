@@ -12,7 +12,7 @@ import (
 func TestIngredients_CreateRejectsIDProvided(t *testing.T) {
 	fix := testutil.NewFixture(t)
 
-	_, err := fix.Ingredients.Create(fix.Ctx, models.Ingredient{
+	_, err := fix.Ingredients.Create(fix.OwnerContext(), models.Ingredient{
 		ID: entity.IngredientID("explicit-id"),
 	})
 	testutil.ErrorIf(t, err == nil || !errors.IsInvalid(err), "expected invalid error, got %v", err)

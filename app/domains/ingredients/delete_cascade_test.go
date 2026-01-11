@@ -14,22 +14,23 @@ import (
 
 func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
 	f := testutil.NewFixture(t)
+	ctx := f.OwnerContext()
 
-	ingredient, err := f.Ingredients.Create(f.Ctx, ingredientsM.Ingredient{
+	ingredient, err := f.Ingredients.Create(ctx, ingredientsM.Ingredient{
 		Name:     "Vodka",
 		Category: ingredientsM.CategorySpirit,
 		Unit:     ingredientsM.UnitOz,
 	})
 	testutil.Ok(t, err)
 
-	_, err = f.Inventory.Set(f.Ctx, inventoryM.Update{
+	_, err = f.Inventory.Set(ctx, inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Quantity:     10,
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
 	})
 	testutil.Ok(t, err)
 
-	drink, err := f.Drinks.Create(f.Ctx, drinksM.Drink{
+	drink, err := f.Drinks.Create(ctx, drinksM.Drink{
 		Name:     "Vodka Soda",
 		Category: drinksM.DrinkCategoryCocktail,
 		Glass:    drinksM.GlassTypeRocks,
@@ -42,24 +43,24 @@ func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	menu, err := f.Menu.Create(f.Ctx, menuM.Menu{Name: "Test Menu"})
+	menu, err := f.Menu.Create(ctx, menuM.Menu{Name: "Test Menu"})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.AddDrink(f.Ctx, menuM.MenuDrinkChange{MenuID: menu.ID, DrinkID: drink.ID})
+	menu, err = f.Menu.AddDrink(ctx, menuM.MenuDrinkChange{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.Publish(f.Ctx, menuM.Menu{ID: menu.ID})
+	menu, err = f.Menu.Publish(ctx, menuM.Menu{ID: menu.ID})
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(menu.Items) != 1, "expected 1 menu item, got %d", len(menu.Items))
 
-	_, err = f.Ingredients.Delete(f.Ctx, ingredient.ID)
+	_, err = f.Ingredients.Delete(ctx, ingredient.ID)
 	testutil.Ok(t, err)
 
-	_, err = f.Inventory.Get(f.Ctx, ingredient.ID)
+	_, err = f.Inventory.Get(ctx, ingredient.ID)
 	testutil.ErrorIf(t, !errors.IsNotFound(err), "expected stock not found, got %v", err)
 
-	_, err = f.Drinks.Get(f.Ctx, drink.ID)
+	_, err = f.Drinks.Get(ctx, drink.ID)
 	testutil.ErrorIf(t, !errors.IsNotFound(err), "expected drink not found, got %v", err)
 
-	gotMenu, err := f.Menu.Get(f.Ctx, menu.ID)
+	gotMenu, err := f.Menu.Get(ctx, menu.ID)
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(gotMenu.Items) != 0, "expected menu items to be removed, got %d", len(gotMenu.Items))
 }
