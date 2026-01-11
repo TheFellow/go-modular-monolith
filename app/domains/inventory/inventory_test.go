@@ -3,7 +3,7 @@ package inventory_test
 import (
 	"testing"
 
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -11,12 +11,12 @@ import (
 )
 
 func TestInventory_SetAndAdjust(t *testing.T) {
-	fix := testutil.NewFixture(t)
-	b := fix.Bootstrap()
+	f := testutil.NewFixture(t)
+	b := f.Bootstrap()
 
-	ingredient := b.WithIngredient("Vodka", ingredientsmodels.UnitOz)
+	ingredient := b.WithIngredient("Vodka", ingredientsM.UnitOz)
 
-	stock, err := fix.Inventory.Set(fix.Ctx, models.Update{
+	stock, err := f.Inventory.Set(f.Ctx, models.Update{
 		IngredientID: ingredient.ID,
 		Quantity:     1.0,
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
@@ -24,7 +24,7 @@ func TestInventory_SetAndAdjust(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, stock.Quantity != 1.0, "expected quantity 1.0, got %v", stock.Quantity)
 
-	stock, err = fix.Inventory.Adjust(fix.Ctx, models.Patch{
+	stock, err = f.Inventory.Adjust(f.Ctx, models.Patch{
 		IngredientID: ingredient.ID,
 		Reason:       models.ReasonUsed,
 		Delta:        optional.Some(-2.0),
