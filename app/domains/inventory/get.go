@@ -13,7 +13,7 @@ type getRequest struct {
 
 func (r getRequest) CedarEntity() cedar.Entity {
 	return cedar.Entity{
-		UID:        models.NewStockID(r.IngredientID),
+		UID:        models.NewInventoryID(r.IngredientID),
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),

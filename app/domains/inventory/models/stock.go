@@ -9,10 +9,10 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-const StockEntityType = cedar.EntityType("Mixology::Stock")
+const InventoryEntityType = cedar.EntityType("Mixology::Inventory")
 
-func NewStockID(ingredientID cedar.EntityUID) cedar.EntityUID {
-	return cedar.NewEntityUID(StockEntityType, ingredientID.ID)
+func NewInventoryID(ingredientID cedar.EntityUID) cedar.EntityUID {
+	return cedar.NewEntityUID(InventoryEntityType, ingredientID.ID)
 }
 
 type Stock struct {
@@ -24,7 +24,7 @@ type Stock struct {
 }
 
 func (s Stock) EntityUID() cedar.EntityUID {
-	return NewStockID(s.IngredientID)
+	return NewInventoryID(s.IngredientID)
 }
 
 func (s Stock) CedarEntity() cedar.Entity {

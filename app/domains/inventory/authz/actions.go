@@ -5,11 +5,11 @@ import (
 	"github.com/cedar-policy/cedar-go"
 )
 
-const StockAction cedar.EntityType = entity.TypeStock + "::Action"
+const InventoryAction cedar.EntityType = entity.TypeInventory + "::Action"
 
 var (
-	ActionList   = cedar.NewEntityUID(StockAction, "list")
-	ActionGet    = cedar.NewEntityUID(StockAction, "get")
-	ActionAdjust = cedar.NewEntityUID(StockAction, "adjust")
-	ActionSet    = cedar.NewEntityUID(StockAction, "set")
+	ActionList   = cedar.NewEntityUID(InventoryAction, "list")
+	ActionGet    = cedar.NewEntityUID(InventoryAction, "get")
+	ActionAdjust = cedar.NewEntityUID(InventoryAction, "adjust")
+	ActionSet    = cedar.NewEntityUID(InventoryAction, "set")
 )

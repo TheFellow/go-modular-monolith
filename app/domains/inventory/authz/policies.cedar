@@ -3,18 +3,17 @@
 permit(
     principal == Mixology::Actor::"owner",
     action in [
-        Mixology::Stock::Action::"adjust",
-        Mixology::Stock::Action::"set"
+        Mixology::Inventory::Action::"adjust",
+        Mixology::Inventory::Action::"set"
     ],
-    resource is Mixology::Stock
+    resource is Mixology::Inventory
 );
 
 permit(
     principal is Mixology::Actor,
     action in [
-        Mixology::Stock::Action::"list",
-        Mixology::Stock::Action::"get"
+        Mixology::Inventory::Action::"list",
+        Mixology::Inventory::Action::"get"
     ],
-    resource is Mixology::Stock
+    resource is Mixology::Inventory
 );
-

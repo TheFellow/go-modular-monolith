@@ -18,7 +18,7 @@ type ListRequest struct {
 
 func (ListRequest) CedarEntity() cedar.Entity {
 	return cedar.Entity{
-		UID:        cedar.NewEntityUID(models.StockEntityType, cedar.String("")),
+		UID:        cedar.NewEntityUID(models.InventoryEntityType, cedar.String("")),
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(nil),
 		Tags:       cedar.NewRecord(nil),
