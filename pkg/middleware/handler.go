@@ -13,4 +13,3 @@ type PreparingHandler[E any] interface {
 	Handler[E]
 	Handling(ctx *Context, event E) error
 }
-

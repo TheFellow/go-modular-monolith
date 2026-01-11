@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"unicode"
 )
 
 //go:embed dispatcher_gen.go.tpl
@@ -31,6 +32,13 @@ type handlerType struct {
 	Name         string
 	EventPkgPath string
 	EventName    string
+	HasHandling  bool
+	VarName      string
+}
+
+type eventGroup struct {
+	Event    eventType
+	Handlers []handlerType
 }
 
 func main() {
@@ -76,11 +84,6 @@ func main() {
 		return matched[i].Name < matched[j].Name
 	})
 
-	type eventGroup struct {
-		Event    eventType
-		Handlers []handlerType
-	}
-
 	groupIndex := make(map[string]*eventGroup)
 	groups := make([]*eventGroup, 0)
 
@@ -102,6 +105,8 @@ func main() {
 		}
 		return groups[i].Event.Name < groups[j].Event.Name
 	})
+
+	assignHandlerVarNames(groups)
 
 	type importSpec struct {
 		Alias string
@@ -191,6 +196,63 @@ func main() {
 	}
 }
 
+func assignHandlerVarNames(groups []*eventGroup) {
+	for _, g := range groups {
+		used := map[string]int{}
+		for i := range g.Handlers {
+			base := lowerCamel(g.Handlers[i].Name)
+			if base == "" {
+				base = "handler"
+			}
+			if token.Lookup(base).IsKeyword() {
+				base = base + "Handler"
+			}
+
+			used[base]++
+			name := base
+			if used[base] > 1 {
+				name = fmt.Sprintf("%s%d", base, used[base])
+			}
+			g.Handlers[i].VarName = name
+		}
+	}
+}
+
+func lowerCamel(s string) string {
+	if s == "" {
+		return ""
+	}
+	r := []rune(s)
+
+	// Find leading uppercase runes.
+	i := 0
+	for i < len(r) && unicode.IsUpper(r[i]) {
+		i++
+	}
+	if i == 0 {
+		return s
+	}
+	// All uppercase: lower all.
+	if i == len(r) {
+		for j := range r {
+			r[j] = unicode.ToLower(r[j])
+		}
+		return string(r)
+	}
+	// Single leading uppercase: lower it.
+	if i == 1 {
+		r[0] = unicode.ToLower(r[0])
+		return string(r)
+	}
+
+	// Multiple leading uppercase, followed by a lowercase. Lowercase all but the last
+	// leading uppercase rune, e.g. HTTPServer -> httpServer.
+	for j := 0; j < i-1; j++ {
+		r[j] = unicode.ToLower(r[j])
+	}
+	return string(r)
+}
+
 func fatalf(format string, args ...any) {
 	_, _ = fmt.Fprintf(os.Stderr, format+"\n", args...)
 	os.Exit(1)
@@ -274,7 +336,18 @@ func scanEvents(repoRoot, modulePath string) ([]eventType, error) {
 }
 
 func scanHandlers(repoRoot, modulePath string) ([]handlerType, error) {
-	var out []handlerType
+	type handlerKey struct {
+		PkgPath      string
+		Name         string
+		EventPkgPath string
+		EventName    string
+	}
+	type handlerValue struct {
+		hasHandle   bool
+		hasHandling bool
+	}
+
+	acc := map[handlerKey]handlerValue{}
 
 	appRoot := filepath.Join(repoRoot, "app")
 	fset := token.NewFileSet()
@@ -324,7 +397,12 @@ func scanHandlers(repoRoot, modulePath string) ([]handlerType, error) {
 
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Recv == nil || fn.Name == nil || fn.Name.Name != "Handle" {
+			if !ok || fn.Recv == nil || fn.Name == nil {
+				continue
+			}
+			switch fn.Name.Name {
+			case "Handle", "Handling":
+			default:
 				continue
 			}
 
@@ -352,18 +430,40 @@ func scanHandlers(repoRoot, modulePath string) ([]handlerType, error) {
 				continue
 			}
 
-			out = append(out, handlerType{
+			key := handlerKey{
 				PkgPath:      handlerPkgPath,
 				Name:         recv,
 				EventPkgPath: eventPkgPath,
 				EventName:    eventName,
-			})
+			}
+			v := acc[key]
+			if fn.Name.Name == "Handle" {
+				v.hasHandle = true
+			}
+			if fn.Name.Name == "Handling" {
+				v.hasHandling = true
+			}
+			acc[key] = v
 		}
 
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	out := make([]handlerType, 0, len(acc))
+	for k, v := range acc {
+		if !v.hasHandle {
+			continue
+		}
+		out = append(out, handlerType{
+			PkgPath:      k.PkgPath,
+			Name:         k.Name,
+			EventPkgPath: k.EventPkgPath,
+			EventName:    k.EventName,
+			HasHandling:  v.hasHandling,
+		})
 	}
 
 	sort.Slice(out, func(i, j int) bool {

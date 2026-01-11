@@ -13,7 +13,21 @@ func (d *Dispatcher) Dispatch(ctx *{{ .MiddlewareAlias }}.Context, event any) er
 {{- range .Groups }}
 	case {{ index $.ImportAlias .Event.PkgPath }}.{{ .Event.Name }}:
 {{- range .Handlers }}
-		if err := {{ index $.ImportAlias .PkgPath }}.New{{ .Name }}().Handle(ctx, e); err != nil {
+		{{ .VarName }} := {{ index $.ImportAlias .PkgPath }}.New{{ .Name }}()
+{{- end }}
+
+{{- range .Handlers }}
+{{- if .HasHandling }}
+		if err := {{ .VarName }}.Handling(ctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+{{- end }}
+{{- end }}
+
+{{- range .Handlers }}
+		if err := {{ .VarName }}.Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}

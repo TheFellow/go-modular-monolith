@@ -18,58 +18,84 @@ import (
 func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	switch e := event.(type) {
 	case drinks_events.DrinkDeleted:
-		if err := menu_handlers.NewDrinkDeletedMenuUpdater().Handle(ctx, e); err != nil {
+		drinkDeletedMenuUpdater := menu_handlers.NewDrinkDeletedMenuUpdater()
+		if err := drinkDeletedMenuUpdater.Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case drinks_events.DrinkRecipeUpdated:
-		if err := menu_handlers.NewDrinkRecipeUpdatedMenuUpdater().Handle(ctx, e); err != nil {
+		drinkRecipeUpdatedMenuUpdater := menu_handlers.NewDrinkRecipeUpdatedMenuUpdater()
+		if err := drinkRecipeUpdatedMenuUpdater.Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case ingredients_events.IngredientCreated:
-		if err := ingredients_handlers.NewIngredientCreatedAudit().Handle(ctx, e); err != nil {
+		ingredientCreatedAudit := ingredients_handlers.NewIngredientCreatedAudit()
+		ingredientCreatedCounter := ingredients_handlers.NewIngredientCreatedCounter()
+		if err := ingredientCreatedAudit.Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-		if err := ingredients_handlers.NewIngredientCreatedCounter().Handle(ctx, e); err != nil {
+		if err := ingredientCreatedCounter.Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case ingredients_events.IngredientDeleted:
-		if err := drinks_handlers.NewIngredientDeletedDrinkCascader().Handle(ctx, e); err != nil {
+		ingredientDeletedDrinkCascader := drinks_handlers.NewIngredientDeletedDrinkCascader()
+		ingredientDeletedStockCleaner := inventory_handlers.NewIngredientDeletedStockCleaner()
+		ingredientDeletedMenuCascader := menu_handlers.NewIngredientDeletedMenuCascader()
+		if err := ingredientDeletedDrinkCascader.Handling(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-		if err := inventory_handlers.NewIngredientDeletedStockCleaner().Handle(ctx, e); err != nil {
+		if err := ingredientDeletedMenuCascader.Handling(ctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := ingredientDeletedDrinkCascader.Handle(ctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := ingredientDeletedStockCleaner.Handle(ctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := ingredientDeletedMenuCascader.Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case inventory_events.StockAdjusted:
-		if err := menu_handlers.NewStockAdjustedMenuUpdater().Handle(ctx, e); err != nil {
+		stockAdjustedMenuUpdater := menu_handlers.NewStockAdjustedMenuUpdater()
+		if err := stockAdjustedMenuUpdater.Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case menu_events.MenuPublished:
-		if err := menu_handlers.NewMenuPublishedValidator().Handle(ctx, e); err != nil {
+		menuPublishedValidator := menu_handlers.NewMenuPublishedValidator()
+		if err := menuPublishedValidator.Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case orders_events.OrderCompleted:
-		if err := inventory_handlers.NewOrderCompletedStockUpdater().Handle(ctx, e); err != nil {
+		orderCompletedStockUpdater := inventory_handlers.NewOrderCompletedStockUpdater()
+		orderCompletedMenuUpdater := menu_handlers.NewOrderCompletedMenuUpdater()
+		if err := orderCompletedStockUpdater.Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-		if err := menu_handlers.NewOrderCompletedMenuUpdater().Handle(ctx, e); err != nil {
+		if err := orderCompletedMenuUpdater.Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}

@@ -318,3 +318,59 @@ func TestDispatchEvents_DispatchesEvents(t *testing.T) {
 		t.Errorf("expected 1 dispatched event, got %d", len(dispatcher.dispatched))
 	}
 }
+
+type cascadingDispatcher struct {
+	dispatched []any
+}
+
+func (d *cascadingDispatcher) Dispatch(ctx *middleware.Context, event any) error {
+	d.dispatched = append(d.dispatched, event)
+	if len(d.dispatched) == 1 {
+		ctx.AddEvent(testEvent{Name: "cascaded"})
+	}
+	return nil
+}
+
+func TestDispatchEvents_DoesNotCascadeNewEvents(t *testing.T) {
+	t.Parallel()
+
+	logBuf := &testLogBuffer{}
+	mem := telemetry.Memory()
+
+	ctx := context.Background()
+	logger := slog.New(slog.NewJSONHandler(logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	ctx = log.ToContext(ctx, logger)
+	ctx = telemetry.WithMetrics(ctx, mem)
+
+	dispatcher := &cascadingDispatcher{}
+
+	mctx := middleware.NewContext(ctx,
+		middleware.WithAnonymousPrincipal(),
+		middleware.WithMetricsCollector(middleware.NewMetricsCollector(mem)),
+		middleware.WithEventDispatcher(dispatcher),
+	)
+
+	action := drinksauthz.ActionCreate
+	resource := cedar.Entity{
+		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Drink::Catalog"), cedar.String("default")),
+		Parents:    cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(nil),
+	}
+
+	chain := middleware.NewCommandChain(
+		middleware.DispatchEvents(),
+	)
+
+	err := chain.Execute(mctx, action, resource, func(ctx *middleware.Context) error {
+		ctx.AddEvent(testEvent{Name: "created"})
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(dispatcher.dispatched) != 1 {
+		t.Errorf("expected 1 dispatched event, got %d", len(dispatcher.dispatched))
+	}
+}

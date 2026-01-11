@@ -41,3 +41,4 @@ sprint-028,completed,2026-01-09,2026-01-10,Fat Events with Embedded Domain Model
 sprint-029,completed,2026-01-10,2026-01-10,Remove Test-Only Abstractions, Use Real Code in Tests
 sprint-030,completed,2026-01-10,2026-01-10,Simplify APIs - Direct IDs, Pointer Returns, Soft Deletes
 sprint-031,completed,2026-01-10,2026-01-10,Cross-Domain Event Handlers for Cascading Operations
+sprint-031a,completed,2026-01-11,2026-01-11,Two-Phase Event Handling

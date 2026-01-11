@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"slices"
+
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/cedar-policy/cedar-go"
 )
@@ -23,13 +25,10 @@ func DispatchEvents() CommandMiddleware {
 			return nil
 		}
 
-		for i := 0; ; i++ {
-			events := ctx.Events()
-			if i >= len(events) {
-				break
-			}
-			if err := d.Dispatch(ctx, events[i]); err != nil {
-				return errors.Internalf("dispatch event %T: %w", events[i], err)
+		events := slices.Clone(ctx.Events())
+		for _, event := range events {
+			if err := d.Dispatch(ctx, event); err != nil {
+				return errors.Internalf("dispatch event %T: %w", event, err)
 			}
 		}
 		return nil

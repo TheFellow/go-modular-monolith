@@ -92,4 +92,3 @@ func (h *IngredientDeletedMenuCascader) Handle(ctx *middleware.Context, _ ingred
 
 	return nil
 }
-
