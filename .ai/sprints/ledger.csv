@@ -40,3 +40,4 @@ sprint-027,completed,2026-01-08,2026-01-09,Rich Domain Models with Enforced Iden
 sprint-028,completed,2026-01-09,2026-01-10,Fat Events with Embedded Domain Models
 sprint-029,completed,2026-01-10,2026-01-10,Remove Test-Only Abstractions, Use Real Code in Tests
 sprint-030,completed,2026-01-10,2026-01-10,Simplify APIs - Direct IDs, Pointer Returns, Soft Deletes
+sprint-031,completed,2026-01-10,2026-01-10,Cross-Domain Event Handlers for Cascading Operations

@@ -12,4 +12,5 @@ var (
 	ActionGet    = cedar.NewEntityUID(IngredientAction, "get")
 	ActionCreate = cedar.NewEntityUID(IngredientAction, "create")
 	ActionUpdate = cedar.NewEntityUID(IngredientAction, "update")
+	ActionDelete = cedar.NewEntityUID(IngredientAction, "delete")
 )

@@ -23,9 +23,13 @@ func DispatchEvents() CommandMiddleware {
 			return nil
 		}
 
-		for _, event := range ctx.Events() {
-			if err := d.Dispatch(ctx, event); err != nil {
-				return errors.Internalf("dispatch event %T: %w", event, err)
+		for i := 0; ; i++ {
+			events := ctx.Events()
+			if i >= len(events) {
+				break
+			}
+			if err := d.Dispatch(ctx, events[i]); err != nil {
+				return errors.Internalf("dispatch event %T: %w", events[i], err)
 			}
 		}
 		return nil

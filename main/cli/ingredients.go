@@ -164,6 +164,23 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					return nil
 				}),
 			},
+			{
+				Name:  "delete",
+				Usage: "Delete an ingredient by ID",
+				Arguments: []cli.Argument{
+					&cli.StringArgs{Name: "id", UsageText: "Ingredient ID", Min: 1, Max: 1},
+				},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					id := cmd.StringArgs("id")[0]
+					res, err := c.app.Ingredients.Delete(ctx, entity.IngredientID(id))
+					if err != nil {
+						return err
+					}
+
+					fmt.Printf("deleted %s\t%s\n", string(res.ID.ID), res.Name)
+					return nil
+				}),
+			},
 		},
 	}
 }

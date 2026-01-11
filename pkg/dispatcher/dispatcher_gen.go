@@ -4,10 +4,12 @@ package dispatcher
 
 import (
 	drinks_events "github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
+	drinks_handlers "github.com/TheFellow/go-modular-monolith/app/domains/drinks/handlers"
 	ingredients_events "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
 	ingredients_handlers "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/handlers"
 	inventory_events "github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
 	inventory_handlers "github.com/TheFellow/go-modular-monolith/app/domains/inventory/handlers"
+	menu_events "github.com/TheFellow/go-modular-monolith/app/domains/menu/events"
 	menu_handlers "github.com/TheFellow/go-modular-monolith/app/domains/menu/handlers"
 	orders_events "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
 	middleware "github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -17,6 +19,12 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	switch e := event.(type) {
 	case drinks_events.DrinkDeleted:
 		if err := menu_handlers.NewDrinkDeletedMenuUpdater().Handle(ctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+	case drinks_events.DrinkRecipeUpdated:
+		if err := menu_handlers.NewDrinkRecipeUpdatedMenuUpdater().Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
@@ -32,8 +40,25 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 				return herr
 			}
 		}
+	case ingredients_events.IngredientDeleted:
+		if err := drinks_handlers.NewIngredientDeletedDrinkCascader().Handle(ctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := inventory_handlers.NewIngredientDeletedStockCleaner().Handle(ctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 	case inventory_events.StockAdjusted:
 		if err := menu_handlers.NewStockAdjustedMenuUpdater().Handle(ctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+	case menu_events.MenuPublished:
+		if err := menu_handlers.NewMenuPublishedValidator().Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}

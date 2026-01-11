@@ -28,6 +28,9 @@ func TestPermissions_Ingredients(t *testing.T) {
 
 		_, err = a.Ingredients.Update(owner, models.Ingredient{ID: entity.IngredientID("does-not-exist")})
 		testutil.RequireNotDenied(t, err)
+
+		_, err = a.Ingredients.Delete(owner, entity.IngredientID("does-not-exist"))
+		testutil.RequireNotDenied(t, err)
 	})
 
 	t.Run("anonymous", func(t *testing.T) {
@@ -41,6 +44,9 @@ func TestPermissions_Ingredients(t *testing.T) {
 		testutil.RequireDenied(t, err)
 
 		_, err = a.Ingredients.Update(anon, models.Ingredient{ID: entity.IngredientID("does-not-exist")})
+		testutil.RequireDenied(t, err)
+
+		_, err = a.Ingredients.Delete(anon, entity.IngredientID("does-not-exist"))
 		testutil.RequireDenied(t, err)
 	})
 }
