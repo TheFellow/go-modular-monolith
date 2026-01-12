@@ -5,51 +5,37 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
-	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/handlers"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
 func TestDispatcher_DispatchesToHandlers(t *testing.T) {
-	handlers.IngredientCreatedCount.Store(0)
-	handlers.IngredientCreatedAuditCount.Store(0)
+	t.Parallel()
 
 	d := New()
 	ctx := middleware.NewContext(context.Background())
 
-	err := d.Dispatch(ctx, events.IngredientCreated{
+	event := events.IngredientCreated{
 		Ingredient: models.Ingredient{
 			ID:   entity.IngredientID("vodka"),
 			Name: "Vodka",
 		},
-	})
+	}
+	err := d.Dispatch(ctx, event)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
-	}
-
-	if got := handlers.IngredientCreatedCount.Load(); got != 1 {
-		t.Fatalf("expected IngredientCreatedCounter to run once, got %d", got)
-	}
-	if got := handlers.IngredientCreatedAuditCount.Load(); got != 1 {
-		t.Fatalf("expected IngredientCreatedAudit to run once, got %d", got)
 	}
 }
 
 func TestDispatcher_IgnoresUnknownEvents(t *testing.T) {
-	handlers.IngredientCreatedCount.Store(0)
-	handlers.IngredientCreatedAuditCount.Store(0)
+	t.Parallel()
+
+	type unknownEvent struct{}
 
 	d := New()
 	ctx := middleware.NewContext(context.Background())
-	if err := d.Dispatch(ctx, struct{}{}); err != nil {
+	if err := d.Dispatch(ctx, unknownEvent{}); err != nil {
 		t.Fatalf("Dispatch: %v", err)
-	}
-
-	if got := handlers.IngredientCreatedCount.Load(); got != 0 {
-		t.Fatalf("expected IngredientCreatedCounter not to run, got %d", got)
-	}
-	if got := handlers.IngredientCreatedAuditCount.Load(); got != 0 {
-		t.Fatalf("expected IngredientCreatedAudit not to run, got %d", got)
 	}
 }

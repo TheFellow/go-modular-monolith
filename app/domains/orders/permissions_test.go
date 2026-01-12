@@ -11,13 +11,14 @@ import (
 )
 
 func TestPermissions_Orders(t *testing.T) {
-	f := testutil.NewFixture(t)
-	a := f.App
-
-	owner := f.OwnerContext()
-	anon := f.ActorContext("anonymous")
+	t.Parallel()
 
 	t.Run("owner", func(t *testing.T) {
+		t.Parallel()
+		f := testutil.NewFixture(t)
+		a := f.App
+		owner := f.OwnerContext()
+
 		_, err := a.Orders.List(owner, orders.ListRequest{})
 		testutil.RequireNotDenied(t, err)
 
@@ -41,6 +42,11 @@ func TestPermissions_Orders(t *testing.T) {
 	})
 
 	t.Run("anonymous", func(t *testing.T) {
+		t.Parallel()
+		f := testutil.NewFixture(t)
+		a := f.App
+		anon := f.ActorContext("anonymous")
+
 		_, err := a.Orders.List(anon, orders.ListRequest{})
 		testutil.RequireNotDenied(t, err)
 

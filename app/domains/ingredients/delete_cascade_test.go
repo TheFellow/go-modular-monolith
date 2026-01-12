@@ -13,6 +13,7 @@ import (
 )
 
 func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
+	t.Parallel()
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
 

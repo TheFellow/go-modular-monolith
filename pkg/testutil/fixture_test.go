@@ -25,6 +25,7 @@ func TestFixture_CreateDrinkRoundTrip(t *testing.T) {
 }
 
 func TestFixture_IsolatedParallelStores(t *testing.T) {
+	t.Parallel()
 	t.Run("A", func(t *testing.T) {
 		t.Parallel()
 		fix := testutil.NewFixture(t)

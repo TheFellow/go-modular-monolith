@@ -11,6 +11,7 @@ import (
 )
 
 func TestInventory_SetAndAdjust(t *testing.T) {
+	t.Parallel()
 	f := testutil.NewFixture(t)
 	b := f.Bootstrap()
 	ctx := f.OwnerContext()

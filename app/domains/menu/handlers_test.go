@@ -17,6 +17,7 @@ import (
 )
 
 func TestDrinkRecipeUpdatedMenuUpdater_MarksUnavailableWhenNewIngredientOutOfStock(t *testing.T) {
+	t.Parallel()
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
 
@@ -78,6 +79,7 @@ func TestDrinkRecipeUpdatedMenuUpdater_MarksUnavailableWhenNewIngredientOutOfSto
 }
 
 func TestMenuPublishedValidator_SetsAvailabilityFromInventory(t *testing.T) {
+	t.Parallel()
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
 

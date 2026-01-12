@@ -18,6 +18,7 @@ import (
 )
 
 func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
+	t.Parallel()
 	f := testutil.NewFixture(t)
 	a := f.App
 	ctx := f.OwnerContext()
@@ -98,6 +99,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 }
 
 func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
+	t.Parallel()
 	f := testutil.NewFixture(t)
 	a := f.App
 	ctx := f.OwnerContext()

@@ -11,6 +11,7 @@ import (
 )
 
 func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
+	t.Parallel()
 	f := testutil.NewFixture(t)
 	b := f.Bootstrap()
 	ctx := f.OwnerContext()
@@ -67,6 +68,7 @@ func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
 }
 
 func TestDrinks_CreateRejectsIDProvided(t *testing.T) {
+	t.Parallel()
 	f := testutil.NewFixture(t)
 
 	_, err := f.Drinks.Create(f.OwnerContext(), models.Drink{
@@ -76,6 +78,7 @@ func TestDrinks_CreateRejectsIDProvided(t *testing.T) {
 }
 
 func TestDrinks_ListFiltersByName(t *testing.T) {
+	t.Parallel()
 	f := testutil.NewFixture(t)
 	b := f.Bootstrap()
 	ctx := f.OwnerContext()

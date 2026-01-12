@@ -10,13 +10,14 @@ import (
 )
 
 func TestPermissions_Ingredients(t *testing.T) {
-	fix := testutil.NewFixture(t)
-	a := fix.App
-
-	owner := fix.OwnerContext()
-	anon := fix.ActorContext("anonymous")
+	t.Parallel()
 
 	t.Run("owner", func(t *testing.T) {
+		t.Parallel()
+		fix := testutil.NewFixture(t)
+		a := fix.App
+		owner := fix.OwnerContext()
+
 		_, err := a.Ingredients.List(owner, ingredients.ListRequest{})
 		testutil.RequireNotDenied(t, err)
 
@@ -34,6 +35,11 @@ func TestPermissions_Ingredients(t *testing.T) {
 	})
 
 	t.Run("anonymous", func(t *testing.T) {
+		t.Parallel()
+		fix := testutil.NewFixture(t)
+		a := fix.App
+		anon := fix.ActorContext("anonymous")
+
 		_, err := a.Ingredients.List(anon, ingredients.ListRequest{})
 		testutil.RequireNotDenied(t, err)
 

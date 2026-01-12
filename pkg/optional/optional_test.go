@@ -7,6 +7,7 @@ import (
 )
 
 func TestSome(t *testing.T) {
+	t.Parallel()
 	v := optional.Some("hi")
 	if !v.IsSome() || v.IsNone() {
 		t.Fatalf("expected some")
@@ -27,6 +28,7 @@ func TestSome(t *testing.T) {
 }
 
 func TestNone(t *testing.T) {
+	t.Parallel()
 	var v optional.Value[string] = optional.None[string]()
 	if v.IsSome() || !v.IsNone() {
 		t.Fatalf("expected none")
@@ -50,6 +52,7 @@ func TestNone(t *testing.T) {
 }
 
 func TestMap(t *testing.T) {
+	t.Parallel()
 	var a optional.Value[int] = optional.Some(2)
 	mapped := optional.Map(a, func(x int) string { return "n" })
 	if !mapped.IsSome() {
@@ -64,6 +67,7 @@ func TestMap(t *testing.T) {
 }
 
 func TestFlatMap(t *testing.T) {
+	t.Parallel()
 	var a optional.Value[int] = optional.Some(2)
 	out := optional.FlatMap(a, func(x int) optional.Value[string] {
 		if x == 2 {

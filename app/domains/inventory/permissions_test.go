@@ -11,13 +11,14 @@ import (
 )
 
 func TestPermissions_Inventory(t *testing.T) {
-	f := testutil.NewFixture(t)
-	a := f.App
-
-	owner := f.OwnerContext()
-	anon := f.ActorContext("anonymous")
+	t.Parallel()
 
 	t.Run("owner", func(t *testing.T) {
+		t.Parallel()
+		f := testutil.NewFixture(t)
+		a := f.App
+		owner := f.OwnerContext()
+
 		_, err := a.Inventory.List(owner, inventory.ListRequest{})
 		testutil.RequireNotDenied(t, err)
 
@@ -39,6 +40,11 @@ func TestPermissions_Inventory(t *testing.T) {
 	})
 
 	t.Run("anonymous", func(t *testing.T) {
+		t.Parallel()
+		f := testutil.NewFixture(t)
+		a := f.App
+		anon := f.ActorContext("anonymous")
+
 		_, err := a.Inventory.List(anon, inventory.ListRequest{})
 		testutil.RequireNotDenied(t, err)
 
