@@ -6,7 +6,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
@@ -64,7 +63,7 @@ func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
 	testutil.ErrorIf(t, !deleted.DeletedAt.IsSome(), "expected DeletedAt to be set")
 
 	_, err = f.Drinks.Get(ctx, created.ID)
-	testutil.ErrorIf(t, !errors.IsNotFound(err), "expected NotFound, got %v", err)
+	testutil.ErrorIsNotFound(t, err)
 }
 
 func TestDrinks_CreateRejectsIDProvided(t *testing.T) {
@@ -74,7 +73,7 @@ func TestDrinks_CreateRejectsIDProvided(t *testing.T) {
 	_, err := f.Drinks.Create(f.OwnerContext(), models.Drink{
 		ID: models.NewDrinkID("explicit-id"),
 	})
-	testutil.ErrorIf(t, err == nil || !errors.IsInvalid(err), "expected invalid error, got %v", err)
+	testutil.ErrorIsInvalid(t, err)
 }
 
 func TestDrinks_ListFiltersByName(t *testing.T) {

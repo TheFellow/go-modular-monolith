@@ -19,23 +19,30 @@ func main() {
 	wd, err := os.Getwd()
 	must(err)
 
-	tmplBytes, err := os.ReadFile(filepath.Join(wd, "internal", "gen", "errors.go.tpl"))
+	data := struct {
+		Kinds []perrors.ErrorKind
+	}{
+		Kinds: perrors.ErrorKinds,
+	}
+
+	generate(wd, "errors.go.tpl", out, data)
+	generate(wd, "testutil.go.tpl", filepath.Join("..", "testutil", "errors_gen.go"), data)
+}
+
+func generate(wd, tplFile, outFile string, data any) {
+	tmplBytes, err := os.ReadFile(filepath.Join(wd, "internal", "gen", tplFile))
 	must(err)
 
 	tmpl, err := template.New("gen").Parse(string(tmplBytes))
 	must(err)
 
 	var buf bytes.Buffer
-	must(tmpl.Execute(&buf, struct {
-		Kinds []perrors.ErrorKind
-	}{
-		Kinds: perrors.ErrorKinds,
-	}))
+	must(tmpl.Execute(&buf, data))
 
 	formatted, err := format.Source(buf.Bytes())
 	must(err)
 
-	must(os.WriteFile(filepath.Join(wd, out), formatted, 0o644))
+	must(os.WriteFile(filepath.Join(wd, outFile), formatted, 0o644))
 }
 
 func must(err error) {

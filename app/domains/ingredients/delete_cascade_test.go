@@ -8,7 +8,6 @@ import (
 	inventoryM "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
@@ -56,10 +55,10 @@ func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
 	testutil.Ok(t, err)
 
 	_, err = f.Inventory.Get(ctx, ingredient.ID)
-	testutil.ErrorIf(t, !errors.IsNotFound(err), "expected stock not found, got %v", err)
+	testutil.ErrorIsNotFound(t, err)
 
 	_, err = f.Drinks.Get(ctx, drink.ID)
-	testutil.ErrorIf(t, !errors.IsNotFound(err), "expected drink not found, got %v", err)
+	testutil.ErrorIsNotFound(t, err)
 
 	gotMenu, err := f.Menu.Get(ctx, menu.ID)
 	testutil.Ok(t, err)

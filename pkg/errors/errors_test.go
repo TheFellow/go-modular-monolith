@@ -37,7 +37,7 @@ func TestConstructorUnwrap(t *testing.T) {
 	cause := errors.New("root")
 	err := errors.Internalf("boom: %w", cause)
 
-	testutil.ErrorIf(t, !errors.IsInternal(err), "got %v, want %v", err, errors.ErrInternal)
+	testutil.ErrorIsInternal(t, err)
 	testutil.ErrorIf(t, errors.Unwrap(err) != cause, "got %v, want %v", errors.Unwrap(err), cause)
 }
 
@@ -47,6 +47,6 @@ func TestWrapOnlyStillUnwraps(t *testing.T) {
 	cause := errors.New("root")
 	err := errors.Internalf("%w", cause)
 
-	testutil.ErrorIf(t, !errors.IsInternal(err), "got %v, want %v", err, errors.ErrInternal)
+	testutil.ErrorIsInternal(t, err)
 	testutil.ErrorIf(t, errors.Unwrap(err) != cause, "got %v, want %v", errors.Unwrap(err), cause)
 }
