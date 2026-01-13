@@ -43,3 +43,4 @@ sprint-030,completed,2026-01-10,2026-01-10,Simplify APIs - Direct IDs; Pointer R
 sprint-031,completed,2026-01-10,2026-01-10,Cross-Domain Event Handlers for Cascading Operations
 sprint-031a,completed,2026-01-11,2026-01-11,Two-Phase Event Handling
 sprint-031b,completed,2026-01-11,2026-01-11,Align Inventory Domain Authz Naming
+sprint-031c,completed,2026-01-12,2026-01-12,Generate `pkg/testutil/errors_gen.go` error-kind assertion helpers + simplify tests

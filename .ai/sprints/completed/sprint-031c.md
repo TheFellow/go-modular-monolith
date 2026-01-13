@@ -1,5 +1,10 @@
 # Sprint 031c: Generate Test Helpers for Error Kinds
 
+## Status
+
+- Started: 2026-01-12
+- Completed: 2026-01-12
+
 ## Goal
 
 Extend the `pkg/errors` code generator to also produce `pkg/testutil/errors_gen.go` with test assertion helpers for each error kind, simplifying test code.
@@ -181,21 +186,21 @@ testutil.NotFound(t, err)
 
 ## Tasks
 
-- [ ] Create `pkg/errors/internal/gen/testutil.go.tpl` template
-- [ ] Update `pkg/errors/internal/gen/main.go` to generate both files
-- [ ] Run `go generate ./pkg/errors/...` to generate `pkg/testutil/errors_gen.go`
-- [ ] Update `app/domains/ingredients/delete_cascade_test.go`
-- [ ] Update `app/domains/drinks/drinks_test.go`
-- [ ] Update `app/domains/ingredients/ingredients_test.go`
-- [ ] Update `app/domains/orders/orders_test.go`
-- [ ] Update `app/domains/menu/menu_test.go`
-- [ ] Update `pkg/errors/errors_test.go`
-- [ ] Verify `go build ./...` passes
-- [ ] Verify `go test ./...` passes
+- [x] Create `pkg/errors/internal/gen/testutil.go.tpl` template
+- [x] Update `pkg/errors/internal/gen/main.go` to generate both files
+- [x] Run `go generate ./pkg/errors/...` to generate `pkg/testutil/errors_gen.go`
+- [x] Update `app/domains/ingredients/delete_cascade_test.go`
+- [x] Update `app/domains/drinks/drinks_test.go`
+- [x] Update `app/domains/ingredients/ingredients_test.go`
+- [x] Update `app/domains/orders/orders_test.go`
+- [x] Update `app/domains/menu/menu_test.go`
+- [x] Update `pkg/errors/errors_test.go`
+- [x] Verify `go build ./...` passes
+- [x] Verify `go test ./...` passes
 
 ## Acceptance Criteria
 
-- [ ] `pkg/testutil/errors_gen.go` is generated with helpers for all error kinds
-- [ ] Test helpers use `t.Helper()` for proper line reporting
-- [ ] Existing tests simplified to use new helpers
-- [ ] All tests pass
+- [x] `pkg/testutil/errors_gen.go` is generated with helpers for all error kinds
+- [x] Test helpers use `t.Helper()` for proper line reporting
+- [x] Existing tests simplified to use new helpers
+- [x] All tests pass

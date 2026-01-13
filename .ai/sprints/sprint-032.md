@@ -1,5 +1,7 @@
 # Sprint 032: Audit Module with Activity Tracking
 
+**Depends on:** Sprint 031d (KSUID Infrastructure)
+
 ## Goal
 
 Create an audit module that logs all activities and tracks entities touched by operations, providing a ledger of changes across the system while maintaining strict module separation.
@@ -47,26 +49,10 @@ import (
     cedar "github.com/cedar-policy/cedar-go"
 )
 
-// EntityTouch records an operation on an entity
-type EntityTouch struct {
-    EntityUID cedar.EntityUID
-    Operation TouchOperation
-    At        time.Time
-}
-
-type TouchOperation string
-
-const (
-    TouchCreated TouchOperation = "created"
-    TouchUpdated TouchOperation = "updated"
-    TouchDeleted TouchOperation = "deleted"
-    TouchRead    TouchOperation = "read"
-)
-
 // Activity tracks a single authorized operation and its effects
 type Activity struct {
     // Primary operation (from authorization)
-    Action    cedar.EntityUID  // e.g., Mixology::Action::"drinks:create"
+    Action    cedar.EntityUID  // e.g., Mixology::Action::"drinks:delete"
     Resource  cedar.EntityUID  // Primary resource being acted upon
     Principal cedar.EntityUID  // Actor performing the action
 
@@ -74,8 +60,9 @@ type Activity struct {
     StartedAt   time.Time
     CompletedAt time.Time
 
-    // All entities touched during this activity (including cascades)
-    Touches []EntityTouch
+    // All entities touched during this activity
+    // The Action tells you what happened; this tells you what was affected
+    Touches []cedar.EntityUID
 
     // Outcome
     Success bool
@@ -89,16 +76,12 @@ func NewActivity(action, resource, principal cedar.EntityUID) *Activity {
         Resource:  resource,
         Principal: principal,
         StartedAt: time.Now(),
-        Touches:   make([]EntityTouch, 0, 8),
+        Touches:   make([]cedar.EntityUID, 0, 8),
     }
 }
 
-func (a *Activity) Touch(uid cedar.EntityUID, op TouchOperation) {
-    a.Touches = append(a.Touches, EntityTouch{
-        EntityUID: uid,
-        Operation: op,
-        At:        time.Now(),
-    })
+func (a *Activity) Touch(uid cedar.EntityUID) {
+    a.Touches = append(a.Touches, uid)
 }
 
 func (a *Activity) Complete(err error) {
@@ -130,9 +113,9 @@ func ActivityFromContext(ctx context.Context) (*Activity, bool) {
 
 // TouchEntity records an entity touch on the current activity
 // Safe to call even if no activity is tracking
-func (c *Context) TouchEntity(uid cedar.EntityUID, op TouchOperation) {
+func (c *Context) TouchEntity(uid cedar.EntityUID) {
     if a, ok := ActivityFromContext(c.Context); ok {
-        a.Touch(uid, op)
+        a.Touch(uid)
     }
 }
 ```
@@ -206,10 +189,12 @@ import (
 const AuditEntryEntityType = cedar.EntityType("Mixology::AuditEntry")
 
 type AuditEntry struct {
+    // KSUID-based ID (e.g., aud-2HbR6c7bDtx9XPVqG1kN9MHHFM7)
+    // Lexicographically sortable by creation time
     ID          cedar.EntityUID
 
     // The operation
-    Action      string           // Action type (e.g., "drinks:create")
+    Action      string           // Action type (e.g., "drinks:delete")
     Resource    cedar.EntityUID  // Primary resource
     Principal   cedar.EntityUID  // Who did it
 
@@ -222,14 +207,8 @@ type AuditEntry struct {
     Success     bool
     Error       string
 
-    // All entities affected
-    Touches     []EntityTouch
-}
-
-type EntityTouch struct {
-    EntityUID cedar.EntityUID
-    Operation string    // "created", "updated", "deleted", "read"
-    At        time.Time
+    // All entities affected by this action
+    Touches     []cedar.EntityUID
 }
 ```
 
@@ -260,15 +239,6 @@ func (h *ActivityCompletedHandler) Handle(ctx *middleware.Context, e middleware.
         return err
     }
 
-    touches := make([]models.EntityTouch, len(e.Activity.Touches))
-    for i, t := range e.Activity.Touches {
-        touches[i] = models.EntityTouch{
-            EntityUID: t.EntityUID,
-            Operation: string(t.Operation),
-            At:        t.At,
-        }
-    }
-
     entry := models.AuditEntry{
         ID:          id,
         Action:      string(e.Activity.Action.ID),
@@ -279,7 +249,7 @@ func (h *ActivityCompletedHandler) Handle(ctx *middleware.Context, e middleware.
         Duration:    e.Activity.CompletedAt.Sub(e.Activity.StartedAt),
         Success:     e.Activity.Success,
         Error:       e.Activity.Error,
-        Touches:     touches,
+        Touches:     e.Activity.Touches,
     }
 
     return h.dao.Insert(ctx, entry)
@@ -338,44 +308,38 @@ func (q *Queries) GetByPrincipal(ctx context.Context, principal cedar.EntityUID)
 
 ## Recording Entity Touches
 
-### In DAO Operations
+Entity touches are recorded exclusively in event handlers, not DAOs. This keeps DAOs simple and puts the touch responsibility where the business logic lives.
 
-DAOs call `ctx.TouchEntity()` to record operations:
+### In Event Handlers
+
+Handlers record touches for entities they affect:
 
 ```go
-// Example: drinks/internal/dao/insert.go
-func (d *DAO) Insert(ctx context.Context, drink models.Drink) error {
-    err := d.write(ctx, func(tx *bstore.Tx) error {
-        return tx.Insert(toRow(drink))
-    })
-    if err != nil {
-        return err
-    }
-
-    // Record the touch (safe even if not in activity context)
-    if mctx, ok := ctx.(*middleware.Context); ok {
-        mctx.TouchEntity(drink.ID, middleware.TouchCreated)
+// Example: drinks/handlers/ingredient_deleted.go
+func (h *IngredientDeletedDrinkCascader) Handle(ctx *middleware.Context, e IngredientDeleted) error {
+    for _, drink := range h.affectedDrinks {
+        deleted := *drink
+        deleted.DeletedAt = optional.Some(e.DeletedAt)
+        if err := h.drinkDAO.Update(ctx, deleted); err != nil {
+            return err
+        }
+        ctx.TouchEntity(drink.ID)
     }
     return nil
 }
 ```
 
-### In Event Handlers (Cascades)
+### In Commands
 
-Handlers record touches for cascade operations:
+Commands touch the primary resource they operate on:
 
 ```go
-// Example: drinks/handlers/ingredient_deleted.go
-func (h *IngredientDeletedDrinkCascader) Handle(ctx *middleware.Context, e IngredientDeleted) error {
-    drinks, _ := h.drinkQueries.ListByIngredient(ctx, e.Ingredient.ID)
+// Example: drinks/internal/commands/delete.go
+func (c *DeleteDrinkCommand) Execute(ctx *middleware.Context) error {
+    // ... delete logic ...
 
-    for _, drink := range drinks {
-        if err := h.drinkDAO.Delete(ctx, drink.ID); err != nil {
-            return err
-        }
-        // Touch is recorded in DAO, or explicitly:
-        ctx.TouchEntity(drink.ID, middleware.TouchDeleted)
-    }
+    ctx.TouchEntity(drink.ID)
+    ctx.AddEvent(events.DrinkDeleted{Drink: deleted, DeletedAt: now})
     return nil
 }
 ```
@@ -444,13 +408,10 @@ mixology audit actor owner
 - [ ] Register handler in app event dispatcher
 - [ ] Test audit entries are created for commands
 
-### Phase 4: DAO Touch Recording
+### Phase 4: Touch Recording in Commands and Handlers
 
-- [ ] Update drinks DAO to call `TouchEntity` on insert/update/delete
-- [ ] Update ingredients DAO similarly
-- [ ] Update inventory DAO similarly
-- [ ] Update menu DAO similarly
-- [ ] Update orders DAO similarly
+- [ ] Update commands to call `ctx.TouchEntity()` for primary resource
+- [ ] Update event handlers to call `ctx.TouchEntity()` for affected entities
 
 ### Phase 5: Audit Queries
 
@@ -462,8 +423,8 @@ mixology audit actor owner
 ### Phase 6: Tests
 
 - [ ] Test activity tracking captures primary action
-- [ ] Test touches are recorded from DAOs
-- [ ] Test cascade touches are recorded
+- [ ] Test touches are recorded from commands
+- [ ] Test touches are recorded from handlers
 - [ ] Test audit entries are persisted
 - [ ] Test query filters work correctly
 - [ ] Verify `go test ./...` passes
@@ -483,22 +444,23 @@ After: `mixology drinks delete margarita`
   "duration": "150ms",
   "success": true,
   "touches": [
-    {"entity": "Mixology::Drink::margarita", "operation": "deleted", "at": "..."},
-    {"entity": "Mixology::Menu::summer-menu", "operation": "updated", "at": "..."},
-    {"entity": "Mixology::Menu::winter-menu", "operation": "updated", "at": "..."}
+    "Mixology::Drink::margarita",
+    "Mixology::Menu::summer-menu",
+    "Mixology::Menu::winter-menu"
   ]
 }
 ```
 
-This shows the drink was deleted and two menus were updated (drink removed from them).
+The action (`drinks:delete`) tells you what happened. The touches list tells you all entities affected by the operation - the drink itself plus the menus it was removed from.
 
 ## Acceptance Criteria
 
-- Every command creates an audit entry
-- Audit entries capture the primary action, principal, and resource
-- All entity touches (including cascades) are recorded
-- Failed operations are audited with error message
-- Audit module has no imports from other domain modules
-- Audit queries allow filtering by entity, principal, action, and time
-- CLI provides access to audit log
-- All tests pass
+- [ ] Every command creates an audit entry
+- [ ] Audit entries capture the action, principal, and resource
+- [ ] Entity touches recorded in commands and handlers (not DAOs)
+- [ ] Touches are simple `[]cedar.EntityUID` - action provides context
+- [ ] Failed operations are audited with error message
+- [ ] Audit module has no imports from other domain modules
+- [ ] Audit queries allow filtering by entity, principal, action, and time
+- [ ] CLI provides access to audit log
+- [ ] All tests pass
