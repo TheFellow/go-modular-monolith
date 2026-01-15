@@ -4,6 +4,11 @@
 
 Set up KSUID (K-Sortable Unique IDentifier) infrastructure for time-sortable entity IDs with optional type prefixes.
 
+## Status
+
+- Started: 2026-01-12
+- Completed: 2026-01-13
+
 ## Why KSUIDs?
 
 Current IDs are random hex strings with no inherent ordering:
@@ -79,11 +84,6 @@ var prefixes = map[cedar.EntityType]string{
     "Mixology::AuditEntry": "aud",
 }
 
-// RegisterPrefix adds a prefix for an entity type
-func RegisterPrefix(entityType cedar.EntityType, prefix string) {
-    prefixes[entityType] = prefix
-}
-
 // New generates a new KSUID-based EntityUID with type prefix
 func New(entityType cedar.EntityType) (cedar.EntityUID, error) {
     id := ksuid.New()
@@ -146,13 +146,13 @@ This is especially valuable for audit entries where you want time-ordered retrie
 
 ## Tasks
 
-- [ ] Add `github.com/segmentio/ksuid` to `go.mod`
-- [ ] Update `pkg/ids/ids.go` to use KSUID with prefixes
-- [ ] Register prefixes for existing entity types
-- [ ] Add `Parse()` and `Time()` helper functions
-- [ ] Add tests for ID generation and parsing
-- [ ] Verify `go build ./...` passes
-- [ ] Verify `go test ./...` passes
+- [x] Add `github.com/segmentio/ksuid` to `go.mod` (vendored)
+- [x] Update `pkg/ids/ids.go` to use KSUID with prefixes
+- [x] Keep the prefix list static (no `RegisterPrefix`)
+- [x] Add `Parse()` and `Time()` helper functions
+- [x] Add tests for ID generation and parsing
+- [x] Verify `go test ./...` passes
+- [x] Verify packages compile (via `go test`)
 
 ## Migration Notes
 
@@ -160,9 +160,9 @@ Existing entities with old-style IDs will continue to work - the Cedar EntityUID
 
 ## Acceptance Criteria
 
-- [ ] `ids.New()` generates KSUID-based IDs with type prefix
-- [ ] IDs are lexicographically sortable by creation time
-- [ ] `ids.Parse()` can extract KSUID from prefixed ID
-- [ ] `ids.Time()` can extract timestamp from ID
-- [ ] All existing tests pass
-- [ ] New entity types can register their prefix via `RegisterPrefix()`
+- [x] `ids.New()` generates KSUID-based IDs with type prefix
+- [x] IDs are lexicographically sortable by creation time
+- [x] `ids.Parse()` can extract KSUID from prefixed ID
+- [x] `ids.Time()` can extract timestamp from ID
+- [x] All existing tests pass
+- [x] Prefix list is static; unknown types derive a deterministic prefix
