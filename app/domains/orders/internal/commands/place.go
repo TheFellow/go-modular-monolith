@@ -54,6 +54,7 @@ func (c *Commands) Place(ctx *middleware.Context, order models.Order) (*models.O
 		return nil, err
 	}
 
+	ctx.TouchEntity(order.ID)
 	ctx.AddEvent(events.OrderPlaced{Order: order})
 	return &order, nil
 }

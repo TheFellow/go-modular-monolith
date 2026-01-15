@@ -76,6 +76,7 @@ func (h *DrinkRecipeUpdatedMenuUpdater) Handle(ctx *middleware.Context, e drinks
 		if err := h.menuDAO.Update(ctx, *menu); err != nil {
 			return err
 		}
+		ctx.TouchEntity(menu.ID)
 	}
 
 	return nil

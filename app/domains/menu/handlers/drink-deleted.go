@@ -36,6 +36,7 @@ func (h *DrinkDeletedMenuUpdater) Handle(ctx *middleware.Context, e drinksevents
 		if err := h.menuDAO.Update(ctx, *menu); err != nil {
 			return err
 		}
+		ctx.TouchEntity(menu.ID)
 	}
 
 	return nil

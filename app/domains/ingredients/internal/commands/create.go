@@ -41,6 +41,7 @@ func (c *Commands) Create(ctx *middleware.Context, ingredient models.Ingredient)
 		return nil, err
 	}
 
+	ctx.TouchEntity(created.ID)
 	ctx.AddEvent(events.IngredientCreated{
 		Ingredient: created,
 	})

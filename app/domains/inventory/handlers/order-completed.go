@@ -48,6 +48,8 @@ func (h *OrderCompletedStockUpdater) Handle(ctx *middleware.Context, e orderseve
 		if err := h.stockDAO.Upsert(ctx, updated); err != nil {
 			return err
 		}
+
+		ctx.TouchEntity(updated.EntityUID())
 	}
 
 	return nil

@@ -45,6 +45,7 @@ func (c *Commands) Complete(ctx *middleware.Context, order models.Order) (*model
 		return nil, err
 	}
 
+	ctx.TouchEntity(updated.ID)
 	ctx.AddEvent(events.OrderCompleted{
 		Order:               updated,
 		IngredientUsage:     ingredientUsage,

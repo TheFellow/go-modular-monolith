@@ -43,6 +43,7 @@ func (h *IngredientDeletedDrinkCascader) Handle(ctx *middleware.Context, e ingre
 		if err := h.drinkDAO.Update(ctx, deleted); err != nil {
 			return err
 		}
+		ctx.TouchEntity(deleted.ID)
 	}
 	return nil
 }

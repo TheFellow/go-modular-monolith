@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
@@ -23,6 +24,7 @@ type App struct {
 	Dispatcher  middleware.EventDispatcher
 	Logger      *slog.Logger
 	Metrics     telemetry.Metrics
+	Audit       *audit.Module
 	Drinks      *drinks.Module
 	Ingredients *ingredients.Module
 	Inventory   *inventory.Module
@@ -38,6 +40,7 @@ func New(opts ...Option) *App {
 		Dispatcher:  dispatcher.New(),
 		Logger:      slog.Default(),
 		Metrics:     telemetry.Nop(),
+		Audit:       audit.NewModule(),
 		Drinks:      drinks.NewModule(),
 		Ingredients: ingredients.NewModule(),
 		Inventory:   inventory.NewModule(),

@@ -14,6 +14,7 @@ var (
 	Command = NewCommandChain(
 		CommandLogging(),
 		CommandMetrics(),
+		TrackActivity(),
 		CommandAuthorize(),
 		UnitOfWork(),
 		DispatchEvents(),

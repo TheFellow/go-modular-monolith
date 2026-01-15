@@ -59,6 +59,7 @@ func (h *OrderCompletedMenuUpdater) Handle(ctx *middleware.Context, e orderseven
 		if err := h.menuDAO.Update(ctx, *menu); err != nil {
 			return err
 		}
+		ctx.TouchEntity(menu.ID)
 	}
 
 	return nil

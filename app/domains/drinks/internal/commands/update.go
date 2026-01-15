@@ -59,6 +59,7 @@ func (c *Commands) Update(ctx *middleware.Context, drink models.Drink) (*models.
 		return nil, err
 	}
 
+	ctx.TouchEntity(updated.ID)
 	if !reflect.DeepEqual(previous.Recipe, updated.Recipe) {
 		ctx.AddEvent(events.DrinkRecipeUpdated{
 			Previous: previous,

@@ -49,6 +49,7 @@ func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChan
 		return nil, err
 	}
 
+	ctx.TouchEntity(updated.ID)
 	ctx.AddEvent(events.DrinkAddedToMenu{
 		Menu: updated,
 		Item: added,

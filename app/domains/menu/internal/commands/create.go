@@ -46,6 +46,7 @@ func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (*models.Me
 		return nil, err
 	}
 
+	ctx.TouchEntity(created.ID)
 	ctx.AddEvent(events.MenuCreated{
 		Menu: created,
 	})

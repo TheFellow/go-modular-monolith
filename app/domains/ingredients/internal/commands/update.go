@@ -39,6 +39,7 @@ func (c *Commands) Update(ctx *middleware.Context, ingredient models.Ingredient)
 		return nil, err
 	}
 
+	ctx.TouchEntity(updated.ID)
 	ctx.AddEvent(events.IngredientUpdated{
 		Previous: previous,
 		Current:  updated,

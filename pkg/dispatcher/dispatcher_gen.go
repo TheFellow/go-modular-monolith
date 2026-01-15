@@ -3,6 +3,7 @@
 package dispatcher
 
 import (
+	audit_handlers "github.com/TheFellow/go-modular-monolith/app/domains/audit/handlers"
 	drinks_events "github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
 	drinks_handlers "github.com/TheFellow/go-modular-monolith/app/domains/drinks/handlers"
 	ingredients_events "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
@@ -13,6 +14,7 @@ import (
 	menu_handlers "github.com/TheFellow/go-modular-monolith/app/domains/menu/handlers"
 	orders_events "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
 	middleware "github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	pkg_events "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 )
 
 func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
@@ -96,6 +98,13 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 			}
 		}
 		if err := orderCompletedMenuUpdater.Handle(ctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+	case pkg_events.ActivityCompleted:
+		activityCompletedAuditWriter := audit_handlers.NewActivityCompletedAuditWriter()
+		if err := activityCompletedAuditWriter.Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}

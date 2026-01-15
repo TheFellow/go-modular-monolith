@@ -33,6 +33,7 @@ func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (*models.M
 		return nil, err
 	}
 
+	ctx.TouchEntity(menu.ID)
 	ctx.AddEvent(events.MenuPublished{
 		Menu: menu,
 	})

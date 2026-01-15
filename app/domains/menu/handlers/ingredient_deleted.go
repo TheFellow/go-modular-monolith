@@ -88,6 +88,7 @@ func (h *IngredientDeletedMenuCascader) Handle(ctx *middleware.Context, _ ingred
 		if err := h.menuDAO.Update(ctx, updated); err != nil {
 			return err
 		}
+		ctx.TouchEntity(updated.ID)
 	}
 
 	return nil

@@ -34,5 +34,9 @@ func (h *MenuPublishedValidator) Handle(ctx *middleware.Context, e events.MenuPu
 		return nil
 	}
 
-	return h.menuDAO.Update(ctx, menu)
+	if err := h.menuDAO.Update(ctx, menu); err != nil {
+		return err
+	}
+	ctx.TouchEntity(menu.ID)
+	return nil
 }

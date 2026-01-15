@@ -38,6 +38,7 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, change models.MenuDrinkC
 		return nil, err
 	}
 
+	ctx.TouchEntity(updated.ID)
 	ctx.AddEvent(events.DrinkRemovedFromMenu{
 		Menu: updated,
 		Item: removedItem,

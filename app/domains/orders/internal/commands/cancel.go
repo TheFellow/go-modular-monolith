@@ -34,6 +34,7 @@ func (c *Commands) Cancel(ctx *middleware.Context, order models.Order) (*models.
 		return nil, err
 	}
 
+	ctx.TouchEntity(updated.ID)
 	ctx.AddEvent(events.OrderCancelled{
 		Order: updated,
 	})

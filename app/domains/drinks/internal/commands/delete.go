@@ -29,6 +29,7 @@ func (c *Commands) Delete(ctx *middleware.Context, id cedar.EntityUID) (*models.
 		return nil, err
 	}
 
+	ctx.TouchEntity(deleted.ID)
 	ctx.AddEvent(events.DrinkDeleted{
 		Drink:     deleted,
 		DeletedAt: now,

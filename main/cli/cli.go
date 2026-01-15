@@ -128,12 +128,13 @@ func (c *CLI) Command() *cli.Command {
 		OnUsageError: func(_ context.Context, _ *cli.Command, err error, _ bool) error {
 			return cli.Exit(err, apperrors.ExitUsage)
 		},
-		Commands: []*cli.Command{
-			c.drinksCommands(),
-			c.ingredientsCommands(),
-			c.inventoryCommands(),
-			c.menuCommands(),
-			c.ordersCommands(),
-		},
+			Commands: []*cli.Command{
+				c.drinksCommands(),
+				c.ingredientsCommands(),
+				c.inventoryCommands(),
+				c.menuCommands(),
+				c.ordersCommands(),
+				c.auditCommands(),
+			},
+		}
 	}
-}

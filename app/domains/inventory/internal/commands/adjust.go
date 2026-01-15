@@ -94,6 +94,7 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch models.Patch) (*models.
 		return nil, err
 	}
 
+	ctx.TouchEntity(current.EntityUID())
 	if hasDelta {
 		ctx.AddEvent(events.StockAdjusted{
 			Previous: previous,

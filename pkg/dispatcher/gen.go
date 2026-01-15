@@ -275,55 +275,59 @@ func readModulePath(goModPath string) (string, error) {
 func scanEvents(repoRoot, modulePath string) ([]eventType, error) {
 	var out []eventType
 
-	appRoot := filepath.Join(repoRoot, "app")
 	fset := token.NewFileSet()
 
-	err := filepath.WalkDir(appRoot, func(path string, d os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if d.IsDir() {
-			return nil
-		}
-		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-		if !strings.Contains(filepath.ToSlash(path), "/events/") {
-			return nil
-		}
-
-		file, err := parser.ParseFile(fset, path, nil, 0)
-		if err != nil {
-			return fmt.Errorf("parse %s: %w", path, err)
-		}
-
-		dir := filepath.Dir(path)
-		relDir, err := filepath.Rel(repoRoot, dir)
-		if err != nil {
-			return err
-		}
-		pkgPath := modulePath + "/" + filepath.ToSlash(relDir)
-
-		for _, decl := range file.Decls {
-			gen, ok := decl.(*ast.GenDecl)
-			if !ok || gen.Tok != token.TYPE {
-				continue
+	for _, root := range []string{
+		filepath.Join(repoRoot, "app"),
+		filepath.Join(repoRoot, "pkg"),
+	} {
+		err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
 			}
-			for _, spec := range gen.Specs {
-				ts, ok := spec.(*ast.TypeSpec)
-				if !ok {
+			if d.IsDir() {
+				return nil
+			}
+			if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+				return nil
+			}
+			if !strings.Contains(filepath.ToSlash(path), "/events/") {
+				return nil
+			}
+
+			file, err := parser.ParseFile(fset, path, nil, 0)
+			if err != nil {
+				return fmt.Errorf("parse %s: %w", path, err)
+			}
+
+			dir := filepath.Dir(path)
+			relDir, err := filepath.Rel(repoRoot, dir)
+			if err != nil {
+				return err
+			}
+			pkgPath := modulePath + "/" + filepath.ToSlash(relDir)
+
+			for _, decl := range file.Decls {
+				gen, ok := decl.(*ast.GenDecl)
+				if !ok || gen.Tok != token.TYPE {
 					continue
 				}
-				if _, ok := ts.Type.(*ast.StructType); !ok {
-					continue
+				for _, spec := range gen.Specs {
+					ts, ok := spec.(*ast.TypeSpec)
+					if !ok {
+						continue
+					}
+					if _, ok := ts.Type.(*ast.StructType); !ok {
+						continue
+					}
+					out = append(out, eventType{PkgPath: pkgPath, Name: ts.Name.Name})
 				}
-				out = append(out, eventType{PkgPath: pkgPath, Name: ts.Name.Name})
 			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
 	}
 
 	sort.Slice(out, func(i, j int) bool {

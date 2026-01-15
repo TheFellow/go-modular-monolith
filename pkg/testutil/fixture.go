@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app"
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
@@ -25,6 +26,7 @@ type Fixture struct {
 	App     *app.App
 	Metrics *telemetry.MemoryMetrics
 
+	Audit       *audit.Module
 	Drinks      *drinks.Module
 	Ingredients *ingredients.Module
 	Inventory   *inventory.Module
@@ -60,6 +62,7 @@ func NewFixture(t testing.TB) *Fixture {
 		App:     a,
 		Metrics: metrics,
 
+		Audit:       a.Audit,
 		Drinks:      a.Drinks,
 		Ingredients: a.Ingredients,
 		Inventory:   a.Inventory,
@@ -80,11 +83,6 @@ func (f *Fixture) ActorContext(actor string) *middleware.Context {
 	p, err := authn.ParseActor(actor)
 	Ok(f.T, err)
 	return f.App.Context(context.Background(), p)
-}
-
-func (f *Fixture) AsActor(actor string) *middleware.Context {
-	f.T.Helper()
-	return f.ActorContext(actor)
 }
 
 func (f *Fixture) Bootstrap() *Bootstrap {

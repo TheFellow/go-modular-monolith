@@ -60,6 +60,7 @@ func (c *Commands) Create(ctx *middleware.Context, drink models.Drink) (*models.
 		return nil, err
 	}
 
+	ctx.TouchEntity(created.ID)
 	ctx.AddEvent(events.DrinkCreated{
 		Drink: created,
 	})

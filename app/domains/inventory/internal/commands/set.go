@@ -56,6 +56,7 @@ func (c *Commands) Set(ctx *middleware.Context, update models.Update) (*models.I
 		return nil, err
 	}
 
+	ctx.TouchEntity(current.EntityUID())
 	ctx.AddEvent(events.StockAdjusted{
 		Previous: previous,
 		Current:  current,

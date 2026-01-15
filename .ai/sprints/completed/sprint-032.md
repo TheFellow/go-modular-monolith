@@ -6,6 +6,11 @@
 
 Create an audit module that logs all activities and tracks entities touched by operations, providing a ledger of changes across the system while maintaining strict module separation.
 
+## Status
+
+- Started: 2026-01-13
+- Completed: 2026-01-13
+
 ## Architecture
 
 ### Design Principles
@@ -19,15 +24,15 @@ Create an audit module that logs all activities and tracks entities touched by o
 
 ```
 pkg/middleware/           # Infrastructure
-├── activity.go           # Activity struct and context helpers
-└── activity_middleware.go # Middleware that tracks and emits ActivityCompleted
+├── activity.go           # Context helpers (WithActivity/TouchEntity)
+├── track_activity.go     # Middleware that emits ActivityCompleted
+└── events/
+    └── activity_completed.go # Activity + ActivityCompleted event
 
 app/domains/audit/        # Audit domain module
 ├── module.go
 ├── models/
 │   └── entry.go          # AuditEntry model
-├── events/
-│   └── activity_completed.go  # Event definition
 ├── handlers/
 │   └── activity_completed.go  # Persists audit entries
 ├── queries/
@@ -166,10 +171,10 @@ type ActivityCompleted struct {
 var Command = NewCommandChain(
     CommandLogging(),
     CommandMetrics(),
+    TrackActivity(),      // NEW: creates Activity + emits ActivityCompleted
     CommandAuthorize(),
     UnitOfWork(),
-    TrackActivity(),      // NEW: Inside UoW, before dispatch
-    DispatchEvents(),     // Dispatches ActivityCompleted along with domain events
+    DispatchEvents(),     // Dispatches domain events (touch tracking happens in handlers)
 )
 ```
 
@@ -387,47 +392,47 @@ mixology audit actor owner
 
 ### Phase 1: Activity Infrastructure
 
-- [ ] Create `pkg/middleware/activity.go` with Activity struct
-- [ ] Add `TouchEntity` method to Context
-- [ ] Add `ActivityFromContext` helper
-- [ ] Create `TrackActivity` middleware
-- [ ] Define `ActivityCompleted` event in middleware package
-- [ ] Update command chain to include `TrackActivity`
+- [x] Create `pkg/middleware/events/activity_completed.go` with `Activity` + `ActivityCompleted`
+- [x] Add `TouchEntity` method to Context
+- [x] Add `ActivityFromContext` helper
+- [x] Create `TrackActivity` middleware
+- [x] Update command chain to include `TrackActivity`
+- [x] Update dispatcher generator to scan `pkg/**/events/**`
 
 ### Phase 2: Audit Module Structure
 
-- [ ] Create `app/domains/audit/` directory structure
-- [ ] Create `models/entry.go` with AuditEntry
-- [ ] Create `internal/dao/` with DAO and models
-- [ ] Create `queries/queries.go` with query methods
-- [ ] Create `module.go` with public API
+- [x] Create `app/domains/audit/` directory structure
+- [x] Create `models/entry.go` with AuditEntry
+- [x] Create `internal/dao/` with DAO and models
+- [x] Create `queries/queries.go` with query scaffolding
+- [x] Create `module.go` + `List` API
 
 ### Phase 3: Activity Handler
 
-- [ ] Create `handlers/activity_completed.go`
-- [ ] Register handler in app event dispatcher
-- [ ] Test audit entries are created for commands
+- [x] Create `handlers/activity_completed.go`
+- [x] Register handler in generated app event dispatcher
+- [x] Test audit entries are created for commands
 
 ### Phase 4: Touch Recording in Commands and Handlers
 
-- [ ] Update commands to call `ctx.TouchEntity()` for primary resource
-- [ ] Update event handlers to call `ctx.TouchEntity()` for affected entities
+- [x] Update commands to call `ctx.TouchEntity()` for primary resource
+- [x] Update event handlers to call `ctx.TouchEntity()` for affected entities
 
 ### Phase 5: Audit Queries
 
-- [ ] Implement `List` with filtering
-- [ ] Implement `GetByEntity`
-- [ ] Implement `GetByPrincipal`
-- [ ] Add CLI commands for audit queries
+- [x] Implement `List` with filtering
+- [x] Implement `GetByEntity`
+- [x] Implement `GetByPrincipal`
+- [x] Add CLI commands for audit queries
 
 ### Phase 6: Tests
 
-- [ ] Test activity tracking captures primary action
-- [ ] Test touches are recorded from commands
-- [ ] Test touches are recorded from handlers
-- [ ] Test audit entries are persisted
-- [ ] Test query filters work correctly
-- [ ] Verify `go test ./...` passes
+- [x] Test activity tracking captures primary action
+- [x] Test touches are recorded from commands
+- [x] Test touches are recorded from handlers
+- [x] Test audit entries are persisted
+- [x] Test query filters work correctly
+- [x] Verify `go test ./...` passes
 
 ## Example Audit Trail
 
@@ -455,12 +460,12 @@ The action (`drinks:delete`) tells you what happened. The touches list tells you
 
 ## Acceptance Criteria
 
-- [ ] Every command creates an audit entry
-- [ ] Audit entries capture the action, principal, and resource
-- [ ] Entity touches recorded in commands and handlers (not DAOs)
-- [ ] Touches are simple `[]cedar.EntityUID` - action provides context
-- [ ] Failed operations are audited with error message
-- [ ] Audit module has no imports from other domain modules
-- [ ] Audit queries allow filtering by entity, principal, action, and time
-- [ ] CLI provides access to audit log
-- [ ] All tests pass
+- [x] Every command creates an audit entry
+- [x] Audit entries capture the action, principal, and resource
+- [x] Entity touches recorded in commands and handlers (not DAOs)
+- [x] Touches are simple `[]cedar.EntityUID` - action provides context
+- [x] Failed operations are audited with error message
+- [x] Audit module has no imports from other domain modules
+- [x] Audit queries allow filtering by entity, principal, action, and time
+- [x] CLI provides access to audit log
+- [x] All tests pass
