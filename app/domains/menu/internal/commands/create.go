@@ -6,8 +6,8 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/ids"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
@@ -22,14 +22,9 @@ func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (*models.Me
 		return nil, errors.Invalidf("name is required")
 	}
 
-	uid, err := ids.New(models.MenuEntityType)
-	if err != nil {
-		return nil, errors.Internalf("generate id: %w", err)
-	}
-
 	now := time.Now().UTC()
 	created := models.Menu{
-		ID:          uid,
+		ID:          entity.NewMenuID(),
 		Name:        menu.Name,
 		Description: strings.TrimSpace(menu.Description),
 		Items:       nil,

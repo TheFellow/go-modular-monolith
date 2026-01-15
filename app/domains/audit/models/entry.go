@@ -3,10 +3,11 @@ package models
 import (
 	"time"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-const AuditEntryEntityType = cedar.EntityType("Mixology::AuditEntry")
+const AuditEntryEntityType = entity.TypeAuditEntry
 
 type AuditEntry struct {
 	ID cedar.EntityUID
@@ -23,4 +24,3 @@ type AuditEntry struct {
 
 	Touches []cedar.EntityUID
 }
-

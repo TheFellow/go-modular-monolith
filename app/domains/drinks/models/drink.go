@@ -3,14 +3,15 @@ package models
 import (
 	"time"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/cedar-policy/cedar-go"
 )
 
-const DrinkEntityType = cedar.EntityType("Mixology::Drink")
+const DrinkEntityType = entity.TypeDrink
 
 func NewDrinkID(id string) cedar.EntityUID {
-	return cedar.NewEntityUID(DrinkEntityType, cedar.String(id))
+	return entity.DrinkID(id)
 }
 
 type Drink struct {

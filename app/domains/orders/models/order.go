@@ -4,15 +4,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-const OrderEntityType = cedar.EntityType("Mixology::Order")
+const OrderEntityType = entity.TypeOrder
 
 func NewOrderID(id string) cedar.EntityUID {
-	return cedar.NewEntityUID(OrderEntityType, cedar.String(id))
+	return entity.OrderID(id)
 }
 
 type Order struct {

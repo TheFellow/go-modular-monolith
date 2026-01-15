@@ -3,16 +3,17 @@ package models
 import (
 	"time"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-const InventoryEntityType = cedar.EntityType("Mixology::Inventory")
+const InventoryEntityType = entity.TypeInventory
 
 func NewInventoryID(ingredientID cedar.EntityUID) cedar.EntityUID {
-	return cedar.NewEntityUID(InventoryEntityType, ingredientID.ID)
+	return entity.InventoryID(ingredientID)
 }
 
 type Inventory struct {

@@ -5,8 +5,8 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/ids"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
@@ -35,13 +35,8 @@ func (c *Commands) Place(ctx *middleware.Context, order models.Order) (*models.O
 		}
 	}
 
-	id, err := ids.New(models.OrderEntityType)
-	if err != nil {
-		return nil, errors.Internalf("generate id: %w", err)
-	}
-
 	now := time.Now().UTC()
-	order.ID = id
+	order.ID = entity.NewOrderID()
 	order.Status = models.OrderStatusPending
 	order.CreatedAt = now
 	order.CompletedAt = optional.NewNone[time.Time]()

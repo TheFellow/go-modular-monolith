@@ -4,6 +4,11 @@
 
 Move KSUID-based ID generation from `pkg/ids` into `app/kernel/entity`, where entity types are already defined. Each entity file owns its type, prefix, and ID factory. Remove `pkg/ids`.
 
+## Status
+
+- Started: 2026-01-13
+- Completed: 2026-01-13
+
 ## Problem
 
 Current structure has ID logic split across packages:
@@ -245,28 +250,28 @@ Note: `ksuid.New()` doesn't return an error, simplifying call sites.
 
 ## Tasks
 
-- [ ] Add `github.com/segmentio/ksuid` to `go.mod` (if not already)
-- [ ] Update `app/kernel/entity/drink.go` with prefix and `NewDrinkID()`
-- [ ] Update `app/kernel/entity/ingredient.go` with prefix and `NewIngredientID()`
-- [ ] Update `app/kernel/entity/menu.go` with prefix and `NewMenuID()`
-- [ ] Update `app/kernel/entity/order.go` with prefix and `NewOrderID()`
-- [ ] Update `app/kernel/entity/inventory.go` with prefix
-- [ ] Create `app/kernel/entity/audit.go` with audit entry type and ID generation
-- [ ] Optionally create `app/kernel/entity/ids.go` with shared `NewID()` helper
-- [ ] Update drinks create command to use `entity.NewDrinkID()`
-- [ ] Update ingredients create command to use `entity.NewIngredientID()`
-- [ ] Update menu create command to use `entity.NewMenuID()`
-- [ ] Update orders place command to use `entity.NewOrderID()`
-- [ ] Update audit handler to use `entity.NewAuditEntryID()`
-- [ ] Delete `pkg/ids/` package
-- [ ] Verify `go build ./...` passes
-- [ ] Verify `go test ./...` passes
+- [x] Add `github.com/segmentio/ksuid` to `go.mod` (if not already)
+- [x] Update `app/kernel/entity/drink.go` with prefix and `NewDrinkID()`
+- [x] Update `app/kernel/entity/ingredient.go` with prefix and `NewIngredientID()`
+- [x] Update `app/kernel/entity/menu.go` with prefix and `NewMenuID()`
+- [x] Update `app/kernel/entity/order.go` with prefix and `NewOrderID()`
+- [x] Update `app/kernel/entity/inventory.go` with prefix
+- [x] Create `app/kernel/entity/audit.go` with audit entry type and ID generation
+- [x] Optionally create `app/kernel/entity/ids.go` with shared `NewID()` helper
+- [x] Update drinks create command to use `entity.NewDrinkID()`
+- [x] Update ingredients create command to use `entity.NewIngredientID()`
+- [x] Update menu create command to use `entity.NewMenuID()`
+- [x] Update orders place command to use `entity.NewOrderID()`
+- [x] Update audit handler to use `entity.NewAuditEntryID()`
+- [x] Delete `pkg/ids/` package
+- [x] Verify `go build ./...` passes
+- [x] Verify `go test ./...` passes
 
 ## Acceptance Criteria
 
-- [ ] Each entity file owns its type, prefix, and ID factory
-- [ ] `New*ID()` functions generate KSUID-based IDs with correct prefix
-- [ ] `pkg/ids/` package is deleted
-- [ ] No centralized prefix map exists
-- [ ] All commands use entity package for ID generation
-- [ ] All tests pass
+- [x] Each entity file owns its type, prefix, and ID factory
+- [x] `New*ID()` functions generate KSUID-based IDs with correct prefix
+- [x] `pkg/ids/` package is deleted
+- [x] No centralized prefix map exists
+- [x] All commands use entity package for ID generation
+- [x] All tests pass

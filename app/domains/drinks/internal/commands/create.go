@@ -5,8 +5,8 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/ids"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -48,13 +48,8 @@ func (c *Commands) Create(ctx *middleware.Context, drink models.Drink) (*models.
 		}
 	}
 
-	uid, err := ids.New(models.DrinkEntityType)
-	if err != nil {
-		return nil, errors.Internalf("generate id: %w", err)
-	}
-
 	created := drink
-	created.ID = uid
+	created.ID = entity.NewDrinkID()
 
 	if err := c.dao.Insert(ctx, created); err != nil {
 		return nil, err

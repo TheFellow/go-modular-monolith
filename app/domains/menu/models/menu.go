@@ -4,16 +4,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-const MenuEntityType = cedar.EntityType("Mixology::Menu")
+const MenuEntityType = entity.TypeMenu
 
 func NewMenuID(id string) cedar.EntityUID {
-	return cedar.NewEntityUID(MenuEntityType, cedar.String(id))
+	return entity.MenuID(id)
 }
 
 type Menu struct {

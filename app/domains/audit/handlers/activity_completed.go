@@ -3,7 +3,7 @@ package handlers
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/ids"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 )
@@ -17,13 +17,8 @@ func NewActivityCompletedAuditWriter() *ActivityCompletedAuditWriter {
 }
 
 func (h *ActivityCompletedAuditWriter) Handle(ctx *middleware.Context, e middlewareevents.ActivityCompleted) error {
-	id, err := ids.New(models.AuditEntryEntityType)
-	if err != nil {
-		return err
-	}
-
 	entry := models.AuditEntry{
-		ID:          id,
+		ID:          entity.NewAuditEntryID(),
 		Action:      e.Activity.Action.String(),
 		Resource:    e.Activity.Resource,
 		Principal:   e.Activity.Principal,

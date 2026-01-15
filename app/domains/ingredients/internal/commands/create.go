@@ -7,7 +7,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/ids"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -27,13 +26,8 @@ func (c *Commands) Create(ctx *middleware.Context, ingredient models.Ingredient)
 		return nil, errors.Invalidf("unit is required")
 	}
 
-	uid, err := ids.New(entity.TypeIngredient)
-	if err != nil {
-		return nil, errors.Internalf("generate id: %w", err)
-	}
-
 	created := ingredient
-	created.ID = uid
+	created.ID = entity.NewIngredientID()
 	created.Name = name
 	created.Description = strings.TrimSpace(created.Description)
 
