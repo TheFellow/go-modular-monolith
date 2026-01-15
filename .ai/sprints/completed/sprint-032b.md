@@ -4,6 +4,11 @@
 
 Update the README to use Mermaid diagrams (GitHub-native rendering) and document the middleware activity tracking and audit module.
 
+## Status
+
+- Started: 2026-01-13
+- Completed: 2026-01-13
+
 ## Why Mermaid?
 
 - GitHub renders Mermaid natively in markdown
@@ -192,12 +197,12 @@ Note: Audit consumes `ActivityCompleted` from middleware but produces no domain 
 
 ## Tasks
 
-- [ ] Convert Bounded Contexts diagram to Mermaid
-- [ ] Convert Event Flow diagram to Mermaid
-- [ ] Convert Write Pipeline diagram to Mermaid
-- [ ] Add Audit to Context Responsibilities table
-- [ ] Add "Activity Tracking & Audit" section with sequence diagram
-- [ ] Document `ctx.TouchEntity()` pattern
+- [x] Convert Bounded Contexts diagram to Mermaid
+- [x] Convert Event Flow diagram to Mermaid
+- [x] Convert Write Pipeline diagram to Mermaid
+- [x] Add Audit to Context Responsibilities table
+- [x] Add "Activity Tracking & Audit" section with sequence diagram
+- [x] Document `ctx.TouchEntity()` pattern
 - [ ] Document audit CLI commands
 - [ ] Update command chain code snippet to include `TrackActivity()`
 - [ ] Verify diagrams render correctly on GitHub
