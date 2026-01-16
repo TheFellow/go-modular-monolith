@@ -11,7 +11,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Adjust(ctx *middleware.Context, current models.Inventory, patch models.Patch) (*models.Inventory, error) {
+func (c *Commands) Adjust(ctx *middleware.Context, current *models.Inventory, patch models.Patch) (*models.Inventory, error) {
+	if current == nil {
+		return nil, errors.Internalf("inventory is required")
+	}
 	if patch.Reason == "" {
 		return nil, errors.Invalidf("reason is required")
 	}
@@ -53,9 +56,10 @@ func (c *Commands) Adjust(ctx *middleware.Context, current models.Inventory, pat
 		return nil, errors.Invalidf("ingredient unit is required")
 	}
 
-	previous := current
+	previous := *current
+	updated := *current
 
-	previousQty := current.Quantity
+	previousQty := updated.Quantity
 	newQty := previousQty
 	if hasDelta {
 		newQty = previousQty + delta
@@ -65,27 +69,27 @@ func (c *Commands) Adjust(ctx *middleware.Context, current models.Inventory, pat
 	}
 
 	if hasDelta {
-		current.Quantity = newQty
+		updated.Quantity = newQty
 	}
-	current.IngredientID = patch.IngredientID
-	current.Unit = ingredient.Unit
+	updated.IngredientID = patch.IngredientID
+	updated.Unit = ingredient.Unit
 	if hasCost {
-		current.CostPerUnit = optional.Some(cost)
+		updated.CostPerUnit = optional.Some(cost)
 	}
-	current.LastUpdated = time.Now().UTC()
+	updated.LastUpdated = time.Now().UTC()
 
-	if err := c.dao.Upsert(ctx, current); err != nil {
+	if err := c.dao.Upsert(ctx, updated); err != nil {
 		return nil, err
 	}
 
-	ctx.TouchEntity(current.EntityUID())
+	ctx.TouchEntity(updated.EntityUID())
 	if hasDelta {
 		ctx.AddEvent(events.StockAdjusted{
 			Previous: previous,
-			Current:  current,
+			Current:  updated,
 			Reason:   string(patch.Reason),
 		})
 	}
 
-	return &current, nil
+	return &updated, nil
 }

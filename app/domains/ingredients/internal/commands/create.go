@@ -10,7 +10,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (c *Commands) Create(ctx *middleware.Context, ingredient models.Ingredient) (*models.Ingredient, error) {
+func (c *Commands) Create(ctx *middleware.Context, ingredient *models.Ingredient) (*models.Ingredient, error) {
+	if ingredient == nil {
+		return nil, errors.Invalidf("ingredient is required")
+	}
 	if ingredient.ID.ID != "" {
 		return nil, errors.Invalidf("id must be empty for create")
 	}
@@ -26,7 +29,7 @@ func (c *Commands) Create(ctx *middleware.Context, ingredient models.Ingredient)
 		return nil, errors.Invalidf("unit is required")
 	}
 
-	created := ingredient
+	created := *ingredient
 	created.ID = entity.NewIngredientID()
 	created.Name = name
 	created.Description = strings.TrimSpace(created.Description)

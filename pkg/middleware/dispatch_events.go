@@ -15,7 +15,7 @@ type EventDispatcher interface {
 // DispatchEvents dispatches any events collected on the middleware context
 // after the command completes.
 func DispatchEvents() CommandMiddleware {
-	return func(ctx *Context, _ cedar.EntityUID, _ cedar.Entity, next CommandNext) error {
+	return func(ctx *Context, _ cedar.EntityUID, next CommandNext) error {
 		if err := next(ctx); err != nil {
 			return err
 		}

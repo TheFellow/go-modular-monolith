@@ -10,13 +10,16 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Delete(ctx *middleware.Context, drink models.Drink) (*models.Drink, error) {
+func (c *Commands) Delete(ctx *middleware.Context, drink *models.Drink) (*models.Drink, error) {
+	if drink == nil {
+		return nil, errors.Invalidf("drink is required")
+	}
 	if string(drink.ID.ID) == "" {
 		return nil, errors.Invalidf("id is required")
 	}
 
 	now := time.Now().UTC()
-	deleted := drink
+	deleted := *drink
 	deleted.DeletedAt = optional.Some(now)
 
 	if err := c.dao.Update(ctx, deleted); err != nil {

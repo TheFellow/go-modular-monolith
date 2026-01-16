@@ -8,11 +8,13 @@ import (
 
 func (m *Module) Create(ctx *middleware.Context, menu models.Menu) (*models.Menu, error) {
 	return middleware.RunCommand(ctx, authz.ActionCreate,
-		func(*middleware.Context) (models.Menu, error) {
-			return menu, nil
+		func(*middleware.Context) (*models.Menu, error) {
+			toCreate := menu
+			if toCreate.ID.Type == "" {
+				toCreate.ID = models.NewMenuID(string(toCreate.ID.ID))
+			}
+			return &toCreate, nil
 		},
-		func(ctx *middleware.Context, toCreate models.Menu) (*models.Menu, error) {
-			return m.commands.Create(ctx, toCreate)
-		},
+		m.commands.Create,
 	)
 }

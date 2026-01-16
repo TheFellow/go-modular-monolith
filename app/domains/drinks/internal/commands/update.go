@@ -8,7 +8,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (c *Commands) Update(ctx *middleware.Context, drink models.Drink) (*models.Drink, error) {
+func (c *Commands) Update(ctx *middleware.Context, drink *models.Drink) (*models.Drink, error) {
+	if drink == nil {
+		return nil, errors.Invalidf("drink is required")
+	}
 	if string(drink.ID.ID) == "" {
 		return nil, errors.Invalidf("drink id is required")
 	}
@@ -44,7 +47,7 @@ func (c *Commands) Update(ctx *middleware.Context, drink models.Drink) (*models.
 		}
 	}
 
-	updated := drink
+	updated := *drink
 	updated.Description = strings.TrimSpace(updated.Description)
 
 	if err := c.dao.Update(ctx, updated); err != nil {

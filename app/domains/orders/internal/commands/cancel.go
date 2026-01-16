@@ -10,18 +10,21 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Cancel(ctx *middleware.Context, order models.Order) (*models.Order, error) {
+func (c *Commands) Cancel(ctx *middleware.Context, order *models.Order) (*models.Order, error) {
+	if order == nil {
+		return nil, errors.Invalidf("order is required")
+	}
 	switch order.Status {
 	case models.OrderStatusCompleted:
 		return nil, errors.Invalidf("order %q is already completed", order.ID)
 	case models.OrderStatusCancelled:
-		return &order, nil
+		return order, nil
 	case models.OrderStatusPending, models.OrderStatusPreparing:
 	default:
 		return nil, errors.Invalidf("unexpected status %q", order.Status)
 	}
 
-	updated := order
+	updated := *order
 	updated.Status = models.OrderStatusCancelled
 	updated.CompletedAt = optional.NewNone[time.Time]()
 

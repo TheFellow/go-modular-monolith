@@ -8,14 +8,10 @@ import (
 
 func (m *Module) AddDrink(ctx *middleware.Context, change models.MenuDrinkChange) (*models.Menu, error) {
 	return middleware.RunCommand(ctx, authz.ActionAddDrink,
-		func(ctx *middleware.Context) (models.Menu, error) {
-			current, err := m.queries.Get(ctx, change.MenuID)
-			if err != nil {
-				return models.Menu{}, err
-			}
-			return *current, nil
+		func(ctx *middleware.Context) (*models.Menu, error) {
+			return m.queries.Get(ctx, change.MenuID)
 		},
-		func(ctx *middleware.Context, menu models.Menu) (*models.Menu, error) {
+		func(ctx *middleware.Context, menu *models.Menu) (*models.Menu, error) {
 			return m.commands.AddDrink(ctx, menu, change)
 		},
 	)

@@ -14,7 +14,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
 // testLogBuffer captures log output for assertions.
@@ -145,18 +144,12 @@ func TestCommandLogging_PermissionError_LogsDenied(t *testing.T) {
 	mctx := newTestContext(logBuf, mem)
 
 	action := drinksauthz.ActionCreate
-	resource := cedar.Entity{
-		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Drink::Catalog"), cedar.String("default")),
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
-	}
 
 	chain := middleware.NewCommandChain(
 		middleware.CommandLogging(),
 	)
 
-	err := chain.Execute(mctx, action, resource, func(_ *middleware.Context) error {
+	err := chain.Execute(mctx, action, func(_ *middleware.Context) error {
 		return errors.Permissionf("access denied")
 	})
 
@@ -291,12 +284,6 @@ func TestDispatchEvents_DispatchesEvents(t *testing.T) {
 	)
 
 	action := drinksauthz.ActionCreate
-	resource := cedar.Entity{
-		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Drink::Catalog"), cedar.String("default")),
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
-	}
 
 	// Use just DispatchEvents middleware to test dispatch behavior
 	chain := middleware.NewCommandChain(
@@ -305,7 +292,7 @@ func TestDispatchEvents_DispatchesEvents(t *testing.T) {
 
 	event := testEvent{Name: "created"}
 
-	err := chain.Execute(mctx, action, resource, func(ctx *middleware.Context) error {
+	err := chain.Execute(mctx, action, func(ctx *middleware.Context) error {
 		ctx.AddEvent(event)
 		return nil
 	})
@@ -351,18 +338,12 @@ func TestDispatchEvents_DoesNotCascadeNewEvents(t *testing.T) {
 	)
 
 	action := drinksauthz.ActionCreate
-	resource := cedar.Entity{
-		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Drink::Catalog"), cedar.String("default")),
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
-	}
 
 	chain := middleware.NewCommandChain(
 		middleware.DispatchEvents(),
 	)
 
-	err := chain.Execute(mctx, action, resource, func(ctx *middleware.Context) error {
+	err := chain.Execute(mctx, action, func(ctx *middleware.Context) error {
 		ctx.AddEvent(testEvent{Name: "created"})
 		return nil
 	})

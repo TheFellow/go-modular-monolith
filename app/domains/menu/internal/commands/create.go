@@ -12,7 +12,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Create(ctx *middleware.Context, menu models.Menu) (*models.Menu, error) {
+func (c *Commands) Create(ctx *middleware.Context, menu *models.Menu) (*models.Menu, error) {
+	if menu == nil {
+		return nil, errors.Invalidf("menu is required")
+	}
 	if menu.ID.ID != "" {
 		return nil, errors.Invalidf("id must be empty for create")
 	}

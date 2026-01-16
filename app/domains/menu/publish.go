@@ -8,15 +8,9 @@ import (
 
 func (m *Module) Publish(ctx *middleware.Context, menu models.Menu) (*models.Menu, error) {
 	return middleware.RunCommand(ctx, authz.ActionPublish,
-		func(ctx *middleware.Context) (models.Menu, error) {
-			current, err := m.queries.Get(ctx, menu.ID)
-			if err != nil {
-				return models.Menu{}, err
-			}
-			return *current, nil
+		func(ctx *middleware.Context) (*models.Menu, error) {
+			return m.queries.Get(ctx, menu.ID)
 		},
-		func(ctx *middleware.Context, current models.Menu) (*models.Menu, error) {
-			return m.commands.Publish(ctx, current)
-		},
+		m.commands.Publish,
 	)
 }

@@ -10,7 +10,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Set(ctx *middleware.Context, current models.Inventory, update models.Update) (*models.Inventory, error) {
+func (c *Commands) Set(ctx *middleware.Context, current *models.Inventory, update models.Update) (*models.Inventory, error) {
+	if current == nil {
+		return nil, errors.Internalf("inventory is required")
+	}
 	if update.Quantity < 0 {
 		update.Quantity = 0
 	}
@@ -29,24 +32,25 @@ func (c *Commands) Set(ctx *middleware.Context, current models.Inventory, update
 		return nil, errors.Invalidf("ingredient unit is required")
 	}
 
-	previous := current
+	previous := *current
+	updated := *current
 
-	current.IngredientID = update.IngredientID
-	current.Quantity = update.Quantity
-	current.Unit = ingredient.Unit
-	current.CostPerUnit = optional.Some(update.CostPerUnit)
-	current.LastUpdated = time.Now().UTC()
+	updated.IngredientID = update.IngredientID
+	updated.Quantity = update.Quantity
+	updated.Unit = ingredient.Unit
+	updated.CostPerUnit = optional.Some(update.CostPerUnit)
+	updated.LastUpdated = time.Now().UTC()
 
-	if err := c.dao.Upsert(ctx, current); err != nil {
+	if err := c.dao.Upsert(ctx, updated); err != nil {
 		return nil, err
 	}
 
-	ctx.TouchEntity(current.EntityUID())
+	ctx.TouchEntity(updated.EntityUID())
 	ctx.AddEvent(events.StockAdjusted{
 		Previous: previous,
-		Current:  current,
+		Current:  updated,
 		Reason:   "set",
 	})
 
-	return &current, nil
+	return &updated, nil
 }

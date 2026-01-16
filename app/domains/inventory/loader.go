@@ -7,17 +7,17 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (m *Module) loadInventory(ctx *middleware.Context, ingredientID cedar.EntityUID) (models.Inventory, error) {
+func (m *Module) loadInventory(ctx *middleware.Context, ingredientID cedar.EntityUID) (*models.Inventory, error) {
 	if ingredientID.ID == "" {
-		return models.Inventory{}, errors.Invalidf("ingredient id is required")
+		return nil, errors.Invalidf("ingredient id is required")
 	}
 
 	stock, err := m.queries.Get(ctx, ingredientID)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return models.Inventory{IngredientID: ingredientID}, nil
+			return &models.Inventory{IngredientID: ingredientID}, nil
 		}
-		return models.Inventory{}, err
+		return nil, err
 	}
-	return *stock, nil
+	return stock, nil
 }

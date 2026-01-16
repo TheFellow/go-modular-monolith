@@ -8,7 +8,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) AddDrink(ctx *middleware.Context, menu models.Menu, change models.MenuDrinkChange) (*models.Menu, error) {
+func (c *Commands) AddDrink(ctx *middleware.Context, menu *models.Menu, change models.MenuDrinkChange) (*models.Menu, error) {
+	if menu == nil {
+		return nil, errors.Invalidf("menu is required")
+	}
 	if _, err := c.drinks.Get(ctx, change.DrinkID); err != nil {
 		return nil, err
 	}
@@ -17,7 +20,7 @@ func (c *Commands) AddDrink(ctx *middleware.Context, menu models.Menu, change mo
 		return nil, errors.Invalidf("menu id mismatch")
 	}
 
-	updated := menu
+	updated := *menu
 	for _, item := range menu.Items {
 		if string(item.DrinkID.ID) == string(change.DrinkID.ID) {
 			return nil, errors.Invalidf("drink already in menu")

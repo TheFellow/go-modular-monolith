@@ -9,15 +9,15 @@ import (
 )
 
 func TrackActivity() CommandMiddleware {
-	return func(ctx *Context, action cedar.EntityUID, resource cedar.Entity, next CommandNext) error {
-		activity := middlewareevents.NewActivity(action, resource.UID, ctx.Principal())
+	return func(ctx *Context, action cedar.EntityUID, next CommandNext) error {
+		activity := middlewareevents.NewActivity(action, cedar.EntityUID{}, ctx.Principal())
 		WithActivity(activity)(ctx)
 
 		err := next(ctx)
 
 		if activity.Resource.IsZero() {
-			if input, ok := ctx.InputEntity(); ok {
-				activity.Resource = input.CedarEntity().UID
+			if len(activity.Touches) > 0 {
+				activity.Resource = activity.Touches[0]
 			}
 		}
 		activity.Complete(err)

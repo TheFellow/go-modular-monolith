@@ -11,7 +11,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Place(ctx *middleware.Context, order models.Order) (*models.Order, error) {
+func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.Order, error) {
+	if order == nil {
+		return nil, errors.Invalidf("order is required")
+	}
 	if order.ID.ID != "" {
 		return nil, errors.Invalidf("id must be empty for place")
 	}
@@ -36,20 +39,21 @@ func (c *Commands) Place(ctx *middleware.Context, order models.Order) (*models.O
 	}
 
 	now := time.Now().UTC()
-	order.ID = entity.NewOrderID()
-	order.Status = models.OrderStatusPending
-	order.CreatedAt = now
-	order.CompletedAt = optional.NewNone[time.Time]()
+	created := *order
+	created.ID = entity.NewOrderID()
+	created.Status = models.OrderStatusPending
+	created.CreatedAt = now
+	created.CompletedAt = optional.NewNone[time.Time]()
 
-	if err := order.Validate(); err != nil {
+	if err := created.Validate(); err != nil {
 		return nil, err
 	}
 
-	if err := c.dao.Insert(ctx, order); err != nil {
+	if err := c.dao.Insert(ctx, created); err != nil {
 		return nil, err
 	}
 
-	ctx.TouchEntity(order.ID)
-	ctx.AddEvent(events.OrderPlaced{Order: order})
-	return &order, nil
+	ctx.TouchEntity(created.ID)
+	ctx.AddEvent(events.OrderPlaced{Order: created})
+	return &created, nil
 }

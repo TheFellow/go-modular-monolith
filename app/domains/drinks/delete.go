@@ -9,15 +9,9 @@ import (
 
 func (m *Module) Delete(ctx *middleware.Context, id cedar.EntityUID) (*models.Drink, error) {
 	return middleware.RunCommand(ctx, authz.ActionDelete,
-		func(ctx *middleware.Context) (models.Drink, error) {
-			loaded, err := m.queries.Get(ctx, id)
-			if err != nil {
-				return models.Drink{}, err
-			}
-			return *loaded, nil
+		func(ctx *middleware.Context) (*models.Drink, error) {
+			return m.queries.Get(ctx, id)
 		},
-		func(ctx *middleware.Context, drink models.Drink) (*models.Drink, error) {
-			return m.commands.Delete(ctx, drink)
-		},
+		m.commands.Delete,
 	)
 }

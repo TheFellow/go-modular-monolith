@@ -14,10 +14,13 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (c *Commands) Complete(ctx *middleware.Context, order models.Order) (*models.Order, error) {
+func (c *Commands) Complete(ctx *middleware.Context, order *models.Order) (*models.Order, error) {
+	if order == nil {
+		return nil, errors.Invalidf("order is required")
+	}
 	switch order.Status {
 	case models.OrderStatusCompleted:
-		return &order, nil
+		return order, nil
 	case models.OrderStatusCancelled:
 		return nil, errors.Invalidf("order %q is cancelled", order.ID.ID)
 	case models.OrderStatusPending, models.OrderStatusPreparing:
@@ -27,12 +30,12 @@ func (c *Commands) Complete(ctx *middleware.Context, order models.Order) (*model
 
 	now := time.Now().UTC()
 
-	ingredientUsage, depleted, err := c.enrichCompletion(ctx, order)
+	ingredientUsage, depleted, err := c.enrichCompletion(ctx, *order)
 	if err != nil {
 		return nil, err
 	}
 
-	updated := order
+	updated := *order
 	updated.Status = models.OrderStatusCompleted
 	updated.CompletedAt = optional.NewSome(now)
 

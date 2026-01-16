@@ -37,7 +37,7 @@ func NewMetricsCollector(m telemetry.Metrics) *MetricsCollector {
 var nopMetricsCollector = NewMetricsCollector(telemetry.Nop())
 
 func CommandMetrics() CommandMiddleware {
-	return func(ctx *Context, action cedar.EntityUID, _ cedar.Entity, next CommandNext) error {
+	return func(ctx *Context, action cedar.EntityUID, next CommandNext) error {
 		mc, ok := MetricsCollectorFromContext(ctx.Context)
 		if !ok || mc == nil {
 			mc = nopMetricsCollector

@@ -17,6 +17,5 @@ var (
 		TrackActivity(),
 		UnitOfWork(),
 		DispatchEvents(),
-		CommandAuthorize(),
 	)
 )

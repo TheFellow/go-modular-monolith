@@ -11,15 +11,12 @@ import (
 
 func (m *Module) Update(ctx *middleware.Context, ingredient models.Ingredient) (*models.Ingredient, error) {
 	return middleware.RunCommand(ctx, authz.ActionUpdate,
-		func(ctx *middleware.Context) (models.Ingredient, error) {
-			current, err := m.queries.Get(ctx, ingredient.ID)
-			if err != nil {
-				return models.Ingredient{}, err
-			}
-			return *current, nil
+		func(ctx *middleware.Context) (*models.Ingredient, error) {
+			return m.queries.Get(ctx, ingredient.ID)
 		},
-		func(ctx *middleware.Context, current models.Ingredient) (*models.Ingredient, error) {
-			updated := current
+		func(ctx *middleware.Context, current *models.Ingredient) (*models.Ingredient, error) {
+			previous := *current
+			updated := previous
 			if name := strings.TrimSpace(ingredient.Name); name != "" {
 				updated.Name = name
 			}
@@ -33,12 +30,12 @@ func (m *Module) Update(ctx *middleware.Context, ingredient models.Ingredient) (
 				updated.Description = desc
 			}
 
-			result, err := m.commands.Update(ctx, updated)
+			result, err := m.commands.Update(ctx, &updated)
 			if err != nil {
 				return nil, err
 			}
 			ctx.AddEvent(events.IngredientUpdated{
-				Previous: current,
+				Previous: previous,
 				Current:  *result,
 			})
 			return result, nil

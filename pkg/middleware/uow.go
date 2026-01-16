@@ -9,7 +9,7 @@ import (
 )
 
 func UnitOfWork() CommandMiddleware {
-	return func(ctx *Context, _ cedar.EntityUID, _ cedar.Entity, next CommandNext) error {
+	return func(ctx *Context, _ cedar.EntityUID, next CommandNext) error {
 		s, ok := store.FromContext(ctx.Context)
 		if !ok || s == nil {
 			return errors.Internalf("store missing from context")

@@ -8,7 +8,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (c *Commands) Update(ctx *middleware.Context, ingredient models.Ingredient) (*models.Ingredient, error) {
+func (c *Commands) Update(ctx *middleware.Context, ingredient *models.Ingredient) (*models.Ingredient, error) {
+	if ingredient == nil {
+		return nil, errors.Invalidf("ingredient is required")
+	}
 	if string(ingredient.ID.ID) == "" {
 		return nil, errors.Invalidf("id is required")
 	}
@@ -25,11 +28,11 @@ func (c *Commands) Update(ctx *middleware.Context, ingredient models.Ingredient)
 	}
 	ingredient.Description = strings.TrimSpace(ingredient.Description)
 
-	if err := c.dao.Update(ctx, ingredient); err != nil {
+	if err := c.dao.Update(ctx, *ingredient); err != nil {
 		return nil, err
 	}
 
 	ctx.TouchEntity(ingredient.ID)
 
-	return &ingredient, nil
+	return ingredient, nil
 }

@@ -10,7 +10,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (c *Commands) Create(ctx *middleware.Context, drink models.Drink) (*models.Drink, error) {
+func (c *Commands) Create(ctx *middleware.Context, drink *models.Drink) (*models.Drink, error) {
+	if drink == nil {
+		return nil, errors.Invalidf("drink is required")
+	}
 	if drink.ID.ID != "" {
 		return nil, errors.Invalidf("id must be empty for create")
 	}
@@ -48,7 +51,7 @@ func (c *Commands) Create(ctx *middleware.Context, drink models.Drink) (*models.
 		}
 	}
 
-	created := drink
+	created := *drink
 	created.ID = entity.NewDrinkID()
 
 	if err := c.dao.Insert(ctx, created); err != nil {

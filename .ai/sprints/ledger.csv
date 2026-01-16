@@ -49,3 +49,5 @@ sprint-032,completed,2026-01-13,2026-01-13,Audit module with activity tracking t
 sprint-031e,completed,2026-01-13,2026-01-13,Consolidate KSUID ID generation into app/kernel/entity; remove pkg/ids
 sprint-032b,completed,2026-01-13,2026-01-13,README Mermaid diagrams + activity/audit documentation
 sprint-033,completed,2026-01-15,2026-01-15,ABAC attributes + loader auth + dual IN/OUT checks
+
+sprint-033a,completed,2026-01-15,2026-01-15,Simplify command middleware and inline auth

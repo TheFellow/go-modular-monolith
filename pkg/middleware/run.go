@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/authz"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -52,24 +52,33 @@ func RunCommand[In CedarEntity, Out CedarEntity](
 ) (Out, error) {
 	var out Out
 
-	WithCommandLoader(func(c *Context) (CedarEntity, error) {
-		return load(c)
-	})(ctx)
-
-	err := Command.Execute(ctx, action, cedar.Entity{}, func(c *Context) error {
-		input, ok := c.InputEntity()
-		if !ok {
-			return errors.Internalf("command input missing")
-		}
-		typedInput, ok := input.(In)
-		if !ok {
-			return errors.Internalf("command input type mismatch")
-		}
-		res, err := execute(c, typedInput)
+	err := Command.Execute(ctx, action, func(c *Context) error {
+		input, err := load(c)
 		if err != nil {
 			return err
 		}
-		c.setOutputEntity(res)
+
+		if activity, ok := ActivityFromContext(c.Context); ok && activity.Resource.IsZero() {
+			activity.Resource = input.CedarEntity().UID
+		}
+
+		if err := authz.AuthorizeWithEntity(c.Principal(), action, input.CedarEntity()); err != nil {
+			return err
+		}
+
+		res, err := execute(c, input)
+		if err != nil {
+			return err
+		}
+
+		if activity, ok := ActivityFromContext(c.Context); ok && activity.Resource.IsZero() {
+			activity.Resource = res.CedarEntity().UID
+		}
+
+		if err := authz.AuthorizeWithEntity(c.Principal(), action, res.CedarEntity()); err != nil {
+			return err
+		}
+
 		out = res
 		return nil
 	})

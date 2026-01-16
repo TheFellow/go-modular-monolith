@@ -5,30 +5,35 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (*models.Menu, error) {
+func (c *Commands) Publish(ctx *middleware.Context, menu *models.Menu) (*models.Menu, error) {
+	if menu == nil {
+		return nil, errors.Invalidf("menu is required")
+	}
 	now := time.Now().UTC()
-	menu.Status = models.MenuStatusPublished
-	menu.PublishedAt = optional.Some(now)
-	for i := range menu.Items {
-		menu.Items[i].Availability = c.availability.Calculate(ctx, menu.Items[i].DrinkID)
+	updated := *menu
+	updated.Status = models.MenuStatusPublished
+	updated.PublishedAt = optional.Some(now)
+	for i := range updated.Items {
+		updated.Items[i].Availability = c.availability.Calculate(ctx, updated.Items[i].DrinkID)
 	}
 
-	if err := menu.Validate(); err != nil {
+	if err := updated.Validate(); err != nil {
 		return nil, err
 	}
 
-	if err := c.dao.Update(ctx, menu); err != nil {
+	if err := c.dao.Update(ctx, updated); err != nil {
 		return nil, err
 	}
 
-	ctx.TouchEntity(menu.ID)
+	ctx.TouchEntity(updated.ID)
 	ctx.AddEvent(events.MenuPublished{
-		Menu: menu,
+		Menu: updated,
 	})
 
-	return &menu, nil
+	return &updated, nil
 }
