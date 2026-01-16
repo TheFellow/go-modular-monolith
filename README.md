@@ -59,7 +59,7 @@ flowchart LR
 | Context | Owns | Queries From | Produces Events |
 |---------|------|--------------|-----------------|
 | Ingredients | Ingredient catalog | - | IngredientCreated, IngredientUpdated, IngredientDeleted |
-| Drinks | Drink recipes | Ingredients | DrinkCreated, DrinkRecipeUpdated, DrinkDeleted |
+| Drinks | Drink recipes | Ingredients | DrinkCreated, DrinkUpdated, DrinkDeleted |
 | Inventory | Stock levels | Ingredients | StockAdjusted |
 | Menu | Published menus | Drinks, Inventory | MenuCreated, DrinkAddedToMenu, DrinkRemovedFromMenu, MenuPublished |
 | Orders | Customer orders | Menu, Drinks, Inventory | OrderPlaced, OrderCompleted, OrderCancelled |

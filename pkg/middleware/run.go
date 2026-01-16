@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"context"
+
 	"github.com/TheFellow/go-modular-monolith/pkg/authz"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -83,4 +85,18 @@ func RunCommand[In CedarEntity, Out CedarEntity](
 		return nil
 	})
 	return out, err
+}
+
+// FromModel returns a loader that yields a fixed entity (useful for Create).
+func FromModel[T CedarEntity](entity T) func(*Context) (T, error) {
+	return func(*Context) (T, error) {
+		return entity, nil
+	}
+}
+
+// ByID returns a loader that fetches an entity by ID (useful for Update/Delete).
+func ByID[T CedarEntity](id cedar.EntityUID, get func(context.Context, cedar.EntityUID) (T, error)) func(*Context) (T, error) {
+	return func(ctx *Context) (T, error) {
+		return get(ctx, id)
+	}
 }

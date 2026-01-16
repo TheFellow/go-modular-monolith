@@ -9,8 +9,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (c *Commands) Update(ctx *middleware.Context, current *models.Drink, drink *models.Drink) (*models.Drink, error) {
-	if current == nil || drink == nil {
+func (c *Commands) Update(ctx *middleware.Context, drink *models.Drink) (*models.Drink, error) {
+	if drink == nil {
 		return nil, errors.Invalidf("drink is required")
 	}
 	if string(drink.ID.ID) == "" {
@@ -48,7 +48,6 @@ func (c *Commands) Update(ctx *middleware.Context, current *models.Drink, drink 
 		}
 	}
 
-	previous := *current
 	updated := *drink
 	updated.Description = strings.TrimSpace(updated.Description)
 
@@ -57,9 +56,8 @@ func (c *Commands) Update(ctx *middleware.Context, current *models.Drink, drink 
 	}
 
 	ctx.TouchEntity(updated.ID)
-	ctx.AddEvent(events.DrinkRecipeUpdated{
-		Previous: previous,
-		Current:  updated,
+	ctx.AddEvent(events.DrinkUpdated{
+		Drink: updated,
 	})
 
 	return &updated, nil

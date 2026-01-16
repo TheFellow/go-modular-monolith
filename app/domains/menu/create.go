@@ -8,9 +8,7 @@ import (
 
 func (m *Module) Create(ctx *middleware.Context, menu models.Menu) (*models.Menu, error) {
 	return middleware.RunCommand(ctx, authz.ActionCreate,
-		func(*middleware.Context) (*models.Menu, error) {
-			return &menu, nil
-		},
+		middleware.FromModel(&menu),
 		m.commands.Create,
 	)
 }

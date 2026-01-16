@@ -3,6 +3,7 @@ package handlers
 import (
 	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	inventoryevents "github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
+	"github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/availability"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -12,22 +13,18 @@ import (
 type StockAdjustedMenuUpdater struct {
 	menuDAO      *dao.DAO
 	drinkQueries *drinksq.Queries
+	availability *availability.AvailabilityCalculator
 }
 
 func NewStockAdjustedMenuUpdater() *StockAdjustedMenuUpdater {
 	return &StockAdjustedMenuUpdater{
 		menuDAO:      dao.New(),
 		drinkQueries: drinksq.New(),
+		availability: availability.New(),
 	}
 }
 
 func (h *StockAdjustedMenuUpdater) Handle(ctx *middleware.Context, e inventoryevents.StockAdjusted) error {
-	depleted := e.Current.Quantity == 0
-	restocked := e.Previous.Quantity == 0 && e.Current.Quantity > 0
-	if !depleted && !restocked {
-		return nil
-	}
-
 	menus, err := h.menuDAO.List(ctx, dao.ListFilter{Status: models.MenuStatusPublished})
 	if err != nil {
 		return err
@@ -37,18 +34,16 @@ func (h *StockAdjustedMenuUpdater) Handle(ctx *middleware.Context, e inventoryev
 		changed := false
 		for i := range menu.Items {
 			item := menu.Items[i]
-			if !h.drinkUsesIngredient(ctx, item.DrinkID, e.Current.IngredientID) {
+			if !h.drinkUsesIngredient(ctx, item.DrinkID, e.Inventory.IngredientID) {
 				continue
 			}
 
-			switch {
-			case depleted && item.Availability != models.AvailabilityUnavailable:
-				menu.Items[i].Availability = models.AvailabilityUnavailable
-				changed = true
-			case restocked && item.Availability == models.AvailabilityUnavailable:
-				menu.Items[i].Availability = models.AvailabilityAvailable
-				changed = true
+			status := h.availability.Calculate(ctx, item.DrinkID)
+			if item.Availability == status {
+				continue
 			}
+			menu.Items[i].Availability = status
+			changed = true
 		}
 
 		if !changed {

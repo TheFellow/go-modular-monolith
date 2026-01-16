@@ -8,9 +8,7 @@ import (
 
 func (m *Module) Publish(ctx *middleware.Context, menu models.Menu) (*models.Menu, error) {
 	return middleware.RunCommand(ctx, authz.ActionPublish,
-		func(ctx *middleware.Context) (*models.Menu, error) {
-			return m.queries.Get(ctx, menu.ID)
-		},
+		middleware.ByID(menu.ID, m.queries.Get),
 		m.commands.Publish,
 	)
 }

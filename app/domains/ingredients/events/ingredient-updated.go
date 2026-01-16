@@ -5,6 +5,5 @@ import (
 )
 
 type IngredientUpdated struct {
-	Previous models.Ingredient
-	Current  models.Ingredient
+	Ingredient models.Ingredient
 }

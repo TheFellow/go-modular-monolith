@@ -8,9 +8,7 @@ import (
 
 func (m *Module) Place(ctx *middleware.Context, order models.Order) (*models.Order, error) {
 	return middleware.RunCommand(ctx, authz.ActionPlace,
-		func(*middleware.Context) (*models.Order, error) {
-			return &order, nil
-		},
+		middleware.FromModel(&order),
 		m.commands.Place,
 	)
 }

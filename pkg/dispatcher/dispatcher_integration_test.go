@@ -1,6 +1,7 @@
 package dispatcher_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -72,13 +73,25 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("expected initial availability available, got %+v", m2.Items)
 	}
 
+	noDispatchCtx := middleware.NewContext(context.Background(),
+		middleware.WithStore(f.Store),
+		middleware.WithPrincipal(ctx.Principal()),
+	)
+	updated, err := a.Inventory.Set(noDispatchCtx, inventoryM.Update{
+		IngredientID: ingredient.ID,
+		Quantity:     0,
+		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
+	})
+	if err != nil {
+		t.Fatalf("set stock to zero: %v", err)
+	}
+
 	d := dispatcher.New()
 	err = f.Store.Write(ctx, func(tx *bstore.Tx) error {
 		txCtx := middleware.NewContext(ctx, middleware.WithTransaction(tx))
 		return d.Dispatch(txCtx, inventoryevents.StockAdjusted{
-			Previous: inventoryM.Inventory{IngredientID: ingredient.ID, Quantity: 10, Unit: ingredientsM.UnitOz},
-			Current:  inventoryM.Inventory{IngredientID: ingredient.ID, Quantity: 0, Unit: ingredientsM.UnitOz},
-			Reason:   "used",
+			Inventory: *updated,
+			Reason:    "used",
 		})
 	})
 	if err != nil {

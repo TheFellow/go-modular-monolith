@@ -1,14 +1,14 @@
 package queries
 
 import (
+	"context"
 	"sort"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (q *Queries) List(ctx *middleware.Context, filter dao.ListFilter) ([]*models.Order, error) {
+func (q *Queries) List(ctx context.Context, filter dao.ListFilter) ([]*models.Order, error) {
 	out, err := q.dao.List(ctx, filter)
 	if err != nil {
 		return nil, err

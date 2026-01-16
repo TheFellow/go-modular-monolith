@@ -8,9 +8,7 @@ import (
 
 func (m *Module) Cancel(ctx *middleware.Context, order models.Order) (*models.Order, error) {
 	return middleware.RunCommand(ctx, authz.ActionCancel,
-		func(ctx *middleware.Context) (*models.Order, error) {
-			return m.queries.Get(ctx, order.ID)
-		},
+		middleware.ByID(order.ID, m.queries.Get),
 		m.commands.Cancel,
 	)
 }

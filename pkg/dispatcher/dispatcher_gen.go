@@ -26,9 +26,9 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 				return herr
 			}
 		}
-	case drinks_events.DrinkRecipeUpdated:
-		drinkRecipeUpdatedMenuUpdater := menu_handlers.NewDrinkRecipeUpdatedMenuUpdater()
-		if err := drinkRecipeUpdatedMenuUpdater.Handle(ctx, e); err != nil {
+	case drinks_events.DrinkUpdated:
+		drinkUpdatedMenuUpdater := menu_handlers.NewDrinkUpdatedMenuUpdater()
+		if err := drinkUpdatedMenuUpdater.Handle(ctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
