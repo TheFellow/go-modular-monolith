@@ -48,5 +48,4 @@ sprint-031d,completed,2026-01-12,2026-01-13,KSUID-based `pkg/ids` via vendored `
 sprint-032,completed,2026-01-13,2026-01-13,Audit module with activity tracking touches filters and CLI
 sprint-031e,completed,2026-01-13,2026-01-13,Consolidate KSUID ID generation into app/kernel/entity; remove pkg/ids
 sprint-032b,completed,2026-01-13,2026-01-13,README Mermaid diagrams + activity/audit documentation
-
 sprint-033,completed,2026-01-15,2026-01-15,ABAC attributes + loader auth + dual IN/OUT checks
