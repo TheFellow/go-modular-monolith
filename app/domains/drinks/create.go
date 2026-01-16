@@ -9,11 +9,7 @@ import (
 func (m *Module) Create(ctx *middleware.Context, drink models.Drink) (*models.Drink, error) {
 	return middleware.RunCommand(ctx, authz.ActionCreate,
 		func(*middleware.Context) (*models.Drink, error) {
-			toCreate := drink
-			if toCreate.ID.Type == "" {
-				toCreate.ID = models.NewDrinkID(string(toCreate.ID.ID))
-			}
-			return &toCreate, nil
+			return &drink, nil
 		},
 		m.commands.Create,
 	)

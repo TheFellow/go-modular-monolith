@@ -33,8 +33,12 @@ func (m Menu) EntityUID() cedar.EntityUID {
 }
 
 func (m Menu) CedarEntity() cedar.Entity {
+	uid := m.ID
+	if uid.Type == "" {
+		uid = cedar.NewEntityUID(cedar.EntityType(MenuEntityType), uid.ID)
+	}
 	return cedar.Entity{
-		UID:     m.ID,
+		UID:     uid,
 		Parents: cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(cedar.RecordMap{
 			"Name":   cedar.String(m.Name),

@@ -2,7 +2,6 @@ package drinks
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
-	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
@@ -13,15 +12,7 @@ func (m *Module) Update(ctx *middleware.Context, drink models.Drink) (*models.Dr
 			return m.queries.Get(ctx, drink.ID)
 		},
 		func(ctx *middleware.Context, current *models.Drink) (*models.Drink, error) {
-			updated, err := m.commands.Update(ctx, &drink)
-			if err != nil {
-				return nil, err
-			}
-			ctx.AddEvent(events.DrinkRecipeUpdated{
-				Previous: *current,
-				Current:  *updated,
-			})
-			return updated, nil
+			return m.commands.Update(ctx, current, &drink)
 		},
 	)
 }

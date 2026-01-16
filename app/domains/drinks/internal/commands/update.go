@@ -3,13 +3,14 @@ package commands
 import (
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (c *Commands) Update(ctx *middleware.Context, drink *models.Drink) (*models.Drink, error) {
-	if drink == nil {
+func (c *Commands) Update(ctx *middleware.Context, current *models.Drink, drink *models.Drink) (*models.Drink, error) {
+	if current == nil || drink == nil {
 		return nil, errors.Invalidf("drink is required")
 	}
 	if string(drink.ID.ID) == "" {
@@ -47,6 +48,7 @@ func (c *Commands) Update(ctx *middleware.Context, drink *models.Drink) (*models
 		}
 	}
 
+	previous := *current
 	updated := *drink
 	updated.Description = strings.TrimSpace(updated.Description)
 
@@ -55,6 +57,10 @@ func (c *Commands) Update(ctx *middleware.Context, drink *models.Drink) (*models
 	}
 
 	ctx.TouchEntity(updated.ID)
+	ctx.AddEvent(events.DrinkRecipeUpdated{
+		Previous: previous,
+		Current:  updated,
+	})
 
 	return &updated, nil
 }

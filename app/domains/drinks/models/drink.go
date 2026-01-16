@@ -29,8 +29,12 @@ func (d Drink) EntityUID() cedar.EntityUID {
 }
 
 func (d Drink) CedarEntity() cedar.Entity {
+	uid := d.ID
+	if uid.Type == "" {
+		uid = cedar.NewEntityUID(cedar.EntityType(DrinkEntityType), uid.ID)
+	}
 	return cedar.Entity{
-		UID:     d.ID,
+		UID:     uid,
 		Parents: cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(cedar.RecordMap{
 			"Name":        cedar.String(d.Name),

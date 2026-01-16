@@ -4,11 +4,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/cedar-policy/cedar-go"
 )
+
+const IngredientEntityType = entity.TypeIngredient
 
 type Ingredient struct {
 	ID          cedar.EntityUID
@@ -24,8 +27,12 @@ func (i Ingredient) EntityUID() cedar.EntityUID {
 }
 
 func (i Ingredient) CedarEntity() cedar.Entity {
+	uid := i.ID
+	if uid.Type == "" {
+		uid = cedar.NewEntityUID(cedar.EntityType(IngredientEntityType), uid.ID)
+	}
 	return cedar.Entity{
-		UID:     i.ID,
+		UID:     uid,
 		Parents: cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(cedar.RecordMap{
 			"Name":     cedar.String(i.Name),
