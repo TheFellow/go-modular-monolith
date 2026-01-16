@@ -15,6 +15,11 @@ func TrackActivity() CommandMiddleware {
 
 		err := next(ctx)
 
+		if activity.Resource.IsZero() {
+			if input, ok := ctx.InputEntity(); ok {
+				activity.Resource = input.CedarEntity().UID
+			}
+		}
 		activity.Complete(err)
 
 		d, ok := DispatcherFromContext(ctx.Context)

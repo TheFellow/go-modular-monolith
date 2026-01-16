@@ -7,5 +7,12 @@ import (
 )
 
 func (m *Module) Create(ctx *middleware.Context, ingredient models.Ingredient) (*models.Ingredient, error) {
-	return middleware.RunCommand(ctx, authz.ActionCreate, m.commands.Create, ingredient)
+	return middleware.RunCommand(ctx, authz.ActionCreate,
+		func(*middleware.Context) (models.Ingredient, error) {
+			return ingredient, nil
+		},
+		func(ctx *middleware.Context, toCreate models.Ingredient) (*models.Ingredient, error) {
+			return m.commands.Create(ctx, toCreate)
+		},
+	)
 }

@@ -20,11 +20,33 @@ permit(
     resource
 );
 
+// Sommeliers can manage wine drinks.
+permit(
+    principal == Mixology::Actor::"sommelier",
+    action in [
+        Mixology::Drink::Action::"create",
+        Mixology::Drink::Action::"update",
+        Mixology::Drink::Action::"delete"
+    ],
+    resource is Mixology::Drink
+) when {
+    resource.Category == "wine"
+};
+
 permit(
     principal == Mixology::Actor::"owner",
     action == Mixology::Drink::Action::"update",
     resource
 );
+
+// Bartenders can update cocktails.
+permit(
+    principal == Mixology::Actor::"bartender",
+    action == Mixology::Drink::Action::"update",
+    resource is Mixology::Drink
+) when {
+    resource.Category == "cocktail"
+};
 
 permit(
     principal == Mixology::Actor::"owner",

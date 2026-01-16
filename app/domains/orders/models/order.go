@@ -33,10 +33,13 @@ func (o Order) EntityUID() cedar.EntityUID {
 
 func (o Order) CedarEntity() cedar.Entity {
 	return cedar.Entity{
-		UID:        o.ID,
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
+		UID:     o.ID,
+		Parents: cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(cedar.RecordMap{
+			"MenuID": o.MenuID,
+			"Status": cedar.String(o.Status),
+		}),
+		Tags: cedar.NewRecord(nil),
 	}
 }
 

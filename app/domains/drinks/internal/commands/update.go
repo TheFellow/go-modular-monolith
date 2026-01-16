@@ -1,10 +1,8 @@
 package commands
 
 import (
-	"reflect"
 	"strings"
 
-	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -46,12 +44,6 @@ func (c *Commands) Update(ctx *middleware.Context, drink models.Drink) (*models.
 		}
 	}
 
-	existing, err := c.dao.Get(ctx, drink.ID)
-	if err != nil {
-		return nil, err
-	}
-	previous := *existing
-
 	updated := drink
 	updated.Description = strings.TrimSpace(updated.Description)
 
@@ -60,12 +52,6 @@ func (c *Commands) Update(ctx *middleware.Context, drink models.Drink) (*models.
 	}
 
 	ctx.TouchEntity(updated.ID)
-	if !reflect.DeepEqual(previous.Recipe, updated.Recipe) {
-		ctx.AddEvent(events.DrinkRecipeUpdated{
-			Previous: previous,
-			Current:  updated,
-		})
-	}
 
 	return &updated, nil
 }

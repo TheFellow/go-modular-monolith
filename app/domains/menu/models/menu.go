@@ -34,10 +34,13 @@ func (m Menu) EntityUID() cedar.EntityUID {
 
 func (m Menu) CedarEntity() cedar.Entity {
 	return cedar.Entity{
-		UID:        m.ID,
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
+		UID:     m.ID,
+		Parents: cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(cedar.RecordMap{
+			"Name":   cedar.String(m.Name),
+			"Status": cedar.String(m.Status),
+		}),
+		Tags: cedar.NewRecord(nil),
 	}
 }
 

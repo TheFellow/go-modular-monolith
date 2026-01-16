@@ -15,29 +15,24 @@ import (
 )
 
 func (c *Commands) Complete(ctx *middleware.Context, order models.Order) (*models.Order, error) {
-	existing, err := c.dao.Get(ctx, order.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	switch existing.Status {
+	switch order.Status {
 	case models.OrderStatusCompleted:
-		return existing, nil
+		return &order, nil
 	case models.OrderStatusCancelled:
-		return nil, errors.Invalidf("order %q is cancelled", existing.ID.ID)
+		return nil, errors.Invalidf("order %q is cancelled", order.ID.ID)
 	case models.OrderStatusPending, models.OrderStatusPreparing:
 	default:
-		return nil, errors.Invalidf("unexpected status %q", existing.Status)
+		return nil, errors.Invalidf("unexpected status %q", order.Status)
 	}
 
 	now := time.Now().UTC()
 
-	ingredientUsage, depleted, err := c.enrichCompletion(ctx, *existing)
+	ingredientUsage, depleted, err := c.enrichCompletion(ctx, order)
 	if err != nil {
 		return nil, err
 	}
 
-	updated := *existing
+	updated := order
 	updated.Status = models.OrderStatusCompleted
 	updated.CompletedAt = optional.NewSome(now)
 

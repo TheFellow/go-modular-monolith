@@ -7,5 +7,12 @@ import (
 )
 
 func (m *Module) Set(ctx *middleware.Context, update models.Update) (*models.Inventory, error) {
-	return middleware.RunCommand(ctx, authz.ActionSet, m.commands.Set, update)
+	return middleware.RunCommand(ctx, authz.ActionSet,
+		func(ctx *middleware.Context) (models.Inventory, error) {
+			return m.loadInventory(ctx, update.IngredientID)
+		},
+		func(ctx *middleware.Context, current models.Inventory) (*models.Inventory, error) {
+			return m.commands.Set(ctx, current, update)
+		},
+	)
 }

@@ -30,9 +30,14 @@ func (d Drink) EntityUID() cedar.EntityUID {
 
 func (d Drink) CedarEntity() cedar.Entity {
 	return cedar.Entity{
-		UID:        d.ID,
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
+		UID:     d.ID,
+		Parents: cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(cedar.RecordMap{
+			"Name":        cedar.String(d.Name),
+			"Category":    cedar.String(d.Category),
+			"Glass":       cedar.String(d.Glass),
+			"Description": cedar.String(d.Description),
+		}),
+		Tags: cedar.NewRecord(nil),
 	}
 }

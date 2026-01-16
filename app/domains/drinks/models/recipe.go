@@ -60,6 +60,7 @@ type DrinkCategory string
 const (
 	DrinkCategoryCocktail DrinkCategory = "cocktail"
 	DrinkCategoryMocktail DrinkCategory = "mocktail"
+	DrinkCategoryWine     DrinkCategory = "wine"
 	DrinkCategoryShot     DrinkCategory = "shot"
 	DrinkCategoryHighball DrinkCategory = "highball"
 	DrinkCategoryMartini  DrinkCategory = "martini"
@@ -71,7 +72,7 @@ func (c DrinkCategory) Validate() error {
 	switch c {
 	case "":
 		return nil
-	case DrinkCategoryCocktail, DrinkCategoryMocktail, DrinkCategoryShot, DrinkCategoryHighball, DrinkCategoryMartini, DrinkCategorySour, DrinkCategoryTiki:
+	case DrinkCategoryCocktail, DrinkCategoryMocktail, DrinkCategoryWine, DrinkCategoryShot, DrinkCategoryHighball, DrinkCategoryMartini, DrinkCategorySour, DrinkCategoryTiki:
 		return nil
 	default:
 		return errors.Invalidf("invalid category %q", string(c))

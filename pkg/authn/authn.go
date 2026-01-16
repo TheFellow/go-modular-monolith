@@ -16,11 +16,14 @@ func Owner() cedar.EntityUID {
 }
 
 func ParseActor(s string) (cedar.EntityUID, error) {
-	switch strings.ToLower(strings.TrimSpace(s)) {
+	actor := strings.ToLower(strings.TrimSpace(s))
+	switch actor {
 	case "", "owner":
 		return Owner(), nil
 	case "anonymous", "anon":
 		return Anonymous(), nil
+	case "bartender", "sommelier":
+		return cedar.NewEntityUID(cedar.EntityType("Mixology::Actor"), cedar.String(actor)), nil
 	default:
 		return cedar.EntityUID{}, fmt.Errorf("unknown actor: %q", s)
 	}

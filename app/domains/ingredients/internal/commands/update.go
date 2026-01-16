@@ -3,7 +3,6 @@ package commands
 import (
 	"strings"
 
-	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -14,36 +13,23 @@ func (c *Commands) Update(ctx *middleware.Context, ingredient models.Ingredient)
 		return nil, errors.Invalidf("id is required")
 	}
 
-	existing, err := c.dao.Get(ctx, ingredient.ID)
-	if err != nil {
+	ingredient.Name = strings.TrimSpace(ingredient.Name)
+	if ingredient.Name == "" {
+		return nil, errors.Invalidf("name is required")
+	}
+	if err := ingredient.Category.Validate(); err != nil {
+		return nil, err
+	}
+	if ingredient.Unit == "" {
+		return nil, errors.Invalidf("unit is required")
+	}
+	ingredient.Description = strings.TrimSpace(ingredient.Description)
+
+	if err := c.dao.Update(ctx, ingredient); err != nil {
 		return nil, err
 	}
 
-	previous := *existing
-	updated := *existing
+	ctx.TouchEntity(ingredient.ID)
 
-	if name := strings.TrimSpace(ingredient.Name); name != "" {
-		updated.Name = name
-	}
-	if ingredient.Category != "" {
-		updated.Category = ingredient.Category
-	}
-	if ingredient.Unit != "" {
-		updated.Unit = ingredient.Unit
-	}
-	if desc := strings.TrimSpace(ingredient.Description); desc != "" {
-		updated.Description = desc
-	}
-
-	if err := c.dao.Update(ctx, updated); err != nil {
-		return nil, err
-	}
-
-	ctx.TouchEntity(updated.ID)
-	ctx.AddEvent(events.IngredientUpdated{
-		Previous: previous,
-		Current:  updated,
-	})
-
-	return &updated, nil
+	return &ingredient, nil
 }

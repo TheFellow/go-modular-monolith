@@ -8,21 +8,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (c *Commands) Delete(ctx *middleware.Context, id cedar.EntityUID) (*models.Drink, error) {
-	if string(id.ID) == "" {
+func (c *Commands) Delete(ctx *middleware.Context, drink models.Drink) (*models.Drink, error) {
+	if string(drink.ID.ID) == "" {
 		return nil, errors.Invalidf("id is required")
 	}
 
-	drink, err := c.dao.Get(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
 	now := time.Now().UTC()
-	deleted := *drink
+	deleted := drink
 	deleted.DeletedAt = optional.Some(now)
 
 	if err := c.dao.Update(ctx, deleted); err != nil {

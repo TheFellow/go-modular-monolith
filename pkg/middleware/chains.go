@@ -15,8 +15,8 @@ var (
 		CommandLogging(),
 		CommandMetrics(),
 		TrackActivity(),
-		CommandAuthorize(),
 		UnitOfWork(),
 		DispatchEvents(),
+		CommandAuthorize(),
 	)
 )

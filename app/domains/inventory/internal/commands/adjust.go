@@ -11,7 +11,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Adjust(ctx *middleware.Context, patch models.Patch) (*models.Inventory, error) {
+func (c *Commands) Adjust(ctx *middleware.Context, current models.Inventory, patch models.Patch) (*models.Inventory, error) {
 	if patch.Reason == "" {
 		return nil, errors.Invalidf("reason is required")
 	}
@@ -53,23 +53,6 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch models.Patch) (*models.
 		return nil, errors.Invalidf("ingredient unit is required")
 	}
 
-	existing, err := c.dao.Get(ctx, patch.IngredientID)
-	var current models.Inventory
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return nil, err
-		}
-		current = models.Inventory{
-			IngredientID: patch.IngredientID,
-			Quantity:     0,
-			Unit:         ingredient.Unit,
-			CostPerUnit:  optional.None[money.Price](),
-			LastUpdated:  time.Time{},
-		}
-	} else {
-		current = *existing
-	}
-
 	previous := current
 
 	previousQty := current.Quantity
@@ -84,6 +67,7 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch models.Patch) (*models.
 	if hasDelta {
 		current.Quantity = newQty
 	}
+	current.IngredientID = patch.IngredientID
 	current.Unit = ingredient.Unit
 	if hasCost {
 		current.CostPerUnit = optional.Some(cost)

@@ -10,14 +10,6 @@ import (
 )
 
 func (c *Commands) Publish(ctx *middleware.Context, menu models.Menu) (*models.Menu, error) {
-	menuID := menu.ID
-	record, err := c.dao.Get(ctx, menuID)
-	if err != nil {
-		return nil, err
-	}
-
-	menu = *record
-
 	now := time.Now().UTC()
 	menu.Status = models.MenuStatusPublished
 	menu.PublishedAt = optional.Some(now)

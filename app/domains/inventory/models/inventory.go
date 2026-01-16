@@ -30,10 +30,13 @@ func (s Inventory) EntityUID() cedar.EntityUID {
 
 func (s Inventory) CedarEntity() cedar.Entity {
 	return cedar.Entity{
-		UID:        s.EntityUID(),
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
+		UID:     s.EntityUID(),
+		Parents: cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(cedar.RecordMap{
+			"IngredientID": s.IngredientID,
+			"Unit":         cedar.String(s.Unit),
+		}),
+		Tags: cedar.NewRecord(nil),
 	}
 }
 

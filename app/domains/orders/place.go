@@ -7,5 +7,12 @@ import (
 )
 
 func (m *Module) Place(ctx *middleware.Context, order models.Order) (*models.Order, error) {
-	return middleware.RunCommand(ctx, authz.ActionPlace, m.commands.Place, order)
+	return middleware.RunCommand(ctx, authz.ActionPlace,
+		func(*middleware.Context) (models.Order, error) {
+			return order, nil
+		},
+		func(ctx *middleware.Context, toPlace models.Order) (*models.Order, error) {
+			return m.commands.Place(ctx, toPlace)
+		},
+	)
 }

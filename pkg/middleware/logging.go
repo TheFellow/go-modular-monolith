@@ -12,7 +12,10 @@ import (
 
 func CommandLogging() CommandMiddleware {
 	return func(ctx *Context, action cedar.EntityUID, resource cedar.Entity, next CommandNext) error {
-		ctx.Context = log.WithLogAttrs(ctx.Context, log.Action(action), log.Resource(resource.UID))
+		ctx.Context = log.WithLogAttrs(ctx.Context, log.Action(action))
+		if !resource.UID.IsZero() {
+			ctx.Context = log.WithLogAttrs(ctx.Context, log.Resource(resource.UID))
+		}
 
 		logger := log.FromContext(ctx)
 		start := time.Now()
@@ -20,6 +23,13 @@ func CommandLogging() CommandMiddleware {
 
 		err := next(ctx)
 		duration := time.Since(start)
+
+		if resource.UID.IsZero() {
+			if input, ok := ctx.InputEntity(); ok {
+				ctx.Context = log.WithLogAttrs(ctx.Context, log.Resource(input.CedarEntity().UID))
+				logger = log.FromContext(ctx)
+			}
+		}
 
 		switch {
 		case err == nil:

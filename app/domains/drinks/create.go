@@ -7,5 +7,16 @@ import (
 )
 
 func (m *Module) Create(ctx *middleware.Context, drink models.Drink) (*models.Drink, error) {
-	return middleware.RunCommand(ctx, authz.ActionCreate, m.commands.Create, drink)
+	return middleware.RunCommand(ctx, authz.ActionCreate,
+		func(*middleware.Context) (models.Drink, error) {
+			toCreate := drink
+			if toCreate.ID.Type == "" {
+				toCreate.ID = models.NewDrinkID(string(toCreate.ID.ID))
+			}
+			return toCreate, nil
+		},
+		func(ctx *middleware.Context, toCreate models.Drink) (*models.Drink, error) {
+			return m.commands.Create(ctx, toCreate)
+		},
+	)
 }

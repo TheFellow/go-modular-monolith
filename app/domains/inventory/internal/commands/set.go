@@ -10,7 +10,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Set(ctx *middleware.Context, update models.Update) (*models.Inventory, error) {
+func (c *Commands) Set(ctx *middleware.Context, current models.Inventory, update models.Update) (*models.Inventory, error) {
 	if update.Quantity < 0 {
 		update.Quantity = 0
 	}
@@ -29,24 +29,9 @@ func (c *Commands) Set(ctx *middleware.Context, update models.Update) (*models.I
 		return nil, errors.Invalidf("ingredient unit is required")
 	}
 
-	existing, err := c.dao.Get(ctx, update.IngredientID)
-	var current models.Inventory
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return nil, err
-		}
-		current = models.Inventory{
-			IngredientID: update.IngredientID,
-			Quantity:     0,
-			Unit:         ingredient.Unit,
-			LastUpdated:  time.Time{},
-		}
-	} else {
-		current = *existing
-	}
-
 	previous := current
 
+	current.IngredientID = update.IngredientID
 	current.Quantity = update.Quantity
 	current.Unit = ingredient.Unit
 	current.CostPerUnit = optional.Some(update.CostPerUnit)

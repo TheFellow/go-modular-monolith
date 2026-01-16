@@ -15,8 +15,11 @@ func TestPermissions_Ingredients(t *testing.T) {
 	t.Run("owner", func(t *testing.T) {
 		t.Parallel()
 		fix := testutil.NewFixture(t)
+		b := fix.Bootstrap()
 		a := fix.App
 		owner := fix.OwnerContext()
+
+		existing := b.WithIngredient("Permissions Ingredient", models.UnitOz)
 
 		_, err := a.Ingredients.List(owner, ingredients.ListRequest{})
 		testutil.RequireNotDenied(t, err)
@@ -27,18 +30,21 @@ func TestPermissions_Ingredients(t *testing.T) {
 		_, err = a.Ingredients.Create(owner, models.Ingredient{})
 		testutil.RequireNotDenied(t, err)
 
-		_, err = a.Ingredients.Update(owner, models.Ingredient{ID: entity.IngredientID("does-not-exist")})
+		_, err = a.Ingredients.Update(owner, models.Ingredient{ID: existing.ID, Description: "Updated"})
 		testutil.RequireNotDenied(t, err)
 
-		_, err = a.Ingredients.Delete(owner, entity.IngredientID("does-not-exist"))
+		_, err = a.Ingredients.Delete(owner, existing.ID)
 		testutil.RequireNotDenied(t, err)
 	})
 
 	t.Run("anonymous", func(t *testing.T) {
 		t.Parallel()
 		fix := testutil.NewFixture(t)
+		b := fix.Bootstrap()
 		a := fix.App
 		anon := fix.ActorContext("anonymous")
+
+		existing := b.WithIngredient("Permissions Ingredient", models.UnitOz)
 
 		_, err := a.Ingredients.List(anon, ingredients.ListRequest{})
 		testutil.RequireNotDenied(t, err)
@@ -49,10 +55,10 @@ func TestPermissions_Ingredients(t *testing.T) {
 		_, err = a.Ingredients.Create(anon, models.Ingredient{})
 		testutil.RequireDenied(t, err)
 
-		_, err = a.Ingredients.Update(anon, models.Ingredient{ID: entity.IngredientID("does-not-exist")})
+		_, err = a.Ingredients.Update(anon, models.Ingredient{ID: existing.ID, Description: "Updated"})
 		testutil.RequireDenied(t, err)
 
-		_, err = a.Ingredients.Delete(anon, entity.IngredientID("does-not-exist"))
+		_, err = a.Ingredients.Delete(anon, existing.ID)
 		testutil.RequireDenied(t, err)
 	})
 }

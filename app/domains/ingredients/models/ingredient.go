@@ -25,10 +25,14 @@ func (i Ingredient) EntityUID() cedar.EntityUID {
 
 func (i Ingredient) CedarEntity() cedar.Entity {
 	return cedar.Entity{
-		UID:        i.ID,
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
+		UID:     i.ID,
+		Parents: cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(cedar.RecordMap{
+			"Name":     cedar.String(i.Name),
+			"Category": cedar.String(i.Category),
+			"Unit":     cedar.String(i.Unit),
+		}),
+		Tags: cedar.NewRecord(nil),
 	}
 }
 
