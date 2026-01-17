@@ -33,12 +33,12 @@ func TestDrinks_ABAC_SommelierCanCreateWine(t *testing.T) {
 	sommelier := f.ActorContext("sommelier")
 
 	wine := drinkForPolicy("House Red", models.DrinkCategoryWine, base.ID)
-	created, err := f.Drinks.Create(sommelier, wine)
+	created, err := f.Drinks.Create(sommelier, &wine)
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, created.Category != models.DrinkCategoryWine, "expected wine category")
 
 	cocktail := drinkForPolicy("Negroni", models.DrinkCategoryCocktail, base.ID)
-	_, err = f.Drinks.Create(sommelier, cocktail)
+	_, err = f.Drinks.Create(sommelier, &cocktail)
 	testutil.RequireDenied(t, err)
 }
 
@@ -53,12 +53,12 @@ func TestDrinks_ABAC_SommelierCannotChangeWineToCocktail(t *testing.T) {
 	sommelier := f.ActorContext("sommelier")
 
 	wine := drinkForPolicy("House White", models.DrinkCategoryWine, base.ID)
-	created, err := f.Drinks.Create(owner, wine)
+	created, err := f.Drinks.Create(owner, &wine)
 	testutil.Ok(t, err)
 
 	updated := drinkForPolicy(created.Name, models.DrinkCategoryCocktail, base.ID)
 	updated.ID = created.ID
-	_, err = f.Drinks.Update(sommelier, updated)
+	_, err = f.Drinks.Update(sommelier, &updated)
 	testutil.RequireDenied(t, err)
 
 	current, err := f.Drinks.Get(owner, created.ID)
@@ -77,14 +77,14 @@ func TestDrinks_ABAC_BartenderCanUpdateCocktail(t *testing.T) {
 	bartender := f.ActorContext("bartender")
 
 	cocktail := drinkForPolicy("Old Fashioned", models.DrinkCategoryCocktail, base.ID)
-	created, err := f.Drinks.Create(owner, cocktail)
+	created, err := f.Drinks.Create(owner, &cocktail)
 	testutil.Ok(t, err)
 
 	updated := drinkForPolicy(created.Name, models.DrinkCategoryCocktail, base.ID)
 	updated.ID = created.ID
 	updated.Description = "Stirred, not shaken"
 
-	out, err := f.Drinks.Update(bartender, updated)
+	out, err := f.Drinks.Update(bartender, &updated)
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, out.Category != models.DrinkCategoryCocktail, "expected cocktail category")
 }

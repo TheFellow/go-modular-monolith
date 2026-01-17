@@ -6,11 +6,9 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (m *Module) Update(ctx *middleware.Context, drink models.Drink) (*models.Drink, error) {
+func (m *Module) Update(ctx *middleware.Context, drink *models.Drink) (*models.Drink, error) {
 	return middleware.RunCommand(ctx, authz.ActionUpdate,
-		middleware.ByID(drink.ID, m.queries.Get),
-		func(ctx *middleware.Context, _ *models.Drink) (*models.Drink, error) {
-			return m.commands.Update(ctx, &drink)
-		},
+		middleware.Get(m.queries.Get, drink.ID),
+		middleware.Update(m.commands.Update, drink),
 	)
 }

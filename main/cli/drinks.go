@@ -110,7 +110,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return err
 					}
 
-					res, err := c.app.Drinks.Create(ctx, created)
+					res, err := c.app.Drinks.Create(ctx, &created)
 					if err != nil {
 						return err
 					}
@@ -145,7 +145,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return err
 					}
 
-					res, err := c.app.Drinks.Update(ctx, updated)
+					res, err := c.app.Drinks.Update(ctx, &updated)
 					if err != nil {
 						return err
 					}

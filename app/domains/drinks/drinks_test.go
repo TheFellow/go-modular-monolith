@@ -18,7 +18,7 @@ func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
 	lime := b.WithIngredient("Lime Juice", ingredientsM.UnitOz)
 	lemon := b.WithIngredient("Lemon Juice", ingredientsM.UnitOz)
 
-	created, err := f.Drinks.Create(ctx, models.Drink{
+	created, err := f.Drinks.Create(ctx, &models.Drink{
 		Name:     "Margarita",
 		Category: models.DrinkCategoryCocktail,
 		Glass:    models.GlassTypeCoupe,
@@ -39,7 +39,7 @@ func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
 	testutil.ErrorIf(t, len(got.Recipe.Ingredients) != 1, "expected 1 ingredient")
 	testutil.ErrorIf(t, got.Recipe.Ingredients[0].IngredientID != lime.ID, "unexpected ingredient id")
 
-	updated, err := f.Drinks.Update(ctx, models.Drink{
+	updated, err := f.Drinks.Update(ctx, &models.Drink{
 		ID:       created.ID,
 		Name:     "Margarita",
 		Category: models.DrinkCategoryCocktail,
@@ -70,7 +70,7 @@ func TestDrinks_CreateRejectsIDProvided(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	_, err := f.Drinks.Create(f.OwnerContext(), models.Drink{
+	_, err := f.Drinks.Create(f.OwnerContext(), &models.Drink{
 		ID: models.NewDrinkID("explicit-id"),
 	})
 	testutil.ErrorIsInvalid(t, err)

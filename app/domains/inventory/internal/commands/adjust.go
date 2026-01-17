@@ -11,7 +11,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Adjust(ctx *middleware.Context, patch models.Patch) (*models.Inventory, error) {
+func (c *Commands) Adjust(ctx *middleware.Context, patch *models.Patch) (*models.Inventory, error) {
+	if patch == nil {
+		return nil, errors.Invalidf("patch is required")
+	}
 	if patch.Reason == "" {
 		return nil, errors.Invalidf("reason is required")
 	}

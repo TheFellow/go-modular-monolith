@@ -28,7 +28,8 @@ func (b *Bootstrap) WithBasicIngredients() *Bootstrap {
 		{Name: "Gin", Category: ingredientsmodels.CategorySpirit, Unit: ingredientsmodels.UnitOz},
 	}
 	for _, ing := range basics {
-		_, err := b.fix.Ingredients.Create(ctx, ing)
+		ingredient := ing
+		_, err := b.fix.Ingredients.Create(ctx, &ingredient)
 		Ok(b.fix.T, err)
 	}
 	return b
@@ -42,7 +43,7 @@ func (b *Bootstrap) WithStock(quantity float64) *Bootstrap {
 	Ok(b.fix.T, err)
 
 	for _, ing := range ings {
-		_, err := b.fix.Inventory.Set(ctx, inventorymodels.Update{
+		_, err := b.fix.Inventory.Set(ctx, &inventorymodels.Update{
 			IngredientID: ing.ID,
 			Quantity:     quantity,
 			CostPerUnit:  money.NewPriceFromCents(100, "USD"),
@@ -68,7 +69,7 @@ func (b *Bootstrap) WithIngredient(name string, unit ingredientsmodels.Unit) *in
 		}
 	}
 
-	created, err := b.fix.Ingredients.Create(ctx, ingredientsmodels.Ingredient{
+	created, err := b.fix.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
 		Name:     name,
 		Category: ingredientsmodels.CategoryOther,
 		Unit:     unit,
@@ -80,7 +81,7 @@ func (b *Bootstrap) WithIngredient(name string, unit ingredientsmodels.Unit) *in
 func (b *Bootstrap) WithDrink(drink models.Drink) *models.Drink {
 	b.fix.T.Helper()
 
-	created, err := b.fix.Drinks.Create(b.fix.OwnerContext(), drink)
+	created, err := b.fix.Drinks.Create(b.fix.OwnerContext(), &drink)
 	Ok(b.fix.T, err)
 	return created
 }
@@ -88,7 +89,7 @@ func (b *Bootstrap) WithDrink(drink models.Drink) *models.Drink {
 func (b *Bootstrap) WithMenu(name string) *menumodels.Menu {
 	b.fix.T.Helper()
 
-	created, err := b.fix.Menu.Create(b.fix.OwnerContext(), menumodels.Menu{Name: name})
+	created, err := b.fix.Menu.Create(b.fix.OwnerContext(), &menumodels.Menu{Name: name})
 	Ok(b.fix.T, err)
 	return created
 }

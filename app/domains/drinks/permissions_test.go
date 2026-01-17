@@ -38,12 +38,12 @@ func TestPermissions_Drinks(t *testing.T) {
 		_, err = a.Drinks.Get(owner, models.NewDrinkID("does-not-exist"))
 		testutil.RequireNotDenied(t, err)
 
-		_, err = a.Drinks.Create(owner, models.Drink{})
+		_, err = a.Drinks.Create(owner, &models.Drink{})
 		testutil.RequireNotDenied(t, err)
 
 		updated := *existing
 		updated.Description = "Updated"
-		_, err = a.Drinks.Update(owner, updated)
+		_, err = a.Drinks.Update(owner, &updated)
 		testutil.RequireNotDenied(t, err)
 
 		_, err = a.Drinks.Delete(owner, existing.ID)
@@ -76,10 +76,10 @@ func TestPermissions_Drinks(t *testing.T) {
 		_, err = a.Drinks.Get(anon, models.NewDrinkID("does-not-exist"))
 		testutil.RequireNotDenied(t, err)
 
-		_, err = a.Drinks.Create(anon, models.Drink{})
+		_, err = a.Drinks.Create(anon, &models.Drink{})
 		testutil.RequireDenied(t, err)
 
-		_, err = a.Drinks.Update(anon, models.Drink{ID: existing.ID})
+		_, err = a.Drinks.Update(anon, &models.Drink{ID: existing.ID})
 		testutil.RequireDenied(t, err)
 
 		_, err = a.Drinks.Delete(anon, existing.ID)

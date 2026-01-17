@@ -87,16 +87,23 @@ func RunCommand[In CedarEntity, Out CedarEntity](
 	return out, err
 }
 
-// FromModel returns a loader that yields a fixed entity (useful for Create).
-func FromModel[T CedarEntity](entity T) func(*Context) (T, error) {
+// Entity returns a loader that yields a fixed entity (useful for Create).
+func Entity[T CedarEntity](entity T) func(*Context) (T, error) {
 	return func(*Context) (T, error) {
 		return entity, nil
 	}
 }
 
-// ByID returns a loader that fetches an entity by ID (useful for Update/Delete).
-func ByID[T CedarEntity](id cedar.EntityUID, get func(context.Context, cedar.EntityUID) (T, error)) func(*Context) (T, error) {
+// Get returns a loader that fetches an entity by ID (useful for Update/Delete).
+func Get[T CedarEntity](get func(context.Context, cedar.EntityUID) (T, error), id cedar.EntityUID) func(*Context) (T, error) {
 	return func(ctx *Context) (T, error) {
 		return get(ctx, id)
+	}
+}
+
+// Update returns an executor that uses the desired entity instead of the loaded one.
+func Update[In, Out CedarEntity](execute func(*Context, In) (Out, error), entity In) func(*Context, In) (Out, error) {
+	return func(ctx *Context, _ In) (Out, error) {
+		return execute(ctx, entity)
 	}
 }

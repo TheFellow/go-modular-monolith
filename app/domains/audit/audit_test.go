@@ -20,7 +20,7 @@ func TestAudit_RecordsActivityForCommand(t *testing.T) {
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
 
-	created, err := f.Ingredients.Create(ctx, ingredientsmodels.Ingredient{
+	created, err := f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
 		Name:     "Vodka",
 		Category: ingredientsmodels.CategorySpirit,
 		Unit:     ingredientsmodels.UnitOz,
@@ -41,14 +41,14 @@ func TestAudit_TouchesIncludeHandlerUpdates(t *testing.T) {
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
 
-	ingredient, err := f.Ingredients.Create(ctx, ingredientsmodels.Ingredient{
+	ingredient, err := f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
 		Name:     "Gin",
 		Category: ingredientsmodels.CategorySpirit,
 		Unit:     ingredientsmodels.UnitOz,
 	})
 	testutil.Ok(t, err)
 
-	drink, err := f.Drinks.Create(ctx, drinksmodels.Drink{
+	drink, err := f.Drinks.Create(ctx, &drinksmodels.Drink{
 		Name:     "Gin and Tonic",
 		Category: drinksmodels.DrinkCategoryHighball,
 		Glass:    drinksmodels.GlassTypeHighball,
@@ -65,10 +65,10 @@ func TestAudit_TouchesIncludeHandlerUpdates(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	menu, err := f.Menu.Create(ctx, menumodels.Menu{Name: "Happy Hour"})
+	menu, err := f.Menu.Create(ctx, &menumodels.Menu{Name: "Happy Hour"})
 	testutil.Ok(t, err)
 
-	_, err = f.Menu.AddDrink(ctx, menumodels.MenuDrinkChange{
+	_, err = f.Menu.AddDrink(ctx, &menumodels.MenuDrinkChange{
 		MenuID:  menu.ID,
 		DrinkID: drink.ID,
 	})
@@ -90,21 +90,21 @@ func TestAudit_ListFilters(t *testing.T) {
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
 
-	ing1, err := f.Ingredients.Create(ctx, ingredientsmodels.Ingredient{
+	ing1, err := f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
 		Name:     "Bourbon",
 		Category: ingredientsmodels.CategorySpirit,
 		Unit:     ingredientsmodels.UnitOz,
 	})
 	testutil.Ok(t, err)
 
-	_, err = f.Ingredients.Create(ctx, ingredientsmodels.Ingredient{
+	_, err = f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
 		Name:     "Vermouth",
 		Category: ingredientsmodels.CategoryOther,
 		Unit:     ingredientsmodels.UnitOz,
 	})
 	testutil.Ok(t, err)
 
-	_, err = f.Ingredients.Update(ctx, ingredientsmodels.Ingredient{
+	_, err = f.Ingredients.Update(ctx, &ingredientsmodels.Ingredient{
 		ID:   ing1.ID,
 		Name: "Bourbon (Updated)",
 	})
@@ -132,7 +132,7 @@ func TestAudit_ListFiltersByTime(t *testing.T) {
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
 
-	_, err := f.Ingredients.Create(ctx, ingredientsmodels.Ingredient{
+	_, err := f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
 		Name:     "Lime Juice",
 		Category: ingredientsmodels.CategoryJuice,
 		Unit:     ingredientsmodels.UnitOz,
@@ -142,7 +142,7 @@ func TestAudit_ListFiltersByTime(t *testing.T) {
 	cutoff := time.Now().UTC()
 	time.Sleep(10 * time.Millisecond)
 
-	_, err = f.Ingredients.Create(ctx, ingredientsmodels.Ingredient{
+	_, err = f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
 		Name:     "Simple Syrup",
 		Category: ingredientsmodels.CategorySyrup,
 		Unit:     ingredientsmodels.UnitOz,

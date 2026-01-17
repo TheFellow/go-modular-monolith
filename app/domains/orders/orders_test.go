@@ -11,6 +11,6 @@ func TestOrders_PlaceRejectsIDProvided(t *testing.T) {
 	t.Parallel()
 	fix := testutil.NewFixture(t)
 
-	_, err := fix.Orders.Place(fix.OwnerContext(), models.Order{ID: models.NewOrderID("explicit-id")})
+	_, err := fix.Orders.Place(fix.OwnerContext(), &models.Order{ID: models.NewOrderID("explicit-id")})
 	testutil.ErrorIsInvalid(t, err)
 }

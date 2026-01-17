@@ -24,7 +24,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	a := f.App
 	ctx := f.OwnerContext()
 
-	ingredient, err := a.Ingredients.Create(ctx, ingredientsM.Ingredient{
+	ingredient, err := a.Ingredients.Create(ctx, &ingredientsM.Ingredient{
 		Name:     "Vodka",
 		Category: ingredientsM.CategorySpirit,
 		Unit:     ingredientsM.UnitOz,
@@ -33,7 +33,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("create ingredient: %v", err)
 	}
 
-	_, err = a.Inventory.Set(ctx, inventoryM.Update{
+	_, err = a.Inventory.Set(ctx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Quantity:     10,
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
@@ -42,7 +42,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("set stock: %v", err)
 	}
 
-	drink, err := a.Drinks.Create(ctx, drinksM.Drink{
+	drink, err := a.Drinks.Create(ctx, &drinksM.Drink{
 		Name:     "Margarita",
 		Category: drinksM.DrinkCategoryCocktail,
 		Glass:    drinksM.GlassTypeCoupe,
@@ -57,15 +57,15 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("create drink: %v", err)
 	}
 
-	m0, err := a.Menu.Create(ctx, menuM.Menu{Name: "Happy Hour"})
+	m0, err := a.Menu.Create(ctx, &menuM.Menu{Name: "Happy Hour"})
 	if err != nil {
 		t.Fatalf("create menu: %v", err)
 	}
-	m1, err := a.Menu.AddDrink(ctx, menuM.MenuDrinkChange{MenuID: m0.ID, DrinkID: drink.ID})
+	m1, err := a.Menu.AddDrink(ctx, &menuM.MenuDrinkChange{MenuID: m0.ID, DrinkID: drink.ID})
 	if err != nil {
 		t.Fatalf("add drink: %v", err)
 	}
-	m2, err := a.Menu.Publish(ctx, menuM.Menu{ID: m1.ID})
+	m2, err := a.Menu.Publish(ctx, &menuM.Menu{ID: m1.ID})
 	if err != nil {
 		t.Fatalf("publish menu: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		middleware.WithStore(f.Store),
 		middleware.WithPrincipal(ctx.Principal()),
 	)
-	updated, err := a.Inventory.Set(noDispatchCtx, inventoryM.Update{
+	updated, err := a.Inventory.Set(noDispatchCtx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Quantity:     0,
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
@@ -118,7 +118,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	ctx := f.OwnerContext()
 
 	// Create an ingredient to make recipes valid
-	ingredient, err := a.Ingredients.Create(ctx, ingredientsM.Ingredient{
+	ingredient, err := a.Ingredients.Create(ctx, &ingredientsM.Ingredient{
 		Name:     "Vodka",
 		Category: ingredientsM.CategorySpirit,
 		Unit:     ingredientsM.UnitOz,
@@ -128,7 +128,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	}
 
 	// Create two drinks
-	drink1, err := a.Drinks.Create(ctx, drinksM.Drink{
+	drink1, err := a.Drinks.Create(ctx, &drinksM.Drink{
 		Name:     "Martini",
 		Category: drinksM.DrinkCategoryCocktail,
 		Glass:    drinksM.GlassTypeMartini,
@@ -143,7 +143,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 		t.Fatalf("create drink1: %v", err)
 	}
 
-	drink2, err := a.Drinks.Create(ctx, drinksM.Drink{
+	drink2, err := a.Drinks.Create(ctx, &drinksM.Drink{
 		Name:     "Cosmopolitan",
 		Category: drinksM.DrinkCategoryCocktail,
 		Glass:    drinksM.GlassTypeMartini,
@@ -159,17 +159,17 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	}
 
 	// Create a menu with both drinks
-	m0, err := a.Menu.Create(ctx, menuM.Menu{Name: "Cocktail Menu"})
+	m0, err := a.Menu.Create(ctx, &menuM.Menu{Name: "Cocktail Menu"})
 	if err != nil {
 		t.Fatalf("create menu: %v", err)
 	}
 
-	m1, err := a.Menu.AddDrink(ctx, menuM.MenuDrinkChange{MenuID: m0.ID, DrinkID: drink1.ID})
+	m1, err := a.Menu.AddDrink(ctx, &menuM.MenuDrinkChange{MenuID: m0.ID, DrinkID: drink1.ID})
 	if err != nil {
 		t.Fatalf("add drink1: %v", err)
 	}
 
-	m2, err := a.Menu.AddDrink(ctx, menuM.MenuDrinkChange{MenuID: m1.ID, DrinkID: drink2.ID})
+	m2, err := a.Menu.AddDrink(ctx, &menuM.MenuDrinkChange{MenuID: m1.ID, DrinkID: drink2.ID})
 	if err != nil {
 		t.Fatalf("add drink2: %v", err)
 	}

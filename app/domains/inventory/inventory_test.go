@@ -18,7 +18,7 @@ func TestInventory_SetAndAdjust(t *testing.T) {
 
 	ingredient := b.WithIngredient("Vodka", ingredientsM.UnitOz)
 
-	stock, err := f.Inventory.Set(ctx, models.Update{
+	stock, err := f.Inventory.Set(ctx, &models.Update{
 		IngredientID: ingredient.ID,
 		Quantity:     1.0,
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
@@ -26,7 +26,7 @@ func TestInventory_SetAndAdjust(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, stock.Quantity != 1.0, "expected quantity 1.0, got %v", stock.Quantity)
 
-	stock, err = f.Inventory.Adjust(ctx, models.Patch{
+	stock, err = f.Inventory.Adjust(ctx, &models.Patch{
 		IngredientID: ingredient.ID,
 		Reason:       models.ReasonUsed,
 		Delta:        optional.Some(-2.0),

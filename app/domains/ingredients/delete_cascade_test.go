@@ -16,21 +16,21 @@ func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
 
-	ingredient, err := f.Ingredients.Create(ctx, ingredientsM.Ingredient{
+	ingredient, err := f.Ingredients.Create(ctx, &ingredientsM.Ingredient{
 		Name:     "Vodka",
 		Category: ingredientsM.CategorySpirit,
 		Unit:     ingredientsM.UnitOz,
 	})
 	testutil.Ok(t, err)
 
-	_, err = f.Inventory.Set(ctx, inventoryM.Update{
+	_, err = f.Inventory.Set(ctx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Quantity:     10,
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
 	})
 	testutil.Ok(t, err)
 
-	drink, err := f.Drinks.Create(ctx, drinksM.Drink{
+	drink, err := f.Drinks.Create(ctx, &drinksM.Drink{
 		Name:     "Vodka Soda",
 		Category: drinksM.DrinkCategoryCocktail,
 		Glass:    drinksM.GlassTypeRocks,
@@ -43,11 +43,11 @@ func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	menu, err := f.Menu.Create(ctx, menuM.Menu{Name: "Test Menu"})
+	menu, err := f.Menu.Create(ctx, &menuM.Menu{Name: "Test Menu"})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.AddDrink(ctx, menuM.MenuDrinkChange{MenuID: menu.ID, DrinkID: drink.ID})
+	menu, err = f.Menu.AddDrink(ctx, &menuM.MenuDrinkChange{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.Publish(ctx, menuM.Menu{ID: menu.ID})
+	menu, err = f.Menu.Publish(ctx, &menuM.Menu{ID: menu.ID})
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(menu.Items) != 1, "expected 1 menu item, got %d", len(menu.Items))
 

@@ -8,7 +8,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) AddDrink(ctx *middleware.Context, change models.MenuDrinkChange) (*models.Menu, error) {
+func (c *Commands) AddDrink(ctx *middleware.Context, change *models.MenuDrinkChange) (*models.Menu, error) {
+	if change == nil {
+		return nil, errors.Invalidf("change is required")
+	}
 	if string(change.MenuID.ID) == "" {
 		return nil, errors.Invalidf("menu id is required")
 	}

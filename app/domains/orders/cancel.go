@@ -6,9 +6,9 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (m *Module) Cancel(ctx *middleware.Context, order models.Order) (*models.Order, error) {
+func (m *Module) Cancel(ctx *middleware.Context, order *models.Order) (*models.Order, error) {
 	return middleware.RunCommand(ctx, authz.ActionCancel,
-		middleware.ByID(order.ID, m.queries.Get),
+		middleware.Get(m.queries.Get, order.ID),
 		m.commands.Cancel,
 	)
 }

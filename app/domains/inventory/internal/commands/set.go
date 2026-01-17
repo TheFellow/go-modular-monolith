@@ -10,7 +10,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) Set(ctx *middleware.Context, update models.Update) (*models.Inventory, error) {
+func (c *Commands) Set(ctx *middleware.Context, update *models.Update) (*models.Inventory, error) {
+	if update == nil {
+		return nil, errors.Invalidf("update is required")
+	}
 	if update.Quantity < 0 {
 		update.Quantity = 0
 	}
