@@ -2,9 +2,8 @@ package dao
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/dao"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
@@ -16,9 +15,9 @@ type ListFilter struct {
 	MinQuantity  optional.Value[float64]
 }
 
-func (d *DAO) List(ctx dao.Context, filter ListFilter) ([]*models.Inventory, error) {
+func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Inventory, error) {
 	var out []*models.Inventory
-	err := dao.Read(ctx, func(tx *bstore.Tx) error {
+	err := store.Read(ctx, func(tx *bstore.Tx) error {
 		q := bstore.QueryTx[StockRow](tx)
 
 		if string(filter.IngredientID.ID) != "" {

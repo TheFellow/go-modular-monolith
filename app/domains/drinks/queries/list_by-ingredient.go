@@ -3,12 +3,12 @@ package queries
 import (
 	drinksdao "github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/dao"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (q *Queries) ListByIngredient(ctx dao.Context, ingredientID cedar.EntityUID) ([]*models.Drink, error) {
+func (q *Queries) ListByIngredient(ctx store.Context, ingredientID cedar.EntityUID) ([]*models.Drink, error) {
 	if string(ingredientID.ID) == "" {
 		return nil, errors.Invalidf("ingredient id is required")
 	}

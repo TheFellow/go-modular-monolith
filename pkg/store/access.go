@@ -1,8 +1,7 @@
-package dao
+package store
 
 import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/mjl-/bstore"
 )
 
@@ -12,7 +11,7 @@ func Read(ctx Context, f func(*bstore.Tx) error) error {
 	if tx, ok := ctx.Transaction(); ok && tx != nil {
 		return f(tx)
 	}
-	s, ok := store.FromContext(ctx)
+	s, ok := FromContext(ctx)
 	if !ok || s == nil {
 		return errors.Internalf("store missing from context")
 	}

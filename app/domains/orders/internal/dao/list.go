@@ -2,7 +2,6 @@ package dao
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/dao"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
@@ -16,9 +15,9 @@ type ListFilter struct {
 	IncludeDeleted bool
 }
 
-func (d *DAO) List(ctx dao.Context, filter ListFilter) ([]*models.Order, error) {
+func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Order, error) {
 	var out []*models.Order
-	err := dao.Read(ctx, func(tx *bstore.Tx) error {
+	err := store.Read(ctx, func(tx *bstore.Tx) error {
 		q := bstore.QueryTx[OrderRow](tx)
 		if filter.Status != "" {
 			q = q.FilterEqual("Status", string(filter.Status))

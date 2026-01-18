@@ -9,7 +9,7 @@ import (
 	ingredientsq "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
 	inventoryq "github.com/TheFellow/go-modular-monolith/app/domains/inventory/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/dao"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -128,7 +128,7 @@ type candidate struct {
 	qualityImpact ingredientsmodels.Quality
 }
 
-func (c *AvailabilityCalculator) PickIngredient(ctx dao.Context, req drinksmodels.RecipeIngredient) (PickResult, bool) {
+func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmodels.RecipeIngredient) (PickResult, bool) {
 	candidates := make([]candidate, 0, 1+len(req.Substitutes))
 	candidates = append(candidates, candidate{
 		id:            req.IngredientID,

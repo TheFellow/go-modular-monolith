@@ -4,7 +4,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	inventorydao "github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/dao"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -30,7 +30,7 @@ func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.Inven
 	return middleware.RunQueryWithResource(ctx, authz.ActionList, m.list, req)
 }
 
-func (m *Module) list(ctx dao.Context, req ListRequest) ([]*models.Inventory, error) {
+func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.Inventory, error) {
 	filter := inventorydao.ListFilter{
 		IngredientID: req.IngredientID,
 		MaxQuantity:  req.LowStock,

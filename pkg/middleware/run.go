@@ -2,14 +2,14 @@ package middleware
 
 import (
 	"github.com/TheFellow/go-modular-monolith/pkg/authz"
-	"github.com/TheFellow/go-modular-monolith/pkg/dao"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
 func RunQuery[Req, Res any](
 	ctx *Context,
 	action cedar.EntityUID,
-	execute func(dao.Context, Req) (Res, error),
+	execute func(store.Context, Req) (Res, error),
 	req Req,
 ) (Res, error) {
 	var out Res
@@ -28,7 +28,7 @@ func RunQuery[Req, Res any](
 func RunQueryWithResource[Req CedarEntity, Res any](
 	ctx *Context,
 	action cedar.EntityUID,
-	execute func(dao.Context, Req) (Res, error),
+	execute func(store.Context, Req) (Res, error),
 	req Req,
 ) (Res, error) {
 	var out Res
@@ -94,7 +94,7 @@ func Entity[T CedarEntity](entity T) func(*Context) (T, error) {
 }
 
 // Get returns a loader that fetches an entity by ID (useful for Update/Delete).
-func Get[T CedarEntity](get func(dao.Context, cedar.EntityUID) (T, error), id cedar.EntityUID) func(*Context) (T, error) {
+func Get[T CedarEntity](get func(store.Context, cedar.EntityUID) (T, error), id cedar.EntityUID) func(*Context) (T, error) {
 	return func(ctx *Context) (T, error) {
 		return get(ctx, id)
 	}

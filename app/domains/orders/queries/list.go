@@ -5,10 +5,10 @@ import (
 
 	ordersdao "github.com/TheFellow/go-modular-monolith/app/domains/orders/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/dao"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-func (q *Queries) List(ctx dao.Context, filter ordersdao.ListFilter) ([]*models.Order, error) {
+func (q *Queries) List(ctx store.Context, filter ordersdao.ListFilter) ([]*models.Order, error) {
 	out, err := q.dao.List(ctx, filter)
 	if err != nil {
 		return nil, err

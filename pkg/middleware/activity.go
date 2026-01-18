@@ -4,7 +4,6 @@ import (
 	"context"
 
 	cedar "github.com/cedar-policy/cedar-go"
-
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 )
 

@@ -5,7 +5,6 @@ import (
 
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
-
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 )

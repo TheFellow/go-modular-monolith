@@ -23,6 +23,13 @@ func TxFromContext(ctx context.Context) (*bstore.Tx, bool) {
 	return tx, ok
 }
 
+// Context provides data access capabilities.
+// *middleware.Context implements this interface.
+type Context interface {
+	context.Context
+	Transaction() (*bstore.Tx, bool)
+}
+
 type storeKey struct{}
 
 func WithStore(ctx context.Context, s *Store) context.Context {

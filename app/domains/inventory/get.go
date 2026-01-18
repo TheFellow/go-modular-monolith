@@ -3,7 +3,7 @@ package inventory
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/dao"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -25,6 +25,6 @@ func (m *Module) Get(ctx *middleware.Context, ingredientID cedar.EntityUID) (*mo
 	return middleware.RunQueryWithResource(ctx, authz.ActionGet, m.get, getRequest{IngredientID: ingredientID})
 }
 
-func (m *Module) get(ctx dao.Context, req getRequest) (*models.Inventory, error) {
+func (m *Module) get(ctx store.Context, req getRequest) (*models.Inventory, error) {
 	return m.queries.Get(ctx, req.IngredientID)
 }

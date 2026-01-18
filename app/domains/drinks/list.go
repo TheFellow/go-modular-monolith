@@ -4,7 +4,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	drinksdao "github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/dao"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -18,7 +18,7 @@ func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.Drink
 	return middleware.RunQuery(ctx, authz.ActionList, m.list, req)
 }
 
-func (m *Module) list(ctx dao.Context, req ListRequest) ([]*models.Drink, error) {
+func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.Drink, error) {
 	ds, err := m.queries.List(ctx, drinksdao.ListFilter{
 		Name:     req.Name,
 		Category: req.Category,

@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/dao"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
@@ -20,9 +19,9 @@ type ListFilter struct {
 	Limit         int
 }
 
-func (d *DAO) List(ctx dao.Context, filter ListFilter) ([]*models.AuditEntry, error) {
+func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.AuditEntry, error) {
 	var out []*models.AuditEntry
-	err := dao.Read(ctx, func(tx *bstore.Tx) error {
+	err := store.Read(ctx, func(tx *bstore.Tx) error {
 		q := bstore.QueryTx[AuditEntryRow](tx)
 		if !filter.Action.IsZero() {
 			q = q.FilterEqual("Action", filter.Action.String())
