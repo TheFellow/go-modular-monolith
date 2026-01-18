@@ -53,3 +53,4 @@ sprint-033a,completed,2026-01-15,2026-01-15,Simplify command middleware and inli
 sprint-033b,completed,2026-01-15,2026-01-15,Remove module handler business logic
 sprint-033c,completed,2026-01-15,2026-01-15,Simplify RunCommand loaders + event payloads + handlers
 sprint-033d,completed,2026-01-15,2026-01-15,RunCommand helper functions + pointer module handlers
+sprint-033e,completed,2026-01-15,2026-01-15,DRY DAO boilerplate with shared context helpers

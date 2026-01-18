@@ -1,9 +1,8 @@
 package dao
 
 import (
-	"context"
-
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/dao"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/mjl-/bstore"
 )
@@ -16,9 +15,9 @@ type ListFilter struct {
 	IncludeDeleted bool
 }
 
-func (d *DAO) List(ctx context.Context, filter ListFilter) ([]*models.Ingredient, error) {
+func (d *DAO) List(ctx dao.Context, filter ListFilter) ([]*models.Ingredient, error) {
 	var out []*models.Ingredient
-	err := d.read(ctx, func(tx *bstore.Tx) error {
+	err := dao.Read(ctx, func(tx *bstore.Tx) error {
 		q := bstore.QueryTx[IngredientRow](tx)
 		if filter.Category != "" {
 			q = q.FilterEqual("Category", string(filter.Category))

@@ -8,9 +8,5 @@ import (
 )
 
 func (m *Module) Get(ctx *middleware.Context, id cedar.EntityUID) (*models.Ingredient, error) {
-	return middleware.RunQuery(ctx, authz.ActionGet, m.get, id)
-}
-
-func (m *Module) get(ctx *middleware.Context, id cedar.EntityUID) (*models.Ingredient, error) {
-	return m.queries.Get(ctx, id)
+	return middleware.RunQuery(ctx, authz.ActionGet, m.queries.Get, id)
 }

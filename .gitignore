@@ -36,3 +36,4 @@ go.work.sum
 .cache/
 .gocache/
 /data/mixology.db
+/.claude/

@@ -2,8 +2,9 @@ package ingredients
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
-	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/internal/dao"
+	ingredientsdao "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/dao"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -15,8 +16,8 @@ func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.Ingre
 	return middleware.RunQuery(ctx, authz.ActionList, m.list, req)
 }
 
-func (m *Module) list(ctx *middleware.Context, req ListRequest) ([]*models.Ingredient, error) {
-	is, err := m.queries.List(ctx, dao.ListFilter{Category: req.Category})
+func (m *Module) list(ctx dao.Context, req ListRequest) ([]*models.Ingredient, error) {
+	is, err := m.queries.List(ctx, ingredientsdao.ListFilter{Category: req.Category})
 	if err != nil {
 		return nil, err
 	}

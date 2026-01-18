@@ -1,18 +1,17 @@
 package dao
 
 import (
-	"context"
-
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/dao"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
 
-func (d *DAO) Get(ctx context.Context, id cedar.EntityUID) (*models.Order, error) {
+func (d *DAO) Get(ctx dao.Context, id cedar.EntityUID) (*models.Order, error) {
 	var row OrderRow
-	err := d.read(ctx, func(tx *bstore.Tx) error {
+	err := dao.Read(ctx, func(tx *bstore.Tx) error {
 		row = OrderRow{ID: string(id.ID)}
 		return tx.Get(&row)
 	})

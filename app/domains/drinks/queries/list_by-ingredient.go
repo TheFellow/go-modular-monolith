@@ -1,20 +1,19 @@
 package queries
 
 import (
-	"context"
-
-	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
+	drinksdao "github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/dao"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (q *Queries) ListByIngredient(ctx context.Context, ingredientID cedar.EntityUID) ([]*models.Drink, error) {
+func (q *Queries) ListByIngredient(ctx dao.Context, ingredientID cedar.EntityUID) ([]*models.Drink, error) {
 	if string(ingredientID.ID) == "" {
 		return nil, errors.Invalidf("ingredient id is required")
 	}
 
-	all, err := q.dao.List(ctx, dao.ListFilter{})
+	all, err := q.dao.List(ctx, drinksdao.ListFilter{})
 	if err != nil {
 		return nil, err
 	}
