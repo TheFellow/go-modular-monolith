@@ -2,7 +2,7 @@ package events
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
-	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 )
 
 type OrderPlaced struct {
@@ -16,11 +16,11 @@ type OrderCancelled struct {
 type OrderCompleted struct {
 	Order               models.Order
 	IngredientUsage     []IngredientUsage
-	DepletedIngredients []cedar.EntityUID
+	DepletedIngredients []entity.IngredientID
 }
 
 type IngredientUsage struct {
-	IngredientID cedar.EntityUID
+	IngredientID entity.IngredientID
 	Name         string
 	Amount       float64
 	Unit         string

@@ -9,4 +9,3 @@ type Queries struct {
 func New() *Queries {
 	return &Queries{dao: dao.New()}
 }
-

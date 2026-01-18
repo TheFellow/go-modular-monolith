@@ -8,13 +8,13 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/cedar-policy/cedar-go"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 const IngredientEntityType = entity.TypeIngredient
 
 type Ingredient struct {
-	ID          cedar.EntityUID
+	ID          entity.IngredientID
 	Name        string
 	Category    Category
 	Unit        Unit
@@ -23,11 +23,11 @@ type Ingredient struct {
 }
 
 func (i Ingredient) EntityUID() cedar.EntityUID {
-	return i.ID
+	return i.ID.EntityUID()
 }
 
 func (i Ingredient) CedarEntity() cedar.Entity {
-	uid := i.ID
+	uid := i.ID.EntityUID()
 	if uid.Type == "" {
 		uid = cedar.NewEntityUID(cedar.EntityType(IngredientEntityType), uid.ID)
 	}

@@ -2,15 +2,15 @@ package dao
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/mjl-/bstore"
 )
 
 // ListFilter specifies optional filters for listing stock rows.
 type ListFilter struct {
-	IngredientID cedar.EntityUID
+	IngredientID entity.IngredientID
 	MaxQuantity  optional.Value[float64]
 	MinQuantity  optional.Value[float64]
 }
@@ -20,8 +20,8 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Inventory, e
 	err := store.Read(ctx, func(tx *bstore.Tx) error {
 		q := bstore.QueryTx[StockRow](tx)
 
-		if string(filter.IngredientID.ID) != "" {
-			q = q.FilterID(string(filter.IngredientID.ID))
+		if !filter.IngredientID.IsZero() {
+			q = q.FilterID(filter.IngredientID.String())
 		}
 		if v, ok := filter.MaxQuantity.Unwrap(); ok {
 			q = q.FilterLessEqual("Quantity", v)

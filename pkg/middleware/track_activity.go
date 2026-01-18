@@ -24,35 +24,35 @@ func TrackActivity() CommandMiddleware {
 		}
 		activity.Complete(err)
 
-	d, ok := DispatcherFromContext(ctx.Context)
-	if ok && d != nil {
-		event := middlewareevents.ActivityCompleted{Activity: *activity}
-		dispatch := func(dispatchCtx *Context) error {
-			if derr := d.Dispatch(dispatchCtx, event); derr != nil {
-				log.FromContext(dispatchCtx).Error("dispatch activity completed", log.Err(derr))
-				if err == nil {
-					return errors.Internalf("dispatch activity completed: %w", derr)
+		d, ok := DispatcherFromContext(ctx.Context)
+		if ok && d != nil {
+			event := middlewareevents.ActivityCompleted{Activity: *activity}
+			dispatch := func(dispatchCtx *Context) error {
+				if derr := d.Dispatch(dispatchCtx, event); derr != nil {
+					log.FromContext(dispatchCtx).Error("dispatch activity completed", log.Err(derr))
+					if err == nil {
+						return errors.Internalf("dispatch activity completed: %w", derr)
+					}
 				}
+				return nil
 			}
-			return nil
+
+			if tx, ok := ctx.Transaction(); ok && tx != nil {
+				if derr := dispatch(ctx); derr != nil {
+					return derr
+				}
+			} else if s, ok := store.FromContext(ctx.Context); ok && s != nil {
+				if derr := s.Write(ctx, func(tx *bstore.Tx) error {
+					txCtx := NewContext(ctx, WithTransaction(tx))
+					return dispatch(txCtx)
+				}); derr != nil {
+					return derr
+				}
+			} else if derr := dispatch(ctx); derr != nil {
+				return derr
+			}
 		}
 
-		if tx, ok := ctx.Transaction(); ok && tx != nil {
-			if derr := dispatch(ctx); derr != nil {
-				return derr
-			}
-		} else if s, ok := store.FromContext(ctx.Context); ok && s != nil {
-			if derr := s.Write(ctx, func(tx *bstore.Tx) error {
-				txCtx := NewContext(ctx, WithTransaction(tx))
-				return dispatch(txCtx)
-			}); derr != nil {
-				return derr
-			}
-		} else if derr := dispatch(ctx); derr != nil {
-			return derr
-		}
+		return err
 	}
-
-	return err
-}
 }

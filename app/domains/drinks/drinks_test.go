@@ -31,7 +31,7 @@ func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
 		Description: "A classic sour",
 	})
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, created.ID.ID == "", "expected id to be set")
+	testutil.ErrorIf(t, created.ID.IsZero(), "expected id to be set")
 
 	got, err := f.Drinks.Get(ctx, created.ID)
 	testutil.Ok(t, err)

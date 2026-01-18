@@ -13,12 +13,12 @@ import (
 
 const MenuEntityType = entity.TypeMenu
 
-func NewMenuID(id string) cedar.EntityUID {
-	return entity.MenuID(id)
+func NewMenuID(id string) entity.MenuID {
+	return entity.MenuID(cedar.NewEntityUID(entity.TypeMenu, cedar.String(id)))
 }
 
 type Menu struct {
-	ID          cedar.EntityUID
+	ID          entity.MenuID
 	Name        string
 	Description string
 	Items       []MenuItem
@@ -29,11 +29,11 @@ type Menu struct {
 }
 
 func (m Menu) EntityUID() cedar.EntityUID {
-	return m.ID
+	return m.ID.EntityUID()
 }
 
 func (m Menu) CedarEntity() cedar.Entity {
-	uid := m.ID
+	uid := m.ID.EntityUID()
 	if uid.Type == "" {
 		uid = cedar.NewEntityUID(cedar.EntityType(MenuEntityType), uid.ID)
 	}
@@ -65,7 +65,7 @@ func (m Menu) Validate() error {
 }
 
 type MenuItem struct {
-	DrinkID      cedar.EntityUID
+	DrinkID      entity.DrinkID
 	DisplayName  optional.Value[string]
 	Price        optional.Value[Price]
 	Featured     bool
@@ -74,7 +74,7 @@ type MenuItem struct {
 }
 
 func (i MenuItem) Validate() error {
-	if i.DrinkID.ID == "" {
+	if i.DrinkID.IsZero() {
 		return errors.Invalidf("drink id is required")
 	}
 	if err := i.Availability.Validate(); err != nil {

@@ -94,7 +94,7 @@ func Entity[T CedarEntity](entity T) func(*Context) (T, error) {
 }
 
 // Get returns a loader that fetches an entity by ID (useful for Update/Delete).
-func Get[T CedarEntity](get func(store.Context, cedar.EntityUID) (T, error), id cedar.EntityUID) func(*Context) (T, error) {
+func Get[T CedarEntity, ID any](get func(store.Context, ID) (T, error), id ID) func(*Context) (T, error) {
 	return func(ctx *Context) (T, error) {
 		return get(ctx, id)
 	}

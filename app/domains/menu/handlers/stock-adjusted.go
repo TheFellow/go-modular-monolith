@@ -6,8 +6,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/availability"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type StockAdjustedMenuUpdater struct {
@@ -52,25 +52,25 @@ func (h *StockAdjustedMenuUpdater) Handle(ctx *middleware.Context, e inventoryev
 		if err := h.menuDAO.Update(ctx, *menu); err != nil {
 			return err
 		}
-		ctx.TouchEntity(menu.ID)
+		ctx.TouchEntity(menu.ID.EntityUID())
 	}
 
 	return nil
 }
 
-func (h *StockAdjustedMenuUpdater) drinkUsesIngredient(ctx *middleware.Context, drinkID cedar.EntityUID, ingredientID cedar.EntityUID) bool {
+func (h *StockAdjustedMenuUpdater) drinkUsesIngredient(ctx *middleware.Context, drinkID entity.DrinkID, ingredientID entity.IngredientID) bool {
 	drink, err := h.drinkQueries.Get(ctx, drinkID)
 	if err != nil {
 		return false
 	}
 
-	target := string(ingredientID.ID)
+	target := ingredientID.String()
 	for _, ri := range drink.Recipe.Ingredients {
-		if string(ri.IngredientID.ID) == target {
+		if ri.IngredientID.String() == target {
 			return true
 		}
 		for _, sub := range ri.Substitutes {
-			if string(sub.ID) == target {
+			if sub.String() == target {
 				return true
 			}
 		}

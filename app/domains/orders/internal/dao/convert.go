@@ -5,6 +5,7 @@ import (
 
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
@@ -16,15 +17,15 @@ func toRow(o models.Order) OrderRow {
 	items := make([]OrderItemRow, 0, len(o.Items))
 	for _, it := range o.Items {
 		items = append(items, OrderItemRow{
-			DrinkID:  it.DrinkID,
+			DrinkID:  it.DrinkID.EntityUID(),
 			Quantity: it.Quantity,
 			Notes:    it.Notes,
 		})
 	}
 
 	return OrderRow{
-		ID:          string(o.ID.ID),
-		MenuID:      string(o.MenuID.ID),
+		ID:          o.ID.String(),
+		MenuID:      o.MenuID.String(),
 		Items:       items,
 		Status:      string(o.Status),
 		CreatedAt:   o.CreatedAt,
@@ -44,7 +45,7 @@ func toModel(r OrderRow) models.Order {
 	items := make([]models.OrderItem, 0, len(r.Items))
 	for _, it := range r.Items {
 		items = append(items, models.OrderItem{
-			DrinkID:  it.DrinkID,
+			DrinkID:  entity.DrinkID(it.DrinkID),
 			Quantity: it.Quantity,
 			Notes:    it.Notes,
 		})

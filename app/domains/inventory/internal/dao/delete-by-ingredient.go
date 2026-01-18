@@ -1,19 +1,19 @@
 package dao
 
 import (
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
-	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
 
-func (d *DAO) DeleteByIngredient(ctx store.Context, ingredientID cedar.EntityUID) error {
+func (d *DAO) DeleteByIngredient(ctx store.Context, ingredientID entity.IngredientID) error {
 	return store.Write(ctx, func(tx *bstore.Tx) error {
-		row := StockRow{IngredientID: string(ingredientID.ID)}
+		row := StockRow{IngredientID: ingredientID.String()}
 		if err := tx.Delete(&row); err != nil {
 			if err == bstore.ErrAbsent {
 				return nil
 			}
-			return store.MapError(err, "delete stock for ingredient %s", string(ingredientID.ID))
+			return store.MapError(err, "delete stock for ingredient %s", ingredientID.String())
 		}
 		return nil
 	})

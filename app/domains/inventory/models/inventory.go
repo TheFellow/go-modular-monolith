@@ -12,12 +12,12 @@ import (
 
 const InventoryEntityType = entity.TypeInventory
 
-func NewInventoryID(ingredientID cedar.EntityUID) cedar.EntityUID {
-	return entity.InventoryID(ingredientID)
+func NewInventoryID(ingredientID entity.IngredientID) entity.InventoryID {
+	return entity.NewInventoryID(ingredientID)
 }
 
 type Inventory struct {
-	IngredientID cedar.EntityUID
+	IngredientID entity.IngredientID
 	Quantity     float64
 	Unit         measurement.Unit
 	CostPerUnit  optional.Value[money.Price]
@@ -25,7 +25,7 @@ type Inventory struct {
 }
 
 func (s Inventory) EntityUID() cedar.EntityUID {
-	return NewInventoryID(s.IngredientID)
+	return NewInventoryID(s.IngredientID).EntityUID()
 }
 
 func (s Inventory) CedarEntity() cedar.Entity {
@@ -33,7 +33,7 @@ func (s Inventory) CedarEntity() cedar.Entity {
 		UID:     s.EntityUID(),
 		Parents: cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(cedar.RecordMap{
-			"IngredientID": s.IngredientID,
+			"IngredientID": s.IngredientID.EntityUID(),
 			"Unit":         cedar.String(s.Unit),
 		}),
 		Tags: cedar.NewRecord(nil),

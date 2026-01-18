@@ -18,18 +18,18 @@ const (
 )
 
 type SubstitutionRule struct {
-	IngredientID  cedar.EntityUID
-	SubstituteID  cedar.EntityUID
+	IngredientID  entity.IngredientID
+	SubstituteID  entity.IngredientID
 	Ratio         float64
 	QualityImpact Quality
 	Notes         string
 }
 
 func (r SubstitutionRule) Validate() error {
-	if strings.TrimSpace(string(r.IngredientID.ID)) == "" {
+	if strings.TrimSpace(r.IngredientID.String()) == "" {
 		return errors.Invalidf("ingredient id is required")
 	}
-	if strings.TrimSpace(string(r.SubstituteID.ID)) == "" {
+	if strings.TrimSpace(r.SubstituteID.String()) == "" {
 		return errors.Invalidf("substitute id is required")
 	}
 	if r.Ratio <= 0 {
@@ -41,39 +41,43 @@ func (r SubstitutionRule) Validate() error {
 	return nil
 }
 
+func newIngredientID(id string) entity.IngredientID {
+	return entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, cedar.String(id)))
+}
+
 func DefaultSubstitutionRules() []SubstitutionRule {
 	return []SubstitutionRule{
 		{
-			IngredientID:  entity.IngredientID("lime-juice"),
-			SubstituteID:  entity.IngredientID("lemon-juice"),
+			IngredientID:  newIngredientID("lime-juice"),
+			SubstituteID:  newIngredientID("lemon-juice"),
 			Ratio:         1.0,
 			QualityImpact: QualitySimilar,
 			Notes:         "Citrus swap; expect a slightly different profile",
 		},
 		{
-			IngredientID:  entity.IngredientID("lemon-juice"),
-			SubstituteID:  entity.IngredientID("lime-juice"),
+			IngredientID:  newIngredientID("lemon-juice"),
+			SubstituteID:  newIngredientID("lime-juice"),
 			Ratio:         1.0,
 			QualityImpact: QualitySimilar,
 			Notes:         "Citrus swap; expect a slightly different profile",
 		},
 		{
-			IngredientID:  entity.IngredientID("simple-syrup"),
-			SubstituteID:  entity.IngredientID("honey-syrup"),
+			IngredientID:  newIngredientID("simple-syrup"),
+			SubstituteID:  newIngredientID("honey-syrup"),
 			Ratio:         0.75,
 			QualityImpact: QualityDifferent,
 			Notes:         "Honey is sweeter; reduce amount",
 		},
 		{
-			IngredientID:  entity.IngredientID("bourbon"),
-			SubstituteID:  entity.IngredientID("rye-whiskey"),
+			IngredientID:  newIngredientID("bourbon"),
+			SubstituteID:  newIngredientID("rye-whiskey"),
 			Ratio:         1.0,
 			QualityImpact: QualityEquivalent,
 			Notes:         "Comparable spirit substitution",
 		},
 		{
-			IngredientID:  entity.IngredientID("fresh-mint"),
-			SubstituteID:  entity.IngredientID("dried-mint"),
+			IngredientID:  newIngredientID("fresh-mint"),
+			SubstituteID:  newIngredientID("dried-mint"),
 			Ratio:         0.5,
 			QualityImpact: QualityDifferent,
 			Notes:         "Dried herbs are more concentrated",
@@ -81,19 +85,19 @@ func DefaultSubstitutionRules() []SubstitutionRule {
 	}
 }
 
-func SubstitutionsFor(ingredientID cedar.EntityUID) []SubstitutionRule {
+func SubstitutionsFor(ingredientID entity.IngredientID) []SubstitutionRule {
 	out := make([]SubstitutionRule, 0, 2)
 	for _, rule := range DefaultSubstitutionRules() {
-		if string(rule.IngredientID.ID) == string(ingredientID.ID) {
+		if rule.IngredientID.String() == ingredientID.String() {
 			out = append(out, rule)
 		}
 	}
 	return out
 }
 
-func LookupSubstitution(original cedar.EntityUID, substitute cedar.EntityUID) (SubstitutionRule, bool) {
+func LookupSubstitution(original entity.IngredientID, substitute entity.IngredientID) (SubstitutionRule, bool) {
 	for _, rule := range DefaultSubstitutionRules() {
-		if string(rule.IngredientID.ID) == string(original.ID) && string(rule.SubstituteID.ID) == string(substitute.ID) {
+		if rule.IngredientID.String() == original.String() && rule.SubstituteID.String() == substitute.String() {
 			return rule, true
 		}
 	}

@@ -6,9 +6,9 @@ import (
 	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/availability"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type AnalyticsCalculator struct {
@@ -26,7 +26,7 @@ func NewAnalyticsCalculator() *AnalyticsCalculator {
 }
 
 type MenuItemAnalytics struct {
-	DrinkID        cedar.EntityUID
+	DrinkID        entity.DrinkID
 	Name           string
 	Availability   models.Availability
 	Substitutions  []availability.AppliedSubstitution

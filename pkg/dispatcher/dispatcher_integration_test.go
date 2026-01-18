@@ -198,7 +198,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 		t.Fatalf("expected 1 menu item after delete, got %d", len(got.Items))
 	}
 
-	if string(got.Items[0].DrinkID.ID) != string(drink2.ID.ID) {
-		t.Fatalf("expected remaining item to be drink2, got %s", string(got.Items[0].DrinkID.ID))
+	if got.Items[0].DrinkID.String() != drink2.ID.String() {
+		t.Fatalf("expected remaining item to be drink2, got %s", got.Items[0].DrinkID.String())
 	}
 }

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cedar-policy/cedar-go"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
+	"github.com/cedar-policy/cedar-go"
 )
 
 type MetricsCollector struct {

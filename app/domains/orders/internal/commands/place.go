@@ -15,10 +15,10 @@ func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.
 	if order == nil {
 		return nil, errors.Invalidf("order is required")
 	}
-	if order.ID.ID != "" {
+	if !order.ID.IsZero() {
 		return nil, errors.Invalidf("id must be empty for place")
 	}
-	if order.MenuID.ID == "" {
+	if order.MenuID.IsZero() {
 		return nil, errors.Invalidf("menu id is required")
 	}
 	if len(order.Items) == 0 {
@@ -53,7 +53,7 @@ func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.
 		return nil, err
 	}
 
-	ctx.TouchEntity(created.ID)
+	ctx.TouchEntity(created.ID.EntityUID())
 	ctx.AddEvent(events.OrderPlaced{Order: created})
 	return &created, nil
 }

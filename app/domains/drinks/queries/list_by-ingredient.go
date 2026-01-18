@@ -3,13 +3,13 @@ package queries
 import (
 	drinksdao "github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-func (q *Queries) ListByIngredient(ctx store.Context, ingredientID cedar.EntityUID) ([]*models.Drink, error) {
-	if string(ingredientID.ID) == "" {
+func (q *Queries) ListByIngredient(ctx store.Context, ingredientID entity.IngredientID) ([]*models.Drink, error) {
+	if ingredientID.IsZero() {
 		return nil, errors.Invalidf("ingredient id is required")
 	}
 
@@ -19,7 +19,7 @@ func (q *Queries) ListByIngredient(ctx store.Context, ingredientID cedar.EntityU
 	}
 
 	out := make([]*models.Drink, 0)
-	target := string(ingredientID.ID)
+	target := ingredientID.String()
 	for _, d := range all {
 		if d == nil {
 			continue
@@ -27,12 +27,12 @@ func (q *Queries) ListByIngredient(ctx store.Context, ingredientID cedar.EntityU
 
 		matches := false
 		for _, ri := range d.Recipe.Ingredients {
-			if string(ri.IngredientID.ID) == target {
+			if ri.IngredientID.String() == target {
 				matches = true
 				break
 			}
 			for _, sub := range ri.Substitutes {
-				if string(sub.ID) == target {
+				if sub.String() == target {
 					matches = true
 					break
 				}

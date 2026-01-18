@@ -4,14 +4,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	inventorydao "github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type ListRequest struct {
-	IngredientID cedar.EntityUID
+	IngredientID entity.IngredientID
 
 	// LowStock, when set, lists items with Quantity <= LowStock.
 	LowStock optional.Value[float64]

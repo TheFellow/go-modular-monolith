@@ -25,7 +25,7 @@ func (h *OrderCompletedStockUpdater) Handle(ctx *middleware.Context, e orderseve
 	now := time.Now().UTC()
 
 	for _, usage := range e.IngredientUsage {
-		ingredientID := string(usage.IngredientID.ID)
+		ingredientID := usage.IngredientID.String()
 		existing, err := h.stockDAO.Get(ctx, usage.IngredientID)
 		if err != nil {
 			if errors.IsNotFound(err) {

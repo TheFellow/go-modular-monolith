@@ -2,15 +2,15 @@ package dao
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
-	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
 
 // ListFilter specifies optional filters for listing orders.
 type ListFilter struct {
 	Status models.OrderStatus
-	MenuID cedar.EntityUID
+	MenuID entity.MenuID
 	// IncludeDeleted includes soft-deleted rows (DeletedAt != nil).
 	IncludeDeleted bool
 }
@@ -22,8 +22,8 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Order, error
 		if filter.Status != "" {
 			q = q.FilterEqual("Status", string(filter.Status))
 		}
-		if string(filter.MenuID.ID) != "" {
-			q = q.FilterEqual("MenuID", string(filter.MenuID.ID))
+		if !filter.MenuID.IsZero() {
+			q = q.FilterEqual("MenuID", filter.MenuID.String())
 		}
 
 		rows, err := q.List()

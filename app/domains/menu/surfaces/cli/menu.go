@@ -35,7 +35,7 @@ func FromDomainMenu(m models.Menu) Menu {
 	}
 
 	return Menu{
-		ID:          string(m.ID.ID),
+		ID:          m.ID.String(),
 		Name:        m.Name,
 		Description: m.Description,
 		Status:      string(m.Status),
@@ -49,7 +49,7 @@ func FromDomainMenuItem(i models.MenuItem) MenuItem {
 	var displayName string
 	displayName, _ = i.DisplayName.Unwrap()
 	return MenuItem{
-		DrinkID:      string(i.DrinkID.ID),
+		DrinkID:      i.DrinkID.String(),
 		DisplayName:  displayName,
 		Featured:     i.Featured,
 		Availability: string(i.Availability),

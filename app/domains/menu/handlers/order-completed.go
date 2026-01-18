@@ -5,8 +5,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	ordersevents "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type OrderCompletedMenuUpdater struct {
@@ -28,7 +28,7 @@ func (h *OrderCompletedMenuUpdater) Handle(ctx *middleware.Context, e orderseven
 
 	depleted := make(map[string]struct{}, len(e.DepletedIngredients))
 	for _, id := range e.DepletedIngredients {
-		depleted[string(id.ID)] = struct{}{}
+		depleted[id.String()] = struct{}{}
 	}
 	if len(depleted) == 0 {
 		return nil
@@ -59,24 +59,24 @@ func (h *OrderCompletedMenuUpdater) Handle(ctx *middleware.Context, e orderseven
 		if err := h.menuDAO.Update(ctx, *menu); err != nil {
 			return err
 		}
-		ctx.TouchEntity(menu.ID)
+		ctx.TouchEntity(menu.ID.EntityUID())
 	}
 
 	return nil
 }
 
-func (h *OrderCompletedMenuUpdater) drinkUsesAnyIngredient(ctx *middleware.Context, drinkID cedar.EntityUID, ingredientIDs map[string]struct{}) bool {
+func (h *OrderCompletedMenuUpdater) drinkUsesAnyIngredient(ctx *middleware.Context, drinkID entity.DrinkID, ingredientIDs map[string]struct{}) bool {
 	drink, err := h.drinkQueries.Get(ctx, drinkID)
 	if err != nil {
 		return false
 	}
 
 	for _, ri := range drink.Recipe.Ingredients {
-		if _, ok := ingredientIDs[string(ri.IngredientID.ID)]; ok {
+		if _, ok := ingredientIDs[ri.IngredientID.String()]; ok {
 			return true
 		}
 		for _, sub := range ri.Substitutes {
-			if _, ok := ingredientIDs[string(sub.ID)]; ok {
+			if _, ok := ingredientIDs[sub.String()]; ok {
 				return true
 			}
 		}

@@ -30,7 +30,7 @@ func (c *Commands) Publish(ctx *middleware.Context, menu *models.Menu) (*models.
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID)
+	ctx.TouchEntity(updated.ID.EntityUID())
 	ctx.AddEvent(events.MenuPublished{
 		Menu: updated,
 	})

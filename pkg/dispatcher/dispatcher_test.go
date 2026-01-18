@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 func TestDispatcher_DispatchesToHandlers(t *testing.T) {
@@ -18,7 +19,7 @@ func TestDispatcher_DispatchesToHandlers(t *testing.T) {
 
 	event := events.IngredientCreated{
 		Ingredient: models.Ingredient{
-			ID:   entity.IngredientID("vodka"),
+			ID:   entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, cedar.String("vodka"))),
 			Name: "Vodka",
 		},
 	}

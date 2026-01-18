@@ -61,7 +61,7 @@ func (c *Commands) Set(ctx *middleware.Context, update *models.Update) (*models.
 	ctx.TouchEntity(updated.EntityUID())
 	ctx.AddEvent(events.StockAdjusted{
 		Inventory: updated,
-		Reason:   "set",
+		Reason:    "set",
 	})
 
 	return &updated, nil

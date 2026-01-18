@@ -5,11 +5,11 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func drinkForPolicy(name string, category models.DrinkCategory, ingredientID cedar.EntityUID) models.Drink {
+func drinkForPolicy(name string, category models.DrinkCategory, ingredientID entity.IngredientID) models.Drink {
 	return models.Drink{
 		Name:     name,
 		Category: category,

@@ -38,14 +38,14 @@ func (h *IngredientDeletedMenuCascader) Handling(ctx *middleware.Context, e ingr
 	menuByID := map[string]*models.Menu{}
 
 	for _, drink := range drinks {
-		remove[string(drink.ID.ID)] = struct{}{}
+		remove[drink.ID.String()] = struct{}{}
 
 		menus, err := h.menuDAO.ListByDrink(ctx, drink.ID)
 		if err != nil {
 			return err
 		}
 		for _, menu := range menus {
-			menuByID[string(menu.ID.ID)] = menu
+			menuByID[menu.ID.String()] = menu
 		}
 	}
 
@@ -75,7 +75,7 @@ func (h *IngredientDeletedMenuCascader) Handle(ctx *middleware.Context, _ ingred
 
 		filtered := make([]models.MenuItem, 0, len(updated.Items))
 		for _, item := range updated.Items {
-			if _, ok := h.removeDrinkID[string(item.DrinkID.ID)]; ok {
+			if _, ok := h.removeDrinkID[item.DrinkID.String()]; ok {
 				continue
 			}
 			filtered = append(filtered, item)
@@ -88,7 +88,7 @@ func (h *IngredientDeletedMenuCascader) Handle(ctx *middleware.Context, _ ingred
 		if err := h.menuDAO.Update(ctx, updated); err != nil {
 			return err
 		}
-		ctx.TouchEntity(updated.ID)
+		ctx.TouchEntity(updated.ID.EntityUID())
 	}
 
 	return nil

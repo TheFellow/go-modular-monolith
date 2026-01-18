@@ -5,7 +5,6 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -38,7 +37,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					for _, s := range res {
-						fmt.Printf("%s\t%.2f\t%s\n", string(s.IngredientID.ID), s.Quantity, s.Unit)
+						fmt.Printf("%s\t%.2f\t%s\n", s.IngredientID.String(), s.Quantity, s.Unit)
 					}
 					return nil
 				}),
@@ -51,13 +50,13 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("ingredient_id")[0]
-					res, err := c.app.Inventory.Get(ctx, entity.IngredientID(id))
+					res, err := c.app.Inventory.Get(ctx, ingredientIDFromString(id))
 					if err != nil {
 						return err
 					}
 
 					s := res
-					fmt.Printf("%s\t%.2f\t%s\n", string(s.IngredientID.ID), s.Quantity, s.Unit)
+					fmt.Printf("%s\t%.2f\t%s\n", s.IngredientID.String(), s.Quantity, s.Unit)
 					return nil
 				}),
 			},
@@ -106,8 +105,8 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						cost = optional.Some(p)
 					}
 
-				res, err := c.app.Inventory.Adjust(ctx, &inventorymodels.Patch{
-						IngredientID: entity.IngredientID(ingredientID),
+					res, err := c.app.Inventory.Adjust(ctx, &inventorymodels.Patch{
+						IngredientID: ingredientIDFromString(ingredientID),
 						Delta:        delta,
 						CostPerUnit:  cost,
 						Reason:       inventorymodels.AdjustmentReason(cmd.String("reason")),
@@ -116,7 +115,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%.2f\t%s\n", string(res.IngredientID.ID), res.Quantity, res.Unit)
+					fmt.Printf("%s\t%.2f\t%s\n", res.IngredientID.String(), res.Quantity, res.Unit)
 					return nil
 				}),
 			},
@@ -143,8 +142,8 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return err
 					}
 
-				res, err := c.app.Inventory.Set(ctx, &inventorymodels.Update{
-						IngredientID: entity.IngredientID(ingredientID),
+					res, err := c.app.Inventory.Set(ctx, &inventorymodels.Update{
+						IngredientID: ingredientIDFromString(ingredientID),
 						Quantity:     qty,
 						CostPerUnit:  cost,
 					})
@@ -152,7 +151,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%.2f\t%s\n", string(res.IngredientID.ID), res.Quantity, res.Unit)
+					fmt.Printf("%s\t%.2f\t%s\n", res.IngredientID.String(), res.Quantity, res.Unit)
 					return nil
 				}),
 			},

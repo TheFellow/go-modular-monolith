@@ -11,7 +11,7 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, change *models.MenuDrink
 	if change == nil {
 		return nil, errors.Invalidf("change is required")
 	}
-	if string(change.MenuID.ID) == "" {
+	if change.MenuID.IsZero() {
 		return nil, errors.Invalidf("menu id is required")
 	}
 
@@ -24,7 +24,7 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, change *models.MenuDrink
 	var removedItem models.MenuItem
 	var removed bool
 	for _, item := range menu.Items {
-		if string(item.DrinkID.ID) == string(change.DrinkID.ID) {
+		if item.DrinkID.String() == change.DrinkID.String() {
 			removedItem = item
 			removed = true
 			continue
@@ -45,7 +45,7 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, change *models.MenuDrink
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID)
+	ctx.TouchEntity(updated.ID.EntityUID())
 	ctx.AddEvent(events.DrinkRemovedFromMenu{
 		Menu: updated,
 		Item: removedItem,

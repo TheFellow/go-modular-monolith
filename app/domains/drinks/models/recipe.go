@@ -3,9 +3,9 @@ package models
 import (
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type Recipe struct {
@@ -15,11 +15,11 @@ type Recipe struct {
 }
 
 type RecipeIngredient struct {
-	IngredientID cedar.EntityUID
+	IngredientID entity.IngredientID
 	Amount       float64
 	Unit         measurement.Unit
 	Optional     bool
-	Substitutes  []cedar.EntityUID
+	Substitutes  []entity.IngredientID
 }
 
 func (r Recipe) Validate() error {
@@ -31,7 +31,7 @@ func (r Recipe) Validate() error {
 	}
 
 	for i, ing := range r.Ingredients {
-		if string(ing.IngredientID.ID) == "" {
+		if ing.IngredientID.IsZero() {
 			return errors.Invalidf("recipe ingredient %d: ingredient id is required", i)
 		}
 		if ing.Amount <= 0 {
@@ -41,7 +41,7 @@ func (r Recipe) Validate() error {
 			return errors.Invalidf("recipe ingredient %d: unit is required", i)
 		}
 		for j, sub := range ing.Substitutes {
-			if string(sub.ID) == "" {
+			if sub.IsZero() {
 				return errors.Invalidf("recipe ingredient %d substitute %d: id is required", i, j)
 			}
 		}

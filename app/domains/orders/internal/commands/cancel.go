@@ -16,7 +16,7 @@ func (c *Commands) Cancel(ctx *middleware.Context, order *models.Order) (*models
 	}
 	switch order.Status {
 	case models.OrderStatusCompleted:
-		return nil, errors.Invalidf("order %q is already completed", order.ID)
+		return nil, errors.Invalidf("order %q is already completed", order.ID.String())
 	case models.OrderStatusCancelled:
 		return order, nil
 	case models.OrderStatusPending, models.OrderStatusPreparing:
@@ -32,7 +32,7 @@ func (c *Commands) Cancel(ctx *middleware.Context, order *models.Order) (*models
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID)
+	ctx.TouchEntity(updated.ID.EntityUID())
 	ctx.AddEvent(events.OrderCancelled{
 		Order: updated,
 	})

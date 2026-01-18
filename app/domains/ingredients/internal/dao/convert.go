@@ -6,6 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 func toRow(i models.Ingredient) IngredientRow {
@@ -14,7 +15,7 @@ func toRow(i models.Ingredient) IngredientRow {
 		deletedAt = &t
 	}
 	return IngredientRow{
-		ID:          string(i.ID.ID),
+		ID:          i.ID.String(),
 		Name:        i.Name,
 		Category:    string(i.Category),
 		Unit:        string(i.Unit),
@@ -31,7 +32,7 @@ func toModel(r IngredientRow) models.Ingredient {
 		deletedAt = optional.None[time.Time]()
 	}
 	return models.Ingredient{
-		ID:          entity.IngredientID(r.ID),
+		ID:          entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, cedar.String(r.ID))),
 		Name:        r.Name,
 		Category:    models.Category(r.Category),
 		Unit:        models.Unit(r.Unit),

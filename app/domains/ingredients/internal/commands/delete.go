@@ -14,7 +14,7 @@ func (c *Commands) Delete(ctx *middleware.Context, ingredient *models.Ingredient
 	if ingredient == nil {
 		return nil, errors.Invalidf("ingredient is required")
 	}
-	if string(ingredient.ID.ID) == "" {
+	if ingredient.ID.IsZero() {
 		return nil, errors.Invalidf("id is required")
 	}
 
@@ -26,7 +26,7 @@ func (c *Commands) Delete(ctx *middleware.Context, ingredient *models.Ingredient
 		return nil, err
 	}
 
-	ctx.TouchEntity(deleted.ID)
+	ctx.TouchEntity(deleted.ID.EntityUID())
 	ctx.AddEvent(events.IngredientDeleted{
 		Ingredient: deleted,
 		DeletedAt:  now,

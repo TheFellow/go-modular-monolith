@@ -20,7 +20,7 @@ type Drink struct {
 
 func FromDomainDrink(d models.Drink) Drink {
 	return Drink{
-		ID:          string(d.ID.ID),
+		ID:          d.ID.String(),
 		Name:        d.Name,
 		Category:    string(d.Category),
 		Glass:       string(d.Glass),

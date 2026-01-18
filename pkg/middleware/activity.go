@@ -3,8 +3,8 @@ package middleware
 import (
 	"context"
 
-	cedar "github.com/cedar-policy/cedar-go"
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type activityKey struct{}
@@ -34,4 +34,3 @@ func (c *Context) TouchEntity(uid cedar.EntityUID) {
 		a.Touch(uid)
 	}
 }
-

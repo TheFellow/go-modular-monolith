@@ -14,7 +14,7 @@ func (c *Commands) Create(ctx *middleware.Context, ingredient *models.Ingredient
 	if ingredient == nil {
 		return nil, errors.Invalidf("ingredient is required")
 	}
-	if ingredient.ID.ID != "" {
+	if !ingredient.ID.IsZero() {
 		return nil, errors.Invalidf("id must be empty for create")
 	}
 
@@ -38,7 +38,7 @@ func (c *Commands) Create(ctx *middleware.Context, ingredient *models.Ingredient
 		return nil, err
 	}
 
-	ctx.TouchEntity(created.ID)
+	ctx.TouchEntity(created.ID.EntityUID())
 	ctx.AddEvent(events.IngredientCreated{
 		Ingredient: created,
 	})

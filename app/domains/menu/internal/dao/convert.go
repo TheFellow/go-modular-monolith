@@ -4,6 +4,7 @@ import (
 	"time"
 
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
@@ -23,7 +24,7 @@ func toRow(m menumodels.Menu) MenuRow {
 		}
 
 		items = append(items, MenuItemRow{
-			DrinkID:      it.DrinkID,
+			DrinkID:      it.DrinkID.EntityUID(),
 			DisplayName:  it.DisplayName,
 			Price:        price,
 			Featured:     it.Featured,
@@ -33,7 +34,7 @@ func toRow(m menumodels.Menu) MenuRow {
 	}
 
 	return MenuRow{
-		ID:          string(m.ID.ID),
+		ID:          m.ID.String(),
 		Name:        m.Name,
 		Description: m.Description,
 		Items:       items,
@@ -61,7 +62,7 @@ func toModel(r MenuRow) menumodels.Menu {
 		}
 
 		items = append(items, menumodels.MenuItem{
-			DrinkID:      it.DrinkID,
+			DrinkID:      entity.DrinkID(it.DrinkID),
 			DisplayName:  it.DisplayName,
 			Price:        price,
 			Featured:     it.Featured,

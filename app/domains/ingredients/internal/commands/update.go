@@ -13,7 +13,7 @@ func (c *Commands) Update(ctx *middleware.Context, ingredient *models.Ingredient
 	if ingredient == nil {
 		return nil, errors.Invalidf("ingredient is required")
 	}
-	if string(ingredient.ID.ID) == "" {
+	if ingredient.ID.IsZero() {
 		return nil, errors.Invalidf("id is required")
 	}
 
@@ -51,7 +51,7 @@ func (c *Commands) Update(ctx *middleware.Context, ingredient *models.Ingredient
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID)
+	ctx.TouchEntity(updated.ID.EntityUID())
 	ctx.AddEvent(events.IngredientUpdated{
 		Ingredient: updated,
 	})

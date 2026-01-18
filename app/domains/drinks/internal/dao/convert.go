@@ -4,6 +4,7 @@ import (
 	"time"
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -15,7 +16,7 @@ func toRow(d drinksmodels.Drink) DrinkRow {
 		deletedAt = &t
 	}
 	return DrinkRow{
-		ID:          string(d.ID.ID),
+		ID:          d.ID.String(),
 		Name:        d.Name,
 		Category:    string(d.Category),
 		Glass:       string(d.Glass),
@@ -51,10 +52,10 @@ func toRecipeRow(r drinksmodels.Recipe) RecipeRow {
 	for _, ri := range r.Ingredients {
 		subs := make([]cedar.EntityUID, 0, len(ri.Substitutes))
 		for _, sub := range ri.Substitutes {
-			subs = append(subs, sub)
+			subs = append(subs, sub.EntityUID())
 		}
 		ingredients = append(ingredients, RecipeIngredientRow{
-			IngredientID: ri.IngredientID,
+			IngredientID: ri.IngredientID.EntityUID(),
 			Amount:       ri.Amount,
 			Unit:         string(ri.Unit),
 			Optional:     ri.Optional,
@@ -74,12 +75,16 @@ func toRecipeModel(r RecipeRow) drinksmodels.Recipe {
 		ingredients = make([]drinksmodels.RecipeIngredient, 0, len(r.Ingredients))
 	}
 	for _, ri := range r.Ingredients {
+		substitutes := make([]entity.IngredientID, 0, len(ri.Substitutes))
+		for _, sub := range ri.Substitutes {
+			substitutes = append(substitutes, entity.IngredientID(sub))
+		}
 		ingredients = append(ingredients, drinksmodels.RecipeIngredient{
-			IngredientID: ri.IngredientID,
+			IngredientID: entity.IngredientID(ri.IngredientID),
 			Amount:       ri.Amount,
 			Unit:         measurement.Unit(ri.Unit),
 			Optional:     ri.Optional,
-			Substitutes:  ri.Substitutes,
+			Substitutes:  substitutes,
 		})
 	}
 	return drinksmodels.Recipe{

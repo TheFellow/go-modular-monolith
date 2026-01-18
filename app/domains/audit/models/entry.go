@@ -10,7 +10,7 @@ import (
 const AuditEntryEntityType = entity.TypeAuditEntry
 
 type AuditEntry struct {
-	ID cedar.EntityUID
+	ID entity.AuditEntryID
 
 	Action    string
 	Resource  cedar.EntityUID

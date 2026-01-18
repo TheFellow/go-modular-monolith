@@ -1,13 +1,14 @@
 package models
 
 import (
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type Patch struct {
-	IngredientID cedar.EntityUID
+	IngredientID entity.IngredientID
 	Reason       AdjustmentReason
 	Delta        optional.Value[float64]
 	CostPerUnit  optional.Value[money.Price]
@@ -17,7 +18,7 @@ func (p Patch) EntityUID() cedar.EntityUID {
 	_ = p.Reason
 	_ = p.Delta
 	_ = p.CostPerUnit
-	return NewInventoryID(p.IngredientID)
+	return NewInventoryID(p.IngredientID).EntityUID()
 }
 
 func (p Patch) CedarEntity() cedar.Entity {

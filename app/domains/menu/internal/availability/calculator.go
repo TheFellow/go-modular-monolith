@@ -9,10 +9,10 @@ import (
 	ingredientsq "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
 	inventoryq "github.com/TheFellow/go-modular-monolith/app/domains/inventory/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type AvailabilityCalculator struct {
@@ -29,7 +29,7 @@ func New() *AvailabilityCalculator {
 	}
 }
 
-func (c *AvailabilityCalculator) Calculate(ctx *middleware.Context, drinkID cedar.EntityUID) models.Availability {
+func (c *AvailabilityCalculator) Calculate(ctx *middleware.Context, drinkID entity.DrinkID) models.Availability {
 	detail, err := c.CalculateDetail(ctx, drinkID)
 	if err != nil {
 		return models.AvailabilityUnavailable
@@ -44,20 +44,20 @@ type Detail struct {
 }
 
 type MissingIngredient struct {
-	IngredientID  cedar.EntityUID
+	IngredientID  entity.IngredientID
 	Required      float64
 	Available     float64
 	HasSubstitute bool
 }
 
 type AppliedSubstitution struct {
-	Original      cedar.EntityUID
-	Substitute    cedar.EntityUID
+	Original      entity.IngredientID
+	Substitute    entity.IngredientID
 	Ratio         float64
 	QualityImpact ingredientsmodels.Quality
 }
 
-func (c *AvailabilityCalculator) CalculateDetail(ctx *middleware.Context, drinkID cedar.EntityUID) (Detail, error) {
+func (c *AvailabilityCalculator) CalculateDetail(ctx *middleware.Context, drinkID entity.DrinkID) (Detail, error) {
 	drink, err := c.drinks.Get(ctx, drinkID)
 	if err != nil {
 		return Detail{}, err
@@ -112,7 +112,7 @@ func (c *AvailabilityCalculator) CalculateDetail(ctx *middleware.Context, drinkI
 }
 
 type PickResult struct {
-	IngredientID     cedar.EntityUID
+	IngredientID     entity.IngredientID
 	RequiredQty      float64
 	AvailableQty     float64
 	UsedSubstitution bool
@@ -121,7 +121,7 @@ type PickResult struct {
 }
 
 type candidate struct {
-	id            cedar.EntityUID
+	id            entity.IngredientID
 	requiredQty   float64
 	isOriginal    bool
 	ratio         float64
@@ -138,10 +138,10 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 		qualityImpact: ingredientsmodels.QualityEquivalent,
 	})
 
-	seen := map[string]struct{}{string(req.IngredientID.ID): {}}
+	seen := map[string]struct{}{req.IngredientID.String(): {}}
 
-	addCandidate := func(id cedar.EntityUID, ratio float64, quality ingredientsmodels.Quality) {
-		key := string(id.ID)
+	addCandidate := func(id entity.IngredientID, ratio float64, quality ingredientsmodels.Quality) {
+		key := id.String()
 		if _, ok := seen[key]; ok {
 			return
 		}
@@ -170,7 +170,7 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 				if rules[i].QualityImpact.Rank() != rules[j].QualityImpact.Rank() {
 					return rules[i].QualityImpact.Rank() > rules[j].QualityImpact.Rank()
 				}
-				return string(rules[i].SubstituteID.ID) < string(rules[j].SubstituteID.ID)
+				return rules[i].SubstituteID.String() < rules[j].SubstituteID.String()
 			})
 			for _, rule := range rules {
 				addCandidate(rule.SubstituteID, rule.Ratio, rule.QualityImpact)
@@ -219,7 +219,7 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 		if a.AvailableQty != b.AvailableQty {
 			return a.AvailableQty > b.AvailableQty
 		}
-		return string(a.IngredientID.ID) < string(b.IngredientID.ID)
+		return a.IngredientID.String() < b.IngredientID.String()
 	})
 
 	best := picks[0]

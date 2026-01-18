@@ -19,6 +19,6 @@ func (h *IngredientDeletedStockCleaner) Handle(ctx *middleware.Context, e ingred
 	if err := h.stockDAO.DeleteByIngredient(ctx, e.Ingredient.ID); err != nil {
 		return err
 	}
-	ctx.TouchEntity(models.NewInventoryID(e.Ingredient.ID))
+	ctx.TouchEntity(models.NewInventoryID(e.Ingredient.ID).EntityUID())
 	return nil
 }

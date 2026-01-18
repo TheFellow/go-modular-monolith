@@ -9,6 +9,6 @@ import (
 func (d *DAO) Update(ctx store.Context, drink models.Drink) error {
 	return store.Write(ctx, func(tx *bstore.Tx) error {
 		row := toRow(drink)
-		return store.MapError(tx.Update(&row), "update drink %s", string(drink.ID.ID))
+		return store.MapError(tx.Update(&row), "update drink %s", drink.ID.String())
 	})
 }

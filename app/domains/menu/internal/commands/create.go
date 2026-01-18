@@ -16,7 +16,7 @@ func (c *Commands) Create(ctx *middleware.Context, menu *models.Menu) (*models.M
 	if menu == nil {
 		return nil, errors.Invalidf("menu is required")
 	}
-	if menu.ID.ID != "" {
+	if !menu.ID.IsZero() {
 		return nil, errors.Invalidf("id must be empty for create")
 	}
 
@@ -44,7 +44,7 @@ func (c *Commands) Create(ctx *middleware.Context, menu *models.Menu) (*models.M
 		return nil, err
 	}
 
-	ctx.TouchEntity(created.ID)
+	ctx.TouchEntity(created.ID.EntityUID())
 	ctx.AddEvent(events.MenuCreated{
 		Menu: created,
 	})

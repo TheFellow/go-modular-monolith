@@ -12,13 +12,13 @@ import (
 
 const OrderEntityType = entity.TypeOrder
 
-func NewOrderID(id string) cedar.EntityUID {
-	return entity.OrderID(id)
+func NewOrderID(id string) entity.OrderID {
+	return entity.OrderID(cedar.NewEntityUID(entity.TypeOrder, cedar.String(id)))
 }
 
 type Order struct {
-	ID          cedar.EntityUID
-	MenuID      cedar.EntityUID
+	ID          entity.OrderID
+	MenuID      entity.MenuID
 	Items       []OrderItem
 	Status      OrderStatus
 	CreatedAt   time.Time
@@ -28,11 +28,11 @@ type Order struct {
 }
 
 func (o Order) EntityUID() cedar.EntityUID {
-	return o.ID
+	return o.ID.EntityUID()
 }
 
 func (o Order) CedarEntity() cedar.Entity {
-	uid := o.ID
+	uid := o.ID.EntityUID()
 	if uid.Type == "" {
 		uid = cedar.NewEntityUID(cedar.EntityType(OrderEntityType), uid.ID)
 	}
@@ -40,7 +40,7 @@ func (o Order) CedarEntity() cedar.Entity {
 		UID:     uid,
 		Parents: cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(cedar.RecordMap{
-			"MenuID": o.MenuID,
+			"MenuID": o.MenuID.EntityUID(),
 			"Status": cedar.String(o.Status),
 		}),
 		Tags: cedar.NewRecord(nil),
@@ -48,7 +48,7 @@ func (o Order) CedarEntity() cedar.Entity {
 }
 
 func (o Order) Validate() error {
-	if o.MenuID.ID == "" {
+	if o.MenuID.IsZero() {
 		return errors.Invalidf("menu id is required")
 	}
 	if err := o.Status.Validate(); err != nil {
@@ -67,13 +67,13 @@ func (o Order) Validate() error {
 }
 
 type OrderItem struct {
-	DrinkID  cedar.EntityUID
+	DrinkID  entity.DrinkID
 	Quantity int
 	Notes    string
 }
 
 func (i OrderItem) Validate() error {
-	if i.DrinkID.ID == "" {
+	if i.DrinkID.IsZero() {
 		return errors.Invalidf("drink id is required")
 	}
 	if i.Quantity <= 0 {

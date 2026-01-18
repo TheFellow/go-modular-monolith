@@ -11,4 +11,3 @@ func NewModule() *Module {
 		queries: queries.New(),
 	}
 }
-

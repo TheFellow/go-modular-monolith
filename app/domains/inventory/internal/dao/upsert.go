@@ -11,9 +11,9 @@ func (d *DAO) Upsert(ctx store.Context, stock models.Inventory) error {
 		row := toRow(stock)
 		if err := tx.Update(&row); err != nil {
 			if err == bstore.ErrAbsent {
-				return store.MapError(tx.Insert(&row), "insert stock for ingredient %s", string(stock.IngredientID.ID))
+				return store.MapError(tx.Insert(&row), "insert stock for ingredient %s", stock.IngredientID.String())
 			}
-			return store.MapError(err, "update stock for ingredient %s", string(stock.IngredientID.ID))
+			return store.MapError(err, "update stock for ingredient %s", stock.IngredientID.String())
 		}
 		return nil
 	})

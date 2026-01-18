@@ -26,7 +26,7 @@ func (h *DrinkUpdatedMenuUpdater) Handle(ctx *middleware.Context, e drinksevents
 		return err
 	}
 
-	changedID := string(e.Drink.ID.ID)
+	changedID := e.Drink.ID.String()
 	for _, menu := range menus {
 		if menu.Status != models.MenuStatusPublished {
 			continue
@@ -34,7 +34,7 @@ func (h *DrinkUpdatedMenuUpdater) Handle(ctx *middleware.Context, e drinksevents
 
 		changed := false
 		for i := range menu.Items {
-			if string(menu.Items[i].DrinkID.ID) != changedID {
+			if menu.Items[i].DrinkID.String() != changedID {
 				continue
 			}
 			status := h.availability.Calculate(ctx, menu.Items[i].DrinkID)
@@ -51,7 +51,7 @@ func (h *DrinkUpdatedMenuUpdater) Handle(ctx *middleware.Context, e drinksevents
 		if err := h.menuDAO.Update(ctx, *menu); err != nil {
 			return err
 		}
-		ctx.TouchEntity(menu.ID)
+		ctx.TouchEntity(menu.ID.EntityUID())
 	}
 
 	return nil

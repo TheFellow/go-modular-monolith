@@ -13,7 +13,7 @@ func TestIngredients_CreateRejectsIDProvided(t *testing.T) {
 	fix := testutil.NewFixture(t)
 
 	_, err := fix.Ingredients.Create(fix.OwnerContext(), &models.Ingredient{
-		ID: entity.IngredientID("explicit-id"),
+		ID: entity.NewIngredientID(),
 	})
 	testutil.ErrorIsInvalid(t, err)
 }

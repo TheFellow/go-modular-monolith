@@ -12,7 +12,7 @@ func (c *Commands) AddDrink(ctx *middleware.Context, change *models.MenuDrinkCha
 	if change == nil {
 		return nil, errors.Invalidf("change is required")
 	}
-	if string(change.MenuID.ID) == "" {
+	if change.MenuID.IsZero() {
 		return nil, errors.Invalidf("menu id is required")
 	}
 	if _, err := c.drinks.Get(ctx, change.DrinkID); err != nil {
@@ -26,7 +26,7 @@ func (c *Commands) AddDrink(ctx *middleware.Context, change *models.MenuDrinkCha
 
 	updated := *menu
 	for _, item := range menu.Items {
-		if string(item.DrinkID.ID) == string(change.DrinkID.ID) {
+		if item.DrinkID.String() == change.DrinkID.String() {
 			return nil, errors.Invalidf("drink already in menu")
 		}
 	}
@@ -55,7 +55,7 @@ func (c *Commands) AddDrink(ctx *middleware.Context, change *models.MenuDrinkCha
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID)
+	ctx.TouchEntity(updated.ID.EntityUID())
 	ctx.AddEvent(events.DrinkAddedToMenu{
 		Menu: updated,
 		Item: added,

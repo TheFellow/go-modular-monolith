@@ -55,4 +55,3 @@ func (a *Activity) Complete(err error) {
 type ActivityCompleted struct {
 	Activity Activity
 }
-

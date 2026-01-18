@@ -23,12 +23,12 @@ func (h *DrinkDeletedMenuUpdater) Handle(ctx *middleware.Context, e drinksevents
 		return err
 	}
 
-	deletedID := string(e.Drink.ID.ID)
+	deletedID := e.Drink.ID.String()
 
 	for _, menu := range menus {
 		var filtered []models.MenuItem
 		for _, item := range menu.Items {
-			if string(item.DrinkID.ID) != deletedID {
+			if item.DrinkID.String() != deletedID {
 				filtered = append(filtered, item)
 			}
 		}
@@ -36,7 +36,7 @@ func (h *DrinkDeletedMenuUpdater) Handle(ctx *middleware.Context, e drinksevents
 		if err := h.menuDAO.Update(ctx, *menu); err != nil {
 			return err
 		}
-		ctx.TouchEntity(menu.ID)
+		ctx.TouchEntity(menu.ID.EntityUID())
 	}
 
 	return nil

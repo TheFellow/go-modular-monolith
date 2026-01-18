@@ -2,12 +2,12 @@ package dao
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
-	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
 
-func (d *DAO) ListByDrink(ctx store.Context, drinkID cedar.EntityUID) ([]*models.Menu, error) {
+func (d *DAO) ListByDrink(ctx store.Context, drinkID entity.DrinkID) ([]*models.Menu, error) {
 	var out []*models.Menu
 	err := store.Read(ctx, func(tx *bstore.Tx) error {
 		rows, err := bstore.QueryTx[MenuRow](tx).FilterFn(func(r MenuRow) bool {
@@ -15,14 +15,14 @@ func (d *DAO) ListByDrink(ctx store.Context, drinkID cedar.EntityUID) ([]*models
 				return false
 			}
 			for _, item := range r.Items {
-				if item.DrinkID == drinkID {
+				if item.DrinkID == drinkID.EntityUID() {
 					return true
 				}
 			}
 			return false
 		}).List()
 		if err != nil {
-			return store.MapError(err, "list menus by drink %s", string(drinkID.ID))
+			return store.MapError(err, "list menus by drink %s", drinkID.String())
 		}
 		menus := make([]*models.Menu, 0, len(rows))
 		for _, r := range rows {

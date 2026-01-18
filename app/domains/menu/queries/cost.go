@@ -8,10 +8,10 @@ import (
 	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	inventoryq "github.com/TheFellow/go-modular-monolith/app/domains/inventory/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/availability"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/govalues/decimal"
 )
 
@@ -30,8 +30,8 @@ func NewCostCalculator() *CostCalculator {
 }
 
 type IngredientCost struct {
-	OriginalIngredientID cedar.EntityUID
-	UsedIngredientID     cedar.EntityUID
+	OriginalIngredientID entity.IngredientID
+	UsedIngredientID     entity.IngredientID
 	RequiredQty          float64
 	CostPerUnit          *money.Price
 	Cost                 *money.Price
@@ -39,14 +39,14 @@ type IngredientCost struct {
 }
 
 type DrinkCost struct {
-	DrinkID        cedar.EntityUID
+	DrinkID        entity.DrinkID
 	IngredientCost *money.Price
 	Breakdown      []IngredientCost
 	SuggestedPrice *money.Price
 	UnknownCost    bool
 }
 
-func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID cedar.EntityUID, targetMargin float64) (DrinkCost, error) {
+func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID entity.DrinkID, targetMargin float64) (DrinkCost, error) {
 	if targetMargin <= 0 || targetMargin >= 1 {
 		return DrinkCost{}, errors.Invalidf("target margin must be between 0 and 1")
 	}
@@ -69,7 +69,7 @@ func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID cedar.Entity
 
 		pick, ok := c.availability.PickIngredient(ctx, req)
 		if !ok {
-			return DrinkCost{}, errors.Invalidf("missing required ingredient %s for drink %s", req.IngredientID.ID, drinkID.ID)
+			return DrinkCost{}, errors.Invalidf("missing required ingredient %s for drink %s", req.IngredientID.String(), drinkID.String())
 		}
 
 		stock, err := c.inventory.Get(ctx, pick.IngredientID)
@@ -131,7 +131,7 @@ func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID cedar.Entity
 	}
 
 	return DrinkCost{
-		DrinkID:        drink.EntityUID(),
+		DrinkID:        drink.ID,
 		IngredientCost: total,
 		Breakdown:      out,
 		SuggestedPrice: suggested,
@@ -144,5 +144,5 @@ func (c *CostCalculator) ExplainMissing(drink drinksmodels.Drink, cost DrinkCost
 	if !cost.UnknownCost {
 		return ""
 	}
-	return fmt.Sprintf("missing cost data for one or more ingredients in %s", drink.ID)
+	return fmt.Sprintf("missing cost data for one or more ingredients in %s", drink.ID.String())
 }

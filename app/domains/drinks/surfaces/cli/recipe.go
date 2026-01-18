@@ -62,13 +62,13 @@ func (r Recipe) ToDomain() (models.Recipe, error) {
 	}
 
 	for _, ing := range r.Ingredients {
-		subUIDs := make([]cedar.EntityUID, 0, len(ing.Substitutes))
+		subUIDs := make([]entity.IngredientID, 0, len(ing.Substitutes))
 		for _, sub := range ing.Substitutes {
-			subUIDs = append(subUIDs, entity.IngredientID(sub))
+			subUIDs = append(subUIDs, entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, cedar.String(sub))))
 		}
 
 		out.Ingredients = append(out.Ingredients, models.RecipeIngredient{
-			IngredientID: entity.IngredientID(ing.IngredientID),
+			IngredientID: entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, cedar.String(ing.IngredientID))),
 			Amount:       ing.Amount,
 			Unit:         measurement.Unit(ing.Unit),
 			Optional:     ing.Optional,
@@ -98,11 +98,11 @@ func FromDomainRecipe(r models.Recipe) Recipe {
 	for _, ing := range r.Ingredients {
 		subs := make([]string, 0, len(ing.Substitutes))
 		for _, sub := range ing.Substitutes {
-			subs = append(subs, string(sub.ID))
+			subs = append(subs, sub.String())
 		}
 
 		out.Ingredients = append(out.Ingredients, RecipeIngredient{
-			IngredientID: string(ing.IngredientID.ID),
+			IngredientID: ing.IngredientID.String(),
 			Amount:       ing.Amount,
 			Unit:         string(ing.Unit),
 			Optional:     ing.Optional,

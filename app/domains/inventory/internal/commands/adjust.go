@@ -100,7 +100,7 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch *models.Patch) (*models
 	if hasDelta {
 		ctx.AddEvent(events.StockAdjusted{
 			Inventory: updated,
-			Reason:   string(patch.Reason),
+			Reason:    string(patch.Reason),
 		})
 	}
 

@@ -4,14 +4,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
 	ordersdao "github.com/TheFellow/go-modular-monolith/app/domains/orders/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type ListRequest struct {
 	Status models.OrderStatus
-	MenuID cedar.EntityUID
+	MenuID entity.MenuID
 }
 
 func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.Order, error) {

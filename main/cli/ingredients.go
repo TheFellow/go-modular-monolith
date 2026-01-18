@@ -8,8 +8,13 @@ import (
 	ingredientscli "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/urfave/cli/v3"
 )
+
+func ingredientIDFromString(id string) entity.IngredientID {
+	return entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, cedar.String(id)))
+}
 
 func (c *CLI) ingredientsCommands() *cli.Command {
 	return &cli.Command{
@@ -38,7 +43,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					}
 
 					for _, i := range res {
-						fmt.Printf("%s\t%s\t%s\t%s\n", string(i.ID.ID), i.Name, i.Category, i.Unit)
+						fmt.Printf("%s\t%s\t%s\t%s\n", i.ID.String(), i.Name, i.Category, i.Unit)
 					}
 					return nil
 				}),
@@ -51,13 +56,13 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("id")[0]
-					res, err := c.app.Ingredients.Get(ctx, entity.IngredientID(id))
+					res, err := c.app.Ingredients.Get(ctx, ingredientIDFromString(id))
 					if err != nil {
 						return err
 					}
 
 					i := res
-					fmt.Printf("ID:          %s\n", string(i.ID.ID))
+					fmt.Printf("ID:          %s\n", i.ID.String())
 					fmt.Printf("Name:        %s\n", i.Name)
 					fmt.Printf("Category:    %s\n", i.Category)
 					fmt.Printf("Unit:        %s\n", i.Unit)
@@ -100,7 +105,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					name := cmd.StringArgs("name")[0]
-				res, err := c.app.Ingredients.Create(ctx, &models.Ingredient{
+					res, err := c.app.Ingredients.Create(ctx, &models.Ingredient{
 						Name:        name,
 						Category:    models.Category(cmd.String("category")),
 						Unit:        models.Unit(cmd.String("unit")),
@@ -110,7 +115,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%s\t%s\t%s\n", string(res.ID.ID), res.Name, res.Category, res.Unit)
+					fmt.Printf("%s\t%s\t%s\t%s\n", res.ID.String(), res.Name, res.Category, res.Unit)
 					return nil
 				}),
 			},
@@ -149,8 +154,8 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-				res, err := c.app.Ingredients.Update(ctx, &models.Ingredient{
-						ID:          entity.IngredientID(cmd.StringArgs("id")[0]),
+					res, err := c.app.Ingredients.Update(ctx, &models.Ingredient{
+						ID:          ingredientIDFromString(cmd.StringArgs("id")[0]),
 						Name:        cmd.String("name"),
 						Category:    models.Category(cmd.String("category")),
 						Unit:        models.Unit(cmd.String("unit")),
@@ -160,7 +165,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%s\t%s\t%s\n", string(res.ID.ID), res.Name, res.Category, res.Unit)
+					fmt.Printf("%s\t%s\t%s\t%s\n", res.ID.String(), res.Name, res.Category, res.Unit)
 					return nil
 				}),
 			},
@@ -172,12 +177,12 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("id")[0]
-					res, err := c.app.Ingredients.Delete(ctx, entity.IngredientID(id))
+					res, err := c.app.Ingredients.Delete(ctx, ingredientIDFromString(id))
 					if err != nil {
 						return err
 					}
 
-					fmt.Printf("deleted %s\t%s\n", string(res.ID.ID), res.Name)
+					fmt.Printf("deleted %s\t%s\n", res.ID.String(), res.Name)
 					return nil
 				}),
 			},

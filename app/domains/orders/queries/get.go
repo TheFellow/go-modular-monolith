@@ -2,11 +2,11 @@ package queries
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func (q *Queries) Get(ctx store.Context, id cedar.EntityUID) (*models.Order, error) {
+func (q *Queries) Get(ctx store.Context, id entity.OrderID) (*models.Order, error) {
 	o, err := q.dao.Get(ctx, id)
 	if err != nil {
 		return nil, err

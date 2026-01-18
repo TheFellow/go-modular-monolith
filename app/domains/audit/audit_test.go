@@ -33,7 +33,7 @@ func TestAudit_RecordsActivityForCommand(t *testing.T) {
 	entry := entries[0]
 	testutil.ErrorIf(t, entry.Action != ingredientsauthz.ActionCreate.String(), "expected action %q, got %q", ingredientsauthz.ActionCreate.String(), entry.Action)
 	testutil.ErrorIf(t, entry.Principal != ctx.Principal(), "expected principal %s, got %s", ctx.Principal(), entry.Principal)
-	testutil.ErrorIf(t, !touchesContain(entry.Touches, created.ID), "expected touches to include %s", created.ID)
+	testutil.ErrorIf(t, !touchesContain(entry.Touches, created.ID.EntityUID()), "expected touches to include %s", created.ID.String())
 }
 
 func TestAudit_TouchesIncludeHandlerUpdates(t *testing.T) {
@@ -81,8 +81,8 @@ func TestAudit_TouchesIncludeHandlerUpdates(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(entries) != 1, "expected 1 audit entry, got %d", len(entries))
 	entry := entries[0]
-	testutil.ErrorIf(t, !touchesContain(entry.Touches, drink.ID), "expected touches to include drink %s", drink.ID)
-	testutil.ErrorIf(t, !touchesContain(entry.Touches, menu.ID), "expected touches to include menu %s", menu.ID)
+	testutil.ErrorIf(t, !touchesContain(entry.Touches, drink.ID.EntityUID()), "expected touches to include drink %s", drink.ID.String())
+	testutil.ErrorIf(t, !touchesContain(entry.Touches, menu.ID.EntityUID()), "expected touches to include menu %s", menu.ID.String())
 }
 
 func TestAudit_ListFilters(t *testing.T) {
@@ -122,7 +122,7 @@ func TestAudit_ListFilters(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(updateEntries) != 1, "expected 1 update entry, got %d", len(updateEntries))
 
-	entityEntries, err := f.App.Audit.List(ctx, audit.ListRequest{Entity: ing1.ID})
+	entityEntries, err := f.App.Audit.List(ctx, audit.ListRequest{Entity: ing1.ID.EntityUID()})
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(entityEntries) != 2, "expected 2 entries for entity, got %d", len(entityEntries))
 }

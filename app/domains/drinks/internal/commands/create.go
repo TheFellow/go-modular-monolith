@@ -14,7 +14,7 @@ func (c *Commands) Create(ctx *middleware.Context, drink *models.Drink) (*models
 	if drink == nil {
 		return nil, errors.Invalidf("drink is required")
 	}
-	if drink.ID.ID != "" {
+	if !drink.ID.IsZero() {
 		return nil, errors.Invalidf("id must be empty for create")
 	}
 
@@ -42,11 +42,11 @@ func (c *Commands) Create(ctx *middleware.Context, drink *models.Drink) (*models
 			if ing.Optional {
 				continue
 			}
-			return nil, errors.Invalidf("ingredient %s not found: %w", string(ing.IngredientID.ID), err)
+			return nil, errors.Invalidf("ingredient %s not found: %w", ing.IngredientID.String(), err)
 		}
 		for _, sub := range ing.Substitutes {
 			if _, err := c.ingredients.Get(ctx, sub); err != nil {
-				return nil, errors.Invalidf("substitute ingredient %s not found: %w", string(sub.ID), err)
+				return nil, errors.Invalidf("substitute ingredient %s not found: %w", sub.String(), err)
 			}
 		}
 	}
@@ -58,7 +58,7 @@ func (c *Commands) Create(ctx *middleware.Context, drink *models.Drink) (*models
 		return nil, err
 	}
 
-	ctx.TouchEntity(created.ID)
+	ctx.TouchEntity(created.ID.EntityUID())
 	ctx.AddEvent(events.DrinkCreated{
 		Drink: created,
 	})

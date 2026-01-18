@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/cedar-policy/cedar-go"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
+	"github.com/cedar-policy/cedar-go"
 )
 
 func CommandLogging() CommandMiddleware {
