@@ -61,7 +61,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 					}
 
 					for _, d := range res {
-						fmt.Printf("%s\t%s\n", string(d.ID.ID), d.Name)
+						fmt.Printf("%s\t%s\n", d.ID.String(), d.Name)
 					}
 					return nil
 				}),
@@ -75,7 +75,11 @@ func (c *CLI) drinksCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("id")[0]
-					res, err := c.app.Drinks.Get(ctx, drinksmodels.NewDrinkID(id))
+					drinkID, err := parseDrinkID(id)
+					if err != nil {
+						return err
+					}
+					res, err := c.app.Drinks.Get(ctx, drinkID)
 					if err != nil {
 						return err
 					}
@@ -84,7 +88,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					fmt.Printf("%s\t%s\n", string(res.ID.ID), res.Name)
+					fmt.Printf("%s\t%s\n", res.ID.String(), res.Name)
 					return nil
 				}),
 			},
@@ -119,7 +123,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					fmt.Printf("%s\t%s\n", string(res.ID.ID), res.Name)
+					fmt.Printf("%s\t%s\n", res.ID.String(), res.Name)
 					return nil
 				}),
 			},
@@ -154,7 +158,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					fmt.Printf("%s\t%s\n", string(res.ID.ID), res.Name)
+					fmt.Printf("%s\t%s\n", res.ID.String(), res.Name)
 					return nil
 				}),
 			},
@@ -167,7 +171,11 @@ func (c *CLI) drinksCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("id")[0]
-					res, err := c.app.Drinks.Delete(ctx, drinksmodels.NewDrinkID(id))
+					drinkID, err := parseDrinkID(id)
+					if err != nil {
+						return err
+					}
+					res, err := c.app.Drinks.Delete(ctx, drinkID)
 					if err != nil {
 						return err
 					}
@@ -176,7 +184,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					fmt.Printf("deleted %s\t%s\n", string(res.ID.ID), res.Name)
+					fmt.Printf("deleted %s\t%s\n", res.ID.String(), res.Name)
 					return nil
 				}),
 			},

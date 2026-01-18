@@ -50,7 +50,11 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("ingredient_id")[0]
-					res, err := c.app.Inventory.Get(ctx, ingredientIDFromString(id))
+					ingredientID, err := parseIngredientID(id)
+					if err != nil {
+						return err
+					}
+					res, err := c.app.Inventory.Get(ctx, ingredientID)
 					if err != nil {
 						return err
 					}
@@ -90,6 +94,10 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					ingredientID := cmd.StringArgs("ingredient_id")[0]
 					deltaArgs := cmd.Float64Args("delta")
+					parsedIngredientID, err := parseIngredientID(ingredientID)
+					if err != nil {
+						return err
+					}
 
 					var delta optional.Value[float64]
 					if len(deltaArgs) == 1 {
@@ -106,7 +114,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					res, err := c.app.Inventory.Adjust(ctx, &inventorymodels.Patch{
-						IngredientID: ingredientIDFromString(ingredientID),
+						IngredientID: parsedIngredientID,
 						Delta:        delta,
 						CostPerUnit:  cost,
 						Reason:       inventorymodels.AdjustmentReason(cmd.String("reason")),
@@ -136,6 +144,10 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					ingredientID := cmd.StringArgs("ingredient_id")[0]
 					qty := cmd.Float64Args("quantity")[0]
+					parsedIngredientID, err := parseIngredientID(ingredientID)
+					if err != nil {
+						return err
+					}
 
 					cost, err := parsePrice(cmd.String("cost-per-unit"))
 					if err != nil {
@@ -143,7 +155,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					res, err := c.app.Inventory.Set(ctx, &inventorymodels.Update{
-						IngredientID: ingredientIDFromString(ingredientID),
+						IngredientID: parsedIngredientID,
 						Quantity:     qty,
 						CostPerUnit:  cost,
 					})

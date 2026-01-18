@@ -9,7 +9,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type Recipe struct {
@@ -30,13 +29,13 @@ func TemplateRecipe() Recipe {
 	return Recipe{
 		Ingredients: []RecipeIngredient{
 			{
-				IngredientID: "lime-juice",
+				IngredientID: "ing-abc123",
 				Amount:       1.0,
 				Unit:         string(ingredientsmodels.UnitOz),
-				Substitutes:  []string{"lemon-juice"},
+				Substitutes:  []string{"ing-def456"},
 			},
 			{
-				IngredientID: "tequila",
+				IngredientID: "ing-ghi789",
 				Amount:       2.0,
 				Unit:         string(ingredientsmodels.UnitOz),
 			},
@@ -64,11 +63,19 @@ func (r Recipe) ToDomain() (models.Recipe, error) {
 	for _, ing := range r.Ingredients {
 		subUIDs := make([]entity.IngredientID, 0, len(ing.Substitutes))
 		for _, sub := range ing.Substitutes {
-			subUIDs = append(subUIDs, entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, cedar.String(sub))))
+			subID, err := entity.ParseIngredientID(sub)
+			if err != nil {
+				return models.Recipe{}, errors.Invalidf("invalid substitute ingredient id %q: %w", sub, err)
+			}
+			subUIDs = append(subUIDs, subID)
 		}
 
+		ingredientID, err := entity.ParseIngredientID(ing.IngredientID)
+		if err != nil {
+			return models.Recipe{}, errors.Invalidf("invalid ingredient id %q: %w", ing.IngredientID, err)
+		}
 		out.Ingredients = append(out.Ingredients, models.RecipeIngredient{
-			IngredientID: entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, cedar.String(ing.IngredientID))),
+			IngredientID: ingredientID,
 			Amount:       ing.Amount,
 			Unit:         measurement.Unit(ing.Unit),
 			Optional:     ing.Optional,

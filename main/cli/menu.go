@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	menuqueries "github.com/TheFellow/go-modular-monolith/app/domains/menu/queries"
@@ -54,7 +53,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					for _, m := range res {
-						fmt.Printf("%s\t%s\t%s\t%d\n", string(m.ID.ID), m.Name, m.Status, len(m.Items))
+						fmt.Printf("%s\t%s\t%s\t%d\n", m.ID.String(), m.Name, m.Status, len(m.Items))
 						if cmd.Bool("costs") && len(m.Items) > 0 {
 							an, err := menuqueries.NewAnalyticsCalculator().Analyze(ctx, *m, cmd.Float64("target-margin"))
 							if err != nil {
@@ -79,7 +78,11 @@ func (c *CLI) menuCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("menu_id")[0]
-					res, err := c.app.Menu.Get(ctx, menumodels.NewMenuID(id))
+					menuID, err := parseMenuID(id)
+					if err != nil {
+						return err
+					}
+					res, err := c.app.Menu.Get(ctx, menuID)
 					if err != nil {
 						return err
 					}
@@ -96,7 +99,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					m := *res
-					fmt.Printf("ID:          %s\n", string(m.ID.ID))
+					fmt.Printf("ID:          %s\n", m.ID.String())
 					fmt.Printf("Name:        %s\n", m.Name)
 					if m.Description != "" {
 						fmt.Printf("Description: %s\n", m.Description)
@@ -111,7 +114,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						}
 
 						for _, item := range an.Items {
-							parts := []string{fmt.Sprintf("- %s\t%s", string(item.DrinkID.ID), item.Name)}
+							parts := []string{fmt.Sprintf("- %s\t%s", item.DrinkID.String(), item.Name)}
 							if item.Cost == nil || item.CostUnknown {
 								parts = append(parts, "cost: n/a")
 							} else {
@@ -129,7 +132,7 @@ func (c *CLI) menuCommands() *cli.Command {
 							status := string(item.Availability)
 							if len(item.Substitutions) > 0 {
 								sub := item.Substitutions[0]
-								status = status + fmt.Sprintf(" (sub: %s for %s)", string(sub.Substitute.ID), string(sub.Original.ID))
+								status = status + fmt.Sprintf(" (sub: %s for %s)", sub.Substitute.String(), sub.Original.String())
 							}
 							parts = append(parts, fmt.Sprintf("[%s]", strings.ToUpper(status)))
 							fmt.Println(strings.Join(parts, "\t"))
@@ -144,7 +147,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					for _, item := range m.Items {
-						fmt.Printf("- %s\t%s\n", string(item.DrinkID.ID), item.Availability)
+						fmt.Printf("- %s\t%s\n", item.DrinkID.String(), item.Availability)
 					}
 					return nil
 				}),
@@ -167,7 +170,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*created))
 					}
 
-					fmt.Printf("%s\t%s\n", string(created.ID.ID), created.Name)
+					fmt.Printf("%s\t%s\n", created.ID.String(), created.Name)
 					return nil
 				}),
 			},
@@ -180,8 +183,14 @@ func (c *CLI) menuCommands() *cli.Command {
 				},
 				Flags: []cli.Flag{JSONFlag},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					menuID := menumodels.NewMenuID(cmd.StringArgs("menu_id")[0])
-					drinkID := drinksmodels.NewDrinkID(cmd.StringArgs("drink_id")[0])
+					menuID, err := parseMenuID(cmd.StringArgs("menu_id")[0])
+					if err != nil {
+						return err
+					}
+					drinkID, err := parseDrinkID(cmd.StringArgs("drink_id")[0])
+					if err != nil {
+						return err
+					}
 					updated, err := c.app.Menu.AddDrink(ctx, &menumodels.MenuDrinkChange{
 						MenuID:  menuID,
 						DrinkID: drinkID,
@@ -194,7 +203,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
 					}
 
-					fmt.Printf("%s\t%s\t%d\n", string(updated.ID.ID), updated.Name, len(updated.Items))
+					fmt.Printf("%s\t%s\t%d\n", updated.ID.String(), updated.Name, len(updated.Items))
 					return nil
 				}),
 			},
@@ -207,8 +216,14 @@ func (c *CLI) menuCommands() *cli.Command {
 				},
 				Flags: []cli.Flag{JSONFlag},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					menuID := menumodels.NewMenuID(cmd.StringArgs("menu_id")[0])
-					drinkID := drinksmodels.NewDrinkID(cmd.StringArgs("drink_id")[0])
+					menuID, err := parseMenuID(cmd.StringArgs("menu_id")[0])
+					if err != nil {
+						return err
+					}
+					drinkID, err := parseDrinkID(cmd.StringArgs("drink_id")[0])
+					if err != nil {
+						return err
+					}
 					updated, err := c.app.Menu.RemoveDrink(ctx, &menumodels.MenuDrinkChange{
 						MenuID:  menuID,
 						DrinkID: drinkID,
@@ -221,7 +236,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
 					}
 
-					fmt.Printf("%s\t%s\t%d\n", string(updated.ID.ID), updated.Name, len(updated.Items))
+					fmt.Printf("%s\t%s\t%d\n", updated.ID.String(), updated.Name, len(updated.Items))
 					return nil
 				}),
 			},
@@ -233,8 +248,11 @@ func (c *CLI) menuCommands() *cli.Command {
 				},
 				Flags: []cli.Flag{JSONFlag},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					menuID := cmd.StringArgs("menu_id")[0]
-					published, err := c.app.Menu.Publish(ctx, &menumodels.Menu{ID: menumodels.NewMenuID(menuID)})
+					menuID, err := parseMenuID(cmd.StringArgs("menu_id")[0])
+					if err != nil {
+						return err
+					}
+					published, err := c.app.Menu.Publish(ctx, &menumodels.Menu{ID: menuID})
 					if err != nil {
 						return err
 					}
@@ -243,7 +261,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*published))
 					}
 
-					fmt.Printf("%s\t%s\t%s\n", string(published.ID.ID), published.Name, published.Status)
+					fmt.Printf("%s\t%s\t%s\n", published.ID.String(), published.Name, published.Status)
 					return nil
 				}),
 			},

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
@@ -31,7 +32,7 @@ func FromDomainDrink(d models.Drink) Drink {
 
 func TemplateUpdateDrink() Drink {
 	return Drink{
-		ID:          "margarita",
+		ID:          "drk-abc123",
 		Name:        "Margarita",
 		Category:    string(models.DrinkCategoryCocktail),
 		Glass:       string(models.GlassTypeCoupe),
@@ -53,6 +54,10 @@ func (d Drink) ToDomainForUpdate() (models.Drink, error) {
 	if id == "" {
 		return models.Drink{}, errors.Invalidf("id is required")
 	}
+	parsedID, err := entity.ParseDrinkID(id)
+	if err != nil {
+		return models.Drink{}, errors.Invalidf("invalid drink id %q: %w", id, err)
+	}
 
 	recipe, err := d.Recipe.ToDomain()
 	if err != nil {
@@ -60,7 +65,7 @@ func (d Drink) ToDomainForUpdate() (models.Drink, error) {
 	}
 
 	out := models.Drink{
-		ID:          models.NewDrinkID(id),
+		ID:          parsedID,
 		Name:        d.Name,
 		Category:    models.DrinkCategory(d.Category),
 		Glass:       models.GlassType(d.Glass),

@@ -229,7 +229,7 @@ func printAuditEntries(entries []*auditmodels.AuditEntry) {
 	for _, entry := range entries {
 		fmt.Printf(
 			"%s\t%s\t%s\t%s\t%s\t%t\t%d",
-			string(entry.ID.ID),
+			entry.ID.String(),
 			entry.StartedAt.Format(time.RFC3339),
 			entry.Action,
 			entry.Resource.String(),

@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -27,7 +25,10 @@ func (c *CLI) ordersCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					args := cmd.StringArgs("args")
-					menuID := menumodels.NewMenuID(args[0])
+					menuID, err := parseMenuID(args[0])
+					if err != nil {
+						return err
+					}
 
 					items := make([]ordersmodels.OrderItem, 0, len(args)-1)
 					for _, spec := range args[1:] {
@@ -39,14 +40,17 @@ func (c *CLI) ordersCommands() *cli.Command {
 						if err != nil || qty <= 0 {
 							return fmt.Errorf("invalid quantity in %q", spec)
 						}
+						drinkID, err := parseDrinkID(parts[0])
+						if err != nil {
+							return err
+						}
 						items = append(items, ordersmodels.OrderItem{
-							DrinkID:  drinksmodels.NewDrinkID(parts[0]),
+							DrinkID:  drinkID,
 							Quantity: qty,
 						})
 					}
 
 					created, err := c.app.Orders.Place(ctx, &ordersmodels.Order{
-						ID:     ordersmodels.NewOrderID(""),
 						MenuID: menuID,
 						Items:  items,
 					})
@@ -54,7 +58,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%s\t%s\t%d\n", string(created.ID.ID), string(created.MenuID.ID), created.Status, len(created.Items))
+					fmt.Printf("%s\t%s\t%s\t%d\n", created.ID.String(), created.MenuID.String(), created.Status, len(created.Items))
 					return nil
 				}),
 			},
@@ -82,7 +86,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					for _, o := range res {
-						fmt.Printf("%s\t%s\t%s\t%s\n", string(o.ID.ID), string(o.MenuID.ID), o.Status, o.CreatedAt.Format(time.RFC3339))
+						fmt.Printf("%s\t%s\t%s\t%s\n", o.ID.String(), o.MenuID.String(), o.Status, o.CreatedAt.Format(time.RFC3339))
 					}
 					return nil
 				}),
@@ -95,13 +99,17 @@ func (c *CLI) ordersCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("order_id")[0]
-					res, err := c.app.Orders.Get(ctx, ordersmodels.NewOrderID(id))
+					orderID, err := parseOrderID(id)
+					if err != nil {
+						return err
+					}
+					res, err := c.app.Orders.Get(ctx, orderID)
 					if err != nil {
 						return err
 					}
 					o := res
-					fmt.Printf("ID:        %s\n", string(o.ID.ID))
-					fmt.Printf("MenuID:    %s\n", string(o.MenuID.ID))
+					fmt.Printf("ID:        %s\n", o.ID.String())
+					fmt.Printf("MenuID:    %s\n", o.MenuID.String())
 					fmt.Printf("Status:    %s\n", o.Status)
 					fmt.Printf("CreatedAt: %s\n", o.CreatedAt.Format(time.RFC3339))
 					if t, ok := o.CompletedAt.Unwrap(); ok {
@@ -112,7 +120,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 					}
 					fmt.Printf("Items:\n")
 					for _, it := range o.Items {
-						fmt.Printf("- %s\t%d\n", string(it.DrinkID.ID), it.Quantity)
+						fmt.Printf("- %s\t%d\n", it.DrinkID.String(), it.Quantity)
 					}
 					return nil
 				}),
@@ -125,11 +133,15 @@ func (c *CLI) ordersCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("order_id")[0]
-					updated, err := c.app.Orders.Complete(ctx, &ordersmodels.Order{ID: ordersmodels.NewOrderID(id)})
+					orderID, err := parseOrderID(id)
 					if err != nil {
 						return err
 					}
-					fmt.Printf("%s\t%s\n", string(updated.ID.ID), updated.Status)
+					updated, err := c.app.Orders.Complete(ctx, &ordersmodels.Order{ID: orderID})
+					if err != nil {
+						return err
+					}
+					fmt.Printf("%s\t%s\n", updated.ID.String(), updated.Status)
 					return nil
 				}),
 			},
@@ -141,11 +153,15 @@ func (c *CLI) ordersCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("order_id")[0]
-					updated, err := c.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: ordersmodels.NewOrderID(id)})
+					orderID, err := parseOrderID(id)
 					if err != nil {
 						return err
 					}
-					fmt.Printf("%s\t%s\n", string(updated.ID.ID), updated.Status)
+					updated, err := c.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: orderID})
+					if err != nil {
+						return err
+					}
+					fmt.Printf("%s\t%s\n", updated.ID.String(), updated.Status)
 					return nil
 				}),
 			},

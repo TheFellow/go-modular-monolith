@@ -6,15 +6,9 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	ingredientscli "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/cli"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/urfave/cli/v3"
 )
-
-func ingredientIDFromString(id string) entity.IngredientID {
-	return entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, cedar.String(id)))
-}
 
 func (c *CLI) ingredientsCommands() *cli.Command {
 	return &cli.Command{
@@ -56,7 +50,11 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("id")[0]
-					res, err := c.app.Ingredients.Get(ctx, ingredientIDFromString(id))
+					ingredientID, err := parseIngredientID(id)
+					if err != nil {
+						return err
+					}
+					res, err := c.app.Ingredients.Get(ctx, ingredientID)
 					if err != nil {
 						return err
 					}
@@ -154,8 +152,12 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					ingredientID, err := parseIngredientID(cmd.StringArgs("id")[0])
+					if err != nil {
+						return err
+					}
 					res, err := c.app.Ingredients.Update(ctx, &models.Ingredient{
-						ID:          ingredientIDFromString(cmd.StringArgs("id")[0]),
+						ID:          ingredientID,
 						Name:        cmd.String("name"),
 						Category:    models.Category(cmd.String("category")),
 						Unit:        models.Unit(cmd.String("unit")),
@@ -177,7 +179,11 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					id := cmd.StringArgs("id")[0]
-					res, err := c.app.Ingredients.Delete(ctx, ingredientIDFromString(id))
+					ingredientID, err := parseIngredientID(id)
+					if err != nil {
+						return err
+					}
+					res, err := c.app.Ingredients.Delete(ctx, ingredientID)
 					if err != nil {
 						return err
 					}
