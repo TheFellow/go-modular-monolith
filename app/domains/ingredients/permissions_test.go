@@ -23,19 +23,19 @@ func TestPermissions_Ingredients(t *testing.T) {
 		existing := b.WithIngredient("Permissions Ingredient", measurement.UnitOz)
 
 		_, err := a.Ingredients.List(owner, ingredients.ListRequest{})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Ingredients.Get(owner, entity.NewIngredientID())
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Ingredients.Create(owner, &models.Ingredient{})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Ingredients.Update(owner, &models.Ingredient{ID: existing.ID, Description: "Updated"})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Ingredients.Delete(owner, existing.ID)
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 	})
 
 	t.Run("anonymous", func(t *testing.T) {
@@ -48,18 +48,18 @@ func TestPermissions_Ingredients(t *testing.T) {
 		existing := b.WithIngredient("Permissions Ingredient", measurement.UnitOz)
 
 		_, err := a.Ingredients.List(anon, ingredients.ListRequest{})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Ingredients.Get(anon, entity.NewIngredientID())
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Ingredients.Create(anon, &models.Ingredient{})
-		testutil.RequireDenied(t, err)
+		testutil.PermissionTestFail(t, err)
 
 		_, err = a.Ingredients.Update(anon, &models.Ingredient{ID: existing.ID, Description: "Updated"})
-		testutil.RequireDenied(t, err)
+		testutil.PermissionTestFail(t, err)
 
 		_, err = a.Ingredients.Delete(anon, existing.ID)
-		testutil.RequireDenied(t, err)
+		testutil.PermissionTestFail(t, err)
 	})
 }

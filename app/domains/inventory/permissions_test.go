@@ -22,23 +22,23 @@ func TestPermissions_Inventory(t *testing.T) {
 		missingID := entity.NewIngredientID()
 
 		_, err := a.Inventory.List(owner, inventory.ListRequest{})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Inventory.Get(owner, missingID)
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Inventory.Adjust(owner, &inventoryM.Patch{
 			IngredientID: missingID,
 			Delta:        optional.Some(measurement.MustAmount(1, measurement.UnitOz)),
 			Reason:       inventoryM.ReasonCorrected,
 		})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Inventory.Set(owner, &inventoryM.Update{
 			IngredientID: missingID,
 			Amount:       measurement.MustAmount(1, measurement.UnitOz),
 		})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 	})
 
 	t.Run("anonymous", func(t *testing.T) {
@@ -49,22 +49,22 @@ func TestPermissions_Inventory(t *testing.T) {
 		missingID := entity.NewIngredientID()
 
 		_, err := a.Inventory.List(anon, inventory.ListRequest{})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Inventory.Get(anon, missingID)
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Inventory.Adjust(anon, &inventoryM.Patch{
 			IngredientID: missingID,
 			Delta:        optional.Some(measurement.MustAmount(1, measurement.UnitOz)),
 			Reason:       inventoryM.ReasonCorrected,
 		})
-		testutil.RequireDenied(t, err)
+		testutil.PermissionTestFail(t, err)
 
 		_, err = a.Inventory.Set(anon, &inventoryM.Update{
 			IngredientID: missingID,
 			Amount:       measurement.MustAmount(1, measurement.UnitOz),
 		})
-		testutil.RequireDenied(t, err)
+		testutil.PermissionTestFail(t, err)
 	})
 }

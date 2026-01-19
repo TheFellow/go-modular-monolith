@@ -21,10 +21,10 @@ func TestPermissions_Orders(t *testing.T) {
 		owner := f.OwnerContext()
 
 		_, err := a.Orders.List(owner, orders.ListRequest{})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Orders.Get(owner, ordersM.NewOrderID("does-not-exist"))
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Orders.Place(owner, &ordersM.Order{
 			ID:     ordersM.NewOrderID(""),
@@ -33,13 +33,13 @@ func TestPermissions_Orders(t *testing.T) {
 				{DrinkID: drinksM.NewDrinkID("does-not-exist"), Quantity: 1},
 			},
 		})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Orders.Complete(owner, &ordersM.Order{ID: ordersM.NewOrderID("does-not-exist")})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Orders.Cancel(owner, &ordersM.Order{ID: ordersM.NewOrderID("does-not-exist")})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 	})
 
 	t.Run("anonymous", func(t *testing.T) {
@@ -71,10 +71,10 @@ func TestPermissions_Orders(t *testing.T) {
 		testutil.Ok(t, err)
 
 		_, err = a.Orders.List(anon, orders.ListRequest{})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Orders.Get(anon, ordersM.NewOrderID("does-not-exist"))
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Orders.Place(anon, &ordersM.Order{
 			ID:     ordersM.NewOrderID(""),
@@ -83,12 +83,12 @@ func TestPermissions_Orders(t *testing.T) {
 				{DrinkID: drinksM.NewDrinkID("does-not-exist"), Quantity: 1},
 			},
 		})
-		testutil.RequireDenied(t, err)
+		testutil.PermissionTestFail(t, err)
 
 		_, err = a.Orders.Complete(anon, &ordersM.Order{ID: order.ID})
-		testutil.RequireDenied(t, err)
+		testutil.PermissionTestFail(t, err)
 
 		_, err = a.Orders.Cancel(anon, &ordersM.Order{ID: order.ID})
-		testutil.RequireDenied(t, err)
+		testutil.PermissionTestFail(t, err)
 	})
 }

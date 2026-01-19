@@ -39,7 +39,7 @@ func TestDrinks_ABAC_SommelierCanCreateWine(t *testing.T) {
 
 	cocktail := drinkForPolicy("Negroni", models.DrinkCategoryCocktail, base.ID)
 	_, err = f.Drinks.Create(sommelier, &cocktail)
-	testutil.RequireDenied(t, err)
+	testutil.PermissionTestFail(t, err)
 }
 
 func TestDrinks_ABAC_SommelierCannotChangeWineToCocktail(t *testing.T) {
@@ -59,7 +59,7 @@ func TestDrinks_ABAC_SommelierCannotChangeWineToCocktail(t *testing.T) {
 	updated := drinkForPolicy(created.Name, models.DrinkCategoryCocktail, base.ID)
 	updated.ID = created.ID
 	_, err = f.Drinks.Update(sommelier, &updated)
-	testutil.RequireDenied(t, err)
+	testutil.PermissionTestFail(t, err)
 
 	current, err := f.Drinks.Get(owner, created.ID)
 	testutil.Ok(t, err)

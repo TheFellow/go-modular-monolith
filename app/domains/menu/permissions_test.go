@@ -35,28 +35,28 @@ func TestPermissions_Menu(t *testing.T) {
 		menuRecord := b.WithMenu("Permissions Menu")
 
 		_, err := a.Menu.List(owner, menu.ListRequest{})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Menu.Get(owner, menuM.NewMenuID("does-not-exist"))
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Menu.Create(owner, &menuM.Menu{})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Menu.AddDrink(owner, &menuM.MenuDrinkChange{
 			MenuID:  menuRecord.ID,
 			DrinkID: drink.ID,
 		})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Menu.RemoveDrink(owner, &menuM.MenuDrinkChange{
 			MenuID:  menuRecord.ID,
 			DrinkID: drink.ID,
 		})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Menu.Publish(owner, &menuM.Menu{ID: menuRecord.ID})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 	})
 
 	t.Run("anonymous", func(t *testing.T) {
@@ -81,27 +81,27 @@ func TestPermissions_Menu(t *testing.T) {
 		menuRecord := b.WithMenu("Permissions Menu")
 
 		_, err := a.Menu.List(anon, menu.ListRequest{})
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Menu.Get(anon, menuM.NewMenuID("does-not-exist"))
-		testutil.RequireNotDenied(t, err)
+		testutil.PermissionTestPass(t, err)
 
 		_, err = a.Menu.Create(anon, &menuM.Menu{})
-		testutil.RequireDenied(t, err)
+		testutil.PermissionTestFail(t, err)
 
 		_, err = a.Menu.AddDrink(anon, &menuM.MenuDrinkChange{
 			MenuID:  menuRecord.ID,
 			DrinkID: drink.ID,
 		})
-		testutil.RequireDenied(t, err)
+		testutil.PermissionTestFail(t, err)
 
 		_, err = a.Menu.RemoveDrink(anon, &menuM.MenuDrinkChange{
 			MenuID:  menuRecord.ID,
 			DrinkID: drink.ID,
 		})
-		testutil.RequireDenied(t, err)
+		testutil.PermissionTestFail(t, err)
 
 		_, err = a.Menu.Publish(anon, &menuM.Menu{ID: menuRecord.ID})
-		testutil.RequireDenied(t, err)
+		testutil.PermissionTestFail(t, err)
 	})
 }
