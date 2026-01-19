@@ -18,8 +18,7 @@ func NewInventoryID(ingredientID entity.IngredientID) entity.InventoryID {
 
 type Inventory struct {
 	IngredientID entity.IngredientID
-	Quantity     float64
-	Unit         measurement.Unit
+	Amount       measurement.Amount
 	CostPerUnit  optional.Value[money.Price]
 	LastUpdated  time.Time
 }
@@ -34,7 +33,7 @@ func (s Inventory) CedarEntity() cedar.Entity {
 		Parents: cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(cedar.RecordMap{
 			"IngredientID": s.IngredientID.EntityUID(),
-			"Unit":         cedar.String(s.Unit),
+			"Unit":         cedar.String(s.Amount.Unit()),
 		}),
 		Tags: cedar.NewRecord(nil),
 	}

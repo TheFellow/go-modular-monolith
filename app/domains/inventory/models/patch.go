@@ -2,6 +2,7 @@ package models
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -10,7 +11,7 @@ import (
 type Patch struct {
 	IngredientID entity.IngredientID
 	Reason       AdjustmentReason
-	Delta        optional.Value[float64]
+	Delta        optional.Value[measurement.Amount]
 	CostPerUnit  optional.Value[money.Price]
 }
 

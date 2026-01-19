@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
@@ -16,7 +16,7 @@ func drinkForPolicy(name string, category models.DrinkCategory, ingredientID ent
 		Glass:    models.GlassTypeCoupe,
 		Recipe: models.Recipe{
 			Ingredients: []models.RecipeIngredient{
-				{IngredientID: ingredientID, Amount: 1.0, Unit: ingredientsM.UnitOz},
+				{IngredientID: ingredientID, Amount: measurement.MustAmount(1.0, measurement.UnitOz)},
 			},
 			Steps: []string{"Shake"},
 		},
@@ -28,7 +28,7 @@ func TestDrinks_ABAC_SommelierCanCreateWine(t *testing.T) {
 
 	f := testutil.NewFixture(t)
 	b := f.Bootstrap()
-	base := b.WithIngredient("ABAC Base", ingredientsM.UnitOz)
+	base := b.WithIngredient("ABAC Base", measurement.UnitOz)
 
 	sommelier := f.ActorContext("sommelier")
 
@@ -47,7 +47,7 @@ func TestDrinks_ABAC_SommelierCannotChangeWineToCocktail(t *testing.T) {
 
 	f := testutil.NewFixture(t)
 	b := f.Bootstrap()
-	base := b.WithIngredient("ABAC Base", ingredientsM.UnitOz)
+	base := b.WithIngredient("ABAC Base", measurement.UnitOz)
 
 	owner := f.OwnerContext()
 	sommelier := f.ActorContext("sommelier")
@@ -71,7 +71,7 @@ func TestDrinks_ABAC_BartenderCanUpdateCocktail(t *testing.T) {
 
 	f := testutil.NewFixture(t)
 	b := f.Bootstrap()
-	base := b.WithIngredient("ABAC Base", ingredientsM.UnitOz)
+	base := b.WithIngredient("ABAC Base", measurement.UnitOz)
 
 	owner := f.OwnerContext()
 	bartender := f.ActorContext("bartender")

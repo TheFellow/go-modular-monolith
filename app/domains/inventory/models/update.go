@@ -2,13 +2,14 @@ package models
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type Update struct {
 	IngredientID entity.IngredientID
-	Quantity     float64
+	Amount       measurement.Amount
 	CostPerUnit  money.Price
 }
 

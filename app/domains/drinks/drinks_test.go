@@ -5,7 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
@@ -15,8 +15,8 @@ func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
 	b := f.Bootstrap()
 	ctx := f.OwnerContext()
 
-	lime := b.WithIngredient("Lime Juice", ingredientsM.UnitOz)
-	lemon := b.WithIngredient("Lemon Juice", ingredientsM.UnitOz)
+	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
+	lemon := b.WithIngredient("Lemon Juice", measurement.UnitOz)
 
 	created, err := f.Drinks.Create(ctx, &models.Drink{
 		Name:     "Margarita",
@@ -24,7 +24,7 @@ func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
 		Glass:    models.GlassTypeCoupe,
 		Recipe: models.Recipe{
 			Ingredients: []models.RecipeIngredient{
-				{IngredientID: lime.ID, Amount: 1.0, Unit: ingredientsM.UnitOz},
+				{IngredientID: lime.ID, Amount: measurement.MustAmount(1.0, measurement.UnitOz)},
 			},
 			Steps: []string{"Shake with ice"},
 		},
@@ -46,7 +46,7 @@ func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
 		Glass:    models.GlassTypeCoupe,
 		Recipe: models.Recipe{
 			Ingredients: []models.RecipeIngredient{
-				{IngredientID: lemon.ID, Amount: 1.0, Unit: ingredientsM.UnitOz},
+				{IngredientID: lemon.ID, Amount: measurement.MustAmount(1.0, measurement.UnitOz)},
 			},
 			Steps: []string{"Shake hard"},
 		},
@@ -82,7 +82,7 @@ func TestDrinks_ListFiltersByName(t *testing.T) {
 	b := f.Bootstrap()
 	ctx := f.OwnerContext()
 
-	base := b.WithIngredient("Tequila", ingredientsM.UnitOz)
+	base := b.WithIngredient("Tequila", measurement.UnitOz)
 
 	b.WithDrink(models.Drink{
 		Name:     "Margarita",
@@ -90,7 +90,7 @@ func TestDrinks_ListFiltersByName(t *testing.T) {
 		Glass:    models.GlassTypeCoupe,
 		Recipe: models.Recipe{
 			Ingredients: []models.RecipeIngredient{
-				{IngredientID: base.ID, Amount: 2.0, Unit: ingredientsM.UnitOz},
+				{IngredientID: base.ID, Amount: measurement.MustAmount(2.0, measurement.UnitOz)},
 			},
 			Steps: []string{"Shake"},
 		},
@@ -101,7 +101,7 @@ func TestDrinks_ListFiltersByName(t *testing.T) {
 		Glass:    models.GlassTypeMartini,
 		Recipe: models.Recipe{
 			Ingredients: []models.RecipeIngredient{
-				{IngredientID: base.ID, Amount: 1.5, Unit: ingredientsM.UnitOz},
+				{IngredientID: base.ID, Amount: measurement.MustAmount(1.5, measurement.UnitOz)},
 			},
 			Steps: []string{"Shake"},
 		},
@@ -112,7 +112,7 @@ func TestDrinks_ListFiltersByName(t *testing.T) {
 		Glass:    models.GlassTypeRocks,
 		Recipe: models.Recipe{
 			Ingredients: []models.RecipeIngredient{
-				{IngredientID: base.ID, Amount: 2.0, Unit: ingredientsM.UnitOz},
+				{IngredientID: base.ID, Amount: measurement.MustAmount(2.0, measurement.UnitOz)},
 			},
 			Steps: []string{"Stir"},
 		},

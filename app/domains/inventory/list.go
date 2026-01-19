@@ -14,7 +14,7 @@ import (
 type ListRequest struct {
 	IngredientID entity.IngredientID
 
-	// LowStock, when set, lists items with Quantity <= LowStock.
+	// LowStock, when set, lists items with amount value <= LowStock (per item unit).
 	LowStock optional.Value[float64]
 }
 

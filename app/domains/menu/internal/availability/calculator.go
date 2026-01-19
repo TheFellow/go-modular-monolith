@@ -10,6 +10,7 @@ import (
 	inventoryq "github.com/TheFellow/go-modular-monolith/app/domains/inventory/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -45,8 +46,8 @@ type Detail struct {
 
 type MissingIngredient struct {
 	IngredientID  entity.IngredientID
-	Required      float64
-	Available     float64
+	Required      measurement.Amount
+	Available     measurement.Amount
 	HasSubstitute bool
 }
 
@@ -83,13 +84,14 @@ func (c *AvailabilityCalculator) CalculateDetail(ctx *middleware.Context, drinkI
 			missing = append(missing, MissingIngredient{
 				IngredientID:  req.IngredientID,
 				Required:      req.Amount,
-				Available:     0,
+				Available:     measurement.MustAmount(0, req.Amount.Unit()),
 				HasSubstitute: hasSub,
 			})
 			continue
 		}
 
-		if pick.AvailableQty < pick.RequiredQty*3 {
+		threshold := pick.Required.Mul(3)
+		if pick.Available.Value() < threshold.Value() {
 			limited = true
 		}
 		if pick.UsedSubstitution {
@@ -113,8 +115,8 @@ func (c *AvailabilityCalculator) CalculateDetail(ctx *middleware.Context, drinkI
 
 type PickResult struct {
 	IngredientID     entity.IngredientID
-	RequiredQty      float64
-	AvailableQty     float64
+	Required         measurement.Amount
+	Available        measurement.Amount
 	UsedSubstitution bool
 	Ratio            float64
 	QualityImpact    ingredientsmodels.Quality
@@ -122,7 +124,7 @@ type PickResult struct {
 
 type candidate struct {
 	id            entity.IngredientID
-	requiredQty   float64
+	required      measurement.Amount
 	isOriginal    bool
 	ratio         float64
 	qualityImpact ingredientsmodels.Quality
@@ -132,7 +134,7 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 	candidates := make([]candidate, 0, 1+len(req.Substitutes))
 	candidates = append(candidates, candidate{
 		id:            req.IngredientID,
-		requiredQty:   req.Amount,
+		required:      req.Amount,
 		isOriginal:    true,
 		ratio:         1,
 		qualityImpact: ingredientsmodels.QualityEquivalent,
@@ -148,7 +150,7 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 		seen[key] = struct{}{}
 		candidates = append(candidates, candidate{
 			id:            id,
-			requiredQty:   req.Amount * ratio,
+			required:      req.Amount.Mul(ratio),
 			isOriginal:    false,
 			ratio:         ratio,
 			qualityImpact: quality,
@@ -187,13 +189,17 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 			}
 			continue
 		}
-		if stock.Quantity < cand.requiredQty {
+		available, err := stock.Amount.Convert(cand.required.Unit())
+		if err != nil {
+			continue
+		}
+		if available.Value() < cand.required.Value() {
 			continue
 		}
 		picks = append(picks, PickResult{
 			IngredientID:     cand.id,
-			RequiredQty:      cand.requiredQty,
-			AvailableQty:     stock.Quantity,
+			Required:         cand.required,
+			Available:        available,
 			UsedSubstitution: !cand.isOriginal,
 			Ratio:            cand.ratio,
 			QualityImpact:    cand.qualityImpact,
@@ -216,14 +222,14 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 		if a.QualityImpact.Rank() != b.QualityImpact.Rank() {
 			return a.QualityImpact.Rank() > b.QualityImpact.Rank()
 		}
-		if a.AvailableQty != b.AvailableQty {
-			return a.AvailableQty > b.AvailableQty
+		if a.Available.Value() != b.Available.Value() {
+			return a.Available.Value() > b.Available.Value()
 		}
 		return a.IngredientID.String() < b.IngredientID.String()
 	})
 
 	best := picks[0]
-	if best.RequiredQty <= 0 {
+	if best.Required.Value() <= 0 {
 		return PickResult{}, false
 	}
 

@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	drinksM "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersM "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
@@ -49,14 +49,14 @@ func TestPermissions_Orders(t *testing.T) {
 		a := f.App
 		anon := f.ActorContext("anonymous")
 
-		base := b.WithIngredient("Orders Permissions Base", ingredientsM.UnitOz)
+		base := b.WithIngredient("Orders Permissions Base", measurement.UnitOz)
 		drink := b.WithDrink(drinksM.Drink{
 			Name:     "Order Drink",
 			Category: drinksM.DrinkCategoryCocktail,
 			Glass:    drinksM.GlassTypeCoupe,
 			Recipe: drinksM.Recipe{
 				Ingredients: []drinksM.RecipeIngredient{
-					{IngredientID: base.ID, Amount: 1.0, Unit: ingredientsM.UnitOz},
+					{IngredientID: base.ID, Amount: measurement.MustAmount(1.0, measurement.UnitOz)},
 				},
 				Steps: []string{"Shake"},
 			},

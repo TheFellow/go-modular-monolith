@@ -56,8 +56,8 @@ func toRecipeRow(r drinksmodels.Recipe) RecipeRow {
 		}
 		ingredients = append(ingredients, RecipeIngredientRow{
 			IngredientID: ri.IngredientID.EntityUID(),
-			Amount:       ri.Amount,
-			Unit:         string(ri.Unit),
+			Amount:       ri.Amount.Value(),
+			Unit:         string(ri.Amount.Unit()),
 			Optional:     ri.Optional,
 			Substitutes:  subs,
 		})
@@ -81,8 +81,7 @@ func toRecipeModel(r RecipeRow) drinksmodels.Recipe {
 		}
 		ingredients = append(ingredients, drinksmodels.RecipeIngredient{
 			IngredientID: entity.IngredientID(ri.IngredientID),
-			Amount:       ri.Amount,
-			Unit:         measurement.Unit(ri.Unit),
+			Amount:       measurement.MustAmount(ri.Amount, measurement.Unit(ri.Unit)),
 			Optional:     ri.Optional,
 			Substitutes:  substitutes,
 		})

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 )
 
 func ValidateCategory(s string) error {
@@ -19,5 +20,5 @@ func ValidateUnit(s string) error {
 	if s == "" {
 		return nil
 	}
-	return models.Unit(s).Validate()
+	return measurement.Unit(s).Validate()
 }

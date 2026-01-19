@@ -6,6 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
@@ -19,7 +20,7 @@ func TestPermissions_Ingredients(t *testing.T) {
 		a := fix.App
 		owner := fix.OwnerContext()
 
-		existing := b.WithIngredient("Permissions Ingredient", models.UnitOz)
+		existing := b.WithIngredient("Permissions Ingredient", measurement.UnitOz)
 
 		_, err := a.Ingredients.List(owner, ingredients.ListRequest{})
 		testutil.RequireNotDenied(t, err)
@@ -44,7 +45,7 @@ func TestPermissions_Ingredients(t *testing.T) {
 		a := fix.App
 		anon := fix.ActorContext("anonymous")
 
-		existing := b.WithIngredient("Permissions Ingredient", models.UnitOz)
+		existing := b.WithIngredient("Permissions Ingredient", measurement.UnitOz)
 
 		_, err := a.Ingredients.List(anon, ingredients.ListRequest{})
 		testutil.RequireNotDenied(t, err)

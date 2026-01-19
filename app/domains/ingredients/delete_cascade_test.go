@@ -7,6 +7,7 @@ import (
 	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventoryM "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
@@ -19,13 +20,13 @@ func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
 	ingredient, err := f.Ingredients.Create(ctx, &ingredientsM.Ingredient{
 		Name:     "Vodka",
 		Category: ingredientsM.CategorySpirit,
-		Unit:     ingredientsM.UnitOz,
+		Unit:     measurement.UnitOz,
 	})
 	testutil.Ok(t, err)
 
 	_, err = f.Inventory.Set(ctx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
-		Quantity:     10,
+		Amount:       measurement.MustAmount(10, ingredient.Unit),
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
 	})
 	testutil.Ok(t, err)
@@ -36,7 +37,7 @@ func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
 		Glass:    drinksM.GlassTypeRocks,
 		Recipe: drinksM.Recipe{
 			Ingredients: []drinksM.RecipeIngredient{
-				{IngredientID: ingredient.ID, Amount: 1, Unit: ingredientsM.UnitOz},
+				{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)},
 			},
 			Steps: []string{"build"},
 		},

@@ -5,7 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
@@ -19,14 +19,14 @@ func TestPermissions_Drinks(t *testing.T) {
 		a := fix.App
 		owner := fix.OwnerContext()
 
-		base := b.WithIngredient("Lime Juice", ingredientsM.UnitOz)
+		base := b.WithIngredient("Lime Juice", measurement.UnitOz)
 		existing := b.WithDrink(models.Drink{
 			Name:     "Permissions Cocktail",
 			Category: models.DrinkCategoryCocktail,
 			Glass:    models.GlassTypeCoupe,
 			Recipe: models.Recipe{
 				Ingredients: []models.RecipeIngredient{
-					{IngredientID: base.ID, Amount: 1.0, Unit: ingredientsM.UnitOz},
+					{IngredientID: base.ID, Amount: measurement.MustAmount(1.0, measurement.UnitOz)},
 				},
 				Steps: []string{"Shake with ice"},
 			},
@@ -57,14 +57,14 @@ func TestPermissions_Drinks(t *testing.T) {
 		a := fix.App
 		anon := fix.ActorContext("anonymous")
 
-		base := b.WithIngredient("Lime Juice", ingredientsM.UnitOz)
+		base := b.WithIngredient("Lime Juice", measurement.UnitOz)
 		existing := b.WithDrink(models.Drink{
 			Name:     "Permissions Cocktail",
 			Category: models.DrinkCategoryCocktail,
 			Glass:    models.GlassTypeCoupe,
 			Recipe: models.Recipe{
 				Ingredients: []models.RecipeIngredient{
-					{IngredientID: base.ID, Amount: 1.0, Unit: ingredientsM.UnitOz},
+					{IngredientID: base.ID, Amount: measurement.MustAmount(1.0, measurement.UnitOz)},
 				},
 				Steps: []string{"Shake with ice"},
 			},

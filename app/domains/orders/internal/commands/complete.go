@@ -8,7 +8,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -80,7 +79,11 @@ func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]
 				usageByIngredient[k] = u
 				continue
 			}
-			existing.Amount += u.Amount
+			next, err := existing.Amount.Add(u.Amount)
+			if err != nil {
+				return nil, nil, err
+			}
+			existing.Amount = next
 			usageByIngredient[k] = existing
 		}
 	}
@@ -99,14 +102,18 @@ func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]
 		if err != nil {
 			return nil, nil, err
 		}
-		if stock.Unit != measurement.Unit(u.Unit) {
-			return nil, nil, errors.Invalidf("unit mismatch for ingredient %s: recipe %s vs stock %s", u.IngredientID.String(), u.Unit, stock.Unit)
+		stockAmount, err := stock.Amount.Convert(u.Amount.Unit())
+		if err != nil {
+			return nil, nil, err
 		}
-		newQty := stock.Quantity - u.Amount
-		if newQty < 0 {
-			return nil, nil, errors.Invalidf("insufficient stock for ingredient %s: need %.2f %s, have %.2f %s", u.IngredientID.String(), u.Amount, u.Unit, stock.Quantity, stock.Unit)
+		if stockAmount.Value() < u.Amount.Value() {
+			return nil, nil, errors.Invalidf("insufficient stock for ingredient %s: need %s, have %s", u.IngredientID.String(), u.Amount.String(), stockAmount.String())
 		}
-		if newQty <= 0 {
+		newAmount, err := stockAmount.Sub(u.Amount)
+		if err != nil {
+			return nil, nil, err
+		}
+		if newAmount.Value() <= 0 {
 			depleted = append(depleted, stock.IngredientID)
 		}
 	}
@@ -133,24 +140,28 @@ func (c *Commands) computeUsageForDrink(ctx *middleware.Context, drink *drinksmo
 		if ingredient.Unit == "" {
 			return nil, errors.Invalidf("ingredient unit is required")
 		}
-		if ingredient.Unit != req.Unit {
-			return nil, errors.Invalidf("unit mismatch for ingredient %s: recipe %s vs ingredient %s", req.IngredientID.String(), req.Unit, ingredient.Unit)
+		required := req.Amount.Mul(float64(quantity))
+		required, err = required.Convert(ingredient.Unit)
+		if err != nil {
+			return nil, err
 		}
 
 		stock, err := c.inventory.Get(ctx, req.IngredientID)
 		if err != nil {
 			return nil, err
 		}
-		required := req.Amount * float64(quantity)
-		if stock.Quantity < required {
-			return nil, errors.Invalidf("insufficient stock for ingredient %s: need %.2f %s, have %.2f %s", req.IngredientID.String(), required, req.Unit, stock.Quantity, stock.Unit)
+		stockAmount, err := stock.Amount.Convert(ingredient.Unit)
+		if err != nil {
+			return nil, err
+		}
+		if stockAmount.Value() < required.Value() {
+			return nil, errors.Invalidf("insufficient stock for ingredient %s: need %s, have %s", req.IngredientID.String(), required.String(), stockAmount.String())
 		}
 
 		out = append(out, events.IngredientUsage{
 			IngredientID: stock.IngredientID,
 			Name:         ingredient.Name,
 			Amount:       required,
-			Unit:         string(req.Unit),
 		})
 	}
 

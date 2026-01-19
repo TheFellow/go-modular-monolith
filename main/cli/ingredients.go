@@ -7,6 +7,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	ingredientscli "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -109,7 +110,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					res, err := c.app.Ingredients.Create(ctx, &models.Ingredient{
 						Name:        name,
 						Category:    models.Category(cmd.String("category")),
-						Unit:        models.Unit(cmd.String("unit")),
+						Unit:        measurement.Unit(cmd.String("unit")),
 						Description: cmd.String("description"),
 					})
 					if err != nil {
@@ -161,7 +162,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						ID:          ingredientID,
 						Name:        cmd.String("name"),
 						Category:    models.Category(cmd.String("category")),
-						Unit:        models.Unit(cmd.String("unit")),
+						Unit:        measurement.Unit(cmd.String("unit")),
 						Description: cmd.String("description"),
 					})
 					if err != nil {

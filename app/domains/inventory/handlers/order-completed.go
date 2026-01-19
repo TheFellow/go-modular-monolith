@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/dao"
 	ordersevents "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
@@ -34,15 +35,19 @@ func (h *OrderCompletedStockUpdater) Handle(ctx *middleware.Context, e orderseve
 			return err
 		}
 
-		if string(existing.Unit) != usage.Unit {
-			return errors.Invalidf("unit mismatch for ingredient %s: order %s vs stock %s", ingredientID, usage.Unit, existing.Unit)
-		}
-
 		updated := *existing
-		updated.Quantity = updated.Quantity - usage.Amount
-		if updated.Quantity < 0 {
-			updated.Quantity = 0
+		current, err := updated.Amount.Convert(usage.Amount.Unit())
+		if err != nil {
+			return err
 		}
+		newAmount, err := current.Sub(usage.Amount)
+		if err != nil {
+			return err
+		}
+		if newAmount.Value() < 0 {
+			newAmount = measurement.MustAmount(0, usage.Amount.Unit())
+		}
+		updated.Amount = newAmount
 		updated.LastUpdated = now
 
 		if err := h.stockDAO.Upsert(ctx, updated); err != nil {

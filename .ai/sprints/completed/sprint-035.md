@@ -314,52 +314,52 @@ type RecipeIngredient struct {
 
 ### Phase 1: Create Value Objects
 
-- [ ] Create `pkg/measurement/volume.go` with `Volume` type
-- [ ] Create `pkg/measurement/quantity.go` with `Quantity` type
-- [ ] Create `pkg/measurement/discrete.go` with `DiscreteQuantity` type
-- [ ] Create `pkg/measurement/amount.go` with `Amount` type (optional, if needed)
-- [ ] Add unit tests for conversions
+- [x] Create `pkg/measurement/volume.go` with `Volume` type
+- [x] Create `pkg/measurement/quantity.go` with `Quantity` type
+- [x] Create `pkg/measurement/discrete.go` with `DiscreteQuantity` type
+- [x] Create `pkg/measurement/amount.go` with `Amount` type (optional, if needed)
+- [x] Add unit tests for conversions
 
 ### Phase 2: Update Inventory Domain
 
-- [ ] Update `inventory/models/inventory.go` to use `Quantity`
-- [ ] Update `inventory/internal/dao` conversions
-- [ ] Update inventory commands and queries
-- [ ] Update CLI output
+- [x] Update `inventory/models/inventory.go` to use `Quantity`
+- [x] Update `inventory/internal/dao` conversions
+- [x] Update inventory commands and queries
+- [x] Update CLI output
 
 ### Phase 3: Update Drinks Domain (Recipes)
 
-- [ ] Update `drinks/models/recipe.go` to use `Amount`
-- [ ] Update `drinks/internal/dao` conversions
-- [ ] Update recipe JSON serialization in CLI surface
+- [x] Update `drinks/models/recipe.go` to use `Amount`
+- [x] Update `drinks/internal/dao` conversions
+- [x] Update recipe JSON serialization in CLI surface
 
 ### Phase 4: Update Ingredients Domain
 
-- [ ] Update `ingredients/models/ingredient.go` default unit
-- [ ] Ensure consistency with inventory
+- [x] Update `ingredients/models/ingredient.go` default unit
+- [x] Ensure consistency with inventory
 
 ### Phase 5: Enable Cross-Unit Operations
 
-- [ ] Update menu analytics to use proper conversions
-- [ ] Update cost calculations to handle unit conversion
-- [ ] Verify inventory checks work across units
+- [x] Update menu analytics to use proper conversions
+- [x] Update cost calculations to handle unit conversion
+- [x] Verify inventory checks work across units
 
 ### Phase 6: Verify
 
-- [ ] Run all tests
-- [ ] Test CLI with various unit inputs
-- [ ] Verify cost calculations are correct
+- [x] Run all tests
+- [x] Test CLI with various unit inputs
+- [x] Verify cost calculations are correct
 
 ## Acceptance Criteria
 
-- [ ] `Volume` type with ml/oz/cl conversion
-- [ ] `Quantity` type preserving display unit preference
-- [ ] `DiscreteQuantity` for non-convertible units (dash, piece, splash)
-- [ ] Inventory uses `Quantity` instead of `float64` + `Unit`
-- [ ] Recipes use `Amount` supporting both volume and discrete
-- [ ] Cost calculations work correctly across units
-- [ ] CLI accepts same input formats (backwards compatible)
-- [ ] All tests pass
+- [x] `Volume` type with ml/oz/cl conversion
+- [x] `Quantity` type preserving display unit preference
+- [x] `DiscreteQuantity` for non-convertible units (dash, piece, splash)
+- [x] Inventory uses `Quantity` instead of `float64` + `Unit`
+- [x] Recipes use `Amount` supporting both volume and discrete
+- [x] Cost calculations work correctly across units
+- [x] CLI accepts same input formats (backwards compatible)
+- [x] All tests pass
 
 ## Result
 

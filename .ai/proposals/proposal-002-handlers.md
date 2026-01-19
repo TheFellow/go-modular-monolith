@@ -1,7 +1,16 @@
 # Proposal 002: Missing Event Handlers
 
-**Status:** Proposed
+**Status:** Reviewed
 **Type:** Technical Debt / Feature
+
+## Decision Summary
+
+| Proposal | Decision | Rationale |
+|----------|----------|-----------|
+| 1. IngredientUpdated (Unit Changes) | **Accepted** → Sprint 036 | Real problem: unit changes allowed but create data inconsistency |
+| 2. MenuDeleted (Order Cleanup) | **Declined** | Hypothetical: menus use archival, deletion doesn't exist |
+
+**Note:** For Proposal 1, Strategy A (Blocking) was chosen. Reject unit changes if ingredient is in use. Simpler and safer than reactive flagging.
 
 ## 1. Handling `IngredientUpdated` (Unit Changes)
 

@@ -4,6 +4,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 )
 
 type DrinkBuilder struct {
@@ -37,8 +38,7 @@ func (b *DrinkBuilder) Build() *models.Drink {
 		ingredient := b.fix.findOrCreateIngredient(ing.name)
 		recipeIngredients = append(recipeIngredients, models.RecipeIngredient{
 			IngredientID: ingredient.ID,
-			Amount:       ing.amount,
-			Unit:         ingredient.Unit,
+			Amount:       measurement.MustAmount(ing.amount, ingredient.Unit),
 		})
 	}
 
@@ -71,7 +71,7 @@ func (f *Fixture) findOrCreateIngredient(name string) *ingredientsmodels.Ingredi
 	created, err := f.Ingredients.Create(f.OwnerContext(), &ingredientsmodels.Ingredient{
 		Name:     name,
 		Category: ingredientsmodels.CategorySpirit,
-		Unit:     ingredientsmodels.UnitOz,
+		Unit:     measurement.UnitOz,
 	})
 	Ok(f.T, err)
 	return created

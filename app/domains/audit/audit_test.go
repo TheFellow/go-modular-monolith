@@ -10,6 +10,7 @@ import (
 	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/cedar-policy/cedar-go"
@@ -23,7 +24,7 @@ func TestAudit_RecordsActivityForCommand(t *testing.T) {
 	created, err := f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
 		Name:     "Vodka",
 		Category: ingredientsmodels.CategorySpirit,
-		Unit:     ingredientsmodels.UnitOz,
+		Unit:     measurement.UnitOz,
 	})
 	testutil.Ok(t, err)
 
@@ -44,7 +45,7 @@ func TestAudit_TouchesIncludeHandlerUpdates(t *testing.T) {
 	ingredient, err := f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
 		Name:     "Gin",
 		Category: ingredientsmodels.CategorySpirit,
-		Unit:     ingredientsmodels.UnitOz,
+		Unit:     measurement.UnitOz,
 	})
 	testutil.Ok(t, err)
 
@@ -56,8 +57,7 @@ func TestAudit_TouchesIncludeHandlerUpdates(t *testing.T) {
 			Ingredients: []drinksmodels.RecipeIngredient{
 				{
 					IngredientID: ingredient.ID,
-					Amount:       2,
-					Unit:         ingredientsmodels.UnitOz,
+					Amount:       measurement.MustAmount(2, measurement.UnitOz),
 				},
 			},
 			Steps: []string{"Build in glass"},
@@ -93,14 +93,14 @@ func TestAudit_ListFilters(t *testing.T) {
 	ing1, err := f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
 		Name:     "Bourbon",
 		Category: ingredientsmodels.CategorySpirit,
-		Unit:     ingredientsmodels.UnitOz,
+		Unit:     measurement.UnitOz,
 	})
 	testutil.Ok(t, err)
 
 	_, err = f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
 		Name:     "Vermouth",
 		Category: ingredientsmodels.CategoryOther,
-		Unit:     ingredientsmodels.UnitOz,
+		Unit:     measurement.UnitOz,
 	})
 	testutil.Ok(t, err)
 
@@ -135,7 +135,7 @@ func TestAudit_ListFiltersByTime(t *testing.T) {
 	_, err := f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
 		Name:     "Lime Juice",
 		Category: ingredientsmodels.CategoryJuice,
-		Unit:     ingredientsmodels.UnitOz,
+		Unit:     measurement.UnitOz,
 	})
 	testutil.Ok(t, err)
 
@@ -145,7 +145,7 @@ func TestAudit_ListFiltersByTime(t *testing.T) {
 	_, err = f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
 		Name:     "Simple Syrup",
 		Category: ingredientsmodels.CategorySyrup,
-		Unit:     ingredientsmodels.UnitOz,
+		Unit:     measurement.UnitOz,
 	})
 	testutil.Ok(t, err)
 

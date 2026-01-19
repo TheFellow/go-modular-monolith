@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -21,9 +22,12 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch *models.Patch) (*models
 
 	var (
 		hasDelta bool
-		delta    float64
+		delta    measurement.Amount
 	)
 	if v, ok := patch.Delta.Unwrap(); ok {
+		if v == nil {
+			return nil, errors.Invalidf("delta is required")
+		}
 		hasDelta = true
 		delta = v
 	}
@@ -64,8 +68,7 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch *models.Patch) (*models
 		}
 		updated = models.Inventory{
 			IngredientID: patch.IngredientID,
-			Quantity:     0,
-			Unit:         ingredient.Unit,
+			Amount:       measurement.MustAmount(0, ingredient.Unit),
 			CostPerUnit:  optional.None[money.Price](),
 			LastUpdated:  time.Time{},
 		}
@@ -73,20 +76,25 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch *models.Patch) (*models
 		updated = *existing
 	}
 
-	previousQty := updated.Quantity
-	newQty := previousQty
+	updatedAmount, err := updated.Amount.Convert(ingredient.Unit)
+	if err != nil {
+		return nil, err
+	}
 	if hasDelta {
-		newQty = previousQty + delta
-		if newQty < 0 {
-			newQty = 0
+		delta, err = delta.Convert(ingredient.Unit)
+		if err != nil {
+			return nil, err
+		}
+		updatedAmount, err = updatedAmount.Add(delta)
+		if err != nil {
+			return nil, err
+		}
+		if updatedAmount.Value() < 0 {
+			updatedAmount = measurement.MustAmount(0, ingredient.Unit)
 		}
 	}
-
-	if hasDelta {
-		updated.Quantity = newQty
-	}
+	updated.Amount = updatedAmount
 	updated.IngredientID = patch.IngredientID
-	updated.Unit = ingredient.Unit
 	if hasCost {
 		updated.CostPerUnit = optional.Some(cost)
 	}

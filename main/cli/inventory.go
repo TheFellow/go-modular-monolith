@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -26,7 +27,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Flags: []cli.Flag{
 					&cli.Float64Flag{
 						Name:  "low-stock",
-						Usage: "Show items with quantity <= threshold",
+						Usage: "Show items with amount <= threshold (per item unit)",
 						Value: -1,
 					},
 				},
@@ -43,7 +44,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					w := newTabWriter()
 					fmt.Fprintln(w, "INGREDIENT_ID\tQUANTITY\tUNIT")
 					for _, s := range res {
-						fmt.Fprintf(w, "%s\t%.2f\t%s\n", s.IngredientID.String(), s.Quantity, s.Unit)
+						fmt.Fprintf(w, "%s\t%.2f\t%s\n", s.IngredientID.String(), s.Amount.Value(), s.Amount.Unit())
 					}
 					return w.Flush()
 				}),
@@ -67,8 +68,8 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					s := res
 					w := newTabWriter()
 					fmt.Fprintf(w, "Ingredient ID:\t%s\n", s.IngredientID.String())
-					fmt.Fprintf(w, "Quantity:\t%.2f\n", s.Quantity)
-					fmt.Fprintf(w, "Unit:\t%s\n", s.Unit)
+					fmt.Fprintf(w, "Quantity:\t%.2f\n", s.Amount.Value())
+					fmt.Fprintf(w, "Unit:\t%s\n", s.Amount.Unit())
 					return w.Flush()
 				}),
 			},
@@ -77,7 +78,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Usage: "Patch stock quantity and/or cost",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "ingredient-id", Usage: "Ingredient ID", Required: true},
-					&cli.StringFlag{Name: "delta", Usage: "Delta (+/-)"},
+					&cli.StringFlag{Name: "delta", Usage: "Delta (+/-) in ingredient unit"},
 					&cli.StringFlag{
 						Name:     "reason",
 						Aliases:  []string{"r"},
@@ -94,7 +95,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					},
 					&cli.StringFlag{
 						Name:  "cost-per-unit",
-						Usage: "Cost per unit (e.g. \"$1.23\" or \"USD 1.23\")",
+						Usage: "Cost per unit in ingredient unit (e.g. \"$1.23\" or \"USD 1.23\")",
 					},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -102,14 +103,22 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
+					ingredient, err := c.app.Ingredients.Get(ctx, parsedIngredientID)
+					if err != nil {
+						return err
+					}
 
-					var delta optional.Value[float64]
+					var delta optional.Value[measurement.Amount]
 					if raw := strings.TrimSpace(cmd.String("delta")); raw != "" {
 						v, err := strconv.ParseFloat(raw, 64)
 						if err != nil {
 							return errors.Invalidf("invalid delta %q", raw)
 						}
-						delta = optional.Some(v)
+						amount, err := measurement.NewAmount(v, ingredient.Unit)
+						if err != nil {
+							return err
+						}
+						delta = optional.Some(amount)
 					}
 
 					var cost optional.Value[money.Price]
@@ -131,7 +140,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%.2f\t%s\n", res.IngredientID.String(), res.Quantity, res.Unit)
+					fmt.Printf("%s\t%.2f\t%s\n", res.IngredientID.String(), res.Amount.Value(), res.Amount.Unit())
 					return nil
 				}),
 			},
@@ -140,15 +149,19 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Usage: "Set stock quantity",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "ingredient-id", Usage: "Ingredient ID", Required: true},
-					&cli.Float64Flag{Name: "quantity", Usage: "Quantity", Required: true},
+					&cli.Float64Flag{Name: "quantity", Usage: "Quantity in ingredient unit", Required: true},
 					&cli.StringFlag{
 						Name:     "cost-per-unit",
-						Usage:    "Cost per unit (e.g. \"$1.23\" or \"USD 1.23\")",
+						Usage:    "Cost per unit in ingredient unit (e.g. \"$1.23\" or \"USD 1.23\")",
 						Required: true,
 					},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					parsedIngredientID, err := entity.ParseIngredientID(cmd.String("ingredient-id"))
+					if err != nil {
+						return err
+					}
+					ingredient, err := c.app.Ingredients.Get(ctx, parsedIngredientID)
 					if err != nil {
 						return err
 					}
@@ -158,17 +171,21 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
+					amount, err := measurement.NewAmount(qty, ingredient.Unit)
+					if err != nil {
+						return err
+					}
 
 					res, err := c.app.Inventory.Set(ctx, &inventorymodels.Update{
 						IngredientID: parsedIngredientID,
-						Quantity:     qty,
+						Amount:       amount,
 						CostPerUnit:  cost,
 					})
 					if err != nil {
 						return err
 					}
 
-					fmt.Printf("%s\t%.2f\t%s\n", res.IngredientID.String(), res.Quantity, res.Unit)
+					fmt.Printf("%s\t%.2f\t%s\n", res.IngredientID.String(), res.Amount.Value(), res.Amount.Unit())
 					return nil
 				}),
 			},

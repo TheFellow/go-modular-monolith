@@ -9,6 +9,7 @@ import (
 	inventoryq "github.com/TheFellow/go-modular-monolith/app/domains/inventory/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/availability"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -32,7 +33,7 @@ func NewCostCalculator() *CostCalculator {
 type IngredientCost struct {
 	OriginalIngredientID entity.IngredientID
 	UsedIngredientID     entity.IngredientID
-	RequiredQty          float64
+	Required             measurement.Amount
 	CostPerUnit          *money.Price
 	Cost                 *money.Price
 	Substitution         bool
@@ -80,7 +81,7 @@ func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID entity.Drink
 		entry := IngredientCost{
 			OriginalIngredientID: req.IngredientID,
 			UsedIngredientID:     pick.IngredientID,
-			RequiredQty:          pick.RequiredQty,
+			Required:             pick.Required,
 			Substitution:         pick.UsedSubstitution,
 		}
 
@@ -95,9 +96,13 @@ func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID entity.Drink
 			return DrinkCost{}, err
 		}
 
-		qty, err := decimal.Parse(strconv.FormatFloat(pick.RequiredQty, 'f', -1, 64))
+		required, err := pick.Required.Convert(stock.Amount.Unit())
 		if err != nil {
-			return DrinkCost{}, errors.Invalidf("invalid required quantity %.6f: %w", pick.RequiredQty, err)
+			return DrinkCost{}, err
+		}
+		qty, err := decimal.Parse(strconv.FormatFloat(required.Value(), 'f', -1, 64))
+		if err != nil {
+			return DrinkCost{}, errors.Invalidf("invalid required quantity %.6f: %w", required.Value(), err)
 		}
 		ingredientCost, err := cpu.Mul(qty)
 		if err != nil {

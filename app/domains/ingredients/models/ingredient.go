@@ -17,7 +17,7 @@ type Ingredient struct {
 	ID          entity.IngredientID
 	Name        string
 	Category    Category
-	Unit        Unit
+	Unit        measurement.Unit
 	Description string
 	DeletedAt   optional.Value[time.Time]
 }
@@ -79,15 +79,3 @@ func (c Category) Validate() error {
 	}
 	return errors.Invalidf("invalid category %q", string(c))
 }
-
-type Unit = measurement.Unit
-
-const (
-	UnitOz     = measurement.UnitOz
-	UnitMl     = measurement.UnitMl
-	UnitDash   = measurement.UnitDash
-	UnitPiece  = measurement.UnitPiece
-	UnitSplash = measurement.UnitSplash
-)
-
-func AllUnits() []Unit { return measurement.AllUnits() }

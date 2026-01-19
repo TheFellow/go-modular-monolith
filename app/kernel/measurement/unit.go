@@ -11,6 +11,7 @@ type Unit string
 const (
 	UnitOz     Unit = "oz"
 	UnitMl     Unit = "ml"
+	UnitCl     Unit = "cl"
 	UnitDash   Unit = "dash"
 	UnitPiece  Unit = "piece"
 	UnitSplash Unit = "splash"
@@ -20,6 +21,7 @@ func AllUnits() []Unit {
 	return []Unit{
 		UnitOz,
 		UnitMl,
+		UnitCl,
 		UnitDash,
 		UnitPiece,
 		UnitSplash,
@@ -31,10 +33,10 @@ func (u Unit) Validate() error {
 	if u == "" {
 		return errors.Invalidf("unit is required")
 	}
-	for _, v := range AllUnits() {
-		if u == v {
-			return nil
-		}
+	switch u {
+	case UnitOz, UnitMl, UnitCl, UnitDash, UnitPiece, UnitSplash:
+		return nil
+	default:
+		return errors.Invalidf("invalid unit %q", string(u))
 	}
-	return errors.Invalidf("invalid unit %q", string(u))
 }

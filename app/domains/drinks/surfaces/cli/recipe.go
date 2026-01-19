@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -31,13 +30,13 @@ func TemplateRecipe() Recipe {
 			{
 				IngredientID: "ing-abc123",
 				Amount:       1.0,
-				Unit:         string(ingredientsmodels.UnitOz),
+				Unit:         string(measurement.UnitOz),
 				Substitutes:  []string{"ing-def456"},
 			},
 			{
 				IngredientID: "ing-ghi789",
 				Amount:       2.0,
-				Unit:         string(ingredientsmodels.UnitOz),
+				Unit:         string(measurement.UnitOz),
 			},
 		},
 		Steps:   []string{"Add ingredients to a shaker with ice", "Shake until chilled", "Strain into glass"},
@@ -74,10 +73,13 @@ func (r Recipe) ToDomain() (models.Recipe, error) {
 		if err != nil {
 			return models.Recipe{}, errors.Invalidf("invalid ingredient id %q: %w", ing.IngredientID, err)
 		}
+		amount, err := measurement.NewAmount(ing.Amount, measurement.Unit(ing.Unit))
+		if err != nil {
+			return models.Recipe{}, errors.Invalidf("invalid ingredient amount for %q: %w", ing.IngredientID, err)
+		}
 		out.Ingredients = append(out.Ingredients, models.RecipeIngredient{
 			IngredientID: ingredientID,
-			Amount:       ing.Amount,
-			Unit:         measurement.Unit(ing.Unit),
+			Amount:       amount,
 			Optional:     ing.Optional,
 			Substitutes:  subUIDs,
 		})
@@ -110,8 +112,8 @@ func FromDomainRecipe(r models.Recipe) Recipe {
 
 		out.Ingredients = append(out.Ingredients, RecipeIngredient{
 			IngredientID: ing.IngredientID.String(),
-			Amount:       ing.Amount,
-			Unit:         string(ing.Unit),
+			Amount:       ing.Amount.Value(),
+			Unit:         string(ing.Amount.Unit()),
 			Optional:     ing.Optional,
 			Substitutes:  subs,
 		})

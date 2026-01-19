@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -14,8 +15,8 @@ func (c *Commands) Set(ctx *middleware.Context, update *models.Update) (*models.
 	if update == nil {
 		return nil, errors.Invalidf("update is required")
 	}
-	if update.Quantity < 0 {
-		update.Quantity = 0
+	if update.Amount == nil || update.Amount.Unit() == "" {
+		return nil, errors.Invalidf("amount is required")
 	}
 	if err := update.CostPerUnit.Validate(); err != nil {
 		return nil, err
@@ -40,8 +41,7 @@ func (c *Commands) Set(ctx *middleware.Context, update *models.Update) (*models.
 		}
 		updated = models.Inventory{
 			IngredientID: update.IngredientID,
-			Quantity:     0,
-			Unit:         ingredient.Unit,
+			Amount:       measurement.MustAmount(0, ingredient.Unit),
 			LastUpdated:  time.Time{},
 		}
 	} else {
@@ -49,8 +49,14 @@ func (c *Commands) Set(ctx *middleware.Context, update *models.Update) (*models.
 	}
 
 	updated.IngredientID = update.IngredientID
-	updated.Quantity = update.Quantity
-	updated.Unit = ingredient.Unit
+	amount, err := update.Amount.Convert(ingredient.Unit)
+	if err != nil {
+		return nil, err
+	}
+	if amount.Value() < 0 {
+		amount = measurement.MustAmount(0, ingredient.Unit)
+	}
+	updated.Amount = amount
 	updated.CostPerUnit = optional.Some(update.CostPerUnit)
 	updated.LastUpdated = time.Now().UTC()
 

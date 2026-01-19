@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 )
 
 func CategoryUsage() string {
@@ -24,7 +25,7 @@ func UnitUsage() string {
 }
 
 func unitOptions() []string {
-	supported := models.AllUnits()
+	supported := measurement.AllUnits()
 	out := make([]string, 0, len(supported))
 	for _, u := range supported {
 		out = append(out, string(u))

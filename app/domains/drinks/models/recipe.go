@@ -16,8 +16,7 @@ type Recipe struct {
 
 type RecipeIngredient struct {
 	IngredientID entity.IngredientID
-	Amount       float64
-	Unit         measurement.Unit
+	Amount       measurement.Amount
 	Optional     bool
 	Substitutes  []entity.IngredientID
 }
@@ -34,11 +33,14 @@ func (r Recipe) Validate() error {
 		if ing.IngredientID.IsZero() {
 			return errors.Invalidf("recipe ingredient %d: ingredient id is required", i)
 		}
-		if ing.Amount <= 0 {
-			return errors.Invalidf("recipe ingredient %d: amount must be > 0", i)
+		if ing.Amount == nil {
+			return errors.Invalidf("recipe ingredient %d: amount is required", i)
 		}
-		if ing.Unit == "" {
+		if ing.Amount.Unit() == "" {
 			return errors.Invalidf("recipe ingredient %d: unit is required", i)
+		}
+		if ing.Amount.Value() <= 0 {
+			return errors.Invalidf("recipe ingredient %d: amount must be > 0", i)
 		}
 		for j, sub := range ing.Substitutes {
 			if sub.IsZero() {

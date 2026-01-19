@@ -3,6 +3,7 @@ package events
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 )
 
 type OrderPlaced struct {
@@ -22,6 +23,5 @@ type OrderCompleted struct {
 type IngredientUsage struct {
 	IngredientID entity.IngredientID
 	Name         string
-	Amount       float64
-	Unit         string
+	Amount       measurement.Amount
 }

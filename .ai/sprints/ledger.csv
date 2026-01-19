@@ -58,3 +58,5 @@ sprint-033f,completed,2026-01-18,2026-01-18,Strongly typed entity IDs + CLI boun
 sprint-033g,completed,2026-01-18,2026-01-18,Code generation for entity ID types
 sprint-033h,completed,2026-01-18,2026-01-18,Tabwriter-aligned CLI output
 sprint-033i,completed,2026-01-18,2026-01-18,Consistent CLI flag names for primary keys
+sprint-035,completed,2026-01-18,2026-01-18,Unit value objects with conversion
+sprint-036,completed,2026-01-19,2026-01-19,Protect ingredient unit changes

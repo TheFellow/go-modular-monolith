@@ -9,6 +9,7 @@ import (
 	menuevents "github.com/TheFellow/go-modular-monolith/app/domains/menu/events"
 	menudao "github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/dao"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -24,13 +25,13 @@ func TestDrinkUpdatedMenuUpdater_MarksUnavailableWhenNewIngredientOutOfStock(t *
 	base, err := f.Ingredients.Create(ctx, &ingredientsM.Ingredient{
 		Name:     "Gin",
 		Category: ingredientsM.CategorySpirit,
-		Unit:     ingredientsM.UnitOz,
+		Unit:     measurement.UnitOz,
 	})
 	testutil.Ok(t, err)
 
 	_, err = f.Inventory.Set(ctx, &inventoryM.Update{
 		IngredientID: base.ID,
-		Quantity:     10,
+		Amount:       measurement.MustAmount(10, base.Unit),
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
 	})
 	testutil.Ok(t, err)
@@ -41,7 +42,7 @@ func TestDrinkUpdatedMenuUpdater_MarksUnavailableWhenNewIngredientOutOfStock(t *
 		Glass:    drinksM.GlassTypeRocks,
 		Recipe: drinksM.Recipe{
 			Ingredients: []drinksM.RecipeIngredient{
-				{IngredientID: base.ID, Amount: 1, Unit: ingredientsM.UnitOz},
+				{IngredientID: base.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)},
 			},
 			Steps: []string{"build"},
 		},
@@ -58,15 +59,14 @@ func TestDrinkUpdatedMenuUpdater_MarksUnavailableWhenNewIngredientOutOfStock(t *
 	rare, err := f.Ingredients.Create(ctx, &ingredientsM.Ingredient{
 		Name:     "Rare Juice",
 		Category: ingredientsM.CategoryJuice,
-		Unit:     ingredientsM.UnitOz,
+		Unit:     measurement.UnitOz,
 	})
 	testutil.Ok(t, err)
 
 	updated := *drink
 	updated.Recipe.Ingredients = append(updated.Recipe.Ingredients, drinksM.RecipeIngredient{
 		IngredientID: rare.ID,
-		Amount:       1,
-		Unit:         ingredientsM.UnitOz,
+		Amount:       measurement.MustAmount(1, measurement.UnitOz),
 	})
 
 	_, err = f.Drinks.Update(ctx, &updated)
@@ -86,7 +86,7 @@ func TestMenuPublishedValidator_SetsAvailabilityFromInventory(t *testing.T) {
 	ingredient, err := f.Ingredients.Create(ctx, &ingredientsM.Ingredient{
 		Name:     "Vodka",
 		Category: ingredientsM.CategorySpirit,
-		Unit:     ingredientsM.UnitOz,
+		Unit:     measurement.UnitOz,
 	})
 	testutil.Ok(t, err)
 
@@ -96,7 +96,7 @@ func TestMenuPublishedValidator_SetsAvailabilityFromInventory(t *testing.T) {
 		Glass:    drinksM.GlassTypeRocks,
 		Recipe: drinksM.Recipe{
 			Ingredients: []drinksM.RecipeIngredient{
-				{IngredientID: ingredient.ID, Amount: 1, Unit: ingredientsM.UnitOz},
+				{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)},
 			},
 			Steps: []string{"build"},
 		},

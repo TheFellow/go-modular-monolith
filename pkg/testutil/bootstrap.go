@@ -8,6 +8,7 @@ import (
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 )
 
@@ -20,12 +21,12 @@ func (b *Bootstrap) WithBasicIngredients() *Bootstrap {
 	ctx := b.fix.OwnerContext()
 
 	basics := []ingredientsmodels.Ingredient{
-		{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: ingredientsmodels.UnitOz},
-		{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: ingredientsmodels.UnitOz},
-		{Name: "Triple Sec", Category: ingredientsmodels.CategoryOther, Unit: ingredientsmodels.UnitOz},
-		{Name: "Simple Syrup", Category: ingredientsmodels.CategorySyrup, Unit: ingredientsmodels.UnitOz},
-		{Name: "Vodka", Category: ingredientsmodels.CategorySpirit, Unit: ingredientsmodels.UnitOz},
-		{Name: "Gin", Category: ingredientsmodels.CategorySpirit, Unit: ingredientsmodels.UnitOz},
+		{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz},
+		{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz},
+		{Name: "Triple Sec", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz},
+		{Name: "Simple Syrup", Category: ingredientsmodels.CategorySyrup, Unit: measurement.UnitOz},
+		{Name: "Vodka", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz},
+		{Name: "Gin", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz},
 	}
 	for _, ing := range basics {
 		ingredient := ing
@@ -45,7 +46,7 @@ func (b *Bootstrap) WithStock(quantity float64) *Bootstrap {
 	for _, ing := range ings {
 		_, err := b.fix.Inventory.Set(ctx, &inventorymodels.Update{
 			IngredientID: ing.ID,
-			Quantity:     quantity,
+			Amount:       measurement.MustAmount(quantity, ing.Unit),
 			CostPerUnit:  money.NewPriceFromCents(100, "USD"),
 		})
 		Ok(b.fix.T, err)
@@ -55,7 +56,7 @@ func (b *Bootstrap) WithStock(quantity float64) *Bootstrap {
 
 func (b *Bootstrap) WithNoStock() *Bootstrap { return b.WithStock(0) }
 
-func (b *Bootstrap) WithIngredient(name string, unit ingredientsmodels.Unit) *ingredientsmodels.Ingredient {
+func (b *Bootstrap) WithIngredient(name string, unit measurement.Unit) *ingredientsmodels.Ingredient {
 	b.fix.T.Helper()
 	ctx := b.fix.OwnerContext()
 

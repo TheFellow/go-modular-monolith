@@ -11,6 +11,7 @@ import (
 	inventoryevents "github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
 	inventoryM "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -27,7 +28,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	ingredient, err := a.Ingredients.Create(ctx, &ingredientsM.Ingredient{
 		Name:     "Vodka",
 		Category: ingredientsM.CategorySpirit,
-		Unit:     ingredientsM.UnitOz,
+		Unit:     measurement.UnitOz,
 	})
 	if err != nil {
 		t.Fatalf("create ingredient: %v", err)
@@ -35,7 +36,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 
 	_, err = a.Inventory.Set(ctx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
-		Quantity:     10,
+		Amount:       measurement.MustAmount(10, ingredient.Unit),
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
 	})
 	if err != nil {
@@ -48,7 +49,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		Glass:    drinksM.GlassTypeCoupe,
 		Recipe: drinksM.Recipe{
 			Ingredients: []drinksM.RecipeIngredient{
-				{IngredientID: ingredient.ID, Amount: 1, Unit: ingredientsM.UnitOz},
+				{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)},
 			},
 			Steps: []string{"Shake with ice"},
 		},
@@ -79,7 +80,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	)
 	updated, err := a.Inventory.Set(noDispatchCtx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
-		Quantity:     0,
+		Amount:       measurement.MustAmount(0, ingredient.Unit),
 		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
 	})
 	if err != nil {
@@ -121,7 +122,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	ingredient, err := a.Ingredients.Create(ctx, &ingredientsM.Ingredient{
 		Name:     "Vodka",
 		Category: ingredientsM.CategorySpirit,
-		Unit:     ingredientsM.UnitOz,
+		Unit:     measurement.UnitOz,
 	})
 	if err != nil {
 		t.Fatalf("create ingredient: %v", err)
@@ -134,7 +135,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 		Glass:    drinksM.GlassTypeMartini,
 		Recipe: drinksM.Recipe{
 			Ingredients: []drinksM.RecipeIngredient{
-				{IngredientID: ingredient.ID, Amount: 2, Unit: ingredientsM.UnitOz},
+				{IngredientID: ingredient.ID, Amount: measurement.MustAmount(2, measurement.UnitOz)},
 			},
 			Steps: []string{"Stir with ice"},
 		},
@@ -149,7 +150,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 		Glass:    drinksM.GlassTypeMartini,
 		Recipe: drinksM.Recipe{
 			Ingredients: []drinksM.RecipeIngredient{
-				{IngredientID: ingredient.ID, Amount: 1.5, Unit: ingredientsM.UnitOz},
+				{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1.5, measurement.UnitOz)},
 			},
 			Steps: []string{"Shake with ice"},
 		},

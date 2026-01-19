@@ -13,6 +13,9 @@ func TestUnitValidate(t *testing.T) {
 	if err := measurement.UnitOz.Validate(); err != nil {
 		t.Fatalf("expected valid, got %v", err)
 	}
+	if err := measurement.UnitCl.Validate(); err != nil {
+		t.Fatalf("expected valid, got %v", err)
+	}
 	if err := measurement.Unit("").Validate(); !errors.IsInvalid(err) {
 		t.Fatalf("expected invalid for empty, got %v", err)
 	}
