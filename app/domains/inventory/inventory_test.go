@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -21,7 +22,7 @@ func TestInventory_SetAndAdjust(t *testing.T) {
 	stock, err := f.Inventory.Set(ctx, &models.Update{
 		IngredientID: ingredient.ID,
 		Amount:       measurement.MustAmount(1.0, ingredient.Unit),
-		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
+		CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
 	})
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, stock.Amount.Value() != 1.0, "expected quantity 1.0, got %v", stock.Amount.Value())

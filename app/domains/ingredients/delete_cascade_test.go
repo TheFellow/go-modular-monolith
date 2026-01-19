@@ -7,6 +7,7 @@ import (
 	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventoryM "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
@@ -27,7 +28,7 @@ func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
 	_, err = f.Inventory.Set(ctx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Amount:       measurement.MustAmount(10, ingredient.Unit),
-		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
+		CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
 	})
 	testutil.Ok(t, err)
 

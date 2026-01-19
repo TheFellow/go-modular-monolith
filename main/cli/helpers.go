@@ -8,6 +8,7 @@ import (
 	"text/tabwriter"
 	"unicode"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/urfave/cli/v3"
@@ -43,7 +44,7 @@ func parsePrice(s string) (money.Price, error) {
 	}
 
 	if strings.HasPrefix(s, "$") {
-		return money.NewPrice(strings.TrimPrefix(s, "$"), "USD")
+		return money.NewPrice(strings.TrimPrefix(s, "$"), currency.USD)
 	}
 
 	parts := strings.Fields(s)
@@ -51,16 +52,20 @@ func parsePrice(s string) (money.Price, error) {
 		return money.Price{}, errors.Invalidf("invalid price %q (expected \"$1.23\" or \"USD 1.23\" or \"1.23 USD\")", s)
 	}
 
-	var currency, number string
+	var currencyCode, number string
 	if isCurrency(parts[0]) {
-		currency, number = parts[0], parts[1]
+		currencyCode, number = parts[0], parts[1]
 	} else if isCurrency(parts[1]) {
-		currency, number = parts[1], parts[0]
+		currencyCode, number = parts[1], parts[0]
 	} else {
 		return money.Price{}, errors.Invalidf("invalid price %q (expected \"$1.23\" or \"USD 1.23\" or \"1.23 USD\")", s)
 	}
 
-	return money.NewPrice(number, currency)
+	curr, err := currency.Parse(currencyCode)
+	if err != nil {
+		return money.Price{}, err
+	}
+	return money.NewPrice(number, curr)
 }
 
 func isCurrency(s string) bool {

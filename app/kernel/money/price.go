@@ -1,47 +1,67 @@
 package money
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/govalues/decimal"
 )
 
 type Price struct {
 	Amount   decimal.Decimal `json:"amount"`
-	Currency string          `json:"currency"`
+	Currency currency.Code   `json:"currency"`
 }
 
-func NewPrice(amount string, currency string) (Price, error) {
-	currency = strings.ToUpper(strings.TrimSpace(currency))
-	if currency == "" {
+func NewPrice(amount string, curr currency.Currency) (Price, error) {
+	if curr == nil {
 		return Price{}, errors.Invalidf("currency is required")
+	}
+	code, err := currency.ParseCode(curr.Code())
+	if err != nil {
+		return Price{}, err
 	}
 	d, err := decimal.Parse(strings.TrimSpace(amount))
 	if err != nil {
 		return Price{}, errors.Invalidf("invalid amount: %w", err)
 	}
-	p := Price{Amount: d, Currency: currency}
+	p := Price{Amount: d, Currency: code}
 	return p, p.Validate()
 }
 
-func NewPriceFromCents(cents int, currency string) Price {
+func NewPriceFromString(amount, code string) (Price, error) {
+	curr, err := currency.Parse(code)
+	if err != nil {
+		return Price{}, err
+	}
+	return NewPrice(amount, curr)
+}
+
+func NewPriceFromCents(cents int, curr currency.Currency) Price {
 	d, err := decimal.New(int64(cents), 2)
 	if err != nil {
 		return Price{}
 	}
-	return Price{Amount: d, Currency: strings.ToUpper(strings.TrimSpace(currency))}
+	if curr == nil {
+		return Price{}
+	}
+	code, err := currency.ParseCode(curr.Code())
+	if err != nil {
+		return Price{}
+	}
+	return Price{Amount: d, Currency: code}
 }
 
 func (p Price) Validate() error {
 	if p.Amount.IsNeg() {
 		return errors.Invalidf("amount must be >= 0")
 	}
-	if strings.TrimSpace(p.Currency) == "" {
-		return errors.Invalidf("currency is required")
+	if err := p.Currency.Validate(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -68,8 +88,8 @@ func (p Price) Add(other Price) (Price, error) {
 	if err := other.Validate(); err != nil {
 		return Price{}, err
 	}
-	if p.Currency != other.Currency {
-		return Price{}, errors.Invalidf("currency mismatch: %s vs %s", p.Currency, other.Currency)
+	if p.Currency.Code() != other.Currency.Code() {
+		return Price{}, errors.Invalidf("currency mismatch: %s vs %s", p.Currency.Code(), other.Currency.Code())
 	}
 	sum, err := p.Amount.Add(other.Amount)
 	if err != nil {
@@ -116,18 +136,42 @@ func (p Price) SuggestedPrice(targetMargin float64) (Price, error) {
 }
 
 func (p Price) String() string {
-	if strings.EqualFold(p.Currency, "USD") {
-		s, err := p.displayAmount(2)
-		if err != nil {
-			return "$?"
-		}
-		return fmt.Sprintf("$%s", s)
+	if err := p.Currency.Validate(); err != nil {
+		return "?"
 	}
 	s, err := p.displayAmount(2)
 	if err != nil {
-		return fmt.Sprintf("%s ?", strings.ToUpper(p.Currency))
+		return fmt.Sprintf("%s ?", p.Currency.Code())
 	}
-	return fmt.Sprintf("%s %s", strings.ToUpper(p.Currency), s)
+	return p.Currency.Format(s)
+}
+
+func (p Price) MarshalJSON() ([]byte, error) {
+	payload := struct {
+		Amount   decimal.Decimal `json:"amount"`
+		Currency string          `json:"currency"`
+	}{
+		Amount:   p.Amount,
+		Currency: p.Currency.Code(),
+	}
+	return json.Marshal(payload)
+}
+
+func (p *Price) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Amount   decimal.Decimal `json:"amount"`
+		Currency string          `json:"currency"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	curr, err := currency.ParseCode(raw.Currency)
+	if err != nil {
+		return err
+	}
+	p.Amount = raw.Amount
+	p.Currency = curr
+	return nil
 }
 
 func (p Price) displayAmount(scale int) (string, error) {

@@ -11,6 +11,7 @@ import (
 	inventoryevents "github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
 	inventoryM "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
@@ -37,7 +38,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	_, err = a.Inventory.Set(ctx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Amount:       measurement.MustAmount(10, ingredient.Unit),
-		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
+		CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
 	})
 	if err != nil {
 		t.Fatalf("set stock: %v", err)
@@ -81,7 +82,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	updated, err := a.Inventory.Set(noDispatchCtx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Amount:       measurement.MustAmount(0, ingredient.Unit),
-		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
+		CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
 	})
 	if err != nil {
 		t.Fatalf("set stock to zero: %v", err)

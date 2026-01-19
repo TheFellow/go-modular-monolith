@@ -9,6 +9,7 @@ import (
 	menuevents "github.com/TheFellow/go-modular-monolith/app/domains/menu/events"
 	menudao "github.com/TheFellow/go-modular-monolith/app/domains/menu/internal/dao"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
@@ -32,7 +33,7 @@ func TestDrinkUpdatedMenuUpdater_MarksUnavailableWhenNewIngredientOutOfStock(t *
 	_, err = f.Inventory.Set(ctx, &inventoryM.Update{
 		IngredientID: base.ID,
 		Amount:       measurement.MustAmount(10, base.Unit),
-		CostPerUnit:  money.NewPriceFromCents(100, "USD"),
+		CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
 	})
 	testutil.Ok(t, err)
 

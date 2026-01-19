@@ -8,6 +8,7 @@ import (
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 )
@@ -47,7 +48,7 @@ func (b *Bootstrap) WithStock(quantity float64) *Bootstrap {
 		_, err := b.fix.Inventory.Set(ctx, &inventorymodels.Update{
 			IngredientID: ing.ID,
 			Amount:       measurement.MustAmount(quantity, ing.Unit),
-			CostPerUnit:  money.NewPriceFromCents(100, "USD"),
+			CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
 		})
 		Ok(b.fix.T, err)
 	}

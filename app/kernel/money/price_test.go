@@ -3,6 +3,7 @@ package money_test
 import (
 	"testing"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/govalues/decimal"
@@ -11,10 +12,10 @@ import (
 func TestPriceValidate(t *testing.T) {
 	t.Parallel()
 
-	if err := (money.NewPriceFromCents(100, "USD")).Validate(); err != nil {
+	if err := (money.NewPriceFromCents(100, currency.USD)).Validate(); err != nil {
 		t.Fatalf("expected valid, got %v", err)
 	}
-	if err := (money.Price{Amount: decimal.MustNew(-1, 0), Currency: "USD"}).Validate(); !errors.IsInvalid(err) {
+	if err := (money.Price{Amount: decimal.MustNew(-1, 0), Currency: currency.MustParseCode("USD")}).Validate(); !errors.IsInvalid(err) {
 		t.Fatalf("expected invalid, got %v", err)
 	}
 }
@@ -22,7 +23,7 @@ func TestPriceValidate(t *testing.T) {
 func TestPrice_Cents_RoundHalfUp(t *testing.T) {
 	t.Parallel()
 
-	p, err := money.NewPrice("1.025", "USD")
+	p, err := money.NewPrice("1.025", currency.USD)
 	if err != nil {
 		t.Fatalf("NewPrice: %v", err)
 	}
@@ -34,7 +35,7 @@ func TestPrice_Cents_RoundHalfUp(t *testing.T) {
 		t.Fatalf("expected 103 cents, got %d", cents)
 	}
 
-	p, err = money.NewPrice("1.024", "USD")
+	p, err = money.NewPrice("1.024", currency.USD)
 	if err != nil {
 		t.Fatalf("NewPrice: %v", err)
 	}
@@ -50,7 +51,7 @@ func TestPrice_Cents_RoundHalfUp(t *testing.T) {
 func TestPrice_String_RoundHalfUp(t *testing.T) {
 	t.Parallel()
 
-	p, err := money.NewPrice("1.025", "USD")
+	p, err := money.NewPrice("1.025", currency.USD)
 	if err != nil {
 		t.Fatalf("NewPrice: %v", err)
 	}
@@ -58,19 +59,19 @@ func TestPrice_String_RoundHalfUp(t *testing.T) {
 		t.Fatalf("expected $1.03, got %q", got)
 	}
 
-	p, err = money.NewPrice("1.025", "eur")
+	p, err = money.NewPrice("1.025", currency.EUR)
 	if err != nil {
 		t.Fatalf("NewPrice: %v", err)
 	}
-	if got := p.String(); got != "EUR 1.03" {
-		t.Fatalf("expected EUR 1.03, got %q", got)
+	if got := p.String(); got != "1.03 €" {
+		t.Fatalf("expected 1.03 €, got %q", got)
 	}
 }
 
 func TestPrice_Mul(t *testing.T) {
 	t.Parallel()
 
-	p := money.NewPriceFromCents(100, "USD")
+	p := money.NewPriceFromCents(100, currency.USD)
 	f, err := decimal.Parse("2.5")
 	if err != nil {
 		t.Fatalf("decimal.Parse: %v", err)
@@ -91,7 +92,7 @@ func TestPrice_Mul(t *testing.T) {
 func TestPrice_SuggestedPrice_CeilToCent(t *testing.T) {
 	t.Parallel()
 
-	p := money.NewPriceFromCents(100, "USD")
+	p := money.NewPriceFromCents(100, currency.USD)
 	got, err := p.SuggestedPrice(0.70)
 	if err != nil {
 		t.Fatalf("SuggestedPrice: %v", err)
