@@ -79,10 +79,10 @@ func (c *CLI) menuCommands() *cli.Command {
 					JSONFlag,
 					CostsFlag,
 					TargetMarginFlag,
-					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
+					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					menuID, err := entity.ParseMenuID(cmd.String("menu-id"))
+					menuID, err := entity.ParseMenuID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
@@ -272,10 +272,10 @@ func (c *CLI) menuCommands() *cli.Command {
 				Usage: "Publish a menu",
 				Flags: []cli.Flag{
 					JSONFlag,
-					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
+					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					menuID, err := entity.ParseMenuID(cmd.String("menu-id"))
+					menuID, err := entity.ParseMenuID(cmd.String("id"))
 					if err != nil {
 						return err
 					}

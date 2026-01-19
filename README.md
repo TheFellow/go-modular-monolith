@@ -140,12 +140,12 @@ mixology audit history Mixology::Drink::drk-abc123
 ## CLI Usage Notes
 
 - IDs are typed and must include the entity prefix: drinks use `drk-`, ingredients `ing-`, menus `mnu-`, orders `ord-` (inventory IDs are derived as `inv-<ingredient-id>` and audit entries use `aud-`).
-- Commands that accept IDs use required flags like `--id`, `--menu-id`, `--drink-id`, `--ingredient-id`, and `--order-id`. Malformed IDs return an "invalid <entity> id prefix" error with exit code 10.
+- Commands that accept IDs use `--id` for the command's primary entity and `--<entity>-id` for cross-entity references (for example, `--menu-id`, `--drink-id`, `--ingredient-id`). Malformed IDs return an "invalid <entity> id prefix" error with exit code 10.
 
 ```bash
 mixology drinks get --id drk-abc123
 mixology ingredients get --id ing-abc123
-mixology menu show --menu-id mnu-abc123
+mixology menu show --id mnu-abc123
 mixology menu add-drink --menu-id mnu-abc123 --drink-id drk-abc123
 mixology order place --menu-id mnu-abc123 drk-abc123:2 drk-xyz789:1
 mixology inventory adjust --ingredient-id ing-abc123 --delta -0.5 --reason used

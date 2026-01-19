@@ -101,10 +101,10 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "get",
 				Usage: "Get an order",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "order-id", Usage: "Order ID", Required: true},
+					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					orderID, err := entity.ParseOrderID(cmd.String("order-id"))
+					orderID, err := entity.ParseOrderID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
@@ -141,10 +141,10 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "complete",
 				Usage: "Complete an order",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "order-id", Usage: "Order ID", Required: true},
+					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					orderID, err := entity.ParseOrderID(cmd.String("order-id"))
+					orderID, err := entity.ParseOrderID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
@@ -160,10 +160,10 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "cancel",
 				Usage: "Cancel an order",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "order-id", Usage: "Order ID", Required: true},
+					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					orderID, err := entity.ParseOrderID(cmd.String("order-id"))
+					orderID, err := entity.ParseOrderID(cmd.String("id"))
 					if err != nil {
 						return err
 					}

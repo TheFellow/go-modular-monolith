@@ -147,16 +147,16 @@ mixology inventory get --ingredient-id ing-abc
 
 ## Tasks
 
-- [ ] Update `menu.go` show command: `--menu-id` → `--id`
-- [ ] Update `menu.go` publish command: `--menu-id` → `--id`
-- [ ] Update `orders.go` get command: `--order-id` → `--id`
-- [ ] Update `orders.go` complete command: `--order-id` → `--id`
-- [ ] Update `orders.go` cancel command: `--order-id` → `--id`
-- [ ] Verify CLI commands work with new flag names
+- [x] Update `menu.go` show command: `--menu-id` → `--id`
+- [x] Update `menu.go` publish command: `--menu-id` → `--id`
+- [x] Update `orders.go` get command: `--order-id` → `--id`
+- [x] Update `orders.go` complete command: `--order-id` → `--id`
+- [x] Update `orders.go` cancel command: `--order-id` → `--id`
+- [x] Verify CLI commands work with new flag names
 
 ## Acceptance Criteria
 
-- [ ] Single-entity PK operations use `--id`
-- [ ] Multi-entity operations use entity-specific names (`--menu-id`, `--drink-id`)
-- [ ] Inventory commands keep `--ingredient-id` (lookup key, not PK)
-- [ ] All CLI commands work correctly
+- [x] Single-entity PK operations use `--id`
+- [x] Multi-entity operations use entity-specific names (`--menu-id`, `--drink-id`)
+- [x] Inventory commands keep `--ingredient-id` (lookup key, not PK)
+- [x] All CLI commands work correctly
