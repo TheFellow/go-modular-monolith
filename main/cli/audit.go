@@ -60,7 +60,7 @@ func (c *CLI) auditCommands() *cli.Command {
 			{
 				Name:      "actor",
 				Usage:     "List audit entries for an actor",
-				Arguments: []cli.Argument{&cli.StringArgs{Name: "actor", UsageText: "Actor (owner|anonymous) or Entity UID", Min: 1, Max: 1}},
+				Arguments: []cli.Argument{&cli.StringArgs{Name: "actor", UsageText: "Actor (owner|manager|sommelier|bartender|anonymous) or Entity UID", Min: 1, Max: 1}},
 				Flags:     auditHistoryFlags(),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					actorArg := cmd.StringArgs("actor")[0]
@@ -92,7 +92,7 @@ func auditListFlags() []cli.Flag {
 		},
 		&cli.StringFlag{
 			Name:  "principal",
-			Usage: "Filter by principal (owner|anonymous or Type::id)",
+			Usage: "Filter by principal (owner|manager|sommelier|bartender|anonymous or Type::id)",
 		},
 		&cli.StringFlag{
 			Name:  "action",

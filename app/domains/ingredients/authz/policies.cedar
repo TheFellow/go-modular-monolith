@@ -1,33 +1,22 @@
 // app/domains/ingredients/authz/policies.cedar
 
-// Read operations are open for now.
+// Anyone can read ingredients.
 permit(
     principal,
-    action == Mixology::Ingredient::Action::"list",
+    action in [
+        Mixology::Ingredient::Action::"list",
+        Mixology::Ingredient::Action::"get"
+    ],
     resource
 );
 
+// Managers can modify ingredients.
 permit(
-    principal,
-    action == Mixology::Ingredient::Action::"get",
-    resource
-);
-
-// Write operations require an owner principal.
-permit(
-    principal == Mixology::Actor::"owner",
-    action == Mixology::Ingredient::Action::"create",
-    resource
-);
-
-permit(
-    principal == Mixology::Actor::"owner",
-    action == Mixology::Ingredient::Action::"update",
-    resource
-);
-
-permit(
-    principal == Mixology::Actor::"owner",
-    action == Mixology::Ingredient::Action::"delete",
-    resource
+    principal == Mixology::Actor::"manager",
+    action in [
+        Mixology::Ingredient::Action::"create",
+        Mixology::Ingredient::Action::"update",
+        Mixology::Ingredient::Action::"delete"
+    ],
+    resource is Mixology::Ingredient
 );

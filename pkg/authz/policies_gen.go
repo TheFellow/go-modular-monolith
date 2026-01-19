@@ -2,6 +2,7 @@
 package authz
 
 import (
+	auditauthz "github.com/TheFellow/go-modular-monolith/app/domains/audit/authz"
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	inventoryauthz "github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
@@ -12,6 +13,7 @@ import (
 func policyDocuments() []PolicyDocument {
 	return []PolicyDocument{
 		{Name: "pkg/authz/base.cedar", Text: Policies},
+		{Name: "app/domains/audit/authz/policies.cedar", Text: auditauthz.Policies},
 		{Name: "app/domains/drinks/authz/policies.cedar", Text: drinksauthz.Policies},
 		{Name: "app/domains/ingredients/authz/policies.cedar", Text: ingredientsauthz.Policies},
 		{Name: "app/domains/inventory/authz/policies.cedar", Text: inventoryauthz.Policies},

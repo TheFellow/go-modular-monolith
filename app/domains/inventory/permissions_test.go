@@ -7,6 +7,7 @@ import (
 	inventoryM "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
@@ -14,57 +15,57 @@ import (
 func TestPermissions_Inventory(t *testing.T) {
 	t.Parallel()
 
-	t.Run("owner", func(t *testing.T) {
-		t.Parallel()
-		f := testutil.NewFixture(t)
-		a := f.App
-		owner := f.OwnerContext()
-		missingID := entity.NewIngredientID()
+	cases := []struct {
+		name     string
+		canWrite bool
+	}{
+		{name: "owner", canWrite: true},
+		{name: "manager", canWrite: true},
+		{name: "sommelier", canWrite: false},
+		{name: "bartender", canWrite: false},
+		{name: "anonymous", canWrite: false},
+	}
 
-		_, err := a.Inventory.List(owner, inventory.ListRequest{})
-		testutil.PermissionTestPass(t, err)
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			f := testutil.NewFixture(t)
+			a := f.App
+			var ctx *middleware.Context
+			if tc.name == "owner" {
+				ctx = f.OwnerContext()
+			} else {
+				ctx = f.ActorContext(tc.name)
+			}
+			missingID := entity.NewIngredientID()
 
-		_, err = a.Inventory.Get(owner, missingID)
-		testutil.PermissionTestPass(t, err)
+			_, err := a.Inventory.List(ctx, inventory.ListRequest{})
+			testutil.PermissionTestPass(t, err)
 
-		_, err = a.Inventory.Adjust(owner, &inventoryM.Patch{
-			IngredientID: missingID,
-			Delta:        optional.Some(measurement.MustAmount(1, measurement.UnitOz)),
-			Reason:       inventoryM.ReasonCorrected,
+			_, err = a.Inventory.Get(ctx, missingID)
+			testutil.PermissionTestPass(t, err)
+
+			_, err = a.Inventory.Adjust(ctx, &inventoryM.Patch{
+				IngredientID: missingID,
+				Delta:        optional.Some(measurement.MustAmount(1, measurement.UnitOz)),
+				Reason:       inventoryM.ReasonCorrected,
+			})
+			if tc.canWrite {
+				testutil.PermissionTestPass(t, err)
+			} else {
+				testutil.PermissionTestFail(t, err)
+			}
+
+			_, err = a.Inventory.Set(ctx, &inventoryM.Update{
+				IngredientID: missingID,
+				Amount:       measurement.MustAmount(1, measurement.UnitOz),
+			})
+			if tc.canWrite {
+				testutil.PermissionTestPass(t, err)
+			} else {
+				testutil.PermissionTestFail(t, err)
+			}
 		})
-		testutil.PermissionTestPass(t, err)
-
-		_, err = a.Inventory.Set(owner, &inventoryM.Update{
-			IngredientID: missingID,
-			Amount:       measurement.MustAmount(1, measurement.UnitOz),
-		})
-		testutil.PermissionTestPass(t, err)
-	})
-
-	t.Run("anonymous", func(t *testing.T) {
-		t.Parallel()
-		f := testutil.NewFixture(t)
-		a := f.App
-		anon := f.ActorContext("anonymous")
-		missingID := entity.NewIngredientID()
-
-		_, err := a.Inventory.List(anon, inventory.ListRequest{})
-		testutil.PermissionTestPass(t, err)
-
-		_, err = a.Inventory.Get(anon, missingID)
-		testutil.PermissionTestPass(t, err)
-
-		_, err = a.Inventory.Adjust(anon, &inventoryM.Patch{
-			IngredientID: missingID,
-			Delta:        optional.Some(measurement.MustAmount(1, measurement.UnitOz)),
-			Reason:       inventoryM.ReasonCorrected,
-		})
-		testutil.PermissionTestFail(t, err)
-
-		_, err = a.Inventory.Set(anon, &inventoryM.Update{
-			IngredientID: missingID,
-			Amount:       measurement.MustAmount(1, measurement.UnitOz),
-		})
-		testutil.PermissionTestFail(t, err)
-	})
+	}
 }

@@ -3,9 +3,11 @@ package audit
 import (
 	"time"
 
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -19,6 +21,10 @@ type ListRequest struct {
 }
 
 func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.AuditEntry, error) {
+	return middleware.RunQuery(ctx, authz.ActionList, m.list, req)
+}
+
+func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.AuditEntry, error) {
 	filter := dao.ListFilter{
 		Action:        req.Action,
 		Principal:     req.Principal,

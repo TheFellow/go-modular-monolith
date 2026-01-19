@@ -1,23 +1,24 @@
 // app/domains/drinks/authz/policies.cedar
 
-// Read operations are open for now.
+// Anyone can read drinks.
 permit(
     principal,
-    action == Mixology::Drink::Action::"list",
+    action in [
+        Mixology::Drink::Action::"list",
+        Mixology::Drink::Action::"get"
+    ],
     resource
 );
 
+// Managers can manage all drinks.
 permit(
-    principal,
-    action == Mixology::Drink::Action::"get",
-    resource
-);
-
-// Write operations require an owner principal.
-permit(
-    principal == Mixology::Actor::"owner",
-    action == Mixology::Drink::Action::"create",
-    resource
+    principal == Mixology::Actor::"manager",
+    action in [
+        Mixology::Drink::Action::"create",
+        Mixology::Drink::Action::"update",
+        Mixology::Drink::Action::"delete"
+    ],
+    resource is Mixology::Drink
 );
 
 // Sommeliers can manage wine drinks.
@@ -33,23 +34,15 @@ permit(
     resource.Category == "wine"
 };
 
-permit(
-    principal == Mixology::Actor::"owner",
-    action == Mixology::Drink::Action::"update",
-    resource
-);
-
-// Bartenders can update cocktails.
+// Bartenders can manage non-wine drinks.
 permit(
     principal == Mixology::Actor::"bartender",
-    action == Mixology::Drink::Action::"update",
+    action in [
+        Mixology::Drink::Action::"create",
+        Mixology::Drink::Action::"update",
+        Mixology::Drink::Action::"delete"
+    ],
     resource is Mixology::Drink
 ) when {
-    resource.Category == "cocktail"
+    resource.Category != "wine"
 };
-
-permit(
-    principal == Mixology::Actor::"owner",
-    action == Mixology::Drink::Action::"delete",
-    resource
-);

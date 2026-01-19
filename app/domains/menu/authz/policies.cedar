@@ -2,36 +2,21 @@
 
 permit(
     principal,
-    action == Mixology::Menu::Action::"list",
+    action in [
+        Mixology::Menu::Action::"list",
+        Mixology::Menu::Action::"get"
+    ],
     resource
 );
 
+// Managers can manage menus.
 permit(
-    principal,
-    action == Mixology::Menu::Action::"get",
-    resource
-);
-
-permit(
-    principal == Mixology::Actor::"owner",
-    action == Mixology::Menu::Action::"create",
-    resource
-);
-
-permit(
-    principal == Mixology::Actor::"owner",
-    action == Mixology::Menu::Action::"add_drink",
-    resource
-);
-
-permit(
-    principal == Mixology::Actor::"owner",
-    action == Mixology::Menu::Action::"remove_drink",
-    resource
-);
-
-permit(
-    principal == Mixology::Actor::"owner",
-    action == Mixology::Menu::Action::"publish",
-    resource
+    principal == Mixology::Actor::"manager",
+    action in [
+        Mixology::Menu::Action::"create",
+        Mixology::Menu::Action::"add_drink",
+        Mixology::Menu::Action::"remove_drink",
+        Mixology::Menu::Action::"publish"
+    ],
+    resource is Mixology::Menu
 );

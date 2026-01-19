@@ -66,8 +66,9 @@ func (c *CLI) Command() *cli.Command {
 				Sources:     cli.EnvVars("MIXOLOGY_LOG_FORMAT"),
 			},
 			&cli.StringFlag{
-				Name:        "as",
-				Usage:       "Actor to run as (owner|anonymous)",
+				Name:        "actor",
+				Aliases:     []string{"as"},
+				Usage:       "Actor to run as (owner|manager|sommelier|bartender|anonymous)",
 				Value:       c.actor,
 				Destination: &c.actor,
 			},
