@@ -31,8 +31,7 @@ func (c *CLI) auditCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					printAuditEntries(entries)
-					return nil
+					return printAuditEntries(entries)
 				}),
 			},
 			{
@@ -55,8 +54,7 @@ func (c *CLI) auditCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					printAuditEntries(entries)
-					return nil
+					return printAuditEntries(entries)
 				}),
 			},
 			{
@@ -79,8 +77,7 @@ func (c *CLI) auditCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					printAuditEntries(entries)
-					return nil
+					return printAuditEntries(entries)
 				}),
 			},
 		},
@@ -225,10 +222,14 @@ func parseEntityUID(value string) (cedar.EntityUID, error) {
 	return cedar.NewEntityUID(cedar.EntityType(typ), cedar.String(id)), nil
 }
 
-func printAuditEntries(entries []*auditmodels.AuditEntry) {
+func printAuditEntries(entries []*auditmodels.AuditEntry) error {
+	w := newTabWriter()
+	fmt.Fprintln(w, "ID\tSTARTED_AT\tACTION\tRESOURCE\tPRINCIPAL\tSUCCESS\tTOUCHES\tERROR")
 	for _, entry := range entries {
-		fmt.Printf(
-			"%s\t%s\t%s\t%s\t%s\t%t\t%d",
+		errText := entry.Error
+		fmt.Fprintf(
+			w,
+			"%s\t%s\t%s\t%s\t%s\t%t\t%d\t%s\n",
 			entry.ID.String(),
 			entry.StartedAt.Format(time.RFC3339),
 			entry.Action,
@@ -236,10 +237,8 @@ func printAuditEntries(entries []*auditmodels.AuditEntry) {
 			entry.Principal.String(),
 			entry.Success,
 			len(entry.Touches),
+			errText,
 		)
-		if entry.Error != "" {
-			fmt.Printf("\t%s", entry.Error)
-		}
-		fmt.Println()
 	}
+	return w.Flush()
 }

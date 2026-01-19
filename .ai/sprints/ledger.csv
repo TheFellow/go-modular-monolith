@@ -56,3 +56,4 @@ sprint-033d,completed,2026-01-15,2026-01-15,RunCommand helper functions + pointe
 sprint-033e,completed,2026-01-15,2026-01-15,DRY DAO boilerplate with shared context helpers
 sprint-033f,completed,2026-01-18,2026-01-18,Strongly typed entity IDs + CLI boundary parsing
 sprint-033g,completed,2026-01-18,2026-01-18,Code generation for entity ID types
+sprint-033h,completed,2026-01-18,2026-01-18,Tabwriter-aligned CLI output

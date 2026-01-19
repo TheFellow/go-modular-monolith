@@ -89,10 +89,12 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
+					w := newTabWriter()
+					fmt.Fprintln(w, "ID\tMENU_ID\tSTATUS\tCREATED_AT")
 					for _, o := range res {
-						fmt.Printf("%s\t%s\t%s\t%s\n", o.ID.String(), o.MenuID.String(), o.Status, o.CreatedAt.Format(time.RFC3339))
+						fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", o.ID.String(), o.MenuID.String(), o.Status, o.CreatedAt.Format(time.RFC3339))
 					}
-					return nil
+					return w.Flush()
 				}),
 			},
 			{
@@ -111,21 +113,28 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					o := res
-					fmt.Printf("ID:        %s\n", o.ID.String())
-					fmt.Printf("MenuID:    %s\n", o.MenuID.String())
-					fmt.Printf("Status:    %s\n", o.Status)
-					fmt.Printf("CreatedAt: %s\n", o.CreatedAt.Format(time.RFC3339))
+					w := newTabWriter()
+					fmt.Fprintf(w, "ID:\t%s\n", o.ID.String())
+					fmt.Fprintf(w, "Menu ID:\t%s\n", o.MenuID.String())
+					fmt.Fprintf(w, "Status:\t%s\n", o.Status)
+					fmt.Fprintf(w, "Created At:\t%s\n", o.CreatedAt.Format(time.RFC3339))
 					if t, ok := o.CompletedAt.Unwrap(); ok {
-						fmt.Printf("CompletedAt: %s\n", t.Format(time.RFC3339))
+						fmt.Fprintf(w, "Completed At:\t%s\n", t.Format(time.RFC3339))
 					}
 					if o.Notes != "" {
-						fmt.Printf("Notes: %s\n", o.Notes)
+						fmt.Fprintf(w, "Notes:\t%s\n", o.Notes)
 					}
-					fmt.Printf("Items:\n")
+					if err := w.Flush(); err != nil {
+						return err
+					}
+
+					fmt.Println()
+					w = newTabWriter()
+					fmt.Fprintln(w, "DRINK_ID\tQUANTITY")
 					for _, it := range o.Items {
-						fmt.Printf("- %s\t%d\n", it.DrinkID.String(), it.Quantity)
+						fmt.Fprintf(w, "%s\t%d\n", it.DrinkID.String(), it.Quantity)
 					}
-					return nil
+					return w.Flush()
 				}),
 			},
 			{

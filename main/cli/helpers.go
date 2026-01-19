@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"io"
+	"os"
 	"strings"
+	"text/tabwriter"
 	"unicode"
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
@@ -28,6 +30,10 @@ func writeJSON(w io.Writer, v any) error {
 	b = append(b, '\n')
 	_, err = w.Write(b)
 	return err
+}
+
+func newTabWriter() *tabwriter.Writer {
+	return tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 }
 
 func parsePrice(s string) (money.Price, error) {

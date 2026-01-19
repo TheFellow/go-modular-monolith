@@ -61,10 +61,12 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, out)
 					}
 
+					w := newTabWriter()
+					fmt.Fprintln(w, "ID\tNAME")
 					for _, d := range res {
-						fmt.Printf("%s\t%s\n", d.ID.String(), d.Name)
+						fmt.Fprintf(w, "%s\t%s\n", d.ID.String(), d.Name)
 					}
-					return nil
+					return w.Flush()
 				}),
 			},
 			{
@@ -88,8 +90,10 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					fmt.Printf("%s\t%s\n", res.ID.String(), res.Name)
-					return nil
+					w := newTabWriter()
+					fmt.Fprintf(w, "ID:\t%s\n", res.ID.String())
+					fmt.Fprintf(w, "Name:\t%s\n", res.Name)
+					return w.Flush()
 				}),
 			},
 			{

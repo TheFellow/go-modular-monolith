@@ -37,10 +37,12 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return err
 					}
 
+					w := newTabWriter()
+					fmt.Fprintln(w, "ID\tNAME\tCATEGORY\tUNIT")
 					for _, i := range res {
-						fmt.Printf("%s\t%s\t%s\t%s\n", i.ID.String(), i.Name, i.Category, i.Unit)
+						fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", i.ID.String(), i.Name, i.Category, i.Unit)
 					}
-					return nil
+					return w.Flush()
 				}),
 			},
 			{
@@ -60,14 +62,15 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					}
 
 					i := res
-					fmt.Printf("ID:          %s\n", i.ID.String())
-					fmt.Printf("Name:        %s\n", i.Name)
-					fmt.Printf("Category:    %s\n", i.Category)
-					fmt.Printf("Unit:        %s\n", i.Unit)
+					w := newTabWriter()
+					fmt.Fprintf(w, "ID:\t%s\n", i.ID.String())
+					fmt.Fprintf(w, "Name:\t%s\n", i.Name)
+					fmt.Fprintf(w, "Category:\t%s\n", i.Category)
+					fmt.Fprintf(w, "Unit:\t%s\n", i.Unit)
 					if i.Description != "" {
-						fmt.Printf("Description: %s\n", i.Description)
+						fmt.Fprintf(w, "Description:\t%s\n", i.Description)
 					}
-					return nil
+					return w.Flush()
 				}),
 			},
 			{

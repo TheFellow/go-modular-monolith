@@ -53,21 +53,23 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, out)
 					}
 
+					w := newTabWriter()
+					fmt.Fprintln(w, "ID\tNAME\tSTATUS\tITEMS")
 					for _, m := range res {
-						fmt.Printf("%s\t%s\t%s\t%d\n", m.ID.String(), m.Name, m.Status, len(m.Items))
+						fmt.Fprintf(w, "%s\t%s\t%s\t%d\n", m.ID.String(), m.Name, m.Status, len(m.Items))
 						if cmd.Bool("costs") && len(m.Items) > 0 {
 							an, err := menuqueries.NewAnalyticsCalculator().Analyze(ctx, *m, cmd.Float64("target-margin"))
 							if err != nil {
 								return err
 							}
 							if an.AverageMargin != nil {
-								fmt.Printf("\tavailable: %d/%d\tavg margin: %.0f%%\n", an.AvailableCount, an.TotalCount, *an.AverageMargin*100)
+								fmt.Fprintf(w, "\tavailable: %d/%d\tavg margin: %.0f%%\n", an.AvailableCount, an.TotalCount, *an.AverageMargin*100)
 							} else {
-								fmt.Printf("\tavailable: %d/%d\n", an.AvailableCount, an.TotalCount)
+								fmt.Fprintf(w, "\tavailable: %d/%d\n", an.AvailableCount, an.TotalCount)
 							}
 						}
 					}
-					return nil
+					return w.Flush()
 				}),
 			},
 			{
@@ -101,13 +103,17 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					m := *res
-					fmt.Printf("ID:          %s\n", m.ID.String())
-					fmt.Printf("Name:        %s\n", m.Name)
+					w := newTabWriter()
+					fmt.Fprintf(w, "ID:\t%s\n", m.ID.String())
+					fmt.Fprintf(w, "Name:\t%s\n", m.Name)
 					if m.Description != "" {
-						fmt.Printf("Description: %s\n", m.Description)
+						fmt.Fprintf(w, "Description:\t%s\n", m.Description)
 					}
-					fmt.Printf("Status:      %s\n", m.Status)
-					fmt.Printf("Items:\n")
+					fmt.Fprintf(w, "Status:\t%s\n", m.Status)
+					fmt.Fprintf(w, "Items:\t%d\n", len(m.Items))
+					if err := w.Flush(); err != nil {
+						return err
+					}
 
 					if cmd.Bool("costs") {
 						an, err := menuqueries.NewAnalyticsCalculator().Analyze(ctx, m, cmd.Float64("target-margin"))
@@ -115,43 +121,62 @@ func (c *CLI) menuCommands() *cli.Command {
 							return err
 						}
 
-						for _, item := range an.Items {
-							parts := []string{fmt.Sprintf("- %s\t%s", item.DrinkID.String(), item.Name)}
-							if item.Cost == nil || item.CostUnknown {
-								parts = append(parts, "cost: n/a")
-							} else {
-								parts = append(parts, fmt.Sprintf("cost: %s", item.Cost.String()))
-							}
-							if item.MenuPrice != nil {
-								parts = append(parts, fmt.Sprintf("price: %s", item.MenuPrice.String()))
-								if item.Margin != nil {
-									parts = append(parts, fmt.Sprintf("margin: %.0f%%", *item.Margin*100))
+						if len(an.Items) > 0 {
+							fmt.Println()
+							w = newTabWriter()
+							fmt.Fprintln(w, "DRINK_ID\tNAME\tCOST\tPRICE\tMARGIN\tSTATUS")
+							for _, item := range an.Items {
+								cost := "n/a"
+								if item.Cost != nil && !item.CostUnknown {
+									cost = item.Cost.String()
 								}
-							} else if item.SuggestedPrice != nil {
-								parts = append(parts, fmt.Sprintf("suggested: %s", item.SuggestedPrice.String()))
-							}
 
-							status := string(item.Availability)
-							if len(item.Substitutions) > 0 {
-								sub := item.Substitutions[0]
-								status = status + fmt.Sprintf(" (sub: %s for %s)", sub.Substitute.String(), sub.Original.String())
+								price := "n/a"
+								if item.MenuPrice != nil {
+									price = item.MenuPrice.String()
+								} else if item.SuggestedPrice != nil {
+									price = "suggested " + item.SuggestedPrice.String()
+								}
+
+								margin := "n/a"
+								if item.Margin != nil {
+									margin = fmt.Sprintf("%.0f%%", *item.Margin*100)
+								}
+
+								status := string(item.Availability)
+								if len(item.Substitutions) > 0 {
+									sub := item.Substitutions[0]
+									status = status + fmt.Sprintf(" (sub: %s for %s)", sub.Substitute.String(), sub.Original.String())
+								}
+
+								fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", item.DrinkID.String(), item.Name, cost, price, margin, strings.ToUpper(status))
 							}
-							parts = append(parts, fmt.Sprintf("[%s]", strings.ToUpper(status)))
-							fmt.Println(strings.Join(parts, "\t"))
+							if err := w.Flush(); err != nil {
+								return err
+							}
 						}
 
-						fmt.Printf("\nAnalytics:\n")
-						fmt.Printf("  Available: %d/%d\n", an.AvailableCount, an.TotalCount)
+						fmt.Println()
+						fmt.Println("Analytics:")
+						w = newTabWriter()
+						fmt.Fprintf(w, "Available:\t%d/%d\n", an.AvailableCount, an.TotalCount)
 						if an.AverageMargin != nil {
-							fmt.Printf("  Average margin: %.0f%%\n", *an.AverageMargin*100)
+							fmt.Fprintf(w, "Average margin:\t%.0f%%\n", *an.AverageMargin*100)
 						}
+						return w.Flush()
+					}
+
+					if len(m.Items) == 0 {
 						return nil
 					}
 
+					fmt.Println()
+					w = newTabWriter()
+					fmt.Fprintln(w, "DRINK_ID\tAVAILABILITY")
 					for _, item := range m.Items {
-						fmt.Printf("- %s\t%s\n", item.DrinkID.String(), item.Availability)
+						fmt.Fprintf(w, "%s\t%s\n", item.DrinkID.String(), item.Availability)
 					}
-					return nil
+					return w.Flush()
 				}),
 			},
 			{

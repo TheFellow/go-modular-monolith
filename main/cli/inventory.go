@@ -40,10 +40,12 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return err
 					}
 
+					w := newTabWriter()
+					fmt.Fprintln(w, "INGREDIENT_ID\tQUANTITY\tUNIT")
 					for _, s := range res {
-						fmt.Printf("%s\t%.2f\t%s\n", s.IngredientID.String(), s.Quantity, s.Unit)
+						fmt.Fprintf(w, "%s\t%.2f\t%s\n", s.IngredientID.String(), s.Quantity, s.Unit)
 					}
-					return nil
+					return w.Flush()
 				}),
 			},
 			{
@@ -63,8 +65,11 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					s := res
-					fmt.Printf("%s\t%.2f\t%s\n", s.IngredientID.String(), s.Quantity, s.Unit)
-					return nil
+					w := newTabWriter()
+					fmt.Fprintf(w, "Ingredient ID:\t%s\n", s.IngredientID.String())
+					fmt.Fprintf(w, "Quantity:\t%.2f\n", s.Quantity)
+					fmt.Fprintf(w, "Unit:\t%s\n", s.Unit)
+					return w.Flush()
 				}),
 			},
 			{
