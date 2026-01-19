@@ -31,6 +31,9 @@ func (c *CLI) auditCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, entries)
+					}
 					return printAuditEntries(entries)
 				}),
 			},
@@ -86,6 +89,7 @@ func (c *CLI) auditCommands() *cli.Command {
 
 func auditListFlags() []cli.Flag {
 	return []cli.Flag{
+		JSONFlag,
 		&cli.StringFlag{
 			Name:  "entity",
 			Usage: "Filter by entity (Type::id)",

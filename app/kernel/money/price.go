@@ -17,15 +17,11 @@ type Price struct {
 }
 
 func NewPrice(amount string, curr currency.Currency) (Price, error) {
-	parsed, err := currency.FromCode(curr.Code)
-	if err != nil {
-		return Price{}, err
-	}
 	d, err := decimal.Parse(strings.TrimSpace(amount))
 	if err != nil {
 		return Price{}, errors.Invalidf("invalid amount: %w", err)
 	}
-	p := Price{Amount: d, Currency: parsed}
+	p := Price{Amount: d, Currency: curr}
 	return p, p.Validate()
 }
 
@@ -34,11 +30,7 @@ func NewPriceFromCents(cents int, curr currency.Currency) Price {
 	if err != nil {
 		return Price{}
 	}
-	parsed, err := currency.FromCode(curr.Code)
-	if err != nil {
-		return Price{}
-	}
-	return Price{Amount: d, Currency: parsed}
+	return Price{Amount: d, Currency: curr}
 }
 
 func (p Price) Validate() error {

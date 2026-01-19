@@ -21,6 +21,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List ingredients",
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.StringFlag{
 						Name:    "category",
 						Aliases: []string{"c"},
@@ -38,6 +39,10 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return err
 					}
 
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, res)
+					}
+
 					w := newTabWriter()
 					fmt.Fprintln(w, "ID\tNAME\tCATEGORY\tUNIT")
 					for _, i := range res {
@@ -50,6 +55,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Name:  "get",
 				Usage: "Get an ingredient by ID",
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Ingredient ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -60,6 +66,10 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					res, err := c.app.Ingredients.Get(ctx, ingredientID)
 					if err != nil {
 						return err
+					}
+
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, res)
 					}
 
 					i := res
@@ -81,6 +91,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					&cli.StringArgs{Name: "name", UsageText: "Ingredient name", Min: 1, Max: 1},
 				},
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.StringFlag{
 						Name:     "category",
 						Aliases:  []string{"c"},
@@ -117,7 +128,11 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%s\t%s\t%s\n", res.ID.String(), res.Name, res.Category, res.Unit)
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, res)
+					}
+
+					fmt.Println(res.ID.String())
 					return nil
 				}),
 			},
@@ -125,6 +140,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Name:  "update",
 				Usage: "Update an ingredient",
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Ingredient ID", Required: true},
 					&cli.StringFlag{
 						Name:    "name",
@@ -169,7 +185,11 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%s\t%s\t%s\n", res.ID.String(), res.Name, res.Category, res.Unit)
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, res)
+					}
+
+					fmt.Println(res.ID.String())
 					return nil
 				}),
 			},
@@ -177,6 +197,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Name:  "delete",
 				Usage: "Delete an ingredient by ID",
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Ingredient ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -189,7 +210,11 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("deleted %s\t%s\n", res.ID.String(), res.Name)
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, res)
+					}
+
+					fmt.Println(res.ID.String())
 					return nil
 				}),
 			},

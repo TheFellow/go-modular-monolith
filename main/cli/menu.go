@@ -197,7 +197,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*created))
 					}
 
-					fmt.Printf("%s\t%s\n", created.ID.String(), created.Name)
+					fmt.Println(created.ID.String())
 					return nil
 				}),
 			},
@@ -230,7 +230,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
 					}
 
-					fmt.Printf("%s\t%s\t%d\n", updated.ID.String(), updated.Name, len(updated.Items))
+					fmt.Println(updated.ID.String())
 					return nil
 				}),
 			},
@@ -263,7 +263,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
 					}
 
-					fmt.Printf("%s\t%s\t%d\n", updated.ID.String(), updated.Name, len(updated.Items))
+					fmt.Println(updated.ID.String())
 					return nil
 				}),
 			},
@@ -288,7 +288,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*published))
 					}
 
-					fmt.Printf("%s\t%s\t%s\n", published.ID.String(), published.Name, published.Status)
+					fmt.Println(published.ID.String())
 					return nil
 				}),
 			},

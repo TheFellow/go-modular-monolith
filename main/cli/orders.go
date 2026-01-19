@@ -25,6 +25,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 					&cli.StringArgs{Name: "items", UsageText: "<drink-id>:<qty> [<drink-id>:<qty>...]", Min: 1, Max: 0},
 				},
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -62,7 +63,11 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%s\t%s\t%d\n", created.ID.String(), created.MenuID.String(), created.Status, len(created.Items))
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, created)
+					}
+
+					fmt.Println(created.ID.String())
 					return nil
 				}),
 			},
@@ -70,6 +75,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List orders",
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.StringFlag{
 						Name:  "status",
 						Usage: "Filter by status (pending|preparing|completed|cancelled)",
@@ -89,6 +95,9 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, res)
+					}
 					w := newTabWriter()
 					fmt.Fprintln(w, "ID\tMENU_ID\tSTATUS\tCREATED_AT")
 					for _, o := range res {
@@ -101,6 +110,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "get",
 				Usage: "Get an order",
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -111,6 +121,9 @@ func (c *CLI) ordersCommands() *cli.Command {
 					res, err := c.app.Orders.Get(ctx, orderID)
 					if err != nil {
 						return err
+					}
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, res)
 					}
 					o := res
 					w := newTabWriter()
@@ -141,6 +154,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "complete",
 				Usage: "Complete an order",
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -152,7 +166,10 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					fmt.Printf("%s\t%s\n", updated.ID.String(), updated.Status)
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, updated)
+					}
+					fmt.Println(updated.ID.String())
 					return nil
 				}),
 			},
@@ -160,6 +177,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "cancel",
 				Usage: "Cancel an order",
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -171,7 +189,10 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					fmt.Printf("%s\t%s\n", updated.ID.String(), updated.Status)
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, updated)
+					}
+					fmt.Println(updated.ID.String())
 					return nil
 				}),
 			},

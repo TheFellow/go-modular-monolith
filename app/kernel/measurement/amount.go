@@ -61,7 +61,7 @@ func NewAmount(value float64, unit Unit) (Amount, error) {
 		}
 		return NewDiscreteAmount(d), nil
 	default:
-		return nil, errors.Invalidf("unknown unit: %s", unit)
+		panic("unreachable")
 	}
 }
 

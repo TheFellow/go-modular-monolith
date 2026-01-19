@@ -127,7 +127,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					fmt.Printf("%s\t%s\n", res.ID.String(), res.Name)
+					fmt.Println(res.ID.String())
 					return nil
 				}),
 			},
@@ -162,7 +162,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					fmt.Printf("%s\t%s\n", res.ID.String(), res.Name)
+					fmt.Println(res.ID.String())
 					return nil
 				}),
 			},
@@ -187,7 +187,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					fmt.Printf("deleted %s\t%s\n", res.ID.String(), res.Name)
+					fmt.Println(res.ID.String())
 					return nil
 				}),
 			},

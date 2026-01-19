@@ -25,6 +25,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List stock levels",
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.Float64Flag{
 						Name:  "low-stock",
 						Usage: "Show items with amount <= threshold (per item unit)",
@@ -41,6 +42,10 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return err
 					}
 
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, res)
+					}
+
 					w := newTabWriter()
 					fmt.Fprintln(w, "INGREDIENT_ID\tQUANTITY\tUNIT")
 					for _, s := range res {
@@ -53,6 +58,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Name:  "get",
 				Usage: "Get stock for an ingredient",
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.StringFlag{Name: "ingredient-id", Usage: "Ingredient ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -63,6 +69,10 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					res, err := c.app.Inventory.Get(ctx, ingredientID)
 					if err != nil {
 						return err
+					}
+
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, res)
 					}
 
 					s := res
@@ -77,6 +87,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Name:  "adjust",
 				Usage: "Patch stock quantity and/or cost",
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.StringFlag{Name: "ingredient-id", Usage: "Ingredient ID", Required: true},
 					&cli.StringFlag{Name: "delta", Usage: "Delta (+/-) in ingredient unit"},
 					&cli.StringFlag{
@@ -140,7 +151,11 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%.2f\t%s\n", res.IngredientID.String(), res.Amount.Value(), res.Amount.Unit())
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, res)
+					}
+
+					fmt.Println(res.IngredientID.String())
 					return nil
 				}),
 			},
@@ -148,6 +163,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Name:  "set",
 				Usage: "Set stock quantity",
 				Flags: []cli.Flag{
+					JSONFlag,
 					&cli.StringFlag{Name: "ingredient-id", Usage: "Ingredient ID", Required: true},
 					&cli.Float64Flag{Name: "quantity", Usage: "Quantity in ingredient unit", Required: true},
 					&cli.StringFlag{
@@ -185,7 +201,11 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return err
 					}
 
-					fmt.Printf("%s\t%.2f\t%s\n", res.IngredientID.String(), res.Amount.Value(), res.Amount.Unit())
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, res)
+					}
+
+					fmt.Println(res.IngredientID.String())
 					return nil
 				}),
 			},
