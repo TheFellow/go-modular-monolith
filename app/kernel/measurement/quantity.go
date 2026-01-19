@@ -50,6 +50,8 @@ func (q Quantity) Value() float64 {
 		return q.Volume.Oz()
 	case UnitCl:
 		return q.Volume.Cl()
+	case UnitMl, UnitDash, UnitPiece, UnitSplash:
+		return q.Volume.Ml()
 	default:
 		return q.Volume.Ml()
 	}
