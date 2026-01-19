@@ -231,67 +231,67 @@ func (d *DAO) Get(ctx dao.Context, id entity.DrinkID) (*models.Drink, error) {
 
 ### Phase 1: Define ID Types
 
-- [ ] Update `entity/drink.go` with `DrinkID` type and methods
-- [ ] Update `entity/ingredient.go` with `IngredientID` type and methods
-- [ ] Update `entity/menu.go` with `MenuID` type and methods
-- [ ] Update `entity/order.go` with `OrderID` type and methods
-- [ ] Update `entity/inventory.go` with `InventoryID` type and methods
-- [ ] Update `entity/audit.go` with `ActivityID` type and methods
+- [x] Update `entity/drink.go` with `DrinkID` type and methods
+- [x] Update `entity/ingredient.go` with `IngredientID` type and methods
+- [x] Update `entity/menu.go` with `MenuID` type and methods
+- [x] Update `entity/order.go` with `OrderID` type and methods
+- [x] Update `entity/inventory.go` with `InventoryID` type and methods
+- [x] Update `entity/audit.go` with `ActivityID` type and methods
 
 ### Phase 2: Update Models
 
-- [ ] Update `drinks/models/drink.go` to use `entity.DrinkID`
-- [ ] Update `drinks/models/recipe.go` to use `entity.IngredientID`
-- [ ] Update `ingredients/models/ingredient.go` to use `entity.IngredientID`
-- [ ] Update `menu/models/menu.go` to use `entity.MenuID`
-- [ ] Update `orders/models/order.go` to use `entity.OrderID`
-- [ ] Update `inventory/models/stock.go` to use `entity.InventoryID`
-- [ ] Update `audit/models/activity.go` to use `entity.ActivityID`
+- [x] Update `drinks/models/drink.go` to use `entity.DrinkID`
+- [x] Update `drinks/models/recipe.go` to use `entity.IngredientID`
+- [x] Update `ingredients/models/ingredient.go` to use `entity.IngredientID`
+- [x] Update `menu/models/menu.go` to use `entity.MenuID`
+- [x] Update `orders/models/order.go` to use `entity.OrderID`
+- [x] Update `inventory/models/stock.go` to use `entity.InventoryID`
+- [x] Update `audit/models/activity.go` to use `entity.ActivityID`
 
 ### Phase 3: Update DAOs
 
-- [ ] Update drinks DAO method signatures
-- [ ] Update ingredients DAO method signatures
-- [ ] Update menu DAO method signatures
-- [ ] Update orders DAO method signatures
-- [ ] Update inventory DAO method signatures
-- [ ] Update audit DAO method signatures
+- [x] Update drinks DAO method signatures
+- [x] Update ingredients DAO method signatures
+- [x] Update menu DAO method signatures
+- [x] Update orders DAO method signatures
+- [x] Update inventory DAO method signatures
+- [x] Update audit DAO method signatures
 
 ### Phase 4: Update Module Methods
 
-- [ ] Update drinks module method signatures
-- [ ] Update ingredients module method signatures
-- [ ] Update menu module method signatures
-- [ ] Update orders module method signatures
-- [ ] Update inventory module method signatures
+- [x] Update drinks module method signatures
+- [x] Update ingredients module method signatures
+- [x] Update menu module method signatures
+- [x] Update orders module method signatures
+- [x] Update inventory module method signatures
 
 ### Phase 5: Update Commands
 
-- [ ] Update drinks commands
-- [ ] Update ingredients commands
-- [ ] Update menu commands
-- [ ] Update orders commands
-- [ ] Update inventory commands
+- [x] Update drinks commands
+- [x] Update ingredients commands
+- [x] Update menu commands
+- [x] Update orders commands
+- [x] Update inventory commands
 
 ### Phase 6: Remove Unnecessary Guards
 
-- [ ] Audit for runtime type checks that are now compile-time guarantees
-- [ ] Remove redundant guards
+- [x] Audit for runtime type checks that are now compile-time guarantees
+- [x] Remove redundant guards
 
 ### Phase 7: Verify
 
-- [ ] Run `go test ./...` and fix any issues
+- [x] Run `go test ./...` and fix any issues
 
 ## Acceptance Criteria
 
-- [ ] Each entity has a distinct ID type
-- [ ] Models use strongly-typed IDs
-- [ ] DAOs accept strongly-typed IDs
-- [ ] Module methods accept strongly-typed IDs
-- [ ] Cross-domain references use correct ID types
-- [ ] Compiler catches ID type mismatches
-- [ ] Runtime type guards removed where redundant
-- [ ] All tests pass
+- [x] Each entity has a distinct ID type
+- [x] Models use strongly-typed IDs
+- [x] DAOs accept strongly-typed IDs
+- [x] Module methods accept strongly-typed IDs
+- [x] Cross-domain references use correct ID types
+- [x] Compiler catches ID type mismatches
+- [x] Runtime type guards removed where redundant
+- [x] All tests pass
 
 ## Result
 

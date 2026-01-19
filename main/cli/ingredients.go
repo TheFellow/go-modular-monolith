@@ -6,6 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	ingredientscli "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/cli"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -45,12 +46,11 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 			{
 				Name:  "get",
 				Usage: "Get an ingredient by ID",
-				Arguments: []cli.Argument{
-					&cli.StringArg{Name: "id", UsageText: "Ingredient ID"},
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "id", Usage: "Ingredient ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					id := cmd.StringArgs("id")[0]
-					ingredientID, err := parseIngredientID(id)
+					ingredientID, err := entity.ParseIngredientID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
@@ -120,10 +120,8 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 			{
 				Name:  "update",
 				Usage: "Update an ingredient",
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "id", UsageText: "Ingredient ID", Min: 1, Max: 1},
-				},
 				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "id", Usage: "Ingredient ID", Required: true},
 					&cli.StringFlag{
 						Name:    "name",
 						Aliases: []string{"n"},
@@ -152,7 +150,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					ingredientID, err := parseIngredientID(cmd.StringArgs("id")[0])
+					ingredientID, err := entity.ParseIngredientID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
@@ -174,12 +172,11 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 			{
 				Name:  "delete",
 				Usage: "Delete an ingredient by ID",
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "id", UsageText: "Ingredient ID", Min: 1, Max: 1},
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "id", Usage: "Ingredient ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					id := cmd.StringArgs("id")[0]
-					ingredientID, err := parseIngredientID(id)
+					ingredientID, err := entity.ParseIngredientID(cmd.String("id"))
 					if err != nil {
 						return err
 					}

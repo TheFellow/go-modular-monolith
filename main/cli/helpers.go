@@ -6,7 +6,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/urfave/cli/v3"
@@ -68,52 +67,4 @@ func isCurrency(s string) bool {
 		}
 	}
 	return true
-}
-
-func parseDrinkID(value string) (entity.DrinkID, error) {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return entity.DrinkID{}, errors.Invalidf("drink id is required")
-	}
-	id, err := entity.ParseDrinkID(value)
-	if err != nil {
-		return entity.DrinkID{}, err
-	}
-	return id, nil
-}
-
-func parseIngredientID(value string) (entity.IngredientID, error) {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return entity.IngredientID{}, errors.Invalidf("ingredient id is required")
-	}
-	id, err := entity.ParseIngredientID(value)
-	if err != nil {
-		return entity.IngredientID{}, err
-	}
-	return id, nil
-}
-
-func parseMenuID(value string) (entity.MenuID, error) {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return entity.MenuID{}, errors.Invalidf("menu id is required")
-	}
-	id, err := entity.ParseMenuID(value)
-	if err != nil {
-		return entity.MenuID{}, err
-	}
-	return id, nil
-}
-
-func parseOrderID(value string) (entity.OrderID, error) {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return entity.OrderID{}, errors.Invalidf("order id is required")
-	}
-	id, err := entity.ParseOrderID(value)
-	if err != nil {
-		return entity.OrderID{}, err
-	}
-	return id, nil
 }

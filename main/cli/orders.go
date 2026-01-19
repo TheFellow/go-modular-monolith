@@ -8,6 +8,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -21,17 +22,20 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "place",
 				Usage: "Place an order",
 				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "args", UsageText: "<menu-id> <drink-id>:<qty> [<drink-id>:<qty>...]", Min: 2, Max: 0},
+					&cli.StringArgs{Name: "items", UsageText: "<drink-id>:<qty> [<drink-id>:<qty>...]", Min: 1, Max: 0},
+				},
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					args := cmd.StringArgs("args")
-					menuID, err := parseMenuID(args[0])
+					menuID, err := entity.ParseMenuID(cmd.String("menu-id"))
 					if err != nil {
 						return err
 					}
 
-					items := make([]ordersmodels.OrderItem, 0, len(args)-1)
-					for _, spec := range args[1:] {
+					args := cmd.StringArgs("items")
+					items := make([]ordersmodels.OrderItem, 0, len(args))
+					for _, spec := range args {
 						parts := strings.SplitN(spec, ":", 2)
 						if len(parts) != 2 {
 							return fmt.Errorf("invalid item %q (expected drink-id:qty)", spec)
@@ -40,7 +44,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						if err != nil || qty <= 0 {
 							return fmt.Errorf("invalid quantity in %q", spec)
 						}
-						drinkID, err := parseDrinkID(parts[0])
+						drinkID, err := entity.ParseDrinkID(parts[0])
 						if err != nil {
 							return err
 						}
@@ -94,12 +98,11 @@ func (c *CLI) ordersCommands() *cli.Command {
 			{
 				Name:  "get",
 				Usage: "Get an order",
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "order_id", UsageText: "Order ID", Min: 1, Max: 1},
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "order-id", Usage: "Order ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					id := cmd.StringArgs("order_id")[0]
-					orderID, err := parseOrderID(id)
+					orderID, err := entity.ParseOrderID(cmd.String("order-id"))
 					if err != nil {
 						return err
 					}
@@ -128,12 +131,11 @@ func (c *CLI) ordersCommands() *cli.Command {
 			{
 				Name:  "complete",
 				Usage: "Complete an order",
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "order_id", UsageText: "Order ID", Min: 1, Max: 1},
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "order-id", Usage: "Order ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					id := cmd.StringArgs("order_id")[0]
-					orderID, err := parseOrderID(id)
+					orderID, err := entity.ParseOrderID(cmd.String("order-id"))
 					if err != nil {
 						return err
 					}
@@ -148,12 +150,11 @@ func (c *CLI) ordersCommands() *cli.Command {
 			{
 				Name:  "cancel",
 				Usage: "Cancel an order",
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "order_id", UsageText: "Order ID", Min: 1, Max: 1},
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "order-id", Usage: "Order ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					id := cmd.StringArgs("order_id")[0]
-					orderID, err := parseOrderID(id)
+					orderID, err := entity.ParseOrderID(cmd.String("order-id"))
 					if err != nil {
 						return err
 					}

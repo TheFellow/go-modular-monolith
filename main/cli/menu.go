@@ -8,6 +8,7 @@ import (
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
 	menuqueries "github.com/TheFellow/go-modular-monolith/app/domains/menu/queries"
 	menucli "github.com/TheFellow/go-modular-monolith/app/domains/menu/surfaces/cli"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -72,13 +73,14 @@ func (c *CLI) menuCommands() *cli.Command {
 			{
 				Name:  "show",
 				Usage: "Show a menu",
-				Flags: []cli.Flag{JSONFlag, CostsFlag, TargetMarginFlag},
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "menu_id", UsageText: "Menu ID", Min: 1, Max: 1},
+				Flags: []cli.Flag{
+					JSONFlag,
+					CostsFlag,
+					TargetMarginFlag,
+					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					id := cmd.StringArgs("menu_id")[0]
-					menuID, err := parseMenuID(id)
+					menuID, err := entity.ParseMenuID(cmd.String("menu-id"))
 					if err != nil {
 						return err
 					}
@@ -177,17 +179,17 @@ func (c *CLI) menuCommands() *cli.Command {
 			{
 				Name:  "add-drink",
 				Usage: "Add a drink to a menu",
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "menu_id", UsageText: "Menu ID", Min: 1, Max: 1},
-					&cli.StringArgs{Name: "drink_id", UsageText: "Drink ID", Min: 1, Max: 1},
+				Flags: []cli.Flag{
+					JSONFlag,
+					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
+					&cli.StringFlag{Name: "drink-id", Usage: "Drink ID", Required: true},
 				},
-				Flags: []cli.Flag{JSONFlag},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					menuID, err := parseMenuID(cmd.StringArgs("menu_id")[0])
+					menuID, err := entity.ParseMenuID(cmd.String("menu-id"))
 					if err != nil {
 						return err
 					}
-					drinkID, err := parseDrinkID(cmd.StringArgs("drink_id")[0])
+					drinkID, err := entity.ParseDrinkID(cmd.String("drink-id"))
 					if err != nil {
 						return err
 					}
@@ -210,17 +212,17 @@ func (c *CLI) menuCommands() *cli.Command {
 			{
 				Name:  "remove-drink",
 				Usage: "Remove a drink from a menu",
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "menu_id", UsageText: "Menu ID", Min: 1, Max: 1},
-					&cli.StringArgs{Name: "drink_id", UsageText: "Drink ID", Min: 1, Max: 1},
+				Flags: []cli.Flag{
+					JSONFlag,
+					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
+					&cli.StringFlag{Name: "drink-id", Usage: "Drink ID", Required: true},
 				},
-				Flags: []cli.Flag{JSONFlag},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					menuID, err := parseMenuID(cmd.StringArgs("menu_id")[0])
+					menuID, err := entity.ParseMenuID(cmd.String("menu-id"))
 					if err != nil {
 						return err
 					}
-					drinkID, err := parseDrinkID(cmd.StringArgs("drink_id")[0])
+					drinkID, err := entity.ParseDrinkID(cmd.String("drink-id"))
 					if err != nil {
 						return err
 					}
@@ -243,12 +245,12 @@ func (c *CLI) menuCommands() *cli.Command {
 			{
 				Name:  "publish",
 				Usage: "Publish a menu",
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "menu_id", UsageText: "Menu ID", Min: 1, Max: 1},
+				Flags: []cli.Flag{
+					JSONFlag,
+					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
 				},
-				Flags: []cli.Flag{JSONFlag},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					menuID, err := parseMenuID(cmd.StringArgs("menu_id")[0])
+					menuID, err := entity.ParseMenuID(cmd.String("menu-id"))
 					if err != nil {
 						return err
 					}

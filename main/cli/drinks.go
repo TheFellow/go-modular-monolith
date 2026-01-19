@@ -10,6 +10,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	drinkscli "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/cli"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -69,13 +70,12 @@ func (c *CLI) drinksCommands() *cli.Command {
 			{
 				Name:  "get",
 				Usage: "Get a drink by ID",
-				Flags: []cli.Flag{JSONFlag},
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "id", UsageText: "Drink ID", Min: 1, Max: 1},
+				Flags: []cli.Flag{
+					JSONFlag,
+					&cli.StringFlag{Name: "id", Usage: "Drink ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					id := cmd.StringArgs("id")[0]
-					drinkID, err := parseDrinkID(id)
+					drinkID, err := entity.ParseDrinkID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
@@ -165,13 +165,12 @@ func (c *CLI) drinksCommands() *cli.Command {
 			{
 				Name:  "delete",
 				Usage: "Delete a drink by ID",
-				Flags: []cli.Flag{JSONFlag},
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "id", UsageText: "Drink ID", Min: 1, Max: 1},
+				Flags: []cli.Flag{
+					JSONFlag,
+					&cli.StringFlag{Name: "id", Usage: "Drink ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					id := cmd.StringArgs("id")[0]
-					drinkID, err := parseDrinkID(id)
+					drinkID, err := entity.ParseDrinkID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
