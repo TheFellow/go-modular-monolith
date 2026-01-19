@@ -15,7 +15,7 @@ func TestPriceValidate(t *testing.T) {
 	if err := (money.NewPriceFromCents(100, currency.USD)).Validate(); err != nil {
 		t.Fatalf("expected valid, got %v", err)
 	}
-	if err := (money.Price{Amount: decimal.MustNew(-1, 0), Currency: currency.MustParseCode("USD")}).Validate(); !errors.IsInvalid(err) {
+	if err := (money.Price{Amount: decimal.MustNew(-1, 0), Currency: currency.USD}).Validate(); !errors.IsInvalid(err) {
 		t.Fatalf("expected invalid, got %v", err)
 	}
 }
