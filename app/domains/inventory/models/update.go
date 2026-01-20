@@ -14,7 +14,7 @@ type Update struct {
 }
 
 func (u Update) EntityUID() cedar.EntityUID {
-	return NewInventoryID(u.IngredientID).EntityUID()
+	return cedar.NewEntityUID(InventoryEntityType, cedar.String(""))
 }
 
 func (u Update) CedarEntity() cedar.Entity {

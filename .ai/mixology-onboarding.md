@@ -18,6 +18,12 @@ Business logic lives here. Each domain (e.g., `drinks`, `inventory`, `orders`) i
 *   **Rule:** Domains **never** import other domains' internals (DAOs, commands).
 *   **Rule:** Domains communicate **only** via the public API (Queries) or Events.
 
+### The "Nervous System": Kernel Primitives (`app/kernel/*`)
+We use a shared kernel to provide a common vocabulary across domains for non-business-specific logic.
+*   **Money:** The `money` package uses a decimal-based `Price` struct (backed by `govalues/decimal`) to ensure exact calculations and avoid floating-point errors.
+*   **Measurement:** The `measurement` package provides an `Amount` interface that handles both volume-based (e.g., `ml`, `oz`) and discrete (e.g., `piece`, `splash`) quantities, including conversion logic.
+*   **Entity Identity:** Standardized ID types (e.g., `DrinkID`, `IngredientID`) that wrap `cedar.EntityUID` to ensure type safety across the entire stack.
+
 ## 2. Core Concepts & Patterns
 
 ### Event-Driven Communication
@@ -35,8 +41,9 @@ We use **bstore** (backed by bbolt) for embedded, ACID-compliant storage.
 *   **Why?** It keeps the demo zero-dependency while behaving like a real database (transactions, indexes).
 *   **Pattern:** All write operations run inside a `UnitOfWork`. If an event handler fails, the entire transaction (command + events) rolls back.
 
-### Authorization: ABAC & "Dual-State"
-We use **Cedar** for Attribute-Based Access Control.
+### Authorization: RBAC & ABAC
+We use **Cedar** for both Role-Based and Attribute-Based Access Control.
+*   **Specialized Actors:** The system defines specific roles: `owner` (full access), `manager` (operational management), `sommelier` (wine-specific), `bartender` (orders & non-wine), and `anonymous` (read-only).
 *   **The "Dual-State" Check:** Authorization is tricky in a mutable system. If you change a "Wine" (which you *can* edit) to a "Cocktail" (which you *can't*), when do we check?
     *   **IN Check:** Are you allowed to touch the *current* state?
     *   **OUT Check:** Are you allowed to create the *resulting* state?
@@ -45,19 +52,21 @@ We use **Cedar** for Attribute-Based Access Control.
 ## 3. Developer Workflow
 
 ### Adding a New Feature
-1.  **Define the Model:** Start in `app/<domain>/models`. What does the data look like?
-2.  **Define the Persistence:** Update `internal/dao`. mapping the model to a `bstore` row.
+1.  **Define the Model:** Start in `app/<domain>/models`. What does the data look like? Use kernel primitives like `Price` or `Amount` where appropriate.
+2.  **Define the Persistence:** Update `internal/dao`, mapping the model to a `bstore` row.
 3.  **Implement the Logic:**
     *   **Reading?** Add a `Query`. Return `*Model` (use `nil` for not found).
     *   **Writing?** Add a `Command`. Take a full model, return a full model.
 4.  **Expose it:** Wire it up in `module.go`.
 
 ### Key Conventions
-*   **Return Pointers:** methods return `*Drink`, not `Drink`. This allows clear `nil` checks for "Not Found" rather than checking for empty structs.
+*   **Return Pointers:** Methods return `*Drink`, not `Drink`. This allows clear `nil` checks for "Not Found" rather than checking for empty structs.
 *   **Soft Deletes:** We rarely hard-delete. Use `DeletedAt`. The framework handles filtering these out by default.
 *   **Observability:** Don't add logs to your business logic. The middleware handles request logging. Only log warnings/errors that are specific to internal logic flow.
+*   **CLI Consistency:** CLI mutations should output only the resulting entity ID. Read commands (get/list) should support a `--json` flag for machine-readable output.
 
 ## 4. Where to Start?
 *   **`app/drinks/`**: The reference domain. It implements the standard patterns cleanest.
+*   **`app/kernel/`**: Core primitives used by all domains.
 *   **`pkg/middleware/`**: The infrastructure code. Look here to understand how auth and transactions work.
 *   **`main/cli/`**: The entry point. See how commands are constructed and executed.

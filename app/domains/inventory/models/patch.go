@@ -19,7 +19,7 @@ func (p Patch) EntityUID() cedar.EntityUID {
 	_ = p.Reason
 	_ = p.Delta
 	_ = p.CostPerUnit
-	return NewInventoryID(p.IngredientID).EntityUID()
+	return cedar.NewEntityUID(InventoryEntityType, cedar.String(""))
 }
 
 func (p Patch) CedarEntity() cedar.Entity {

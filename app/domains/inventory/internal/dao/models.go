@@ -9,6 +9,7 @@ import (
 
 type StockRow struct {
 	IngredientID string
+	InventoryID  string
 	Quantity     float64
 	Unit         string
 	CostPerUnit  optional.Value[money.Price]

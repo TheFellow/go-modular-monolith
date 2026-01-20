@@ -184,11 +184,8 @@ const (
 type InventoryID cedar.EntityUID
 
 // NewInventoryID generates a new InventoryID.
-func NewInventoryID(source IngredientID) InventoryID {
-	if source.IsZero() {
-		return InventoryID(cedar.NewEntityUID(TypeInventory, cedar.String("")))
-	}
-	return InventoryID(cedar.NewEntityUID(TypeInventory, cedar.String(PrefixInventory+"-"+source.String())))
+func NewInventoryID() InventoryID {
+	return InventoryID(NewID(TypeInventory, PrefixInventory))
 }
 
 // ParseInventoryID creates a InventoryID from a string.

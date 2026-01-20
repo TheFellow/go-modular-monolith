@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -40,12 +41,16 @@ func (c *Commands) Set(ctx *middleware.Context, update *models.Update) (*models.
 			return nil, err
 		}
 		updated = models.Inventory{
+			ID:           entity.NewInventoryID(),
 			IngredientID: update.IngredientID,
 			Amount:       measurement.MustAmount(0, ingredient.Unit),
 			LastUpdated:  time.Time{},
 		}
 	} else {
 		updated = *existing
+	}
+	if updated.ID.IsZero() {
+		updated.ID = entity.NewInventoryID()
 	}
 
 	updated.IngredientID = update.IngredientID

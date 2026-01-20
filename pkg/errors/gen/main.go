@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"embed"
 	"flag"
 	"go/format"
 	"os"
@@ -10,6 +11,9 @@ import (
 
 	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
+
+//go:embed errors.go.tpl testutil.go.tpl
+var templates embed.FS
 
 func main() {
 	var out string
@@ -30,7 +34,7 @@ func main() {
 }
 
 func generate(wd, tplFile, outFile string, data any) {
-	tmplBytes, err := os.ReadFile(filepath.Join(wd, "internal", "gen", tplFile))
+	tmplBytes, err := templates.ReadFile(tplFile)
 	must(err)
 
 	tmpl, err := template.New("gen").Parse(string(tmplBytes))

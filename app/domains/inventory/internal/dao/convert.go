@@ -10,6 +10,7 @@ import (
 func toRow(s inventorymodels.Inventory) StockRow {
 	return StockRow{
 		IngredientID: s.IngredientID.String(),
+		InventoryID:  s.ID.String(),
 		Quantity:     s.Amount.Value(),
 		Unit:         string(s.Amount.Unit()),
 		CostPerUnit:  s.CostPerUnit,
@@ -19,6 +20,7 @@ func toRow(s inventorymodels.Inventory) StockRow {
 
 func toModel(r StockRow) inventorymodels.Inventory {
 	return inventorymodels.Inventory{
+		ID:           entity.InventoryID(cedar.NewEntityUID(entity.TypeInventory, cedar.String(r.InventoryID))),
 		IngredientID: entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, cedar.String(r.IngredientID))),
 		Amount:       measurement.MustAmount(r.Quantity, measurement.Unit(r.Unit)),
 		CostPerUnit:  r.CostPerUnit,

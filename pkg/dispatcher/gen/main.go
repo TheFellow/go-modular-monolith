@@ -1,5 +1,3 @@
-//go:build ignore
-
 package main
 
 import (
@@ -19,7 +17,7 @@ import (
 	"unicode"
 )
 
-//go:embed dispatcher_gen.go.tpl
+//go:embed dispatcher.go.tpl
 var dispatcherTemplate string
 
 type eventType struct {

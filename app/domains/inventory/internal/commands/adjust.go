@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -67,6 +68,7 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch *models.Patch) (*models
 			return nil, err
 		}
 		updated = models.Inventory{
+			ID:           entity.NewInventoryID(),
 			IngredientID: patch.IngredientID,
 			Amount:       measurement.MustAmount(0, ingredient.Unit),
 			CostPerUnit:  optional.None[money.Price](),
@@ -74,6 +76,9 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch *models.Patch) (*models
 		}
 	} else {
 		updated = *existing
+	}
+	if updated.ID.IsZero() {
+		updated.ID = entity.NewInventoryID()
 	}
 
 	updatedAmount, err := updated.Amount.Convert(ingredient.Unit)

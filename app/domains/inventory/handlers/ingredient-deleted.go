@@ -3,7 +3,7 @@ package handlers
 import (
 	ingredientsevents "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/dao"
-	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -16,9 +16,15 @@ func NewIngredientDeletedStockCleaner() *IngredientDeletedStockCleaner {
 }
 
 func (h *IngredientDeletedStockCleaner) Handle(ctx *middleware.Context, e ingredientsevents.IngredientDeleted) error {
+	stock, err := h.stockDAO.Get(ctx, e.Ingredient.ID)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
 	if err := h.stockDAO.DeleteByIngredient(ctx, e.Ingredient.ID); err != nil {
 		return err
 	}
-	ctx.TouchEntity(models.NewInventoryID(e.Ingredient.ID).EntityUID())
+	if stock != nil {
+		ctx.TouchEntity(stock.EntityUID())
+	}
 	return nil
 }

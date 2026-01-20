@@ -12,11 +12,8 @@ import (
 
 const InventoryEntityType = entity.TypeInventory
 
-func NewInventoryID(ingredientID entity.IngredientID) entity.InventoryID {
-	return entity.NewInventoryID(ingredientID)
-}
-
 type Inventory struct {
+	ID           entity.InventoryID
 	IngredientID entity.IngredientID
 	Amount       measurement.Amount
 	CostPerUnit  optional.Value[money.Price]
@@ -24,7 +21,11 @@ type Inventory struct {
 }
 
 func (s Inventory) EntityUID() cedar.EntityUID {
-	return NewInventoryID(s.IngredientID).EntityUID()
+	uid := s.ID.EntityUID()
+	if uid.Type == "" {
+		uid = cedar.NewEntityUID(cedar.EntityType(InventoryEntityType), uid.ID)
+	}
+	return uid
 }
 
 func (s Inventory) CedarEntity() cedar.Entity {
