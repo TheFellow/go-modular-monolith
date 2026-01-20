@@ -8,6 +8,7 @@ import (
 	ingredientscli "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -43,12 +44,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					w := newTabWriter()
-					fmt.Fprintln(w, "ID\tNAME\tCATEGORY\tUNIT")
-					for _, i := range res {
-						fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", i.ID.String(), i.Name, i.Category, i.Unit)
-					}
-					return w.Flush()
+					return clitable.PrintTable(ingredientscli.ToIngredientRows(res))
 				}),
 			},
 			{
@@ -72,16 +68,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					i := res
-					w := newTabWriter()
-					fmt.Fprintf(w, "ID:\t%s\n", i.ID.String())
-					fmt.Fprintf(w, "Name:\t%s\n", i.Name)
-					fmt.Fprintf(w, "Category:\t%s\n", i.Category)
-					fmt.Fprintf(w, "Unit:\t%s\n", i.Unit)
-					if i.Description != "" {
-						fmt.Fprintf(w, "Description:\t%s\n", i.Description)
-					}
-					return w.Flush()
+					return clitable.PrintDetail(ingredientscli.ToIngredientRow(res))
 				}),
 			},
 			{

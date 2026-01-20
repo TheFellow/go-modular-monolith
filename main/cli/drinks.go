@@ -11,6 +11,7 @@ import (
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	drinkscli "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -61,12 +62,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, out)
 					}
 
-					w := newTabWriter()
-					fmt.Fprintln(w, "ID\tNAME")
-					for _, d := range res {
-						fmt.Fprintf(w, "%s\t%s\n", d.ID.String(), d.Name)
-					}
-					return w.Flush()
+					return clitable.PrintTable(drinkscli.ToDrinkRows(res))
 				}),
 			},
 			{
@@ -90,10 +86,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					w := newTabWriter()
-					fmt.Fprintf(w, "ID:\t%s\n", res.ID.String())
-					fmt.Fprintf(w, "Name:\t%s\n", res.Name)
-					return w.Flush()
+					return clitable.PrintDetail(drinkscli.ToDrinkRow(res))
 				}),
 			},
 			{

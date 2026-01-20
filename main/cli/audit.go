@@ -7,6 +7,8 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
+	auditcli "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/cli"
+	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -227,22 +229,5 @@ func parseEntityUID(value string) (cedar.EntityUID, error) {
 }
 
 func printAuditEntries(entries []*auditmodels.AuditEntry) error {
-	w := newTabWriter()
-	fmt.Fprintln(w, "ID\tSTARTED_AT\tACTION\tRESOURCE\tPRINCIPAL\tSUCCESS\tTOUCHES\tERROR")
-	for _, entry := range entries {
-		errText := entry.Error
-		fmt.Fprintf(
-			w,
-			"%s\t%s\t%s\t%s\t%s\t%t\t%d\t%s\n",
-			entry.ID.String(),
-			entry.StartedAt.Format(time.RFC3339),
-			entry.Action,
-			entry.Resource.String(),
-			entry.Principal.String(),
-			entry.Success,
-			len(entry.Touches),
-			errText,
-		)
-	}
-	return w.Flush()
+	return clitable.PrintTable(auditcli.ToAuditRows(entries))
 }

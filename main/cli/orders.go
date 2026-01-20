@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	orderscli "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -98,12 +99,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if cmd.Bool("json") {
 						return writeJSON(cmd.Writer, res)
 					}
-					w := newTabWriter()
-					fmt.Fprintln(w, "ID\tMENU_ID\tSTATUS\tCREATED_AT")
-					for _, o := range res {
-						fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", o.ID.String(), o.MenuID.String(), o.Status, o.CreatedAt.Format(time.RFC3339))
-					}
-					return w.Flush()
+					return clitable.PrintTable(orderscli.ToOrderRows(res))
 				}),
 			},
 			{
@@ -125,29 +121,12 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if cmd.Bool("json") {
 						return writeJSON(cmd.Writer, res)
 					}
-					o := res
-					w := newTabWriter()
-					fmt.Fprintf(w, "ID:\t%s\n", o.ID.String())
-					fmt.Fprintf(w, "Menu ID:\t%s\n", o.MenuID.String())
-					fmt.Fprintf(w, "Status:\t%s\n", o.Status)
-					fmt.Fprintf(w, "Created At:\t%s\n", o.CreatedAt.Format(time.RFC3339))
-					if t, ok := o.CompletedAt.Unwrap(); ok {
-						fmt.Fprintf(w, "Completed At:\t%s\n", t.Format(time.RFC3339))
-					}
-					if o.Notes != "" {
-						fmt.Fprintf(w, "Notes:\t%s\n", o.Notes)
-					}
-					if err := w.Flush(); err != nil {
+					if err := clitable.PrintDetail(orderscli.ToOrderDetail(res)); err != nil {
 						return err
 					}
 
 					fmt.Println()
-					w = newTabWriter()
-					fmt.Fprintln(w, "DRINK_ID\tQUANTITY")
-					for _, it := range o.Items {
-						fmt.Fprintf(w, "%s\t%d\n", it.DrinkID.String(), it.Quantity)
-					}
-					return w.Flush()
+					return clitable.PrintTable(orderscli.ToOrderItemRows(res.Items))
 				}),
 			},
 			{

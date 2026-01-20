@@ -9,6 +9,7 @@ import (
 	menuqueries "github.com/TheFellow/go-modular-monolith/app/domains/menu/queries"
 	menucli "github.com/TheFellow/go-modular-monolith/app/domains/menu/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -53,23 +54,27 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, out)
 					}
 
-					w := newTabWriter()
-					fmt.Fprintln(w, "ID\tNAME\tSTATUS\tITEMS")
+					rows := make([]menucli.MenuRow, 0, len(res))
 					for _, m := range res {
-						fmt.Fprintf(w, "%s\t%s\t%s\t%d\n", m.ID.String(), m.Name, m.Status, len(m.Items))
+						rows = append(rows, menucli.ToMenuRow(m))
 						if cmd.Bool("costs") && len(m.Items) > 0 {
 							an, err := menuqueries.NewAnalyticsCalculator().Analyze(ctx, *m, cmd.Float64("target-margin"))
 							if err != nil {
 								return err
 							}
 							if an.AverageMargin != nil {
-								fmt.Fprintf(w, "\tavailable: %d/%d\tavg margin: %.0f%%\n", an.AvailableCount, an.TotalCount, *an.AverageMargin*100)
+								rows = append(rows, menucli.MenuRow{
+									Name:   fmt.Sprintf("available: %d/%d", an.AvailableCount, an.TotalCount),
+									Status: fmt.Sprintf("avg margin: %.0f%%", *an.AverageMargin*100),
+								})
 							} else {
-								fmt.Fprintf(w, "\tavailable: %d/%d\n", an.AvailableCount, an.TotalCount)
+								rows = append(rows, menucli.MenuRow{
+									Name: fmt.Sprintf("available: %d/%d", an.AvailableCount, an.TotalCount),
+								})
 							}
 						}
 					}
-					return w.Flush()
+					return clitable.PrintTable(rows)
 				}),
 			},
 			{
@@ -103,15 +108,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					m := *res
-					w := newTabWriter()
-					fmt.Fprintf(w, "ID:\t%s\n", m.ID.String())
-					fmt.Fprintf(w, "Name:\t%s\n", m.Name)
-					if m.Description != "" {
-						fmt.Fprintf(w, "Description:\t%s\n", m.Description)
-					}
-					fmt.Fprintf(w, "Status:\t%s\n", m.Status)
-					fmt.Fprintf(w, "Items:\t%d\n", len(m.Items))
-					if err := w.Flush(); err != nil {
+					if err := clitable.PrintDetail(menucli.ToMenuRow(&m)); err != nil {
 						return err
 					}
 
@@ -123,7 +120,7 @@ func (c *CLI) menuCommands() *cli.Command {
 
 						if len(an.Items) > 0 {
 							fmt.Println()
-							w = newTabWriter()
+							w := newTabWriter()
 							fmt.Fprintln(w, "DRINK_ID\tNAME\tCOST\tPRICE\tMARGIN\tSTATUS")
 							for _, item := range an.Items {
 								cost := "n/a"
@@ -158,7 +155,7 @@ func (c *CLI) menuCommands() *cli.Command {
 
 						fmt.Println()
 						fmt.Println("Analytics:")
-						w = newTabWriter()
+						w := newTabWriter()
 						fmt.Fprintf(w, "Available:\t%d/%d\n", an.AvailableCount, an.TotalCount)
 						if an.AverageMargin != nil {
 							fmt.Fprintf(w, "Average margin:\t%.0f%%\n", *an.AverageMargin*100)
@@ -171,12 +168,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					fmt.Println()
-					w = newTabWriter()
-					fmt.Fprintln(w, "DRINK_ID\tAVAILABILITY")
-					for _, item := range m.Items {
-						fmt.Fprintf(w, "%s\t%s\n", item.DrinkID.String(), item.Availability)
-					}
-					return w.Flush()
+					return clitable.PrintTable(menucli.ToMenuItemRows(m.Items))
 				}),
 			},
 			{

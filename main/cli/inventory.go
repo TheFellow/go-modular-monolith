@@ -7,9 +7,11 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	inventorycli "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -46,12 +48,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					w := newTabWriter()
-					fmt.Fprintln(w, "INGREDIENT_ID\tQUANTITY\tUNIT")
-					for _, s := range res {
-						fmt.Fprintf(w, "%s\t%.2f\t%s\n", s.IngredientID.String(), s.Amount.Value(), s.Amount.Unit())
-					}
-					return w.Flush()
+					return clitable.PrintTable(inventorycli.ToInventoryRows(res))
 				}),
 			},
 			{
@@ -75,12 +72,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					s := res
-					w := newTabWriter()
-					fmt.Fprintf(w, "Ingredient ID:\t%s\n", s.IngredientID.String())
-					fmt.Fprintf(w, "Quantity:\t%.2f\n", s.Amount.Value())
-					fmt.Fprintf(w, "Unit:\t%s\n", s.Amount.Unit())
-					return w.Flush()
+					return clitable.PrintDetail(inventorycli.ToInventoryRow(res))
 				}),
 			},
 			{
