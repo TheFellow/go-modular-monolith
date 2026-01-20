@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -35,6 +37,44 @@ func writeJSON(w io.Writer, v any) error {
 
 func newTabWriter() *tabwriter.Writer {
 	return tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+}
+
+func readJSONInput[T any](cmd *cli.Command) (T, error) {
+	var zero T
+
+	fromStdin := cmd.Bool("stdin")
+	fromFile := strings.TrimSpace(cmd.String("file"))
+	if fromStdin && fromFile != "" {
+		return zero, fmt.Errorf("set only one of --stdin or --file")
+	}
+	if !fromStdin && fromFile == "" {
+		return zero, fmt.Errorf("missing input: set --stdin or --file (or use --template)")
+	}
+
+	var r io.Reader
+	if fromStdin {
+		b, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return zero, err
+		}
+		if len(bytes.TrimSpace(b)) == 0 {
+			return zero, fmt.Errorf("stdin is empty")
+		}
+		r = bytes.NewReader(b)
+	} else {
+		f, err := os.Open(fromFile)
+		if err != nil {
+			return zero, err
+		}
+		defer f.Close()
+		r = f
+	}
+
+	var result T
+	if err := json.NewDecoder(r).Decode(&result); err != nil {
+		return zero, err
+	}
+	return result, nil
 }
 
 func parsePrice(s string) (money.Price, error) {

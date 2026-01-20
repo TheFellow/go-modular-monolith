@@ -1,16 +1,19 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 type MenuRow struct {
-	ID     string `table:"ID" json:"id"`
+	ID     string `table:"ID" json:"id,omitempty"`
 	Name   string `table:"NAME" json:"name"`
-	Status string `table:"STATUS" json:"status"`
-	Items  string `table:"ITEMS" json:"items"`
+	Status string `table:"STATUS" json:"status,omitempty"`
+	Items  string `table:"ITEMS" json:"items,omitempty"`
 	Desc   string `table:"-" json:"description,omitempty"`
 }
 
@@ -49,4 +52,22 @@ func ToMenuItemRows(items []models.MenuItem) []MenuItemRow {
 		})
 	}
 	return rows
+}
+
+func TemplateCreate() MenuRow {
+	return MenuRow{
+		Name: "Summer Cocktails",
+		Desc: "Refreshing drinks for warm weather",
+	}
+}
+
+func DecodeCreate(r io.Reader) (*models.Menu, error) {
+	var row MenuRow
+	if err := json.NewDecoder(r).Decode(&row); err != nil {
+		return nil, errors.Invalidf("parse menu json: %w", err)
+	}
+	return &models.Menu{
+		Name:        row.Name,
+		Description: row.Desc,
+	}, nil
 }

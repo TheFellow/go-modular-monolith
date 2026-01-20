@@ -10,6 +10,7 @@ import (
 	orderscli "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -23,43 +24,71 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "place",
 				Usage: "Place an order",
 				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "items", UsageText: "<drink-id>:<qty> [<drink-id>:<qty>...]", Min: 1, Max: 0},
+					&cli.StringArgs{Name: "items", UsageText: "<drink-id>:<qty> [<drink-id>:<qty>...]", Max: 0},
 				},
 				Flags: []cli.Flag{
 					JSONFlag,
-					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
+					TemplateFlag,
+					StdinFlag,
+					FileFlag,
+					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID"},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					menuID, err := entity.ParseMenuID(cmd.String("menu-id"))
-					if err != nil {
-						return err
+					if cmd.Bool("template") {
+						return writeJSON(cmd.Writer, orderscli.TemplatePlace())
 					}
 
-					args := cmd.StringArgs("items")
-					items := make([]ordersmodels.OrderItem, 0, len(args))
-					for _, spec := range args {
-						parts := strings.SplitN(spec, ":", 2)
-						if len(parts) != 2 {
-							return fmt.Errorf("invalid item %q (expected drink-id:qty)", spec)
-						}
-						qty, err := strconv.Atoi(parts[1])
-						if err != nil || qty <= 0 {
-							return fmt.Errorf("invalid quantity in %q", spec)
-						}
-						drinkID, err := entity.ParseDrinkID(parts[0])
+					var input *ordersmodels.Order
+					if cmd.Bool("stdin") || strings.TrimSpace(cmd.String("file")) != "" {
+						doc, err := readJSONInput[orderscli.OrderInput](cmd)
 						if err != nil {
 							return err
 						}
-						items = append(items, ordersmodels.OrderItem{
-							DrinkID:  drinkID,
-							Quantity: qty,
-						})
+						parsed, err := doc.ToDomain()
+						if err != nil {
+							return err
+						}
+						input = parsed
+					} else {
+						menuIDRaw := strings.TrimSpace(cmd.String("menu-id"))
+						if menuIDRaw == "" {
+							return errors.Invalidf("menu-id is required (or use --stdin/--file)")
+						}
+						menuID, err := entity.ParseMenuID(menuIDRaw)
+						if err != nil {
+							return err
+						}
+
+						args := cmd.StringArgs("items")
+						if len(args) == 0 {
+							return errors.Invalidf("items are required (or use --stdin/--file)")
+						}
+						items := make([]ordersmodels.OrderItem, 0, len(args))
+						for _, spec := range args {
+							parts := strings.SplitN(spec, ":", 2)
+							if len(parts) != 2 {
+								return fmt.Errorf("invalid item %q (expected drink-id:qty)", spec)
+							}
+							qty, err := strconv.Atoi(parts[1])
+							if err != nil || qty <= 0 {
+								return fmt.Errorf("invalid quantity in %q", spec)
+							}
+							drinkID, err := entity.ParseDrinkID(parts[0])
+							if err != nil {
+								return err
+							}
+							items = append(items, ordersmodels.OrderItem{
+								DrinkID:  drinkID,
+								Quantity: qty,
+							})
+						}
+						input = &ordersmodels.Order{
+							MenuID: menuID,
+							Items:  items,
+						}
 					}
 
-					created, err := c.app.Orders.Place(ctx, &ordersmodels.Order{
-						MenuID: menuID,
-						Items:  items,
-					})
+					created, err := c.app.Orders.Place(ctx, input)
 					if err != nil {
 						return err
 					}

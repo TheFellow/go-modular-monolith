@@ -1,10 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
@@ -189,65 +186,17 @@ func (c *CLI) drinksCommands() *cli.Command {
 }
 
 func readDrinkCreateInput(cmd *cli.Command) (drinksmodels.Drink, error) {
-	fromStdin := cmd.Bool("stdin")
-	fromFile := strings.TrimSpace(cmd.String("file"))
-	if fromStdin && fromFile != "" {
-		return drinksmodels.Drink{}, fmt.Errorf("set only one of --stdin or --file")
+	input, err := readJSONInput[drinkscli.CreateDrink](cmd)
+	if err != nil {
+		return drinksmodels.Drink{}, err
 	}
-	if !fromStdin && fromFile == "" {
-		return drinksmodels.Drink{}, fmt.Errorf("missing input: set --stdin or --file (or use --template)")
-	}
-
-	var r io.Reader
-	if fromStdin {
-		b, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return drinksmodels.Drink{}, err
-		}
-		if len(bytes.TrimSpace(b)) == 0 {
-			return drinksmodels.Drink{}, fmt.Errorf("stdin is empty")
-		}
-		r = bytes.NewReader(b)
-	} else {
-		f, err := os.Open(fromFile)
-		if err != nil {
-			return drinksmodels.Drink{}, err
-		}
-		defer f.Close()
-		r = f
-	}
-
-	return drinkscli.DecodeCreateDrinkJSON(r)
+	return input.ToDomain()
 }
 
 func readDrinkUpdateInput(cmd *cli.Command) (drinksmodels.Drink, error) {
-	fromStdin := cmd.Bool("stdin")
-	fromFile := strings.TrimSpace(cmd.String("file"))
-	if fromStdin && fromFile != "" {
-		return drinksmodels.Drink{}, fmt.Errorf("set only one of --stdin or --file")
+	input, err := readJSONInput[drinkscli.Drink](cmd)
+	if err != nil {
+		return drinksmodels.Drink{}, err
 	}
-	if !fromStdin && fromFile == "" {
-		return drinksmodels.Drink{}, fmt.Errorf("missing input: set --stdin or --file (or use --template)")
-	}
-
-	var r io.Reader
-	if fromStdin {
-		b, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return drinksmodels.Drink{}, err
-		}
-		if len(bytes.TrimSpace(b)) == 0 {
-			return drinksmodels.Drink{}, fmt.Errorf("stdin is empty")
-		}
-		r = bytes.NewReader(b)
-	} else {
-		f, err := os.Open(fromFile)
-		if err != nil {
-			return drinksmodels.Drink{}, err
-		}
-		defer f.Close()
-		r = f
-	}
-
-	return drinkscli.DecodeUpdateDrinkJSON(r)
+	return input.ToDomainForUpdate()
 }

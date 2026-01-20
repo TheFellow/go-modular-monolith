@@ -52,10 +52,13 @@ while IFS= read -r ingredient; do
     unit=$(echo "$ingredient" | jq -r '.unit')
     description=$(echo "$ingredient" | jq -r '.description')
 
-    id=$("$MIXOLOGY" ingredients create "$name" \
-        --category "$category" \
-        --unit "$unit" \
-        --description "$description")
+    payload=$(echo "$ingredient" | jq -c '{
+        name,
+        category,
+        unit,
+        description: (.description // "")
+    }')
+    id=$(echo "$payload" | "$MIXOLOGY" ingredients create --stdin)
 
     INGREDIENT_IDS["$key"]="$id"
     echo "  $name: $id"
@@ -75,10 +78,13 @@ while IFS= read -r ingredient; do
     quantity=$(echo "$ingredient" | jq -r '.stock.quantity')
     cost=$(echo "$ingredient" | jq -r '.stock.cost')
 
-    "$MIXOLOGY" inventory set \
-        --ingredient-id "${INGREDIENT_IDS[$key]}" \
-        --quantity "$quantity" \
-        --cost-per-unit "$cost" > /dev/null
+    payload=$(echo "$ingredient" | jq -c --arg id "${INGREDIENT_IDS[$key]}" '{
+        ingredient_id: $id,
+        quantity: .stock.quantity,
+        unit: .unit,
+        cost_per_unit: .stock.cost
+    }')
+    echo "$payload" | "$MIXOLOGY" inventory set --stdin > /dev/null
 done < <(jq -c '.[]' "$DATA_DIR/ingredients.json")
 
 echo "  Inventory stocked"
@@ -121,7 +127,7 @@ done < <(jq -c '.[]' "$DATA_DIR/drinks.json")
 echo ""
 echo "Creating menu..."
 
-MENU=$("$MIXOLOGY" menu create "Classic Cocktails")
+MENU=$(printf '%s' '{"name":"Classic Cocktails"}' | "$MIXOLOGY" menu create --stdin)
 echo "  Menu: $MENU"
 
 for drink_id in "${DRINK_IDS[@]}"; do

@@ -10,6 +10,7 @@ import (
 	menucli "github.com/TheFellow/go-modular-monolith/app/domains/menu/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
@@ -175,12 +176,38 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "create",
 				Usage: "Create a new menu",
 				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "name", UsageText: "Menu name", Min: 1, Max: 1},
+					&cli.StringArgs{Name: "name", UsageText: "Menu name", Max: 1},
 				},
-				Flags: []cli.Flag{JSONFlag},
+				Flags: []cli.Flag{
+					JSONFlag,
+					TemplateFlag,
+					StdinFlag,
+					FileFlag,
+				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					name := cmd.StringArgs("name")[0]
-					created, err := c.app.Menu.Create(ctx, &menumodels.Menu{Name: name})
+					if cmd.Bool("template") {
+						return writeJSON(cmd.Writer, menucli.TemplateCreate())
+					}
+
+					var input *menumodels.Menu
+					if cmd.Bool("stdin") || strings.TrimSpace(cmd.String("file")) != "" {
+						row, err := readJSONInput[menucli.MenuRow](cmd)
+						if err != nil {
+							return err
+						}
+						input = &menumodels.Menu{
+							Name:        row.Name,
+							Description: row.Desc,
+						}
+					} else {
+						args := cmd.StringArgs("name")
+						if len(args) == 0 || strings.TrimSpace(args[0]) == "" {
+							return errors.Invalidf("name is required (or use --stdin/--file)")
+						}
+						input = &menumodels.Menu{Name: args[0]}
+					}
+
+					created, err := c.app.Menu.Create(ctx, input)
 					if err != nil {
 						return err
 					}

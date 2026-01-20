@@ -1,9 +1,13 @@
 package cli
 
 import (
+	"encoding/json"
+	"io"
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 type OrderRow struct {
@@ -25,6 +29,11 @@ type OrderDetail struct {
 type OrderItemRow struct {
 	DrinkID  string `table:"DRINK_ID" json:"drink_id"`
 	Quantity int    `table:"QUANTITY" json:"quantity"`
+}
+
+type OrderInput struct {
+	MenuID string         `json:"menu_id"`
+	Items  []OrderItemRow `json:"items"`
 }
 
 func ToOrderRow(o *models.Order) OrderRow {
@@ -74,6 +83,49 @@ func ToOrderItemRows(items []models.OrderItem) []OrderItemRow {
 		})
 	}
 	return rows
+}
+
+func TemplatePlace() OrderInput {
+	return OrderInput{
+		MenuID: "mnu-abc123",
+		Items: []OrderItemRow{
+			{DrinkID: "drk-abc123", Quantity: 2},
+			{DrinkID: "drk-def456", Quantity: 1},
+		},
+	}
+}
+
+func DecodePlace(r io.Reader) (*models.Order, error) {
+	var input OrderInput
+	if err := json.NewDecoder(r).Decode(&input); err != nil {
+		return nil, errors.Invalidf("parse order json: %w", err)
+	}
+	return input.ToDomain()
+}
+
+func (input OrderInput) ToDomain() (*models.Order, error) {
+	if input.MenuID == "" {
+		return nil, errors.Invalidf("menu_id is required")
+	}
+	menuID, err := entity.ParseMenuID(input.MenuID)
+	if err != nil {
+		return nil, errors.Invalidf("invalid menu id %q: %w", input.MenuID, err)
+	}
+	items := make([]models.OrderItem, 0, len(input.Items))
+	for i, item := range input.Items {
+		drinkID, err := entity.ParseDrinkID(item.DrinkID)
+		if err != nil {
+			return nil, errors.Invalidf("invalid item %d drink id %q: %w", i, item.DrinkID, err)
+		}
+		items = append(items, models.OrderItem{
+			DrinkID:  drinkID,
+			Quantity: item.Quantity,
+		})
+	}
+	return &models.Order{
+		MenuID: menuID,
+		Items:  items,
+	}, nil
 }
 
 func formatTime(t time.Time) string {
