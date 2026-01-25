@@ -198,12 +198,13 @@ func assignHandlerVarNames(groups []*eventGroup) {
 	for _, g := range groups {
 		used := map[string]int{}
 		for i := range g.Handlers {
-			base := lowerCamel(g.Handlers[i].Name)
+			base := domainFromPkgPath(g.Handlers[i].PkgPath)
 			if base == "" {
 				base = "handler"
 			}
+			base = base + "Handler"
 			if token.Lookup(base).IsKeyword() {
-				base = base + "Handler"
+				base = base + "H"
 			}
 
 			used[base]++
@@ -214,6 +215,27 @@ func assignHandlerVarNames(groups []*eventGroup) {
 			g.Handlers[i].VarName = name
 		}
 	}
+}
+
+func domainFromPkgPath(pkgPath string) string {
+	if pkgPath == "" {
+		return ""
+	}
+
+	parts := strings.Split(pkgPath, "/")
+	for i, part := range parts {
+		if part == "domains" && i+1 < len(parts) {
+			return parts[i+1]
+		}
+	}
+
+	for i, part := range parts {
+		if part == "handlers" && i > 0 {
+			return parts[i-1]
+		}
+	}
+
+	return ""
 }
 
 func lowerCamel(s string) string {

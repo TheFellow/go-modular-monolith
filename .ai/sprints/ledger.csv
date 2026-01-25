@@ -69,3 +69,4 @@ sprint-041,completed,2026-01-19,2026-01-19,Reflection-Based TabWriter Helpers
 sprint-042,completed,2026-01-19,2026-01-19,Standardize JSON Input for CLI Create/Update Commands
 sprint-043,completed,2026-01-25,2026-01-25,Organize domain tests by method
 sprint-044,completed,2026-01-25,2026-01-25,Cascade entity touches on ingredient updates
+sprint-045,completed,2026-01-25,2026-01-25,Improve dispatcher generator variable naming
