@@ -67,3 +67,4 @@ sprint-039,completed,2026-01-19,2026-01-19,CLI Output Consistency
 sprint-040,completed,2026-01-19,2026-01-19,Standardize Code Generation
 sprint-041,completed,2026-01-19,2026-01-19,Reflection-Based TabWriter Helpers
 sprint-042,completed,2026-01-19,2026-01-19,Standardize JSON Input for CLI Create/Update Commands
+sprint-043,completed,2026-01-25,2026-01-25,Organize domain tests by method
