@@ -8,25 +8,25 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-func (c *Commands) AddDrink(ctx *middleware.Context, change *models.MenuDrinkChange) (*models.Menu, error) {
-	if change == nil {
-		return nil, errors.Invalidf("change is required")
+func (c *Commands) AddDrink(ctx *middleware.Context, patch *models.MenuPatch) (*models.Menu, error) {
+	if patch == nil {
+		return nil, errors.Invalidf("patch is required")
 	}
-	if change.MenuID.IsZero() {
+	if patch.MenuID.IsZero() {
 		return nil, errors.Invalidf("menu id is required")
 	}
-	if _, err := c.drinks.Get(ctx, change.DrinkID); err != nil {
+	if _, err := c.drinks.Get(ctx, patch.DrinkID); err != nil {
 		return nil, err
 	}
 
-	menu, err := c.dao.Get(ctx, change.MenuID)
+	menu, err := c.dao.Get(ctx, patch.MenuID)
 	if err != nil {
 		return nil, err
 	}
 
 	updated := *menu
 	for _, item := range menu.Items {
-		if item.DrinkID.String() == change.DrinkID.String() {
+		if item.DrinkID.String() == patch.DrinkID.String() {
 			return nil, errors.Invalidf("drink already in menu")
 		}
 	}
@@ -39,10 +39,10 @@ func (c *Commands) AddDrink(ctx *middleware.Context, change *models.MenuDrinkCha
 	}
 
 	updated.Items = append(updated.Items, models.MenuItem{
-		DrinkID:      change.DrinkID,
+		DrinkID:      patch.DrinkID,
 		DisplayName:  optional.None[string](),
 		Price:        optional.None[models.Price](),
-		Availability: c.availability.Calculate(ctx, change.DrinkID),
+		Availability: c.availability.Calculate(ctx, patch.DrinkID),
 		SortOrder:    nextSort,
 	})
 	added := updated.Items[len(updated.Items)-1]

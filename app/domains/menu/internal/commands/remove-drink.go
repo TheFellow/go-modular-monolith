@@ -7,15 +7,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (c *Commands) RemoveDrink(ctx *middleware.Context, change *models.MenuDrinkChange) (*models.Menu, error) {
-	if change == nil {
-		return nil, errors.Invalidf("change is required")
+func (c *Commands) RemoveDrink(ctx *middleware.Context, patch *models.MenuPatch) (*models.Menu, error) {
+	if patch == nil {
+		return nil, errors.Invalidf("patch is required")
 	}
-	if change.MenuID.IsZero() {
+	if patch.MenuID.IsZero() {
 		return nil, errors.Invalidf("menu id is required")
 	}
 
-	menu, err := c.dao.Get(ctx, change.MenuID)
+	menu, err := c.dao.Get(ctx, patch.MenuID)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +24,7 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, change *models.MenuDrink
 	var removedItem models.MenuItem
 	var removed bool
 	for _, item := range menu.Items {
-		if item.DrinkID.String() == change.DrinkID.String() {
+		if item.DrinkID.String() == patch.DrinkID.String() {
 			removedItem = item
 			removed = true
 			continue

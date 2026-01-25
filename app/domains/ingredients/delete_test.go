@@ -47,7 +47,7 @@ func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
 
 	menu, err := f.Menu.Create(ctx, &menuM.Menu{Name: "Test Menu"})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.AddDrink(ctx, &menuM.MenuDrinkChange{MenuID: menu.ID, DrinkID: drink.ID})
+	menu, err = f.Menu.AddDrink(ctx, &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
 	menu, err = f.Menu.Publish(ctx, &menuM.Menu{ID: menu.ID})
 	testutil.Ok(t, err)

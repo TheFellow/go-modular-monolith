@@ -66,7 +66,7 @@ func TestPermissions_Menu(t *testing.T) {
 				testutil.PermissionTestFail(t, err)
 			}
 
-			_, err = a.Menu.AddDrink(ctx, &menuM.MenuDrinkChange{
+			_, err = a.Menu.AddDrink(ctx, &menuM.MenuPatch{
 				MenuID:  menuRecord.ID,
 				DrinkID: drink.ID,
 			})
@@ -76,7 +76,7 @@ func TestPermissions_Menu(t *testing.T) {
 				testutil.PermissionTestFail(t, err)
 			}
 
-			_, err = a.Menu.RemoveDrink(ctx, &menuM.MenuDrinkChange{
+			_, err = a.Menu.RemoveDrink(ctx, &menuM.MenuPatch{
 				MenuID:  menuRecord.ID,
 				DrinkID: drink.ID,
 			})

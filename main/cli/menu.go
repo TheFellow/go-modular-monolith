@@ -237,7 +237,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					updated, err := c.app.Menu.AddDrink(ctx, &menumodels.MenuDrinkChange{
+					updated, err := c.app.Menu.AddDrink(ctx, &menumodels.MenuPatch{
 						MenuID:  menuID,
 						DrinkID: drinkID,
 					})
@@ -270,7 +270,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					updated, err := c.app.Menu.RemoveDrink(ctx, &menumodels.MenuDrinkChange{
+					updated, err := c.app.Menu.RemoveDrink(ctx, &menumodels.MenuPatch{
 						MenuID:  menuID,
 						DrinkID: drinkID,
 					})

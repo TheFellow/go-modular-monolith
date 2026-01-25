@@ -11,8 +11,6 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-const MenuEntityType = entity.TypeMenu
-
 func NewMenuID(id string) entity.MenuID {
 	return entity.MenuID(cedar.NewEntityUID(entity.TypeMenu, cedar.String(id)))
 }
@@ -35,7 +33,7 @@ func (m Menu) EntityUID() cedar.EntityUID {
 func (m Menu) CedarEntity() cedar.Entity {
 	uid := m.ID.EntityUID()
 	if uid.Type == "" {
-		uid = cedar.NewEntityUID(cedar.EntityType(MenuEntityType), uid.ID)
+		uid = cedar.NewEntityUID(cedar.EntityType(entity.TypeMenu), uid.ID)
 	}
 	return cedar.Entity{
 		UID:     uid,

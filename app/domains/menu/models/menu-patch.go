@@ -5,16 +5,16 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type MenuDrinkChange struct {
+type MenuPatch struct {
 	MenuID  entity.MenuID
 	DrinkID entity.DrinkID
 }
 
-func (c MenuDrinkChange) EntityUID() cedar.EntityUID {
+func (c MenuPatch) EntityUID() cedar.EntityUID {
 	return c.MenuID.EntityUID()
 }
 
-func (c MenuDrinkChange) CedarEntity() cedar.Entity {
+func (c MenuPatch) CedarEntity() cedar.Entity {
 	return cedar.Entity{
 		UID:        c.MenuID.EntityUID(),
 		Parents:    cedar.NewEntityUIDSet(),

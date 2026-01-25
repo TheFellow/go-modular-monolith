@@ -68,7 +68,7 @@ func TestAudit_TouchesIncludeHandlerUpdates(t *testing.T) {
 	menu, err := f.Menu.Create(ctx, &menumodels.Menu{Name: "Happy Hour"})
 	testutil.Ok(t, err)
 
-	_, err = f.Menu.AddDrink(ctx, &menumodels.MenuDrinkChange{
+	_, err = f.Menu.AddDrink(ctx, &menumodels.MenuPatch{
 		MenuID:  menu.ID,
 		DrinkID: drink.ID,
 	})
