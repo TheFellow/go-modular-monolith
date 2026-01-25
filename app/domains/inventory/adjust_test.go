@@ -11,7 +11,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
-func TestInventory_SetAndAdjust(t *testing.T) {
+func TestInventory_Adjust(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	b := f.Bootstrap()
@@ -19,15 +19,14 @@ func TestInventory_SetAndAdjust(t *testing.T) {
 
 	ingredient := b.WithIngredient("Vodka", measurement.UnitOz)
 
-	stock, err := f.Inventory.Set(ctx, &models.Update{
+	_, err := f.Inventory.Set(ctx, &models.Update{
 		IngredientID: ingredient.ID,
 		Amount:       measurement.MustAmount(1.0, ingredient.Unit),
 		CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
 	})
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, stock.Amount.Value() != 1.0, "expected quantity 1.0, got %v", stock.Amount.Value())
 
-	stock, err = f.Inventory.Adjust(ctx, &models.Patch{
+	stock, err := f.Inventory.Adjust(ctx, &models.Patch{
 		IngredientID: ingredient.ID,
 		Reason:       models.ReasonUsed,
 		Delta:        optional.Some(measurement.MustAmount(-2.0, ingredient.Unit)),
