@@ -8,20 +8,20 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-type DrinkUpdatedMenuUpdater struct {
-	menuDAO      *dao.DAO
+type DrinkUpdated struct {
+	dao          *dao.DAO
 	availability *availability.AvailabilityCalculator
 }
 
-func NewDrinkUpdatedMenuUpdater() *DrinkUpdatedMenuUpdater {
-	return &DrinkUpdatedMenuUpdater{
-		menuDAO:      dao.New(),
+func NewDrinkUpdated() *DrinkUpdated {
+	return &DrinkUpdated{
+		dao:          dao.New(),
 		availability: availability.New(),
 	}
 }
 
-func (h *DrinkUpdatedMenuUpdater) Handle(ctx *middleware.Context, e drinksevents.DrinkUpdated) error {
-	menus, err := h.menuDAO.ListByDrink(ctx, e.Drink.ID)
+func (h *DrinkUpdated) Handle(ctx *middleware.Context, e drinksevents.DrinkUpdated) error {
+	menus, err := h.dao.ListByDrink(ctx, e.Drink.ID)
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (h *DrinkUpdatedMenuUpdater) Handle(ctx *middleware.Context, e drinksevents
 		if !changed {
 			continue
 		}
-		if err := h.menuDAO.Update(ctx, *menu); err != nil {
+		if err := h.dao.Update(ctx, *menu); err != nil {
 			return err
 		}
 		ctx.TouchEntity(menu.ID.EntityUID())

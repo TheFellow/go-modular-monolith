@@ -9,19 +9,19 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-type OrderCompletedMenuUpdater struct {
-	menuDAO      *dao.DAO
-	drinkQueries *drinksq.Queries
+type OrderCompleted struct {
+	dao    *dao.DAO
+	drinks *drinksq.Queries
 }
 
-func NewOrderCompletedMenuUpdater() *OrderCompletedMenuUpdater {
-	return &OrderCompletedMenuUpdater{
-		menuDAO:      dao.New(),
-		drinkQueries: drinksq.New(),
+func NewOrderCompleted() *OrderCompleted {
+	return &OrderCompleted{
+		dao:    dao.New(),
+		drinks: drinksq.New(),
 	}
 }
 
-func (h *OrderCompletedMenuUpdater) Handle(ctx *middleware.Context, e ordersevents.OrderCompleted) error {
+func (h *OrderCompleted) Handle(ctx *middleware.Context, e ordersevents.OrderCompleted) error {
 	if len(e.DepletedIngredients) == 0 {
 		return nil
 	}
@@ -34,7 +34,7 @@ func (h *OrderCompletedMenuUpdater) Handle(ctx *middleware.Context, e orderseven
 		return nil
 	}
 
-	menus, err := h.menuDAO.List(ctx, dao.ListFilter{Status: models.MenuStatusPublished})
+	menus, err := h.dao.List(ctx, dao.ListFilter{Status: models.MenuStatusPublished})
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func (h *OrderCompletedMenuUpdater) Handle(ctx *middleware.Context, e orderseven
 		if !changed {
 			continue
 		}
-		if err := h.menuDAO.Update(ctx, *menu); err != nil {
+		if err := h.dao.Update(ctx, *menu); err != nil {
 			return err
 		}
 		ctx.TouchEntity(menu.ID.EntityUID())
@@ -65,8 +65,8 @@ func (h *OrderCompletedMenuUpdater) Handle(ctx *middleware.Context, e orderseven
 	return nil
 }
 
-func (h *OrderCompletedMenuUpdater) drinkUsesAnyIngredient(ctx *middleware.Context, drinkID entity.DrinkID, ingredientIDs map[string]struct{}) bool {
-	drink, err := h.drinkQueries.Get(ctx, drinkID)
+func (h *OrderCompleted) drinkUsesAnyIngredient(ctx *middleware.Context, drinkID entity.DrinkID, ingredientIDs map[string]struct{}) bool {
+	drink, err := h.drinks.Get(ctx, drinkID)
 	if err != nil {
 		return false
 	}

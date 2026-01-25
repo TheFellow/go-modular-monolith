@@ -85,6 +85,94 @@ func TestAudit_TouchesIncludeHandlerUpdates(t *testing.T) {
 	testutil.ErrorIf(t, !touchesContain(entry.Touches, menu.ID.EntityUID()), "expected touches to include menu %s", menu.ID.String())
 }
 
+func TestAudit_TouchesIncludeIngredientUpdateDrinks(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ctx := f.OwnerContext()
+
+	ingredient, err := f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
+		Name:     "Gin",
+		Category: ingredientsmodels.CategorySpirit,
+		Unit:     measurement.UnitOz,
+	})
+	testutil.Ok(t, err)
+
+	drink, err := f.Drinks.Create(ctx, &drinksmodels.Drink{
+		Name:     "Gin and Tonic",
+		Category: drinksmodels.DrinkCategoryHighball,
+		Glass:    drinksmodels.GlassTypeHighball,
+		Recipe: drinksmodels.Recipe{
+			Ingredients: []drinksmodels.RecipeIngredient{
+				{
+					IngredientID: ingredient.ID,
+					Amount:       measurement.MustAmount(2, measurement.UnitOz),
+				},
+			},
+			Steps: []string{"Build in glass"},
+		},
+	})
+	testutil.Ok(t, err)
+
+	_, err = f.Ingredients.Update(ctx, &ingredientsmodels.Ingredient{
+		ID:   ingredient.ID,
+		Name: "Gin (Updated)",
+	})
+	testutil.Ok(t, err)
+
+	entries, err := f.App.Audit.List(ctx, audit.ListRequest{Action: ingredientsauthz.ActionUpdate})
+	testutil.Ok(t, err)
+	testutil.ErrorIf(t, len(entries) != 1, "expected 1 audit entry, got %d", len(entries))
+	entry := entries[0]
+	testutil.ErrorIf(t, !touchesContain(entry.Touches, ingredient.ID.EntityUID()), "expected touches to include ingredient %s", ingredient.ID.String())
+	testutil.ErrorIf(t, !touchesContain(entry.Touches, drink.ID.EntityUID()), "expected touches to include drink %s", drink.ID.String())
+}
+
+func TestAudit_TouchesIncludeIngredientUpdateMenus(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ctx := f.OwnerContext()
+
+	ingredient, err := f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
+		Name:     "Lime Juice",
+		Category: ingredientsmodels.CategoryJuice,
+		Unit:     measurement.UnitOz,
+	})
+	testutil.Ok(t, err)
+
+	drink, err := f.Drinks.Create(ctx, &drinksmodels.Drink{
+		Name:     "Gimlet",
+		Category: drinksmodels.DrinkCategoryCocktail,
+		Glass:    drinksmodels.GlassTypeCoupe,
+		Recipe: drinksmodels.Recipe{
+			Ingredients: []drinksmodels.RecipeIngredient{
+				{
+					IngredientID: ingredient.ID,
+					Amount:       measurement.MustAmount(1, measurement.UnitOz),
+				},
+			},
+			Steps: []string{"Shake"},
+		},
+	})
+	testutil.Ok(t, err)
+
+	menu, err := f.Menu.Create(ctx, &menumodels.Menu{Name: "Citrus Menu"})
+	testutil.Ok(t, err)
+	_, err = f.Menu.AddDrink(ctx, &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+	testutil.Ok(t, err)
+
+	_, err = f.Ingredients.Update(ctx, &ingredientsmodels.Ingredient{
+		ID:   ingredient.ID,
+		Name: "Fresh Lime Juice",
+	})
+	testutil.Ok(t, err)
+
+	entries, err := f.App.Audit.List(ctx, audit.ListRequest{Action: ingredientsauthz.ActionUpdate})
+	testutil.Ok(t, err)
+	testutil.ErrorIf(t, len(entries) != 1, "expected 1 audit entry, got %d", len(entries))
+	entry := entries[0]
+	testutil.ErrorIf(t, !touchesContain(entry.Touches, menu.ID.EntityUID()), "expected touches to include menu %s", menu.ID.String())
+}
+
 func TestAudit_ListFilters(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)

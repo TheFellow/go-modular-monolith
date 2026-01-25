@@ -10,22 +10,22 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-type StockAdjustedMenuUpdater struct {
-	menuDAO      *dao.DAO
-	drinkQueries *drinksq.Queries
+type StockAdjusted struct {
+	dao          *dao.DAO
+	drinks       *drinksq.Queries
 	availability *availability.AvailabilityCalculator
 }
 
-func NewStockAdjustedMenuUpdater() *StockAdjustedMenuUpdater {
-	return &StockAdjustedMenuUpdater{
-		menuDAO:      dao.New(),
-		drinkQueries: drinksq.New(),
+func NewStockAdjusted() *StockAdjusted {
+	return &StockAdjusted{
+		dao:          dao.New(),
+		drinks:       drinksq.New(),
 		availability: availability.New(),
 	}
 }
 
-func (h *StockAdjustedMenuUpdater) Handle(ctx *middleware.Context, e inventoryevents.StockAdjusted) error {
-	menus, err := h.menuDAO.List(ctx, dao.ListFilter{Status: models.MenuStatusPublished})
+func (h *StockAdjusted) Handle(ctx *middleware.Context, e inventoryevents.StockAdjusted) error {
+	menus, err := h.dao.List(ctx, dao.ListFilter{Status: models.MenuStatusPublished})
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (h *StockAdjustedMenuUpdater) Handle(ctx *middleware.Context, e inventoryev
 		if !changed {
 			continue
 		}
-		if err := h.menuDAO.Update(ctx, *menu); err != nil {
+		if err := h.dao.Update(ctx, *menu); err != nil {
 			return err
 		}
 		ctx.TouchEntity(menu.ID.EntityUID())
@@ -58,8 +58,8 @@ func (h *StockAdjustedMenuUpdater) Handle(ctx *middleware.Context, e inventoryev
 	return nil
 }
 
-func (h *StockAdjustedMenuUpdater) drinkUsesIngredient(ctx *middleware.Context, drinkID entity.DrinkID, ingredientID entity.IngredientID) bool {
-	drink, err := h.drinkQueries.Get(ctx, drinkID)
+func (h *StockAdjusted) drinkUsesIngredient(ctx *middleware.Context, drinkID entity.DrinkID, ingredientID entity.IngredientID) bool {
+	drink, err := h.drinks.Get(ctx, drinkID)
 	if err != nil {
 		return false
 	}

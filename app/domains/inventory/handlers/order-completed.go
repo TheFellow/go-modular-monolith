@@ -10,15 +10,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-type OrderCompletedStockUpdater struct {
-	stockDAO *dao.DAO
+type OrderCompleted struct {
+	dao *dao.DAO
 }
 
-func NewOrderCompletedStockUpdater() *OrderCompletedStockUpdater {
-	return &OrderCompletedStockUpdater{stockDAO: dao.New()}
+func NewOrderCompleted() *OrderCompleted {
+	return &OrderCompleted{dao: dao.New()}
 }
 
-func (h *OrderCompletedStockUpdater) Handle(ctx *middleware.Context, e ordersevents.OrderCompleted) error {
+func (h *OrderCompleted) Handle(ctx *middleware.Context, e ordersevents.OrderCompleted) error {
 	if len(e.IngredientUsage) == 0 {
 		return nil
 	}
@@ -27,7 +27,7 @@ func (h *OrderCompletedStockUpdater) Handle(ctx *middleware.Context, e orderseve
 
 	for _, usage := range e.IngredientUsage {
 		ingredientID := usage.IngredientID.String()
-		existing, err := h.stockDAO.Get(ctx, usage.IngredientID)
+		existing, err := h.dao.Get(ctx, usage.IngredientID)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return errors.NotFoundf("stock for ingredient %q not found", ingredientID)
@@ -50,7 +50,7 @@ func (h *OrderCompletedStockUpdater) Handle(ctx *middleware.Context, e orderseve
 		updated.Amount = newAmount
 		updated.LastUpdated = now
 
-		if err := h.stockDAO.Upsert(ctx, updated); err != nil {
+		if err := h.dao.Upsert(ctx, updated); err != nil {
 			return err
 		}
 

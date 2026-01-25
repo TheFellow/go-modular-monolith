@@ -9,21 +9,21 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
-type IngredientDeletedDrinkCascader struct {
+type IngredientDeleted struct {
 	drinkDAO     *dao.DAO
 	drinkQueries *queries.Queries
 
 	affectedDrinks []*drinksmodels.Drink
 }
 
-func NewIngredientDeletedDrinkCascader() *IngredientDeletedDrinkCascader {
-	return &IngredientDeletedDrinkCascader{
+func NewIngredientDeleted() *IngredientDeleted {
+	return &IngredientDeleted{
 		drinkDAO:     dao.New(),
 		drinkQueries: queries.New(),
 	}
 }
 
-func (h *IngredientDeletedDrinkCascader) Handling(ctx *middleware.Context, e ingredientsevents.IngredientDeleted) error {
+func (h *IngredientDeleted) Handling(ctx *middleware.Context, e ingredientsevents.IngredientDeleted) error {
 	drinks, err := h.drinkQueries.ListByIngredient(ctx, e.Ingredient.ID)
 	if err != nil {
 		return err
@@ -32,7 +32,7 @@ func (h *IngredientDeletedDrinkCascader) Handling(ctx *middleware.Context, e ing
 	return nil
 }
 
-func (h *IngredientDeletedDrinkCascader) Handle(ctx *middleware.Context, e ingredientsevents.IngredientDeleted) error {
+func (h *IngredientDeleted) Handle(ctx *middleware.Context, e ingredientsevents.IngredientDeleted) error {
 	if len(h.affectedDrinks) == 0 {
 		return nil
 	}

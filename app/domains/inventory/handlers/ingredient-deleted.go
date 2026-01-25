@@ -7,20 +7,20 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-type IngredientDeletedStockCleaner struct {
-	stockDAO *dao.DAO
+type IngredientDeleted struct {
+	dao *dao.DAO
 }
 
-func NewIngredientDeletedStockCleaner() *IngredientDeletedStockCleaner {
-	return &IngredientDeletedStockCleaner{stockDAO: dao.New()}
+func NewIngredientDeleted() *IngredientDeleted {
+	return &IngredientDeleted{dao: dao.New()}
 }
 
-func (h *IngredientDeletedStockCleaner) Handle(ctx *middleware.Context, e ingredientsevents.IngredientDeleted) error {
-	stock, err := h.stockDAO.Get(ctx, e.Ingredient.ID)
+func (h *IngredientDeleted) Handle(ctx *middleware.Context, e ingredientsevents.IngredientDeleted) error {
+	stock, err := h.dao.Get(ctx, e.Ingredient.ID)
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
-	if err := h.stockDAO.DeleteByIngredient(ctx, e.Ingredient.ID); err != nil {
+	if err := h.dao.DeleteByIngredient(ctx, e.Ingredient.ID); err != nil {
 		return err
 	}
 	if stock != nil {

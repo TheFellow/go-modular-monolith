@@ -10,23 +10,23 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-type IngredientDeletedMenuCascader struct {
-	menuDAO      *dao.DAO
-	drinkQueries *drinksq.Queries
+type IngredientDeleted struct {
+	dao    *dao.DAO
+	drinks *drinksq.Queries
 
 	affectedMenus []*models.Menu
 	removeDrinkID map[string]struct{}
 }
 
-func NewIngredientDeletedMenuCascader() *IngredientDeletedMenuCascader {
-	return &IngredientDeletedMenuCascader{
-		menuDAO:      dao.New(),
-		drinkQueries: drinksq.New(),
+func NewIngredientDeleted() *IngredientDeleted {
+	return &IngredientDeleted{
+		dao:    dao.New(),
+		drinks: drinksq.New(),
 	}
 }
 
-func (h *IngredientDeletedMenuCascader) Handling(ctx *middleware.Context, e ingredientsevents.IngredientDeleted) error {
-	drinks, err := h.drinkQueries.ListByIngredient(ctx, e.Ingredient.ID)
+func (h *IngredientDeleted) Handling(ctx *middleware.Context, e ingredientsevents.IngredientDeleted) error {
+	drinks, err := h.drinks.ListByIngredient(ctx, e.Ingredient.ID)
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func (h *IngredientDeletedMenuCascader) Handling(ctx *middleware.Context, e ingr
 	for _, drink := range drinks {
 		remove[drink.ID.String()] = struct{}{}
 
-		menus, err := h.menuDAO.ListByDrink(ctx, drink.ID)
+		menus, err := h.dao.ListByDrink(ctx, drink.ID)
 		if err != nil {
 			return err
 		}
@@ -65,7 +65,7 @@ func (h *IngredientDeletedMenuCascader) Handling(ctx *middleware.Context, e ingr
 	return nil
 }
 
-func (h *IngredientDeletedMenuCascader) Handle(ctx *middleware.Context, _ ingredientsevents.IngredientDeleted) error {
+func (h *IngredientDeleted) Handle(ctx *middleware.Context, _ ingredientsevents.IngredientDeleted) error {
 	if len(h.affectedMenus) == 0 || len(h.removeDrinkID) == 0 {
 		return nil
 	}
@@ -85,7 +85,7 @@ func (h *IngredientDeletedMenuCascader) Handle(ctx *middleware.Context, _ ingred
 		}
 		updated.Items = filtered
 
-		if err := h.menuDAO.Update(ctx, updated); err != nil {
+		if err := h.dao.Update(ctx, updated); err != nil {
 			return err
 		}
 		ctx.TouchEntity(updated.ID.EntityUID())

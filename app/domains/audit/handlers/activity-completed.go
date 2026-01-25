@@ -8,15 +8,15 @@ import (
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 )
 
-type ActivityCompletedAuditWriter struct {
+type ActivityCompleted struct {
 	dao *dao.DAO
 }
 
-func NewActivityCompletedAuditWriter() *ActivityCompletedAuditWriter {
-	return &ActivityCompletedAuditWriter{dao: dao.New()}
+func NewActivityCompleted() *ActivityCompleted {
+	return &ActivityCompleted{dao: dao.New()}
 }
 
-func (h *ActivityCompletedAuditWriter) Handle(ctx *middleware.Context, e middlewareevents.ActivityCompleted) error {
+func (h *ActivityCompleted) Handle(ctx *middleware.Context, e middlewareevents.ActivityCompleted) error {
 	entry := models.AuditEntry{
 		ID:          entity.NewAuditEntryID(),
 		Action:      e.Activity.Action.String(),

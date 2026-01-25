@@ -7,19 +7,19 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-type MenuPublishedValidator struct {
-	menuDAO      *dao.DAO
+type MenuPublished struct {
+	dao          *dao.DAO
 	availability *availability.AvailabilityCalculator
 }
 
-func NewMenuPublishedValidator() *MenuPublishedValidator {
-	return &MenuPublishedValidator{
-		menuDAO:      dao.New(),
+func NewMenuPublished() *MenuPublished {
+	return &MenuPublished{
+		dao:          dao.New(),
 		availability: availability.New(),
 	}
 }
 
-func (h *MenuPublishedValidator) Handle(ctx *middleware.Context, e events.MenuPublished) error {
+func (h *MenuPublished) Handle(ctx *middleware.Context, e events.MenuPublished) error {
 	menu := e.Menu
 
 	changed := false
@@ -34,7 +34,7 @@ func (h *MenuPublishedValidator) Handle(ctx *middleware.Context, e events.MenuPu
 		return nil
 	}
 
-	if err := h.menuDAO.Update(ctx, menu); err != nil {
+	if err := h.dao.Update(ctx, menu); err != nil {
 		return err
 	}
 	ctx.TouchEntity(menu.ID.EntityUID())
