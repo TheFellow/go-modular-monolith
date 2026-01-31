@@ -18,23 +18,36 @@ flesh out individual views.
 
 ### Directory Structure
 
+The TUI follows a domain-centric layout where each domain owns its ViewModels:
+
 ```
 main/tui/
 ├── main.go           # Entry point, program initialization
 ├── app.go            # Root tea.Model with navigation logic
 ├── styles.go         # Lip Gloss theme definitions
 ├── keys.go           # Key bindings and help text
-├── messages.go       # Shared message types
-└── views/
-    ├── view.go       # ViewModel interface
-    ├── dashboard.go  # Dashboard placeholder
-    ├── drinks.go     # Drinks placeholder
-    ├── ingredients.go# Ingredients placeholder
-    ├── inventory.go  # Inventory placeholder
-    ├── menus.go      # Menus placeholder
-    ├── orders.go     # Orders placeholder
-    └── audit.go      # Audit placeholder
+├── messages.go       # Shared message types (NavigateMsg, ErrorMsg, etc.)
+├── views/
+│   ├── view.go       # ViewModel interface definition
+│   └── dashboard.go  # Dashboard view (TUI-specific, not domain-owned)
+└── components/       # Shared UI components (Sprint 002)
+
+# Domain-owned ViewModels (implemented in Sprint 002+)
+app/domains/drinks/surfaces/tui/
+├── list_vm.go        # ListViewModel for drinks list
+├── detail_vm.go      # DetailViewModel for drink details
+└── create_vm.go      # CreateViewModel for drink creation (Sprint 004)
+
+app/domains/ingredients/surfaces/tui/
+├── list_vm.go
+├── detail_vm.go
+└── create_vm.go
+
+# ... similar structure for inventory, menus, orders, audit
 ```
+
+This sprint creates the foundation (`main/tui/`). Domain ViewModels are stubbed as placeholders
+and fully implemented in Sprint 002.
 
 ## Tasks
 
@@ -81,10 +94,13 @@ main/tui/
 - [ ] Implement `help.KeyMap` interface for context-sensitive help
 - [ ] Add help bubble component to root model
 
-### Phase 5: Placeholder Views
+### Phase 5: ViewModel Interface & Placeholders
 
 - [ ] Create `main/tui/views/view.go` with `ViewModel` interface:
   ```go
+  // ViewModel is the interface all TUI views implement.
+  // Domain-specific ViewModels (ListViewModel, DetailViewModel, CreateViewModel)
+  // live under app/domains/*/surfaces/tui/ and implement this interface.
   type ViewModel interface {
       Init() tea.Cmd
       Update(msg tea.Msg) (ViewModel, tea.Cmd)
@@ -93,15 +109,17 @@ main/tui/
       FullHelp() [][]key.Binding
   }
   ```
-- [ ] Create placeholder implementations for each view:
-    - `dashboard.go` - "Dashboard - Coming Soon"
-    - `drinks.go` - "Drinks - Coming Soon"
-    - `ingredients.go` - "Ingredients - Coming Soon"
-    - `inventory.go` - "Inventory - Coming Soon"
-    - `menus.go` - "Menus - Coming Soon"
-    - `orders.go` - "Orders - Coming Soon"
-    - `audit.go` - "Audit - Coming Soon"
-- [ ] Each placeholder shows view name and help text
+- [ ] Create placeholder implementations (temporary, replaced in Sprint 002):
+    - `main/tui/views/dashboard.go` - Dashboard view (remains here, TUI-specific)
+    - `main/tui/views/placeholder.go` - Generic placeholder for domain views
+- [ ] Register placeholders for navigation:
+    - Drinks → placeholder (replaced by `drinks.ListViewModel` in Sprint 002)
+    - Ingredients → placeholder (replaced by `ingredients.ListViewModel` in Sprint 002)
+    - Inventory → placeholder (replaced by `inventory.ListViewModel` in Sprint 002)
+    - Menus → placeholder (replaced by `menus.ListViewModel` in Sprint 002)
+    - Orders → placeholder (replaced by `orders.ListViewModel` in Sprint 002)
+    - Audit → placeholder (replaced by `audit.ListViewModel` in Sprint 002)
+- [ ] Each placeholder shows view name and "Coming Soon" message
 
 ### Phase 6: Window Size Handling
 
@@ -247,3 +265,16 @@ the session.
 
 Errors are stored in `lastError` and displayed in a status bar. Critical errors (app initialization failure) cause
 immediate exit with error message.
+
+### MVVM Foundation
+
+This sprint establishes the `ViewModel` interface that all views implement. The full MVVM pattern emerges across sprints:
+
+| Sprint | ViewModels Introduced | Purpose |
+|--------|----------------------|---------|
+| 001    | Interface only       | Define contract for all views |
+| 002    | ListViewModel, DetailViewModel | Read-only data display |
+| 004    | CreateViewModel      | Saga-backed creation workflows |
+
+Domain ViewModels live under `app/domains/*/surfaces/tui/` to maintain domain cohesion. The root `App` model in
+`main/tui/app.go` orchestrates navigation between domain ViewModels.

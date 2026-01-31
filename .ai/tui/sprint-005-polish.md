@@ -35,8 +35,8 @@ testing patterns for TUI components.
 #### Adaptive Layouts
 
 - [ ] List views: Hide detail pane on narrow terminals
-- [ ] Menu builder: Stack panes vertically on narrow terminals
-- [ ] Order builder: Same vertical stacking
+- [ ] Menu CreateViewModel: Stack panes vertically on narrow terminals
+- [ ] Order CreateViewModel: Same vertical stacking
 - [ ] Forms: Single column always (no horizontal split)
 - [ ] Dashboard: Reduce card size, stack vertically if needed
 
@@ -422,16 +422,15 @@ func (t *Theme) BuildStyles() Styles {
 ### Golden File Testing
 
 ```go
-func TestDrinksView_Render(t *testing.T) {
-    model := NewDrinksModel(mockApp())
-    model.drinks = []domain.Drink{
+func TestDrinksListView_Render(t *testing.T) {
+    vm := drinks.NewListViewModel(mockApp())
+    vm.SetDrinks([]domain.Drink{
         {Name: "Margarita", Category: "cocktail"},
         {Name: "Mojito", Category: "cocktail"},
-    }
-    model.width = 100
-    model.height = 30
+    })
+    vm.SetSize(100, 30)
 
-    output := model.View()
+    output := vm.View()
 
     golden := filepath.Join("testdata", "drinks_view.golden")
     if *update {
@@ -450,20 +449,21 @@ func TestDrinksView_Render(t *testing.T) {
 ### Mouse Event Handling
 
 ```go
-func (m *DrinksModel) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
+// In drinks/surfaces/tui/list_vm.go
+func (vm *ListViewModel) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
     switch msg := msg.(type) {
     case tea.MouseMsg:
         switch msg.Type {
         case tea.MouseLeft:
             // Check if click is in list area
-            if m.isInListBounds(msg.X, msg.Y) {
-                idx := m.yToListIndex(msg.Y)
-                m.list.Select(idx)
+            if vm.isInListBounds(msg.X, msg.Y) {
+                idx := vm.yToListIndex(msg.Y)
+                vm.list.Select(idx)
             }
         case tea.MouseWheelUp:
-            m.list.CursorUp()
+            vm.list.CursorUp()
         case tea.MouseWheelDown:
-            m.list.CursorDown()
+            vm.list.CursorDown()
         }
     }
     // ... rest of update
