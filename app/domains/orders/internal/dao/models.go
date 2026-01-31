@@ -1,0 +1,25 @@
+package dao
+
+import (
+	"time"
+
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	cedar "github.com/cedar-policy/cedar-go"
+)
+
+type OrderRow struct {
+	ID          string
+	MenuID      string `bstore:"index"`
+	Items       []OrderItemRow
+	Status      string    `bstore:"index"`
+	CreatedAt   time.Time `bstore:"index"`
+	CompletedAt optional.Value[time.Time]
+	Notes       string
+	DeletedAt   *time.Time
+}
+
+type OrderItemRow struct {
+	DrinkID  cedar.EntityUID
+	Quantity int
+	Notes    string
+}

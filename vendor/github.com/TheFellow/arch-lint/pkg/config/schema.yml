@@ -1,0 +1,48 @@
+type: object
+additionalProperties: false
+properties:
+  include_tests:
+    type: boolean
+  specs:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [name, packages, rules]
+      properties:
+        name:
+          type: string
+        packages:
+          type: object
+          additionalProperties: false
+          required: [include]
+          properties:
+            include:
+              type: array
+              minItems: 1
+              items:
+                type: string
+            exclude:
+              type: ["array", "null"]
+              items:
+                type: string
+        rules:
+          type: object
+          additionalProperties: false
+          required: [forbid]
+          properties:
+            forbid:
+              type: array
+              minItems: 1
+              items:
+                type: string
+            except:
+              type: ["array", "null"]
+              items:
+                type: string
+            exempt:
+              type: ["array", "null"]
+              items:
+                type: string
+required: [specs]

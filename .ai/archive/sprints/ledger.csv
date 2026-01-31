@@ -1,0 +1,72 @@
+sprint,status,started,completed,notes
+sprint-001,completed,2025-12-29,2025-12-29,Drinks read model + file DAO + request/response types
+sprint-002,completed,2025-12-29,2025-12-29,List query
+sprint-003,completed,2025-12-29,2025-12-29,CLI skeleton + list command
+sprint-004,completed,2025-12-29,2025-12-29,Get query
+sprint-005,completed,2025-12-29,2025-12-29,Middleware infrastructure
+sprint-006,completed,2025-12-29,2025-12-29,First write use case + AuthZ
+sprint-007,completed,2025-12-30,2025-12-30,Uniform error handling
+sprint-008,completed,2025-12-30,2025-12-30,Decentralized policy embedding
+sprint-009,completed,2026-01-02,2026-01-02,Ingredients master data context
+sprint-010,completed,2026-01-02,2026-01-03,Dispatcher generation + middleware Context boundary (cache removed in sprint-010b)
+sprint-010b,completed,2026-01-03,2026-01-03,Fat events decision + remove entity cache + derive thresholds from StockAdjusted
+sprint-011,completed,2026-01-03,2026-01-03,Inventory management context (file DAO + authz + CLI + events)
+sprint-012,completed,2026-01-03,2026-01-03,Menu reacts to StockAdjusted + dispatcher integration test
+sprint-012b,completed,2026-01-03,2026-01-03,CLI idioms cleanup (typed args + validators + CLI struct)
+sprint-013,completed,2026-01-03,2026-01-03,Rich drink recipes + recipe validation + update command + CLI recipe json
+sprint-013b,completed,2026-01-03,2026-01-03,Arch-lint rules + CI workflow to enforce architecture
+sprint-013c,completed,2026-01-04,2026-01-04,Simplified DI: parameterless constructors + hardcoded DAO paths
+sprint-013d,completed,2026-01-04,2026-01-04,Unified Commands object per module (single DAO + methods)
+sprint-013e,completed,2026-01-04,2026-01-04,Commands/modules/CLI use public models directly (no request/response wrappers)
+sprint-013f,completed,2026-01-04,2026-01-04,CLI exit codes via ErrorKind.CLICode + errors.ToCLIExit
+sprint-014,completed,2026-01-04,2026-01-04,Menu curation context
+sprint-014b,completed,2026-01-04,2026-01-04,Simplified middleware signatures (CedarEntity + params structs)
+sprint-015,completed,2026-01-04,2026-01-04,Advanced business rules & cost analysis
+sprint-015b,completed,2026-01-04,2026-01-04,Optional value sum type + model optional refactor
+sprint-016,completed,2026-01-04,2026-01-04,Orders & inventory consumption
+sprint-017,completed,2026-01-04,2026-01-04,Embedded database with bstore (bbolt)
+sprint-017b,completed,2026-01-04,2026-01-04,Separate domain models from internal DAO rows + post-open type registration
+sprint-017c,completed,2026-01-05,2026-01-05,Test fixtures: isolated per-test bstore DBs + app/store injection
+sprint-018,completed,2026-01-05,2026-01-05,Structured slog logging via middleware + CLI flags
+sprint-019,completed,2026-01-05,2026-01-05,OpenTelemetry metrics via middleware + optional Prometheus /metrics endpoint
+sprint-020,completed,2026-01-05,2026-01-05,Single-responsibility middleware refactor: pure authz + AuthZ/Event subchains
+sprint-021,completed,2026-01-05,2026-01-05,Drinks delete + filtered list + Menu reacts to DrinkDeleted
+sprint-022,completed,2026-01-05,2026-01-05,DAO ListFilter support across domains + CLI list filters
+sprint-023,completed,2026-01-05,2026-01-05,Fat events: embed full models in events
+sprint-024,completed,2026-01-06,2026-01-06,Shared Kernel Packages
+sprint-025,completed,2026-01-06,2026-01-06,Cedar-go v1.4.0; store embedded EntityUID fields via BinaryMarshaler (PKs remain strings; requires DB reset)
+sprint-026,completed,2026-01-06,2026-01-06,Decimal money.Price with half-up display rounding + menu cost/margin updates
+sprint-027,completed,2026-01-08,2026-01-09,Rich Domain Models with Enforced Identity Invariants
+sprint-028,completed,2026-01-09,2026-01-10,Fat Events with Embedded Domain Models
+sprint-029,completed,2026-01-10,2026-01-10,Remove Test-Only Abstractions; Use Real Code in Tests
+sprint-030,completed,2026-01-10,2026-01-10,Simplify APIs - Direct IDs; Pointer Returns; Soft Deletes
+sprint-031,completed,2026-01-10,2026-01-10,Cross-Domain Event Handlers for Cascading Operations
+sprint-031a,completed,2026-01-11,2026-01-11,Two-Phase Event Handling
+sprint-031b,completed,2026-01-11,2026-01-11,Align Inventory Domain Authz Naming
+sprint-031c,completed,2026-01-12,2026-01-12,Generate `pkg/testutil/errors_gen.go` error-kind assertion helpers + simplify tests
+sprint-031d,completed,2026-01-12,2026-01-13,KSUID-based `pkg/ids` via vendored `segmentio/ksuid` + static prefixes (no `RegisterPrefix`)
+sprint-032,completed,2026-01-13,2026-01-13,Audit module with activity tracking touches filters and CLI
+sprint-031e,completed,2026-01-13,2026-01-13,Consolidate KSUID ID generation into app/kernel/entity; remove pkg/ids
+sprint-032b,completed,2026-01-13,2026-01-13,README Mermaid diagrams + activity/audit documentation
+sprint-033,completed,2026-01-15,2026-01-15,ABAC attributes + loader auth + dual IN/OUT checks
+sprint-033a,completed,2026-01-15,2026-01-15,Simplify command middleware and inline auth
+sprint-033b,completed,2026-01-15,2026-01-15,Remove module handler business logic
+sprint-033c,completed,2026-01-15,2026-01-15,Simplify RunCommand loaders + event payloads + handlers
+sprint-033d,completed,2026-01-15,2026-01-15,RunCommand helper functions + pointer module handlers
+sprint-033e,completed,2026-01-15,2026-01-15,DRY DAO boilerplate with shared context helpers
+sprint-033f,completed,2026-01-18,2026-01-18,Strongly typed entity IDs + CLI boundary parsing
+sprint-033g,completed,2026-01-18,2026-01-18,Code generation for entity ID types
+sprint-033h,completed,2026-01-18,2026-01-18,Tabwriter-aligned CLI output
+sprint-033i,completed,2026-01-18,2026-01-18,Consistent CLI flag names for primary keys
+sprint-035,completed,2026-01-18,2026-01-18,Unit value objects with conversion
+sprint-036,completed,2026-01-19,2026-01-19,Protect ingredient unit changes
+sprint-037,completed,2026-01-19,2026-01-19,Currency as Kernel Package
+sprint-037b,completed,2026-01-19,2026-01-19,Currency Package (Simplified)
+sprint-038,completed,2026-01-19,2026-01-19,Role-Based Access Control
+sprint-039,completed,2026-01-19,2026-01-19,CLI Output Consistency
+sprint-040,completed,2026-01-19,2026-01-19,Standardize Code Generation
+sprint-041,completed,2026-01-19,2026-01-19,Reflection-Based TabWriter Helpers
+sprint-042,completed,2026-01-19,2026-01-19,Standardize JSON Input for CLI Create/Update Commands
+sprint-043,completed,2026-01-25,2026-01-25,Organize domain tests by method
+sprint-044,completed,2026-01-25,2026-01-25,Cascade entity touches on ingredient updates
+sprint-045,completed,2026-01-25,2026-01-25,Improve dispatcher generator variable naming

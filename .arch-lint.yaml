@@ -1,0 +1,71 @@
+specs:
+  # Shared types cannot import domains.
+  - name: shared-no-domains
+    packages:
+      include:
+        - "app/*"
+      exclude:
+        - "app/domains/**"
+    rules:
+      forbid:
+        - "app/domains/**"
+
+  # Cross-domain internal access forbidden.
+  - name: no-cross-domain-internal
+    packages:
+      include:
+        - "app/domains/{module}/**"
+    rules:
+      forbid:
+        - "app/domains/{!module}/internal/**"
+
+  # Handlers cannot import commands.
+  - name: handlers-no-commands
+    packages:
+      include:
+        - "app/domains/*/handlers/**"
+    rules:
+      forbid:
+        - "app/domains/*/internal/commands"
+        - "app/domains/*/internal/commands/**"
+
+  # Events are public contracts - no internal dependencies.
+  - name: events-no-internal
+    packages:
+      include:
+        - "app/domains/*/events/**"
+    rules:
+      forbid:
+        - "app/domains/*/internal/**"
+
+  # Queries are read-only - no command imports.
+  - name: queries-no-commands
+    packages:
+      include:
+        - "app/domains/*/queries/**"
+    rules:
+      forbid:
+        - "app/domains/*/internal/commands/**"
+
+  # Models are dependency-free within module.
+  - name: models-no-internal
+    packages:
+      include:
+        - "app/domains/*/models/**"
+    rules:
+      forbid:
+        - "app/domains/*/internal/**"
+
+  # Handlers use queries, not modules.
+  - name: handlers-no-modules
+    packages:
+      include:
+        - "app/domains/*/handlers/**"
+    rules:
+      forbid:
+        - "app/domains/*"
+      except:
+        - "app/domains/*/events"
+        - "app/domains/*/queries"
+        - "app/domains/*/models"
+        - "app/domains/*/internal/**"

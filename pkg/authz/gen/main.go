@@ -1,0 +1,180 @@
+package main
+
+import (
+	"bytes"
+	_ "embed"
+	"flag"
+	"fmt"
+	"go/format"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"text/template"
+	"unicode"
+)
+
+type modulePolicy struct {
+	moduleName  string
+	importAlias string
+	importPath  string
+	document    string
+}
+
+type templateImport struct {
+	Alias string
+	Path  string
+}
+
+type templateDoc struct {
+	Name     string
+	TextExpr string
+}
+
+type templateData struct {
+	Imports []templateImport
+	Docs    []templateDoc
+}
+
+//go:embed policies.go.tpl
+var templateText string
+
+func main() {
+	var out string
+	flag.StringVar(&out, "out", "policies_gen.go", "output file (relative to pkg/authz)")
+	flag.Parse()
+
+	wd, err := os.Getwd()
+	must(err)
+	repoRoot := filepath.Clean(filepath.Join(wd, "..", ".."))
+
+	modulePath := readModulePath(filepath.Join(repoRoot, "go.mod"))
+	baseDocs := discoverPackagePolicies(repoRoot)
+	modules := discoverModulePolicies(repoRoot, modulePath)
+
+	data := templateData{
+		Imports: make([]templateImport, 0, len(modules)),
+		Docs:    make([]templateDoc, 0, len(baseDocs)+len(modules)),
+	}
+
+	for _, baseDoc := range baseDocs {
+		data.Docs = append(data.Docs, templateDoc{
+			Name:     baseDoc,
+			TextExpr: "Policies",
+		})
+	}
+	for _, m := range modules {
+		data.Imports = append(data.Imports, templateImport{
+			Alias: m.importAlias,
+			Path:  m.importPath,
+		})
+		data.Docs = append(data.Docs, templateDoc{
+			Name:     m.document,
+			TextExpr: m.importAlias + ".Policies",
+		})
+	}
+
+	tmpl := template.Must(template.New("policies").Parse(templateText))
+	buf := &bytes.Buffer{}
+	must(tmpl.Execute(buf, data))
+
+	formatted, err := format.Source(buf.Bytes())
+	must(err)
+
+	outPath := filepath.Join(wd, out)
+	must(os.WriteFile(outPath, formatted, 0o644))
+}
+
+func readModulePath(goModPath string) string {
+	b, err := os.ReadFile(goModPath)
+	must(err)
+
+	for _, line := range strings.Split(string(b), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "//") {
+			continue
+		}
+		if rest, ok := strings.CutPrefix(line, "module "); ok {
+			rest = strings.TrimSpace(rest)
+			if rest != "" {
+				return rest
+			}
+		}
+	}
+	panic("go.mod: missing module declaration")
+}
+
+func discoverModulePolicies(repoRoot, modulePath string) []modulePolicy {
+	pattern := filepath.Join(repoRoot, "app", "domains", "*", "authz", "policies.cedar")
+	matches, err := filepath.Glob(pattern)
+	must(err)
+
+	var modules []modulePolicy
+	for _, policiesPath := range matches {
+		moduleName := filepath.Base(filepath.Dir(filepath.Dir(policiesPath)))
+		if moduleName == "" || moduleName == "." || moduleName == string(filepath.Separator) {
+			continue
+		}
+
+		importAlias := sanitizeIdent(moduleName) + "authz"
+		if importAlias == "authz" {
+			importAlias = "moduleauthz"
+		}
+
+		modules = append(modules, modulePolicy{
+			moduleName:  moduleName,
+			importAlias: importAlias,
+			importPath:  modulePath + "/app/domains/" + moduleName + "/authz",
+			document:    filepath.ToSlash(filepath.Join("app", "domains", moduleName, "authz", "policies.cedar")),
+		})
+	}
+
+	sort.Slice(modules, func(i, j int) bool { return modules[i].moduleName < modules[j].moduleName })
+	return modules
+}
+
+func discoverPackagePolicies(repoRoot string) []string {
+	pattern := filepath.Join(repoRoot, "pkg", "authz", "*.cedar")
+	matches, err := filepath.Glob(pattern)
+	must(err)
+
+	rels := make([]string, 0, len(matches))
+	for _, abs := range matches {
+		rel, err := filepath.Rel(repoRoot, abs)
+		must(err)
+		rels = append(rels, filepath.ToSlash(rel))
+	}
+	sort.Strings(rels)
+
+	if len(rels) != 1 {
+		panic(fmt.Sprintf("expected exactly 1 cedar policy in pkg/authz, found %d", len(rels)))
+	}
+	return rels
+}
+
+func sanitizeIdent(s string) string {
+	var b strings.Builder
+	for i, r := range s {
+		switch {
+		case r == '_' || unicode.IsLetter(r) || (i > 0 && unicode.IsDigit(r)):
+			b.WriteRune(r)
+		default:
+			b.WriteByte('_')
+		}
+	}
+	out := strings.Trim(b.String(), "_")
+	out = strings.ToLower(out)
+	if out == "" {
+		return ""
+	}
+	if out[0] >= '0' && out[0] <= '9' {
+		return "_" + out
+	}
+	return out
+}
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
