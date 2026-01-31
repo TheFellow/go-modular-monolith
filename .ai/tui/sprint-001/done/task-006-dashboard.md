@@ -99,10 +99,10 @@ func (d *Dashboard) FullHelp() [][]key.Binding {
 
 ## Checklist
 
-- [ ] Create `main/tui/views/dashboard.go`
-- [ ] Implement `Dashboard` struct with dependencies
-- [ ] Implement all ViewModel interface methods
-- [ ] Handle number keys 1-6 for navigation
-- [ ] Render 6 navigation cards with descriptions
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] Create `main/tui/views/dashboard.go`
+- [x] Implement `Dashboard` struct with dependencies
+- [x] Implement all ViewModel interface methods
+- [x] Handle number keys 1-6 for navigation
+- [x] Render 6 navigation cards with descriptions
+- [x] `go build ./main/tui/...` passes
+- [x] `go test ./...` passes
