@@ -70,9 +70,9 @@ Key considerations:
 
 ## Checklist
 
-- [ ] Create `main/tui/styles.go`
-- [ ] Define color palette with AdaptiveColor
-- [ ] Define all component styles
-- [ ] Implement `NewStyles()` constructor
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] Create `main/tui/styles.go`
+- [x] Define color palette with AdaptiveColor
+- [x] Define all component styles
+- [x] Implement `NewStyles()` constructor
+- [x] `go build ./main/tui/...` passes
+- [x] `go test ./...` passes
