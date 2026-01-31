@@ -122,7 +122,7 @@ type ViewModel interface {
 | Task | Description                                                                | Status  |
 |------|----------------------------------------------------------------------------|---------|
 | 001  | [Add Bubble Tea dependencies](done/task-001-dependencies.md)               | Done    |
-| 002  | [Create shared message types](todo/task-002-messages.md)                   | Pending |
+| 002  | [Create shared message types](done/task-002-messages.md)                   | Done    |
 | 003  | [Create styles and theme](todo/task-003-styles.md)                         | Pending |
 | 004  | [Implement key bindings](todo/task-004-keys.md)                            | Pending |
 | 005  | [Create ViewModel interface and placeholder](todo/task-005-viewmodel.md)   | Pending |

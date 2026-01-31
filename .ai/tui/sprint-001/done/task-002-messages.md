@@ -67,10 +67,10 @@ func ParseView(s string) (View, bool) {
 
 ## Checklist
 
-- [ ] Create `main/tui/messages.go`
-- [ ] Define all message types (NavigateMsg, BackMsg, ErrorMsg, RefreshMsg)
-- [ ] Define View type with constants for all 7 views
-- [ ] Implement View.String() method
-- [ ] Implement ParseView() function
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] Create `main/tui/messages.go`
+- [x] Define all message types (NavigateMsg, BackMsg, ErrorMsg, RefreshMsg)
+- [x] Define View type with constants for all 7 views
+- [x] Implement View.String() method
+- [x] Implement ParseView() function
+- [x] `go build ./main/tui/...` passes
+- [x] `go test ./...` passes
