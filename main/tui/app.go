@@ -10,6 +10,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
 const (
@@ -31,6 +32,7 @@ type App struct {
 
 	// Application layer
 	app *app.App
+	ctx *middleware.Context
 
 	// UI State
 	styles    Styles
@@ -46,7 +48,7 @@ type App struct {
 }
 
 // NewApp creates a new App with the given application and initial view.
-func NewApp(application *app.App, initialView View) *App {
+func NewApp(ctx *middleware.Context, application *app.App, initialView View) *App {
 	if !isValidView(initialView) {
 		initialView = ViewDashboard
 	}
@@ -57,6 +59,7 @@ func NewApp(application *app.App, initialView View) *App {
 	return &App{
 		currentView: initialView,
 		app:         application,
+		ctx:         ctx,
 		styles:      NewStyles(),
 		keys:        NewKeyMap(),
 		help:        helpModel,
@@ -149,12 +152,12 @@ func (a *App) currentViewModel() views.ViewModel {
 	var vm views.ViewModel
 	switch a.currentView {
 	case ViewDashboard:
-		vm = views.NewDashboard(a.dashboardStyles(), a.dashboardKeys())
+		vm = views.NewDashboard(a.app, a.ctx, a.dashboardStyles(), a.dashboardKeys())
 	case ViewDrinks, ViewIngredients, ViewInventory, ViewMenus, ViewOrders, ViewAudit:
 		vm = views.NewPlaceholder(viewTitle(a.currentView))
 	default:
 		a.currentView = ViewDashboard
-		vm = views.NewDashboard(a.dashboardStyles(), a.dashboardKeys())
+		vm = views.NewDashboard(a.app, a.ctx, a.dashboardStyles(), a.dashboardKeys())
 	}
 
 	a.views[a.currentView] = vm

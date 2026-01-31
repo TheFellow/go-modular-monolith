@@ -118,8 +118,12 @@ func (c *CLI) Command() *cli.Command {
 			}
 
 			ctx = c.app.Context(ctx, p)
+			mctx, ok := ctx.(*middleware.Context)
 
 			if cmd != nil && cmd.Bool("tui") {
+				if !ok {
+					return ctx, cli.Exit(fmt.Errorf("expected middleware context for TUI"), apperrors.ExitGeneral)
+				}
 				initialView := tui.ViewDashboard
 				args := cmd.Args().Slice()
 				if len(args) > 0 {
@@ -133,12 +137,15 @@ func (c *CLI) Command() *cli.Command {
 					return ctx, cli.Exit(fmt.Errorf("too many arguments for --tui"), apperrors.ExitUsage)
 				}
 
-				if err := tui.Run(c.app, initialView); err != nil {
+				if err := tui.Run(mctx, c.app, initialView); err != nil {
 					return ctx, err
 				}
 				return ctx, cli.Exit("", 0)
 			}
 
+			if ok {
+				return mctx, nil
+			}
 			return ctx, nil
 		},
 		After: func(ctx context.Context, _ *cli.Command) error {

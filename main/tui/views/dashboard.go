@@ -1,20 +1,76 @@
 package views
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"strconv"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/TheFellow/go-modular-monolith/app"
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
+	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
+	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
+	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
+	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
+	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/main/tui/components"
+	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
 // Dashboard is the main navigation hub of the TUI.
 type Dashboard struct {
+	app    *app.App
+	ctx    *middleware.Context
 	styles DashboardStyles
 	keys   DashboardKeys
 	width  int
 	height int
+
+	loading bool
+	spinner components.Spinner
+	data    *DashboardData
+	err     error
 }
 
-const dashboardEdgeMargin = 2
+const (
+	dashboardEdgeMargin = 2
+	dashboardRecentMax  = 10
+	dashboardUnknown    = -1
+)
+
+type DashboardData struct {
+	DrinkCount       int
+	IngredientCount  int
+	InventoryCount   int
+	MenuCount        int
+	DraftMenus       int
+	PublishedMenus   int
+	LowStockCount    int
+	OrderCount       int
+	PendingOrders    int
+	AuditCount       int
+	AuditCountCapped bool
+	RecentActivity   []AuditSummary
+}
+
+type AuditSummary struct {
+	Timestamp string
+	Actor     string
+	Action    string
+}
+
+type DashboardLoadedMsg struct {
+	Data *DashboardData
+	Err  error
+}
 
 // DashboardStyles contains the lipgloss styles used by the dashboard.
 type DashboardStyles struct {
@@ -37,16 +93,22 @@ type DashboardKeys struct {
 }
 
 // NewDashboard creates a new Dashboard view.
-func NewDashboard(styles DashboardStyles, keys DashboardKeys) *Dashboard {
-	return &Dashboard{
-		styles: styles,
-		keys:   keys,
+func NewDashboard(app *app.App, ctx *middleware.Context, styles DashboardStyles, keys DashboardKeys) *Dashboard {
+	d := &Dashboard{
+		app:     app,
+		ctx:     ctx,
+		styles:  styles,
+		keys:    keys,
+		loading: true,
 	}
+	d.spinner = components.NewSpinner("Loading dashboard...", styles.Subtitle)
+	return d
 }
 
 // Init implements ViewModel.
 func (d *Dashboard) Init() tea.Cmd {
-	return nil
+	d.loading = true
+	return tea.Batch(d.spinner.Init(), d.loadData())
 }
 
 // Update implements ViewModel.
@@ -70,28 +132,46 @@ func (d *Dashboard) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 		case key.Matches(msg, d.keys.Nav6):
 			return d, navigateTo(ViewAudit)
 		}
+	case DashboardLoadedMsg:
+		d.loading = false
+		d.data = msg.Data
+		d.err = msg.Err
+		return d, nil
 	}
+
+	if d.loading {
+		var cmd tea.Cmd
+		d.spinner, cmd = d.spinner.Update(msg)
+		return d, cmd
+	}
+
 	return d, nil
 }
 
 // View implements ViewModel.
 func (d *Dashboard) View() string {
+	if d.loading {
+		return d.renderLoading()
+	}
+
 	header := d.styles.Title.Render("Dashboard")
 	subtitle := d.styles.Subtitle.Render("Select a workspace to continue")
-
-	cards := []dashboardCard{
-		{key: "1", title: "Drinks", desc: "Manage drink recipes"},
-		{key: "2", title: "Ingredients", desc: "Catalog ingredients"},
-		{key: "3", title: "Inventory", desc: "Track stock levels"},
-		{key: "4", title: "Menus", desc: "Build drink menus"},
-		{key: "5", title: "Orders", desc: "Review orders"},
-		{key: "6", title: "Audit", desc: "Inspect audit logs"},
-	}
+	cards := d.renderCountCards()
 
 	cardWidth, columnCount := d.layoutConfig()
 	content := d.renderCards(cards, cardWidth, columnCount)
 
-	body := lipgloss.JoinVertical(lipgloss.Left, header, subtitle, "", content)
+	activity := d.renderRecentActivity()
+	body := lipgloss.JoinVertical(
+		lipgloss.Left,
+		header,
+		subtitle,
+		"",
+		content,
+		"",
+		d.styles.Subtitle.Render("Recent Activity"),
+		activity,
+	)
 	if d.width > 0 && d.height > 0 {
 		return lipgloss.Place(d.width, d.height, lipgloss.Center, lipgloss.Center, body)
 	}
@@ -120,6 +200,189 @@ type dashboardCard struct {
 	key   string
 	title string
 	desc  string
+	count string
+}
+
+func (d *Dashboard) loadData() tea.Cmd {
+	return func() tea.Msg {
+		if d.app == nil {
+			return DashboardLoadedMsg{Err: errors.New("dashboard requires app")}
+		}
+
+		ctx := d.ctx
+		if ctx == nil {
+			ctx = d.app.Context(context.Background(), authn.Anonymous())
+		}
+
+		data := &DashboardData{
+			DrinkCount:      dashboardUnknown,
+			IngredientCount: dashboardUnknown,
+			InventoryCount:  dashboardUnknown,
+			MenuCount:       dashboardUnknown,
+			DraftMenus:      dashboardUnknown,
+			PublishedMenus:  dashboardUnknown,
+			LowStockCount:   dashboardUnknown,
+			OrderCount:      dashboardUnknown,
+			PendingOrders:   dashboardUnknown,
+			AuditCount:      dashboardUnknown,
+		}
+		var loadErr error
+
+		if list, err := d.app.Drinks.List(ctx, drinks.ListRequest{}); err != nil {
+			loadErr = firstErr(loadErr, err)
+		} else {
+			data.DrinkCount = len(list)
+		}
+
+		if list, err := d.app.Ingredients.List(ctx, ingredients.ListRequest{}); err != nil {
+			loadErr = firstErr(loadErr, err)
+		} else {
+			data.IngredientCount = len(list)
+		}
+
+		if list, err := d.app.Inventory.List(ctx, inventory.ListRequest{}); err != nil {
+			loadErr = firstErr(loadErr, err)
+		} else {
+			data.InventoryCount = len(list)
+		}
+
+		if list, err := d.app.Inventory.List(ctx, inventory.ListRequest{LowStock: optional.Some(0.0)}); err != nil {
+			loadErr = firstErr(loadErr, err)
+		} else {
+			data.LowStockCount = len(list)
+		}
+
+		if list, err := d.app.Menu.List(ctx, menus.ListRequest{}); err != nil {
+			loadErr = firstErr(loadErr, err)
+		} else {
+			data.MenuCount = len(list)
+			draft := 0
+			published := 0
+			for _, menu := range list {
+				switch menu.Status {
+				case menumodels.MenuStatusDraft:
+					draft++
+				case menumodels.MenuStatusPublished:
+					published++
+				}
+			}
+			data.DraftMenus = draft
+			data.PublishedMenus = published
+		}
+
+		if list, err := d.app.Orders.List(ctx, orders.ListRequest{}); err != nil {
+			loadErr = firstErr(loadErr, err)
+		} else {
+			data.OrderCount = len(list)
+			pending := 0
+			for _, order := range list {
+				switch order.Status {
+				case ordersmodels.OrderStatusPending, ordersmodels.OrderStatusPreparing:
+					pending++
+				}
+			}
+			data.PendingOrders = pending
+		}
+
+		if entries, err := d.app.Audit.List(ctx, audit.ListRequest{Limit: dashboardRecentMax}); err != nil {
+			loadErr = firstErr(loadErr, err)
+		} else {
+			data.AuditCount = len(entries)
+			data.AuditCountCapped = len(entries) == dashboardRecentMax
+			data.RecentActivity = make([]AuditSummary, 0, len(entries))
+			for _, entry := range entries {
+				ts := entry.CompletedAt
+				if ts.IsZero() {
+					ts = entry.StartedAt
+				}
+				data.RecentActivity = append(data.RecentActivity, AuditSummary{
+					Timestamp: ts.Format("15:04"),
+					Actor:     entry.Principal.String(),
+					Action:    entry.Action,
+				})
+			}
+		}
+
+		return DashboardLoadedMsg{Data: data, Err: loadErr}
+	}
+}
+
+func (d *Dashboard) renderLoading() string {
+	content := d.spinner.View()
+	if d.width > 0 && d.height > 0 {
+		return lipgloss.Place(d.width, d.height, lipgloss.Center, lipgloss.Center, content)
+	}
+	return content
+}
+
+func (d *Dashboard) renderCountCards() []dashboardCard {
+	data := d.data
+	if data == nil {
+		data = &DashboardData{
+			DrinkCount:      dashboardUnknown,
+			IngredientCount: dashboardUnknown,
+			InventoryCount:  dashboardUnknown,
+			MenuCount:       dashboardUnknown,
+			DraftMenus:      dashboardUnknown,
+			PublishedMenus:  dashboardUnknown,
+			LowStockCount:   dashboardUnknown,
+			OrderCount:      dashboardUnknown,
+			PendingOrders:   dashboardUnknown,
+			AuditCount:      dashboardUnknown,
+		}
+	}
+
+	return []dashboardCard{
+		{key: "1", title: "Drinks", desc: "Manage drink recipes", count: formatCount(data.DrinkCount)},
+		{key: "2", title: "Ingredients", desc: "Catalog ingredients", count: formatCount(data.IngredientCount)},
+		{key: "3", title: "Inventory", desc: d.inventorySubtitle(data), count: formatCount(data.InventoryCount)},
+		{key: "4", title: "Menus", desc: d.menuSubtitle(data), count: formatCount(data.MenuCount)},
+		{key: "5", title: "Orders", desc: d.ordersSubtitle(data), count: formatCount(data.OrderCount)},
+		{key: "6", title: "Audit", desc: "Inspect audit logs", count: d.auditCountLabel(data)},
+	}
+}
+
+func (d *Dashboard) inventorySubtitle(data *DashboardData) string {
+	if data.LowStockCount >= 0 {
+		return "Low stock: " + formatCount(data.LowStockCount)
+	}
+	return "Track stock levels"
+}
+
+func (d *Dashboard) menuSubtitle(data *DashboardData) string {
+	if data.DraftMenus >= 0 && data.PublishedMenus >= 0 {
+		return fmt.Sprintf("Draft %s • Published %s", formatCount(data.DraftMenus), formatCount(data.PublishedMenus))
+	}
+	return "Build drink menus"
+}
+
+func (d *Dashboard) ordersSubtitle(data *DashboardData) string {
+	if data.PendingOrders >= 0 {
+		return "Pending: " + formatCount(data.PendingOrders)
+	}
+	return "Review orders"
+}
+
+func (d *Dashboard) auditCountLabel(data *DashboardData) string {
+	if data.AuditCount < 0 {
+		return "?"
+	}
+	if data.AuditCountCapped {
+		return fmt.Sprintf("%d+", data.AuditCount)
+	}
+	return strconv.Itoa(data.AuditCount)
+}
+
+func (d *Dashboard) renderRecentActivity() string {
+	if d.data == nil || len(d.data.RecentActivity) == 0 {
+		return d.styles.Subtitle.Render("No recent activity")
+	}
+
+	rows := make([]string, 0, len(d.data.RecentActivity))
+	for _, entry := range d.data.RecentActivity {
+		rows = append(rows, fmt.Sprintf("%s  %s  %s", entry.Timestamp, entry.Actor, entry.Action))
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
 
 func (d *Dashboard) layoutConfig() (int, int) {
@@ -167,7 +430,11 @@ func (d *Dashboard) renderCards(cards []dashboardCard, width int, columns int) s
 
 func (d *Dashboard) renderCard(card dashboardCard, width int) string {
 	label := d.styles.HelpKey.Render("[" + card.key + "]")
-	title := d.styles.Title.Render(card.title)
+	titleText := card.title
+	if card.count != "" {
+		titleText = fmt.Sprintf("%s (%s)", card.title, card.count)
+	}
+	title := d.styles.Title.Render(titleText)
 	desc := d.styles.Subtitle.Render(card.desc)
 
 	content := lipgloss.JoinVertical(
@@ -182,6 +449,20 @@ func (d *Dashboard) renderCard(card dashboardCard, width int) string {
 	}
 
 	return style.Render(content)
+}
+
+func firstErr(existing error, next error) error {
+	if existing == nil {
+		return next
+	}
+	return existing
+}
+
+func formatCount(count int) string {
+	if count < 0 {
+		return "?"
+	}
+	return strconv.Itoa(count)
 }
 
 func navigateTo(view View) tea.Cmd {

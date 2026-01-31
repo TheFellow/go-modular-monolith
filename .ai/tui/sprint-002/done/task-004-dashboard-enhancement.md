@@ -158,13 +158,13 @@ func NewDashboard(app *app.App, styles DashboardStyles, keys DashboardKeys) *Das
 
 ## Checklist
 
-- [ ] Add app field to Dashboard struct
-- [ ] Add DashboardData and DashboardLoadedMsg types
-- [ ] Implement loadData() command
-- [ ] Handle DashboardLoadedMsg in Update()
-- [ ] Update View() to show counts in cards
-- [ ] Add recent activity section
-- [ ] Update NewDashboard to accept *app.App
-- [ ] Update App.currentViewModel() to pass app
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] Add app field to Dashboard struct
+- [x] Add DashboardData and DashboardLoadedMsg types
+- [x] Implement loadData() command
+- [x] Handle DashboardLoadedMsg in Update()
+- [x] Update View() to show counts in cards
+- [x] Add recent activity section
+- [x] Update NewDashboard to accept *app.App
+- [x] Update App.currentViewModel() to pass app
+- [x] `go build ./main/tui/...` passes
+- [x] `go test ./...` passes

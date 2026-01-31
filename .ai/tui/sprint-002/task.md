@@ -49,7 +49,7 @@ The dashboard view demonstrates the Styles/Keys subset pattern with `DashboardSt
 | 001  | [TUI Error Surface](done/task-001-tui-error-surface.md)         | Done    |
 | 002  | [Infrastructure Updates](done/task-002-infrastructure.md)       | Done    |
 | 003  | [Shared Components](done/task-003-shared-components.md)         | Done    |
-| 004  | [Dashboard Enhancement](todo/task-004-dashboard-enhancement.md) | Pending |
+| 004  | [Dashboard Enhancement](done/task-004-dashboard-enhancement.md) | Done    |
 | 005  | [Drinks View](todo/task-005-drinks-view.md)                     | Pending |
 | 006  | [Ingredients View](todo/task-006-ingredients-view.md)           | Pending |
 | 007  | [Inventory View](todo/task-007-inventory-view.md)               | Pending |
