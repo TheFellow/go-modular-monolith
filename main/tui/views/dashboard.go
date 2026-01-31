@@ -228,67 +228,83 @@ func (d *Dashboard) loadData() tea.Cmd {
 		}
 		var loadErr error
 
-		if list, err := d.app.Drinks.List(ctx, drinks.ListRequest{}); err != nil {
+		if count, err := d.app.Drinks.Count(ctx, drinks.ListRequest{}); err != nil {
 			loadErr = firstErr(loadErr, err)
 		} else {
-			data.DrinkCount = len(list)
+			data.DrinkCount = count
 		}
 
-		if list, err := d.app.Ingredients.List(ctx, ingredients.ListRequest{}); err != nil {
+		if count, err := d.app.Ingredients.Count(ctx, ingredients.ListRequest{}); err != nil {
 			loadErr = firstErr(loadErr, err)
 		} else {
-			data.IngredientCount = len(list)
+			data.IngredientCount = count
 		}
 
-		if list, err := d.app.Inventory.List(ctx, inventory.ListRequest{}); err != nil {
+		if count, err := d.app.Inventory.Count(ctx, inventory.ListRequest{}); err != nil {
 			loadErr = firstErr(loadErr, err)
 		} else {
-			data.InventoryCount = len(list)
+			data.InventoryCount = count
 		}
 
-		if list, err := d.app.Inventory.List(ctx, inventory.ListRequest{LowStock: optional.Some(0.0)}); err != nil {
+		if count, err := d.app.Inventory.Count(ctx, inventory.ListRequest{LowStock: optional.Some(0.0)}); err != nil {
 			loadErr = firstErr(loadErr, err)
 		} else {
-			data.LowStockCount = len(list)
+			data.LowStockCount = count
 		}
 
-		if list, err := d.app.Menu.List(ctx, menus.ListRequest{}); err != nil {
+		if count, err := d.app.Menu.Count(ctx, menus.ListRequest{}); err != nil {
 			loadErr = firstErr(loadErr, err)
 		} else {
-			data.MenuCount = len(list)
-			draft := 0
-			published := 0
-			for _, menu := range list {
-				switch menu.Status {
-				case menumodels.MenuStatusDraft:
-					draft++
-				case menumodels.MenuStatusPublished:
-					published++
-				}
+			data.MenuCount = count
+		}
+
+		if count, err := d.app.Menu.Count(ctx, menus.ListRequest{Status: menumodels.MenuStatusDraft}); err != nil {
+			loadErr = firstErr(loadErr, err)
+		} else {
+			data.DraftMenus = count
+		}
+
+		if count, err := d.app.Menu.Count(ctx, menus.ListRequest{Status: menumodels.MenuStatusPublished}); err != nil {
+			loadErr = firstErr(loadErr, err)
+		} else {
+			data.PublishedMenus = count
+		}
+
+		if count, err := d.app.Orders.Count(ctx, orders.ListRequest{}); err != nil {
+			loadErr = firstErr(loadErr, err)
+		} else {
+			data.OrderCount = count
+		}
+
+		pendingCount := 0
+		if count, err := d.app.Orders.Count(ctx, orders.ListRequest{Status: ordersmodels.OrderStatusPending}); err != nil {
+			loadErr = firstErr(loadErr, err)
+			pendingCount = dashboardUnknown
+		} else {
+			pendingCount = count
+		}
+		if count, err := d.app.Orders.Count(ctx, orders.ListRequest{Status: ordersmodels.OrderStatusPreparing}); err != nil {
+			loadErr = firstErr(loadErr, err)
+			if pendingCount >= 0 {
+				pendingCount = dashboardUnknown
 			}
-			data.DraftMenus = draft
-			data.PublishedMenus = published
+		} else if pendingCount >= 0 {
+			pendingCount += count
+		}
+		if pendingCount >= 0 {
+			data.PendingOrders = pendingCount
 		}
 
-		if list, err := d.app.Orders.List(ctx, orders.ListRequest{}); err != nil {
+		if count, err := d.app.Audit.Count(ctx, audit.ListRequest{}); err != nil {
 			loadErr = firstErr(loadErr, err)
 		} else {
-			data.OrderCount = len(list)
-			pending := 0
-			for _, order := range list {
-				switch order.Status {
-				case ordersmodels.OrderStatusPending, ordersmodels.OrderStatusPreparing:
-					pending++
-				}
-			}
-			data.PendingOrders = pending
+			data.AuditCount = count
+			data.AuditCountCapped = false
 		}
 
 		if entries, err := d.app.Audit.List(ctx, audit.ListRequest{Limit: dashboardRecentMax}); err != nil {
 			loadErr = firstErr(loadErr, err)
 		} else {
-			data.AuditCount = len(entries)
-			data.AuditCountCapped = len(entries) == dashboardRecentMax
 			data.RecentActivity = make([]AuditSummary, 0, len(entries))
 			for _, entry := range entries {
 				ts := entry.CompletedAt

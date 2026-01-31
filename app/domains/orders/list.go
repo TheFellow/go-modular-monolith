@@ -27,6 +27,14 @@ func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.Order, erro
 	return os, nil
 }
 
+func (m *Module) Count(ctx *middleware.Context, req ListRequest) (int, error) {
+	return middleware.RunQueryWithResource(ctx, authz.ActionList, m.count, req)
+}
+
+func (m *Module) count(ctx store.Context, req ListRequest) (int, error) {
+	return m.queries.Count(ctx, ordersdao.ListFilter{Status: req.Status, MenuID: req.MenuID})
+}
+
 func (ListRequest) CedarEntity() cedar.Entity {
 	return cedar.Entity{
 		UID:        cedar.NewEntityUID(models.OrderEntityType, cedar.String("")),

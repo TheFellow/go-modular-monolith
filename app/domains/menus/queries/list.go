@@ -17,3 +17,7 @@ func (q *Queries) List(ctx store.Context, filter menudao.ListFilter) ([]*models.
 	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.Before(out[j].CreatedAt) })
 	return out, nil
 }
+
+func (q *Queries) Count(ctx store.Context, filter menudao.ListFilter) (int, error) {
+	return q.dao.Count(ctx, filter)
+}

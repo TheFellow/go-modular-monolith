@@ -18,18 +18,7 @@ type ListFilter struct {
 func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Inventory, error) {
 	var out []*models.Inventory
 	err := store.Read(ctx, func(tx *bstore.Tx) error {
-		q := bstore.QueryTx[StockRow](tx)
-
-		if !filter.IngredientID.IsZero() {
-			q = q.FilterID(filter.IngredientID.String())
-		}
-		if v, ok := filter.MaxQuantity.Unwrap(); ok {
-			q = q.FilterLessEqual("Quantity", v)
-		}
-		if v, ok := filter.MinQuantity.Unwrap(); ok {
-			q = q.FilterGreaterEqual("Quantity", v)
-		}
-
+		q := d.query(tx, filter)
 		rows, err := q.List()
 		if err != nil {
 			return store.MapError(err, "list stock")
@@ -43,4 +32,35 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Inventory, e
 		return nil
 	})
 	return out, err
+}
+
+func (d *DAO) Count(ctx store.Context, filter ListFilter) (int, error) {
+	var count int
+	err := store.Read(ctx, func(tx *bstore.Tx) error {
+		q := d.query(tx, filter)
+
+		var err error
+		count, err = q.Count()
+		if err != nil {
+			return store.MapError(err, "count stock")
+		}
+		return nil
+	})
+	return count, err
+}
+
+func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[StockRow] {
+	q := bstore.QueryTx[StockRow](tx)
+
+	if !filter.IngredientID.IsZero() {
+		q = q.FilterID(filter.IngredientID.String())
+	}
+	if v, ok := filter.MaxQuantity.Unwrap(); ok {
+		q = q.FilterLessEqual("Quantity", v)
+	}
+	if v, ok := filter.MinQuantity.Unwrap(); ok {
+		q = q.FilterGreaterEqual("Quantity", v)
+	}
+
+	return q
 }
