@@ -151,13 +151,13 @@ func (a *App) navigateBack() tea.Cmd {
 
 ## Checklist
 
-- [ ] Create `main/tui/app.go`
-- [ ] Implement `App` struct with all fields
-- [ ] Implement `NewApp()` constructor
-- [ ] Implement `Init()`, `Update()`, `View()` (tea.Model)
-- [ ] Implement `currentViewModel()` with lazy initialization
-- [ ] Implement `navigateTo()` and `navigateBack()`
-- [ ] Handle all global key bindings
-- [ ] Handle window resize
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] Create `main/tui/app.go`
+- [x] Implement `App` struct with all fields
+- [x] Implement `NewApp()` constructor
+- [x] Implement `Init()`, `Update()`, `View()` (tea.Model)
+- [x] Implement `currentViewModel()` with lazy initialization
+- [x] Implement `navigateTo()` and `navigateBack()`
+- [x] Handle all global key bindings
+- [x] Handle window resize
+- [x] `go build ./main/tui/...` passes
+- [x] `go test ./...` passes

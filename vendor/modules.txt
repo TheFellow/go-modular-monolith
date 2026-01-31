@@ -35,6 +35,7 @@ github.com/cedar-policy/cedar-go/x/exp/ast
 github.com/cespare/xxhash/v2
 # github.com/charmbracelet/bubbles v0.21.0
 ## explicit; go 1.23.0
+github.com/charmbracelet/bubbles/help
 github.com/charmbracelet/bubbles/key
 # github.com/charmbracelet/bubbletea v1.3.10
 ## explicit; go 1.24.0

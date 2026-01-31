@@ -4,20 +4,38 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-
-	"github.com/TheFellow/go-modular-monolith/main/tui"
 )
 
 // Dashboard is the main navigation hub of the TUI.
 type Dashboard struct {
-	styles tui.Styles
-	keys   tui.KeyMap
+	styles DashboardStyles
+	keys   DashboardKeys
 	width  int
 	height int
 }
 
+// DashboardStyles contains the lipgloss styles used by the dashboard.
+type DashboardStyles struct {
+	Title    lipgloss.Style
+	Subtitle lipgloss.Style
+	Card     lipgloss.Style
+	HelpKey  lipgloss.Style
+}
+
+// DashboardKeys defines the key bindings used by the dashboard.
+type DashboardKeys struct {
+	Nav1 key.Binding
+	Nav2 key.Binding
+	Nav3 key.Binding
+	Nav4 key.Binding
+	Nav5 key.Binding
+	Nav6 key.Binding
+	Help key.Binding
+	Quit key.Binding
+}
+
 // NewDashboard creates a new Dashboard view.
-func NewDashboard(styles tui.Styles, keys tui.KeyMap) *Dashboard {
+func NewDashboard(styles DashboardStyles, keys DashboardKeys) *Dashboard {
 	return &Dashboard{
 		styles: styles,
 		keys:   keys,
@@ -38,17 +56,17 @@ func (d *Dashboard) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, d.keys.Nav1):
-			return d, navigateTo(tui.ViewDrinks)
+			return d, navigateTo(ViewDrinks)
 		case key.Matches(msg, d.keys.Nav2):
-			return d, navigateTo(tui.ViewIngredients)
+			return d, navigateTo(ViewIngredients)
 		case key.Matches(msg, d.keys.Nav3):
-			return d, navigateTo(tui.ViewInventory)
+			return d, navigateTo(ViewInventory)
 		case key.Matches(msg, d.keys.Nav4):
-			return d, navigateTo(tui.ViewMenus)
+			return d, navigateTo(ViewMenus)
 		case key.Matches(msg, d.keys.Nav5):
-			return d, navigateTo(tui.ViewOrders)
+			return d, navigateTo(ViewOrders)
 		case key.Matches(msg, d.keys.Nav6):
-			return d, navigateTo(tui.ViewAudit)
+			return d, navigateTo(ViewAudit)
 		}
 	}
 	return d, nil
@@ -160,8 +178,8 @@ func (d *Dashboard) renderCard(card dashboardCard, width int) string {
 	return style.Render(content)
 }
 
-func navigateTo(view tui.View) tea.Cmd {
+func navigateTo(view View) tea.Cmd {
 	return func() tea.Msg {
-		return tui.NavigateMsg{To: view}
+		return NavigateMsg{To: view}
 	}
 }

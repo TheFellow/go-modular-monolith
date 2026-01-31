@@ -1,76 +1,33 @@
 package tui
 
-import "strings"
+import "github.com/TheFellow/go-modular-monolith/main/tui/views"
 
 // NavigateMsg requests navigation to a different view.
-type NavigateMsg struct {
-	To View
-}
+type NavigateMsg = views.NavigateMsg
 
 // BackMsg requests navigation to the previous view.
-type BackMsg struct{}
+type BackMsg = views.BackMsg
 
 // ErrorMsg carries an error to display in the status bar.
-type ErrorMsg struct {
-	Err error
-}
+type ErrorMsg = views.ErrorMsg
 
 // RefreshMsg requests the current view to reload its data.
-type RefreshMsg struct{}
+type RefreshMsg = views.RefreshMsg
 
 // View represents a navigable view in the TUI.
-type View int
+type View = views.View
 
 const (
-	ViewDashboard View = iota
-	ViewDrinks
-	ViewIngredients
-	ViewInventory
-	ViewMenus
-	ViewOrders
-	ViewAudit
+	ViewDashboard   = views.ViewDashboard
+	ViewDrinks      = views.ViewDrinks
+	ViewIngredients = views.ViewIngredients
+	ViewInventory   = views.ViewInventory
+	ViewMenus       = views.ViewMenus
+	ViewOrders      = views.ViewOrders
+	ViewAudit       = views.ViewAudit
 )
-
-// String returns the display name for the view.
-func (v View) String() string {
-	switch v {
-	case ViewDashboard:
-		return "dashboard"
-	case ViewDrinks:
-		return "drinks"
-	case ViewIngredients:
-		return "ingredients"
-	case ViewInventory:
-		return "inventory"
-	case ViewMenus:
-		return "menus"
-	case ViewOrders:
-		return "orders"
-	case ViewAudit:
-		return "audit"
-	default:
-		return "unknown"
-	}
-}
 
 // ParseView converts a string argument to a View.
 func ParseView(s string) (View, bool) {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "dashboard":
-		return ViewDashboard, true
-	case "drinks":
-		return ViewDrinks, true
-	case "ingredients":
-		return ViewIngredients, true
-	case "inventory":
-		return ViewInventory, true
-	case "menus", "menu":
-		return ViewMenus, true
-	case "orders", "order":
-		return ViewOrders, true
-	case "audit":
-		return ViewAudit, true
-	default:
-		return ViewDashboard, false
-	}
+	return views.ParseView(s)
 }
