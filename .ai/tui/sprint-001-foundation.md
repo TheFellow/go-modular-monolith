@@ -270,11 +270,11 @@ immediate exit with error message.
 
 This sprint establishes the `ViewModel` interface that all views implement. The full MVVM pattern emerges across sprints:
 
-| Sprint | ViewModels Introduced | Purpose |
-|--------|----------------------|---------|
-| 001    | Interface only       | Define contract for all views |
-| 002    | ListViewModel, DetailViewModel | Read-only data display |
-| 004    | CreateViewModel      | Saga-backed creation workflows |
+| Sprint | ViewModels Introduced          | Purpose                        |
+|--------|--------------------------------|--------------------------------|
+| 001    | Interface only                 | Define contract for all views  |
+| 002    | ListViewModel, DetailViewModel | Read-only data display         |
+| 004    | CreateViewModel                | Saga-backed creation workflows |
 
 Domain ViewModels live under `app/domains/*/surfaces/tui/` to maintain domain cohesion. The root `App` model in
 `main/tui/app.go` orchestrates navigation between domain ViewModels.

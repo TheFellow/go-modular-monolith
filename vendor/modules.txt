@@ -7,6 +7,8 @@ github.com/TheFellow/arch-lint/pkg/linter
 ## explicit; go 1.22.0
 github.com/alecthomas/go-check-sumtype
 github.com/alecthomas/go-check-sumtype/cmd/go-check-sumtype
+# github.com/aymanbagabas/go-osc52/v2 v2.0.1
+## explicit; go 1.16
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
@@ -30,6 +32,22 @@ github.com/cedar-policy/cedar-go/x/exp/ast
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
+# github.com/charmbracelet/bubbles v0.21.0
+## explicit; go 1.23.0
+# github.com/charmbracelet/bubbletea v1.3.10
+## explicit; go 1.24.0
+# github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc
+## explicit; go 1.18
+# github.com/charmbracelet/lipgloss v1.1.0
+## explicit; go 1.18
+# github.com/charmbracelet/x/ansi v0.10.1
+## explicit; go 1.23.0
+# github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd
+## explicit; go 1.18
+# github.com/charmbracelet/x/term v0.2.1
+## explicit; go 1.18
+# github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f
+## explicit; go 1.16
 # github.com/go-logr/logr v1.4.3
 ## explicit; go 1.18
 github.com/go-logr/logr
@@ -61,9 +79,23 @@ github.com/google/uuid
 # github.com/govalues/decimal v0.1.36
 ## explicit; go 1.22
 github.com/govalues/decimal
+# github.com/lucasb-eyer/go-colorful v1.2.0
+## explicit; go 1.12
+# github.com/mattn/go-isatty v0.0.20
+## explicit; go 1.15
+# github.com/mattn/go-localereader v0.0.1
+## explicit
+# github.com/mattn/go-runewidth v0.0.16
+## explicit; go 1.9
 # github.com/mjl-/bstore v0.0.10
 ## explicit; go 1.23.0
 github.com/mjl-/bstore
+# github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6
+## explicit; go 1.17
+# github.com/muesli/cancelreader v0.2.2
+## explicit; go 1.17
+# github.com/muesli/termenv v0.16.0
+## explicit; go 1.17
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
@@ -94,6 +126,8 @@ github.com/prometheus/otlptranslator
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# github.com/rivo/uniseg v0.4.7
+## explicit; go 1.18
 # github.com/segmentio/ksuid v1.0.2
 ## explicit
 github.com/segmentio/ksuid
@@ -109,6 +143,8 @@ github.com/xeipuuv/gojsonreference
 # github.com/xeipuuv/gojsonschema v1.2.0
 ## explicit
 github.com/xeipuuv/gojsonschema
+# github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e
+## explicit; go 1.19
 # go.etcd.io/bbolt v1.3.12
 ## explicit; go 1.23
 go.etcd.io/bbolt
@@ -180,6 +216,8 @@ golang.org/x/sync/errgroup
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
+# golang.org/x/text v0.31.0
+## explicit; go 1.24.0
 # golang.org/x/tools v0.39.0
 ## explicit; go 1.24.0
 golang.org/x/tools/go/analysis
