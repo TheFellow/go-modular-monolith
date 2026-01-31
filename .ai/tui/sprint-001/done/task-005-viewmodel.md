@@ -85,9 +85,9 @@ func NewPlaceholder(title string) *Placeholder {
 
 ## Checklist
 
-- [ ] Create `main/tui/views/` directory
-- [ ] Create `main/tui/views/view.go` with ViewModel interface
-- [ ] Create `main/tui/views/placeholder.go` with Placeholder implementation
-- [ ] Placeholder implements all ViewModel methods
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] Create `main/tui/views/` directory
+- [x] Create `main/tui/views/view.go` with ViewModel interface
+- [x] Create `main/tui/views/placeholder.go` with Placeholder implementation
+- [x] Placeholder implements all ViewModel methods
+- [x] `go build ./main/tui/...` passes
+- [x] `go test ./...` passes

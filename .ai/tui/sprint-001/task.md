@@ -125,7 +125,7 @@ type ViewModel interface {
 | 002  | [Create shared message types](done/task-002-messages.md)                   | Done    |
 | 003  | [Create styles and theme](done/task-003-styles.md)                         | Done    |
 | 004  | [Implement key bindings](done/task-004-keys.md)                            | Done    |
-| 005  | [Create ViewModel interface and placeholder](todo/task-005-viewmodel.md)   | Pending |
+| 005  | [Create ViewModel interface and placeholder](done/task-005-viewmodel.md)   | Done    |
 | 006  | [Create Dashboard view](todo/task-006-dashboard.md)                        | Pending |
 | 007  | [Implement root App model](todo/task-007-app-model.md)                     | Pending |
 | 008  | [Create TUI entry point and CLI integration](todo/task-008-entry-point.md) | Pending |
