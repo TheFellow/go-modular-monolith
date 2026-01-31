@@ -4,9 +4,9 @@ This index tracks all TUI-related sprints for the Bubble Tea interactive termina
 
 ## Active Sprints
 
-| Sprint                           | Description                  | Status      |
-|----------------------------------|------------------------------|-------------|
-| [sprint-001](sprint-001/task.md) | TUI Foundation & Scaffolding | In Progress |
+| Sprint | Description | Status |
+|--------|-------------|--------|
+| (none) |             |        |
 
 ## Planned Sprints
 
@@ -20,6 +20,6 @@ This index tracks all TUI-related sprints for the Bubble Tea interactive termina
 
 ## Completed Sprints
 
-| Sprint     | Description | Summary |
-|------------|-------------|---------|
-| (none yet) |             |         |
+| Sprint                           | Description                  | Summary                            |
+|----------------------------------|------------------------------|------------------------------------|
+| [sprint-001](sprint-001/task.md) | TUI Foundation & Scaffolding | [Summary](sprint-001/summary.md)   |

@@ -1,6 +1,6 @@
 # Sprint 001: TUI Foundation & Scaffolding
 
-**Status:** Planned
+**Status:** Completed
 
 ## Goal
 
@@ -130,7 +130,7 @@ type ViewModel interface {
 | 007  | [Implement root App model](done/task-007-app-model.md)                     | Done    |
 | 008  | [Create TUI entry point and CLI integration](done/task-008-entry-point.md) | Done    |
 | 009  | [Handle window sizing](done/task-009-window-sizing.md)                     | Done    |
-| 010  | [Integration testing](todo/task-010-integration.md)                        | Pending |
+| 010  | [Integration testing](done/task-010-integration.md)                        | Done    |
 
 ### Task Dependencies
 
@@ -148,14 +148,14 @@ Tasks 001-005 can be done in any order after dependencies are installed. Tasks 0
 
 ## Success Criteria
 
-- [ ] `go get` fetches Bubble Tea dependencies
-- [ ] `mixology --tui` launches interactive TUI
-- [ ] Dashboard shows 6 navigation cards (placeholder)
-- [ ] Number keys (1-6) navigate to respective views
-- [ ] `esc` returns to previous view (or dashboard if at root)
-- [ ] `?` shows/hides help overlay with context-sensitive bindings
-- [ ] `q` or `ctrl+c` exits cleanly
-- [ ] Terminal resize updates layout without crash
-- [ ] `--tui <view>` starts on specified view (drinks, ingredients, etc.)
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] `go get` fetches Bubble Tea dependencies
+- [x] `mixology --tui` launches interactive TUI
+- [x] Dashboard shows 6 navigation cards (placeholder)
+- [x] Number keys (1-6) navigate to respective views
+- [x] `esc` returns to previous view (or dashboard if at root)
+- [x] `?` shows/hides help overlay with context-sensitive bindings
+- [x] `q` or `ctrl+c` exits cleanly
+- [x] Terminal resize updates layout without crash
+- [x] `--tui <view>` starts on specified view (drinks, ingredients, etc.)
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes

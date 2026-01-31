@@ -111,16 +111,16 @@ This task is about verification and fixing issues found during testing. Common f
 
 ## Checklist
 
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
-- [ ] Dashboard displays correctly
-- [ ] All 6 navigation keys work
-- [ ] Esc returns to previous view
-- [ ] Esc from Dashboard does nothing (or shows hint)
-- [ ] ? toggles help overlay
-- [ ] q exits cleanly
-- [ ] Ctrl+C exits cleanly
-- [ ] `--tui <view>` starts on specified view
-- [ ] Terminal resize updates layout
-- [ ] Small terminal shows warning
-- [ ] `--actor` flag works with `--tui`
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes
+- [x] Dashboard displays correctly
+- [x] All 6 navigation keys work
+- [x] Esc returns to previous view
+- [x] Esc from Dashboard does nothing (or shows hint)
+- [x] ? toggles help overlay
+- [x] q exits cleanly
+- [x] Ctrl+C exits cleanly
+- [x] `--tui <view>` starts on specified view
+- [x] Terminal resize updates layout
+- [x] Small terminal shows warning
+- [x] `--actor` flag works with `--tui`
