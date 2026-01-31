@@ -124,7 +124,7 @@ type ViewModel interface {
 | 001  | [Add Bubble Tea dependencies](done/task-001-dependencies.md)               | Done    |
 | 002  | [Create shared message types](done/task-002-messages.md)                   | Done    |
 | 003  | [Create styles and theme](done/task-003-styles.md)                         | Done    |
-| 004  | [Implement key bindings](todo/task-004-keys.md)                            | Pending |
+| 004  | [Implement key bindings](done/task-004-keys.md)                            | Done    |
 | 005  | [Create ViewModel interface and placeholder](todo/task-005-viewmodel.md)   | Pending |
 | 006  | [Create Dashboard view](todo/task-006-dashboard.md)                        | Pending |
 | 007  | [Implement root App model](todo/task-007-app-model.md)                     | Pending |

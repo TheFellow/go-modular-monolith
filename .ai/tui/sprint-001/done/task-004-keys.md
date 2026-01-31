@@ -89,10 +89,10 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 
 ## Checklist
 
-- [ ] Create `main/tui/keys.go`
-- [ ] Define `KeyMap` struct with all bindings
-- [ ] Implement `NewKeyMap()` constructor
-- [ ] Implement `ShortHelp()` method
-- [ ] Implement `FullHelp()` method
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] Create `main/tui/keys.go`
+- [x] Define `KeyMap` struct with all bindings
+- [x] Implement `NewKeyMap()` constructor
+- [x] Implement `ShortHelp()` method
+- [x] Implement `FullHelp()` method
+- [x] `go build ./main/tui/...` passes
+- [x] `go test ./...` passes
