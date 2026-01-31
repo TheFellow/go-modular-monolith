@@ -13,14 +13,16 @@ type Styles struct {
 	Muted     lipgloss.AdaptiveColor
 
 	// Component styles
-	Title      lipgloss.Style
-	Subtitle   lipgloss.Style
-	Selected   lipgloss.Style
-	Unselected lipgloss.Style
-	StatusBar  lipgloss.Style
-	ErrorText  lipgloss.Style
-	HelpKey    lipgloss.Style
-	HelpDesc   lipgloss.Style
+	Title       lipgloss.Style
+	Subtitle    lipgloss.Style
+	Selected    lipgloss.Style
+	Unselected  lipgloss.Style
+	StatusBar   lipgloss.Style
+	ErrorText   lipgloss.Style
+	WarningText lipgloss.Style
+	InfoText    lipgloss.Style
+	HelpKey     lipgloss.Style
+	HelpDesc    lipgloss.Style
 
 	// Layout styles
 	Border        lipgloss.Style
@@ -55,6 +57,8 @@ func NewStyles() Styles {
 		Background(statusBackground).
 		Padding(0, 1)
 	styles.ErrorText = lipgloss.NewStyle().Bold(true).Foreground(styles.Error)
+	styles.WarningText = lipgloss.NewStyle().Bold(true).Foreground(styles.Warning)
+	styles.InfoText = lipgloss.NewStyle().Foreground(styles.Muted)
 	styles.HelpKey = lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
 	styles.HelpDesc = lipgloss.NewStyle().Foreground(styles.Muted)
 

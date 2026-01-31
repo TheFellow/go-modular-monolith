@@ -26,6 +26,7 @@ func (e *InvalidError) Kind() ErrorKind      { return ErrInvalid }
 func (e *InvalidError) HTTPCode() httpCode   { return ErrInvalid.HTTPCode }
 func (e *InvalidError) GRPCCode() codes.Code { return ErrInvalid.GRPCCode }
 func (e *InvalidError) CLICode() int         { return ErrInvalid.CLICode }
+func (e *InvalidError) TUIStyle() TUIStyle   { return ErrInvalid.TUIStyle }
 func (e *InvalidError) ExitCode() int        { return ErrInvalid.CLICode }
 
 func Invalidf(format string, args ...any) error {
@@ -58,6 +59,7 @@ func (e *NotFoundError) Kind() ErrorKind      { return ErrNotFound }
 func (e *NotFoundError) HTTPCode() httpCode   { return ErrNotFound.HTTPCode }
 func (e *NotFoundError) GRPCCode() codes.Code { return ErrNotFound.GRPCCode }
 func (e *NotFoundError) CLICode() int         { return ErrNotFound.CLICode }
+func (e *NotFoundError) TUIStyle() TUIStyle   { return ErrNotFound.TUIStyle }
 func (e *NotFoundError) ExitCode() int        { return ErrNotFound.CLICode }
 
 func NotFoundf(format string, args ...any) error {
@@ -90,6 +92,7 @@ func (e *PermissionError) Kind() ErrorKind      { return ErrPermission }
 func (e *PermissionError) HTTPCode() httpCode   { return ErrPermission.HTTPCode }
 func (e *PermissionError) GRPCCode() codes.Code { return ErrPermission.GRPCCode }
 func (e *PermissionError) CLICode() int         { return ErrPermission.CLICode }
+func (e *PermissionError) TUIStyle() TUIStyle   { return ErrPermission.TUIStyle }
 func (e *PermissionError) ExitCode() int        { return ErrPermission.CLICode }
 
 func Permissionf(format string, args ...any) error {
@@ -122,6 +125,7 @@ func (e *ConflictError) Kind() ErrorKind      { return ErrConflict }
 func (e *ConflictError) HTTPCode() httpCode   { return ErrConflict.HTTPCode }
 func (e *ConflictError) GRPCCode() codes.Code { return ErrConflict.GRPCCode }
 func (e *ConflictError) CLICode() int         { return ErrConflict.CLICode }
+func (e *ConflictError) TUIStyle() TUIStyle   { return ErrConflict.TUIStyle }
 func (e *ConflictError) ExitCode() int        { return ErrConflict.CLICode }
 
 func Conflictf(format string, args ...any) error {
@@ -154,6 +158,7 @@ func (e *InternalError) Kind() ErrorKind      { return ErrInternal }
 func (e *InternalError) HTTPCode() httpCode   { return ErrInternal.HTTPCode }
 func (e *InternalError) GRPCCode() codes.Code { return ErrInternal.GRPCCode }
 func (e *InternalError) CLICode() int         { return ErrInternal.CLICode }
+func (e *InternalError) TUIStyle() TUIStyle   { return ErrInternal.TUIStyle }
 func (e *InternalError) ExitCode() int        { return ErrInternal.CLICode }
 
 func Internalf(format string, args ...any) error {
