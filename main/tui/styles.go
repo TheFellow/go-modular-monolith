@@ -28,6 +28,8 @@ type Styles struct {
 	Border        lipgloss.Style
 	FocusedBorder lipgloss.Style
 	Card          lipgloss.Style
+	ListPane      lipgloss.Style
+	DetailPane    lipgloss.Style
 }
 
 // NewStyles creates a Styles instance with the default theme.
@@ -72,6 +74,15 @@ func NewStyles() Styles {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(styles.Muted).
 		Padding(1, 2)
+	styles.ListPane = lipgloss.NewStyle().
+		Width(60).
+		Padding(0, 1)
+	styles.DetailPane = lipgloss.NewStyle().
+		Width(40).
+		Padding(0, 1).
+		BorderLeft(true).
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(styles.Muted)
 
 	return styles
 }

@@ -18,9 +18,10 @@ type KeyMap struct {
 	Nav6 key.Binding // Audit
 
 	// List navigation (used by list views)
-	Up    key.Binding
-	Down  key.Binding
-	Enter key.Binding
+	Up      key.Binding
+	Down    key.Binding
+	Enter   key.Binding
+	Refresh key.Binding
 }
 
 // NewKeyMap creates a KeyMap with default bindings.
@@ -74,19 +75,23 @@ func NewKeyMap() KeyMap {
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "select"),
 		),
+		Refresh: key.NewBinding(
+			key.WithKeys("r"),
+			key.WithHelp("r", "refresh"),
+		),
 	}
 }
 
 // ShortHelp returns bindings shown in the mini help view.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Help, k.Back, k.Quit}
+	return []key.Binding{k.Help, k.Refresh, k.Back, k.Quit}
 }
 
 // FullHelp returns bindings shown in the expanded help view.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Nav1, k.Nav2, k.Nav3, k.Nav4, k.Nav5, k.Nav6},
-		{k.Up, k.Down, k.Enter},
+		{k.Up, k.Down, k.Enter, k.Refresh},
 		{k.Back, k.Help, k.Quit},
 	}
 }

@@ -125,11 +125,11 @@ func ListViewKeysFrom(k KeyMap) ListViewKeys {
 
 ## Checklist
 
-- [ ] Add Refresh key binding to KeyMap
-- [ ] Update ShortHelp() to include Refresh
-- [ ] Update FullHelp() to include Refresh
-- [ ] Add ListPane and DetailPane styles
-- [ ] Create viewmodel_types.go with ListViewStyles and ListViewKeys
-- [ ] Add helper functions ListViewStylesFrom and ListViewKeysFrom
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] Add Refresh key binding to KeyMap
+- [x] Update ShortHelp() to include Refresh
+- [x] Update FullHelp() to include Refresh
+- [x] Add ListPane and DetailPane styles
+- [x] Create viewmodel_types.go with ListViewStyles and ListViewKeys
+- [x] Add helper functions ListViewStylesFrom and ListViewKeysFrom
+- [x] `go build ./main/tui/...` passes
+- [x] `go test ./...` passes
