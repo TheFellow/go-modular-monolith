@@ -45,8 +45,10 @@ app/domains/audit/surfaces/tui/
 └── detail_vm.go
 
 main/tui/
+├── keys.go             # Add Refresh key binding (r)
+├── app.go              # Update to pass app to Dashboard, register domain ViewModels
 ├── views/
-│   └── dashboard.go    # Dashboard is TUI-specific, not domain-owned
+│   └── dashboard.go    # Update to accept app.App and show counts/activity
 └── components/
     ├── detail_pane.go  # Shared DetailPane wrapper component
     ├── filter.go       # FilterDropdown component
@@ -55,6 +57,17 @@ main/tui/
     ├── empty.go        # EmptyState component
     └── badge.go        # StatusBadge component
 ```
+
+### Key Implementation Notes from Sprint 001
+
+The following patterns were established in Sprint 001 and must be followed:
+
+1. **App type**: Use `*app.App`, not `*app.Application`
+2. **ViewModel interface**: Import from `github.com/TheFellow/go-modular-monolith/main/tui/views`
+3. **Styles/Keys subset pattern**: Views receive only the styles/keys they need via dedicated struct types
+   (e.g., `DashboardStyles`, `DashboardKeys`), not the full `Styles`/`KeyMap`. This provides better encapsulation.
+4. **Message types**: Core messages (`NavigateMsg`, `ErrorMsg`, etc.) are in `main/tui/views/messages.go`
+   with re-exports in `main/tui/messages.go` for convenience
 
 ### ViewModel Pattern
 
@@ -70,8 +83,18 @@ adapts domain data for the View layer.
 
 ## Tasks
 
-### Phase 1: Dashboard View
+### Phase 0: Infrastructure Updates
 
+- [ ] Add `Refresh` key binding to `main/tui/keys.go` (`r` key, help text "refresh")
+- [ ] Update `KeyMap.ShortHelp()` and `FullHelp()` to include Refresh where appropriate
+- [ ] Create `ListViewStyles` and `ListViewKeys` subset types for domain ViewModels
+- [ ] Update `App.currentViewModel()` to instantiate domain ViewModels (replace placeholders)
+
+### Phase 1: Dashboard View Enhancement
+
+- [ ] Update `Dashboard` to accept `*app.App` for data queries
+- [ ] Create `DashboardData` struct to hold loaded counts/activity
+- [ ] Implement async `loadDashboardData()` command
 - [ ] Implement summary cards showing counts:
     - Total drinks
     - Total ingredients
@@ -79,7 +102,7 @@ adapts domain data for the View layer.
     - Low stock items count
     - Pending orders count
 - [ ] Add recent activity feed (last 10 audit entries)
-- [ ] Wire number keys (1-6) to navigate to respective views
+- [ ] Number keys (1-6) already navigate (from Sprint 001)
 - [ ] Add quick stats row (e.g., "12 drinks on active menus")
 
 ### Phase 2: Drinks View
@@ -220,7 +243,9 @@ Create reusable components under `main/tui/components/`:
 - [ ] Loading states show spinner
 - [ ] Errors display in status bar with retry option
 - [ ] `r` refreshes current view data
-- [ ] All views handle terminal resize gracefully
+- [ ] All views handle terminal resize gracefully (inherited from Sprint 001)
+- [ ] `go build ./...` passes
+- [ ] `go test ./...` passes
 
 ## Implementation Details
 
@@ -232,26 +257,59 @@ Each domain's `ListViewModel` follows this structure. This example shows `drinks
 // app/domains/drinks/surfaces/tui/list_vm.go
 package tui
 
+import (
+    "context"
+
+    "github.com/charmbracelet/bubbles/key"
+    "github.com/charmbracelet/bubbles/list"
+    tea "github.com/charmbracelet/bubbletea"
+    "github.com/charmbracelet/lipgloss"
+
+    "github.com/TheFellow/go-modular-monolith/app"
+    "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+    "github.com/TheFellow/go-modular-monolith/main/tui/views"
+)
+
+// ListViewStyles contains styles needed by list views (subset of main Styles)
+type ListViewStyles struct {
+    Title      lipgloss.Style
+    Muted      lipgloss.Style
+    ListPane   lipgloss.Style
+    DetailPane lipgloss.Style
+    // ... other styles as needed
+}
+
+// ListViewKeys contains keys needed by list views (subset of main KeyMap)
+type ListViewKeys struct {
+    Up      key.Binding
+    Down    key.Binding
+    Enter   key.Binding
+    Refresh key.Binding
+    Back    key.Binding
+}
+
 // ListViewModel displays a filterable list of drinks with a detail pane
 type ListViewModel struct {
-    app      *app.Application
+    app      *app.App
     list     list.Model
     detail   *DetailViewModel  // Embedded detail view
-    drinks   []domain.Drink
-    selected *domain.Drink
+    drinks   []models.Drink
+    selected *models.Drink
     loading  bool
     err      error
     filter   string
     width    int
     height   int
-    keys     KeyMap
-    styles   Styles
+    keys     ListViewKeys
+    styles   ListViewStyles
 }
 
-func NewListViewModel(app *app.Application) *ListViewModel {
+func NewListViewModel(application *app.App, styles ListViewStyles, keys ListViewKeys) *ListViewModel {
     return &ListViewModel{
-        app:    app,
-        detail: NewDetailViewModel(app),
+        app:    application,
+        detail: NewDetailViewModel(styles),
+        styles: styles,
+        keys:   keys,
         // ... init list component
     }
 }
@@ -262,28 +320,24 @@ func (vm *ListViewModel) Init() tea.Cmd {
 
 func (vm *ListViewModel) loadDrinks() tea.Cmd {
     return func() tea.Msg {
-        drinks, err := vm.app.Drinks.List(ctx, queries.ListDrinksQuery{
-            Category: vm.filter,
-        })
+        ctx := context.Background() // Or pass context through
+        drinks, err := vm.app.Drinks.List(ctx)
         if err != nil {
-            return ErrorMsg{Err: err}
+            return views.ErrorMsg{Err: err}
         }
         return DrinksLoadedMsg{Drinks: drinks}
     }
 }
 
-func (vm *ListViewModel) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
+func (vm *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
     switch msg := msg.(type) {
     case DrinksLoadedMsg:
         vm.drinks = msg.Drinks
         vm.loading = false
         vm.list.SetItems(toListItems(msg.Drinks))
-    case list.Model:
-        // Selection changed - update detail view
-        if i, ok := vm.list.SelectedItem().(drinkItem); ok {
-            vm.selected = &i.drink
-            vm.detail.SetDrink(&i.drink)
-        }
+    case tea.WindowSizeMsg:
+        vm.width = msg.Width
+        vm.height = msg.Height
     case tea.KeyMsg:
         if key.Matches(msg, vm.keys.Refresh) {
             vm.loading = true
@@ -293,12 +347,19 @@ func (vm *ListViewModel) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 
     var cmd tea.Cmd
     vm.list, cmd = vm.list.Update(msg)
+
+    // Update detail view when selection changes
+    if i, ok := vm.list.SelectedItem().(drinkItem); ok {
+        vm.selected = &i.drink
+        vm.detail.SetDrink(&i.drink)
+    }
+
     return vm, cmd
 }
 
 func (vm *ListViewModel) View() string {
     if vm.loading {
-        return vm.styles.Spinner.Render("Loading drinks...")
+        return vm.styles.Muted.Render("Loading drinks...")
     }
 
     listView := vm.list.View()
@@ -310,6 +371,17 @@ func (vm *ListViewModel) View() string {
         vm.styles.DetailPane.Render(detailView),
     )
 }
+
+func (vm *ListViewModel) ShortHelp() []key.Binding {
+    return []key.Binding{vm.keys.Enter, vm.keys.Refresh, vm.keys.Back}
+}
+
+func (vm *ListViewModel) FullHelp() [][]key.Binding {
+    return [][]key.Binding{
+        {vm.keys.Up, vm.keys.Down, vm.keys.Enter},
+        {vm.keys.Refresh, vm.keys.Back},
+    }
+}
 ```
 
 ### DetailViewModel Pattern
@@ -320,18 +392,42 @@ Each domain's `DetailViewModel` renders a single entity. This example shows `dri
 // app/domains/drinks/surfaces/tui/detail_vm.go
 package tui
 
+import (
+    "fmt"
+    "strings"
+
+    "github.com/charmbracelet/lipgloss"
+
+    "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+)
+
+// DetailViewStyles contains styles needed by detail views
+type DetailViewStyles struct {
+    Title    lipgloss.Style
+    Subtitle lipgloss.Style
+    Label    lipgloss.Style
+    Muted    lipgloss.Style
+}
+
 // DetailViewModel displays details for a single drink
+// Note: This is embedded in ListViewModel, not a standalone ViewModel
 type DetailViewModel struct {
-    app    *app.Application
-    drink  *domain.Drink
-    styles Styles
+    drink  *models.Drink
+    styles DetailViewStyles
 }
 
-func NewDetailViewModel(app *app.Application) *DetailViewModel {
-    return &DetailViewModel{app: app}
+func NewDetailViewModel(styles ListViewStyles) *DetailViewModel {
+    return &DetailViewModel{
+        styles: DetailViewStyles{
+            Title:    styles.Title,
+            Subtitle: styles.Title, // Derive from parent styles
+            Label:    styles.Muted.Bold(true),
+            Muted:    styles.Muted,
+        },
+    }
 }
 
-func (vm *DetailViewModel) SetDrink(drink *domain.Drink) {
+func (vm *DetailViewModel) SetDrink(drink *models.Drink) {
     vm.drink = drink
 }
 
@@ -349,18 +445,14 @@ func (vm *DetailViewModel) View() string {
     b.WriteString("\n\n")
 
     b.WriteString(vm.styles.Label.Render("Category: "))
-    b.WriteString(d.Category)
+    b.WriteString(d.Category.String())
     b.WriteString("\n")
 
     b.WriteString(vm.styles.Label.Render("Glass: "))
-    b.WriteString(d.Glass)
+    b.WriteString(d.Glass.String())
     b.WriteString("\n")
 
-    if d.Price != nil {
-        b.WriteString(vm.styles.Label.Render("Price: "))
-        b.WriteString(fmt.Sprintf("$%.2f", *d.Price))
-        b.WriteString("\n")
-    }
+    // Note: Check actual domain.Drink fields for price/ingredients structure
 
     b.WriteString("\n")
     b.WriteString(vm.styles.Subtitle.Render("Ingredients"))
@@ -377,21 +469,33 @@ func (vm *DetailViewModel) View() string {
 The `DetailViewModel` is typically embedded within the `ListViewModel` and updated when selection changes. For full-screen
 detail views (on narrow terminals), the same `DetailViewModel` can be used standalone.
 
+**Important**: The `DetailViewModel` shown here is a helper component, not a full `views.ViewModel`. It doesn't implement
+`Init()`, `Update()`, `ShortHelp()`, or `FullHelp()` because it's managed by its parent `ListViewModel`.
+
 ### Async Command Pattern
 
-```go
-// Messages for async operations
-type DrinksLoadedMsg struct{ Drinks []domain.Drink }
-type IngredientsLoadedMsg struct{ Ingredients []domain.Ingredient }
-type InventoryLoadedMsg struct{ Stock []domain.Stock }
-type MenusLoadedMsg struct{ Menus []domain.Menu }
-type OrdersLoadedMsg struct{ Orders []domain.Order }
-type AuditLoadedMsg struct{ Entries []domain.AuditEntry }
+Each domain defines its own loaded message type in its TUI package:
 
-// Generic error and loading messages
-type ErrorMsg struct{ Err error }
-type LoadingMsg struct{ View View }
+```go
+// app/domains/drinks/surfaces/tui/messages.go
+package tui
+
+import "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+
+// DrinksLoadedMsg is sent when drinks have been loaded from the app layer
+type DrinksLoadedMsg struct {
+    Drinks []models.Drink
+}
+
+// Similarly for other domains:
+// app/domains/ingredients/surfaces/tui/messages.go -> IngredientsLoadedMsg
+// app/domains/inventory/surfaces/tui/messages.go  -> InventoryLoadedMsg
+// app/domains/menus/surfaces/tui/messages.go      -> MenusLoadedMsg
+// app/domains/orders/surfaces/tui/messages.go     -> OrdersLoadedMsg
+// app/domains/audit/surfaces/tui/messages.go      -> AuditLoadedMsg
 ```
+
+The shared error message (`views.ErrorMsg`) is already defined in `main/tui/views/messages.go` from Sprint 001.
 
 ## Notes
 

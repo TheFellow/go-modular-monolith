@@ -8,7 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menu"
+	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
@@ -28,7 +28,7 @@ type App struct {
 	Drinks      *drinks.Module
 	Ingredients *ingredients.Module
 	Inventory   *inventory.Module
-	Menu        *menu.Module
+	Menu        *menus.Module
 	Orders      *orders.Module
 
 	metricsCollector *middleware.MetricsCollector
@@ -44,7 +44,7 @@ func New(opts ...Option) *App {
 		Drinks:      drinks.NewModule(),
 		Ingredients: ingredients.NewModule(),
 		Inventory:   inventory.NewModule(),
-		Menu:        menu.NewModule(),
+		Menu:        menus.NewModule(),
 		Orders:      orders.NewModule(),
 	}
 

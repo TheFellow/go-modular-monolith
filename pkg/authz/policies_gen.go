@@ -6,7 +6,7 @@ import (
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	inventoryauthz "github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
-	menuauthz "github.com/TheFellow/go-modular-monolith/app/domains/menu/authz"
+	menuauthz "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	ordersauthz "github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
 )
 

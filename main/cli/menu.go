@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/TheFellow/go-modular-monolith/app/domains/menu"
-	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
-	menuqueries "github.com/TheFellow/go-modular-monolith/app/domains/menu/queries"
-	menucli "github.com/TheFellow/go-modular-monolith/app/domains/menu/surfaces/cli"
+	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
+	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	menuqueries "github.com/TheFellow/go-modular-monolith/app/domains/menus/queries"
+	menucli "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -40,7 +40,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					res, err := c.app.Menu.List(ctx, menu.ListRequest{
+					res, err := c.app.Menu.List(ctx, menus.ListRequest{
 						Status: menumodels.MenuStatus(cmd.String("status")),
 					})
 					if err != nil {

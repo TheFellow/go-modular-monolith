@@ -4,7 +4,7 @@ import (
 	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	ingredientsq "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
 	inventoryq "github.com/TheFellow/go-modular-monolith/app/domains/inventory/queries"
-	menuq "github.com/TheFellow/go-modular-monolith/app/domains/menu/queries"
+	menuq "github.com/TheFellow/go-modular-monolith/app/domains/menus/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/internal/dao"
 )
 
