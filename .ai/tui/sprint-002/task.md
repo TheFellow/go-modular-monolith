@@ -44,20 +44,20 @@ The dashboard view demonstrates the Styles/Keys subset pattern with `DashboardSt
 
 ## Tasks
 
-| Task | Description                                              | Status  |
-|------|----------------------------------------------------------|---------|
-| 001  | [TUI Error Surface](todo/task-001-tui-error-surface.md)  | Pending |
-| 002  | [Infrastructure Updates](todo/task-002-infrastructure.md)| Pending |
-| 003  | [Shared Components](todo/task-003-shared-components.md)  | Pending |
+| Task | Description                                                     | Status  |
+|------|-----------------------------------------------------------------|---------|
+| 001  | [TUI Error Surface](done/task-001-tui-error-surface.md)         | Done    |
+| 002  | [Infrastructure Updates](todo/task-002-infrastructure.md)       | Pending |
+| 003  | [Shared Components](todo/task-003-shared-components.md)         | Pending |
 | 004  | [Dashboard Enhancement](todo/task-004-dashboard-enhancement.md) | Pending |
-| 005  | [Drinks View](todo/task-005-drinks-view.md)              | Pending |
-| 006  | [Ingredients View](todo/task-006-ingredients-view.md)    | Pending |
-| 007  | [Inventory View](todo/task-007-inventory-view.md)        | Pending |
-| 008  | [Menu View](todo/task-008-menu-view.md)                  | Pending |
-| 009  | [Orders View](todo/task-009-orders-view.md)              | Pending |
-| 010  | [Audit View](todo/task-010-audit-view.md)                | Pending |
-| 011  | [Error Handling Integration](todo/task-011-error-handling.md) | Pending |
-| 012  | [Integration Testing](todo/task-012-integration.md)      | Pending |
+| 005  | [Drinks View](todo/task-005-drinks-view.md)                     | Pending |
+| 006  | [Ingredients View](todo/task-006-ingredients-view.md)           | Pending |
+| 007  | [Inventory View](todo/task-007-inventory-view.md)               | Pending |
+| 008  | [Menu View](todo/task-008-menu-view.md)                         | Pending |
+| 009  | [Orders View](todo/task-009-orders-view.md)                     | Pending |
+| 010  | [Audit View](todo/task-010-audit-view.md)                       | Pending |
+| 011  | [Error Handling Integration](todo/task-011-error-handling.md)   | Pending |
+| 012  | [Integration Testing](todo/task-012-integration.md)             | Pending |
 
 ### Task Dependencies
 

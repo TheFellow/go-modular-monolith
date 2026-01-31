@@ -102,12 +102,12 @@ go generate ./pkg/errors/...
 
 ## Checklist
 
-- [ ] Add TUIStyle type and constants to errors.go
-- [ ] Add TUIStyle field to ErrorKind struct
-- [ ] Assign TUIStyle to all error kinds
-- [ ] Update errors.go.tpl to generate TUIStyle() method
-- [ ] Run `go generate ./pkg/errors/...`
-- [ ] Create pkg/errors/tui.go with ToTUIError()
-- [ ] Add WarningText and InfoText to main/tui/styles.go
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] Add TUIStyle type and constants to errors.go
+- [x] Add TUIStyle field to ErrorKind struct
+- [x] Assign TUIStyle to all error kinds
+- [x] Update errors.go.tpl to generate TUIStyle() method
+- [x] Run `go generate ./pkg/errors/...`
+- [x] Create pkg/errors/tui.go with ToTUIError()
+- [x] Add WarningText and InfoText to main/tui/styles.go
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes
