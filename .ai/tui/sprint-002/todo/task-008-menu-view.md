@@ -1,0 +1,96 @@
+# Task 008: Menu View Implementation
+
+## Goal
+
+Create the Menu domain ListViewModel and DetailViewModel, replacing the placeholder view.
+
+## Files to Create/Modify
+
+- `app/domains/menu/surfaces/tui/messages.go` (new)
+- `app/domains/menu/surfaces/tui/list_vm.go` (new)
+- `app/domains/menu/surfaces/tui/detail_vm.go` (new)
+- `app/domains/menu/surfaces/tui/items.go` (new)
+- `main/tui/app.go` - Wire MenuListViewModel
+
+## Pattern Reference
+
+Follow task-005 (Drinks View) pattern. Reference `app/domains/menu/surfaces/cli/views.go` for field access.
+
+Note: Domain folder is `menu` (singular), not `menus`.
+
+## Implementation
+
+### 1. Create messages.go
+
+```go
+package tui
+
+import "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+
+type MenusLoadedMsg struct {
+    Menus []models.Menu
+}
+```
+
+### 2. Create items.go
+
+```go
+type menuItem struct {
+    menu models.Menu
+}
+
+func (i menuItem) Title() string       { return i.menu.Name }
+func (i menuItem) Description() string {
+    status := "Draft"
+    if i.menu.Published {
+        status = "Published"
+    }
+    return fmt.Sprintf("%s • %d drinks", status, len(i.menu.Drinks))
+}
+func (i menuItem) FilterValue() string { return i.menu.Name }
+```
+
+### 3. Create list_vm.go
+
+Implement ListViewModel:
+- Load menus via app.Menu.List() (note: singular domain name)
+- Display: Name, Status (draft/published), Drink count
+- Use Badge component for status display
+
+### 4. Create detail_vm.go
+
+Display for selected menu:
+- Name, ID, Status badge
+- List of drinks on menu with prices
+- Drink count summary
+- Optionally: Cost analysis (average cost, margin) if time permits
+
+### 5. Wire in app.go
+
+```go
+import menu "github.com/TheFellow/go-modular-monolith/app/domains/menu/surfaces/tui"
+
+case ViewMenus:
+    vm = menu.NewListViewModel(a.app, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
+```
+
+## Notes
+
+- Domain is `menu` (singular) but View constant is `ViewMenus`
+- Menu.Published boolean determines draft/published status
+- Menu.Drinks contains the list of drinks on the menu
+- Consider using Badge component for status display
+
+## Checklist
+
+- [ ] Create surfaces/tui/ directory under menu domain
+- [ ] Create messages.go with MenusLoadedMsg
+- [ ] Create items.go with menuItem
+- [ ] Create list_vm.go with ListViewModel
+- [ ] Show status badge (Draft/Published)
+- [ ] Create detail_vm.go with DetailViewModel
+- [ ] Display drinks list in detail view
+- [ ] Wire ListViewModel in App.currentViewModel()
+- [ ] Test navigation and data display
+- [ ] `go build ./...` passes
+- [ ] `go test ./...` passes

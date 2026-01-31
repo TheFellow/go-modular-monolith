@@ -85,10 +85,39 @@ adapts domain data for the View layer.
 
 ### Phase 0: Infrastructure Updates
 
+**Key Bindings:**
 - [ ] Add `Refresh` key binding to `main/tui/keys.go` (`r` key, help text "refresh")
 - [ ] Update `KeyMap.ShortHelp()` and `FullHelp()` to include Refresh where appropriate
+
+**Styles/Keys for Domain ViewModels:**
 - [ ] Create `ListViewStyles` and `ListViewKeys` subset types for domain ViewModels
 - [ ] Update `App.currentViewModel()` to instantiate domain ViewModels (replace placeholders)
+
+**TUI Error Surface (following existing error generation pattern):**
+- [ ] Add `TUIStyle` type to `pkg/errors/errors.go` with values: `TUIStyleError`, `TUIStyleWarning`, `TUIStyleInfo`
+- [ ] Add `TUIStyle TUIStyle` field to `ErrorKind` struct
+- [ ] Assign appropriate `TUIStyle` to each error kind:
+    - `Invalid` → `TUIStyleError` (user input error)
+    - `NotFound` → `TUIStyleWarning` (informational)
+    - `Permission` → `TUIStyleError` (access denied)
+    - `Conflict` → `TUIStyleWarning` (recoverable)
+    - `Internal` → `TUIStyleError` (unexpected)
+- [ ] Update `pkg/errors/gen/errors.go.tpl` to generate `TUIStyle()` method
+- [ ] Run `go generate ./pkg/errors/...` to regenerate error types
+- [ ] Create `pkg/errors/tui.go` with:
+    ```go
+    // TUIError represents an error formatted for TUI display
+    type TUIError struct {
+        Style   TUIStyle
+        Message string
+        Err     error
+    }
+
+    // ToTUIError converts any error to a TUIError with appropriate styling
+    func ToTUIError(err error) TUIError
+    ```
+- [ ] Update `main/tui/app.go` to use `ToTUIError()` when handling `ErrorMsg`
+- [ ] Add `styles.WarningText` and `styles.InfoText` styles to complement `styles.ErrorText`
 
 ### Phase 1: Dashboard View Enhancement
 
@@ -490,12 +519,106 @@ type DrinksLoadedMsg struct {
 // Similarly for other domains:
 // app/domains/ingredients/surfaces/tui/messages.go -> IngredientsLoadedMsg
 // app/domains/inventory/surfaces/tui/messages.go  -> InventoryLoadedMsg
-// app/domains/menus/surfaces/tui/messages.go      -> MenusLoadedMsg
+// app/domains/menu/surfaces/tui/messages.go       -> MenusLoadedMsg
 // app/domains/orders/surfaces/tui/messages.go     -> OrdersLoadedMsg
 // app/domains/audit/surfaces/tui/messages.go      -> AuditLoadedMsg
 ```
 
 The shared error message (`views.ErrorMsg`) is already defined in `main/tui/views/messages.go` from Sprint 001.
+
+### TUI Error Surface Pattern
+
+Following the existing error generation pattern in `pkg/errors/gen`, the TUI surface needs its own error styling.
+The generator already produces surface-specific methods (`HTTPCode()`, `GRPCCode()`, `CLICode()`), and we extend it
+to support TUI:
+
+```go
+// pkg/errors/errors.go - Add TUI style type and field
+
+type TUIStyle int
+
+const (
+    TUIStyleError   TUIStyle = iota // Red - user errors, permission denied, internal errors
+    TUIStyleWarning                  // Amber - not found, conflicts (recoverable)
+    TUIStyleInfo                     // Muted - informational messages
+)
+
+type ErrorKind struct {
+    Name     string
+    Message  string
+    HTTPCode httpCode
+    GRPCCode codes.Code
+    CLICode  int
+    TUIStyle TUIStyle  // NEW: TUI presentation style
+}
+
+var ErrInvalid = ErrorKind{
+    // ... existing fields
+    TUIStyle: TUIStyleError,
+}
+
+var ErrNotFound = ErrorKind{
+    // ... existing fields
+    TUIStyle: TUIStyleWarning,  // "Not found" is often informational
+}
+```
+
+```go
+// pkg/errors/tui.go - TUI surface helpers
+
+package errors
+
+// TUIError represents an error formatted for TUI display
+type TUIError struct {
+    Style   TUIStyle
+    Message string
+    Err     error
+}
+
+// ToTUIError converts any error to a TUIError with appropriate styling
+func ToTUIError(err error) TUIError {
+    if err == nil {
+        return TUIError{}
+    }
+
+    // Check for typed errors with TUIStyle() method
+    type tuiStyler interface {
+        TUIStyle() TUIStyle
+    }
+
+    style := TUIStyleError // Default to error style
+    if ts, ok := err.(tuiStyler); ok {
+        style = ts.TUIStyle()
+    }
+
+    return TUIError{
+        Style:   style,
+        Message: err.Error(),
+        Err:     err,
+    }
+}
+```
+
+The `main/tui/app.go` uses this in the status bar:
+
+```go
+func (a *App) statusBarView() string {
+    if a.lastError != nil {
+        tuiErr := errors.ToTUIError(a.lastError)
+        var style lipgloss.Style
+        switch tuiErr.Style {
+        case errors.TUIStyleError:
+            style = a.styles.ErrorText
+        case errors.TUIStyleWarning:
+            style = a.styles.WarningText
+        case errors.TUIStyleInfo:
+            style = a.styles.InfoText
+        }
+        return a.styles.StatusBar.Render(style.Render(tuiErr.Message))
+    }
+    // ... normal status
+}
+```
 
 ## Notes
 

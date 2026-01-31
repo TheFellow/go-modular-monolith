@@ -4,15 +4,14 @@ This index tracks all TUI-related sprints for the Bubble Tea interactive termina
 
 ## Active Sprints
 
-| Sprint | Description | Status |
-|--------|-------------|--------|
-| (none) |             |        |
+| Sprint                           | Description     | Tasks                        |
+|----------------------------------|-----------------|------------------------------|
+| [sprint-002](sprint-002/task.md) | Read-Only Views | [Tasks](sprint-002/task.md)  |
 
 ## Planned Sprints
 
 | Sprint      | Description         | Plan                                                                     |
 |-------------|---------------------|--------------------------------------------------------------------------|
-| sprint-002  | Read-Only Views     | [sprint-002-read-only-views.md](sprint-002-read-only-views.md)           |
 | sprint-003  | CRUD Operations     | [sprint-003-crud-operations.md](sprint-003-crud-operations.md)           |
 | sprint-003b | Saga Infrastructure | [sprint-003b-saga-infrastructure.md](sprint-003b-saga-infrastructure.md) |
 | sprint-004  | Workflows           | [sprint-004-workflows.md](sprint-004-workflows.md)                       |
