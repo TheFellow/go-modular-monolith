@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -9,6 +11,17 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 )
+
+const (
+	MinWidth        = 80
+	MinHeight       = 24
+	statusBarHeight = 1
+)
+
+type viewSizeMsg struct {
+	width  int
+	height int
+}
 
 // App is the root model for the TUI application.
 type App struct {
@@ -65,7 +78,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if key.Matches(msg, a.keys.Help) {
 			a.showHelp = !a.showHelp
-			return a, nil
+			return a, a.syncWindowCmd()
 		}
 		if key.Matches(msg, a.keys.Back) {
 			return a, a.navigateBack()
@@ -75,6 +88,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.width = msg.Width
 		a.height = msg.Height
 		a.help.Width = msg.Width
+		vm, cmd := a.currentViewModel().Update(tea.WindowSizeMsg{
+			Width:  msg.Width,
+			Height: a.availableHeight(),
+		})
+		a.views[a.currentView] = vm
+		return a, cmd
 
 	case NavigateMsg:
 		return a, a.navigateTo(msg.To)
@@ -82,6 +101,14 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ErrorMsg:
 		a.lastError = msg.Err
 		return a, nil
+
+	case viewSizeMsg:
+		vm, cmd := a.currentViewModel().Update(tea.WindowSizeMsg{
+			Width:  msg.width,
+			Height: msg.height,
+		})
+		a.views[a.currentView] = vm
+		return a, cmd
 	}
 
 	vm, cmd := a.currentViewModel().Update(msg)
@@ -91,6 +118,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (a *App) View() string {
+	if a.width > 0 && a.height > 0 && (a.width < MinWidth || a.height < MinHeight) {
+		return a.renderTooSmallWarning()
+	}
+
 	content := a.currentViewModel().View()
 	status := a.statusBarView()
 
@@ -98,6 +129,8 @@ func (a *App) View() string {
 	if a.showHelp {
 		a.help.ShowAll = true
 		parts = append(parts, a.help.View(a.currentViewModel()))
+	} else {
+		a.help.ShowAll = false
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -167,8 +200,24 @@ func (a *App) syncWindowCmd() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		return tea.WindowSizeMsg{Width: a.width, Height: a.height}
+		return viewSizeMsg{width: a.width, height: a.availableHeight()}
 	}
+}
+
+func (a *App) availableHeight() int {
+	height := a.height - statusBarHeight - a.helpHeight()
+	if height < 0 {
+		return 0
+	}
+	return height
+}
+
+func (a *App) helpHeight() int {
+	if !a.showHelp {
+		return 0
+	}
+	a.help.ShowAll = true
+	return lipgloss.Height(a.help.View(a.currentViewModel()))
 }
 
 func (a *App) statusBarView() string {
@@ -185,6 +234,19 @@ func (a *App) statusBarView() string {
 	}
 
 	return style.Render(content)
+}
+
+func (a *App) renderTooSmallWarning() string {
+	title := a.styles.ErrorText.Render("Terminal too small")
+	minimum := a.styles.HelpDesc.Render(fmt.Sprintf("Minimum: %dx%d", MinWidth, MinHeight))
+	current := a.styles.HelpDesc.Render(fmt.Sprintf("Current: %dx%d", a.width, a.height))
+	content := lipgloss.JoinVertical(lipgloss.Center, title, minimum, current)
+
+	if a.width > 0 && a.height > 0 {
+		return lipgloss.Place(a.width, a.height, lipgloss.Center, lipgloss.Center, content)
+	}
+
+	return content
 }
 
 func (a *App) dashboardStyles() views.DashboardStyles {

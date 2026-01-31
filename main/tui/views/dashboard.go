@@ -14,6 +14,8 @@ type Dashboard struct {
 	height int
 }
 
+const dashboardEdgeMargin = 2
+
 // DashboardStyles contains the lipgloss styles used by the dashboard.
 type DashboardStyles struct {
 	Title    lipgloss.Style
@@ -127,12 +129,16 @@ func (d *Dashboard) layoutConfig() (int, int) {
 
 	gap := 2
 	minCardWidth := 28
-	available := d.width - gap
+	availableWidth := d.width - (dashboardEdgeMargin * 2)
+	if availableWidth < 0 {
+		availableWidth = 0
+	}
+	available := availableWidth - gap
 	if available >= minCardWidth*2 {
 		return available / 2, 2
 	}
 
-	return d.width, 1
+	return availableWidth, 1
 }
 
 func (d *Dashboard) renderCards(cards []dashboardCard, width int, columns int) string {

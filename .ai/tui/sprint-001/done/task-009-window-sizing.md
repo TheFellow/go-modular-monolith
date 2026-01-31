@@ -80,13 +80,13 @@ case tea.WindowSizeMsg:
 
 ## Checklist
 
-- [ ] Define MinWidth and MinHeight constants
-- [ ] Update App to check for minimum size in View()
-- [ ] Implement `renderTooSmallWarning()` helper
-- [ ] Propagate window size to help bubble
-- [ ] Propagate window size to current view
-- [ ] Dashboard uses width/height for card layout
-- [ ] Placeholder uses width/height for centering
+- [x] Define MinWidth and MinHeight constants
+- [x] Update App to check for minimum size in View()
+- [x] Implement `renderTooSmallWarning()` helper
+- [x] Propagate window size to help bubble
+- [x] Propagate window size to current view
+- [x] Dashboard uses width/height for card layout
+- [x] Placeholder uses width/height for centering
 - [ ] Test resize behavior manually
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] `go build ./main/tui/...` passes
+- [x] `go test ./...` passes
