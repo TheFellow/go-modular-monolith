@@ -77,12 +77,12 @@ The integration approach:
 
 ## Checklist
 
-- [ ] Create `main/tui/main.go` with `Run()` function
-- [ ] Add `--tui` flag to CLI command
-- [ ] Wire flag check in CLI to launch TUI
-- [ ] Support optional view argument parsing
+- [x] Create `main/tui/main.go` with `Run()` function
+- [x] Add `--tui` flag to CLI command
+- [x] Wire flag check in CLI to launch TUI
+- [x] Support optional view argument parsing
 - [ ] Verify `mixology --tui` launches TUI
 - [ ] Verify `mixology --tui drinks` starts on Drinks view
 - [ ] Verify `q` exits cleanly
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/TheFellow/go-modular-monolith/app"
+	"github.com/TheFellow/go-modular-monolith/main/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
@@ -51,6 +52,10 @@ func (c *CLI) Command() *cli.Command {
 		Name:  "mixology",
 		Usage: "Mixology as a Service",
 		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "tui",
+				Usage: "Launch interactive terminal UI",
+			},
 			&cli.StringFlag{
 				Name:        "log-level",
 				Value:       c.logLevel,
@@ -79,7 +84,7 @@ func (c *CLI) Command() *cli.Command {
 				Sources:     cli.EnvVars("MIXOLOGY_METRICS"),
 			},
 		},
-		Before: func(ctx context.Context, _ *cli.Command) (context.Context, error) {
+		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 			logger := pkglog.Setup(c.logLevel, c.logFormat, os.Stderr)
 
 			var metrics telemetry.Metrics = telemetry.Nop()
@@ -111,7 +116,30 @@ func (c *CLI) Command() *cli.Command {
 			if err != nil {
 				return ctx, err
 			}
-			return c.app.Context(ctx, p), nil
+
+			ctx = c.app.Context(ctx, p)
+
+			if cmd != nil && cmd.Bool("tui") {
+				initialView := tui.ViewDashboard
+				args := cmd.Args().Slice()
+				if len(args) > 0 {
+					var ok bool
+					initialView, ok = tui.ParseView(args[0])
+					if !ok {
+						return ctx, cli.Exit(fmt.Errorf("unknown view: %s", args[0]), apperrors.ExitUsage)
+					}
+				}
+				if len(args) > 1 {
+					return ctx, cli.Exit(fmt.Errorf("too many arguments for --tui"), apperrors.ExitUsage)
+				}
+
+				if err := tui.Run(c.app, initialView); err != nil {
+					return ctx, err
+				}
+				return ctx, cli.Exit("", 0)
+			}
+
+			return ctx, nil
 		},
 		After: func(ctx context.Context, _ *cli.Command) error {
 			if c.app != nil {

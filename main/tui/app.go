@@ -148,6 +148,10 @@ func (a *App) navigateTo(target View) tea.Cmd {
 // navigateBack pops the previous view from the stack.
 func (a *App) navigateBack() tea.Cmd {
 	if len(a.prevViews) == 0 {
+		if a.currentView != ViewDashboard {
+			a.currentView = ViewDashboard
+			return a.syncWindowCmd()
+		}
 		return nil
 	}
 

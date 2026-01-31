@@ -40,7 +40,8 @@ func NewStyles() Styles {
 	}
 
 	selectedForeground := lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#0b1120"}
-	statusForeground := lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#0b1120"}
+	statusForeground := lipgloss.AdaptiveColor{Light: "#f8fafc", Dark: "#e2e8f0"}
+	statusBackground := lipgloss.AdaptiveColor{Light: "#0f172a", Dark: "#111827"}
 
 	styles.Title = lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
 	styles.Subtitle = lipgloss.NewStyle().Foreground(styles.Secondary)
@@ -51,7 +52,7 @@ func NewStyles() Styles {
 	styles.Unselected = lipgloss.NewStyle().Foreground(styles.Muted)
 	styles.StatusBar = lipgloss.NewStyle().
 		Foreground(statusForeground).
-		Background(styles.Secondary).
+		Background(statusBackground).
 		Padding(0, 1)
 	styles.ErrorText = lipgloss.NewStyle().Bold(true).Foreground(styles.Error)
 	styles.HelpKey = lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)

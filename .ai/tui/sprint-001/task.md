@@ -128,7 +128,7 @@ type ViewModel interface {
 | 005  | [Create ViewModel interface and placeholder](done/task-005-viewmodel.md)   | Done    |
 | 006  | [Create Dashboard view](done/task-006-dashboard.md)                        | Done    |
 | 007  | [Implement root App model](done/task-007-app-model.md)                     | Done    |
-| 008  | [Create TUI entry point and CLI integration](todo/task-008-entry-point.md) | Pending |
+| 008  | [Create TUI entry point and CLI integration](done/task-008-entry-point.md) | Done    |
 | 009  | [Handle window sizing](todo/task-009-window-sizing.md)                     | Pending |
 | 010  | [Integration testing](todo/task-010-integration.md)                        | Pending |
 
