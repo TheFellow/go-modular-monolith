@@ -154,9 +154,9 @@ func NewBadgeStyles(primary, success, warning, error_ lipgloss.AdaptiveColor) Ba
 
 ## Checklist
 
-- [ ] Create main/tui/components/ directory
-- [ ] Implement Spinner component
-- [ ] Implement EmptyState component with common messages
-- [ ] Implement Badge component with BadgeStyles
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] Create main/tui/components/ directory
+- [x] Implement Spinner component
+- [x] Implement EmptyState component with common messages
+- [x] Implement Badge component with BadgeStyles
+- [x] `go build ./main/tui/...` passes
+- [x] `go test ./...` passes
