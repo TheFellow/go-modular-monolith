@@ -20,7 +20,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-const lowStockThreshold = 10.0
+const (
+	lowStockThreshold  = 10.0
+	inventoryColumnGap = 1
+)
 
 // ListViewStyles contains styles needed by the inventory list view.
 type ListViewStyles struct {
@@ -210,8 +213,13 @@ func (m *ListViewModel) setSize(width, height int) {
 	}
 
 	listWidth, detailWidth := views.SplitListDetailWidths(width)
-	m.table.SetColumns(inventoryColumns(listWidth))
-	m.table.SetWidth(listWidth)
+	listPadLeft, listPadRight := m.styles.ListPane.GetPaddingLeft(), m.styles.ListPane.GetPaddingRight()
+	innerListWidth := listWidth - listPadLeft - listPadRight
+	if innerListWidth < 0 {
+		innerListWidth = 0
+	}
+	m.table.SetColumns(inventoryColumns(innerListWidth))
+	m.table.SetWidth(innerListWidth)
 	tableHeight := height
 	if tableHeight > 0 {
 		tableHeight--
@@ -243,17 +251,22 @@ func inventoryColumns(width int) []table.Column {
 		quantityWidth = 10
 		costWidth     = 8
 		statusWidth   = 6
-		minNameWidth  = 12
 		defaultWidth  = 48
+		columnCount   = 5
 	)
 
 	if width <= 0 {
 		width = defaultWidth
 	}
 
-	nameWidth := width - (categoryWidth + quantityWidth + costWidth + statusWidth)
-	if nameWidth < minNameWidth {
-		nameWidth = minNameWidth
+	contentWidth := width - (inventoryColumnGap * columnCount)
+	if contentWidth < 0 {
+		contentWidth = 0
+	}
+
+	nameWidth := contentWidth - (categoryWidth + quantityWidth + costWidth + statusWidth)
+	if nameWidth < 0 {
+		nameWidth = 0
 	}
 
 	return []table.Column{
@@ -267,8 +280,8 @@ func inventoryColumns(width int) []table.Column {
 
 func inventoryTableStyles(styles ListViewStyles) table.Styles {
 	tableStyles := table.DefaultStyles()
-	tableStyles.Header = styles.Subtitle.Bold(true).Padding(0, 1)
-	tableStyles.Cell = lipgloss.NewStyle().Padding(0, 1)
+	tableStyles.Header = styles.Subtitle.Bold(true).PaddingRight(inventoryColumnGap)
+	tableStyles.Cell = lipgloss.NewStyle().PaddingRight(inventoryColumnGap)
 	tableStyles.Selected = styles.Selected
 	return tableStyles
 }
