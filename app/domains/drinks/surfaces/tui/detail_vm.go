@@ -7,6 +7,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -55,7 +56,16 @@ func (d *DetailViewModel) View() string {
 	}
 
 	lines = append(lines, "", d.styles.Subtitle.Render("Recipe"))
-	lines = append(lines, d.renderIngredients(d.drink.Recipe.Ingredients)...)
+	ingredientLines, err := d.renderIngredients(d.drink.Recipe.Ingredients)
+	if err != nil {
+		lines = append(lines, d.styles.ErrorText.Render(fmt.Sprintf("Error: %v", err)))
+		content := strings.Join(lines, "\n")
+		if d.width > 0 {
+			content = lipgloss.NewStyle().Width(d.width).Render(content)
+		}
+		return content
+	}
+	lines = append(lines, ingredientLines...)
 
 	if len(d.drink.Recipe.Steps) > 0 {
 		lines = append(lines, "", d.styles.Subtitle.Render("Steps"))
@@ -75,43 +85,52 @@ func (d *DetailViewModel) View() string {
 	return content
 }
 
-func (d *DetailViewModel) renderIngredients(items []models.RecipeIngredient) []string {
+func (d *DetailViewModel) renderIngredients(items []models.RecipeIngredient) ([]string, error) {
 	if len(items) == 0 {
-		return []string{d.styles.Muted.Render("No ingredients")}
+		return []string{d.styles.Muted.Render("No ingredients")}, nil
 	}
 
 	lines := make([]string, 0, len(items))
 	for _, item := range items {
-		amount := ""
-		if item.Amount != nil {
-			amount = item.Amount.String()
-		}
+		amount := item.Amount.String()
 		optionalLabel := ""
 		if item.Optional {
 			optionalLabel = " (optional)"
 		}
-		name := d.ingredientName(item.IngredientID)
+		name, err := d.ingredientName(item.IngredientID)
+		if err != nil {
+			return nil, errors.Internalf("could not load ingredient name: %w", err)
+		}
 		line := fmt.Sprintf("- %s %s%s", amount, name, optionalLabel)
 		if len(item.Substitutes) > 0 {
 			subs := make([]string, 0, len(item.Substitutes))
 			for _, sub := range item.Substitutes {
-				subs = append(subs, d.ingredientName(sub))
+				subName, err := d.ingredientName(sub)
+				if err != nil {
+					return nil, errors.Internalf("could not load ingredient name: %w", err)
+				}
+				subs = append(subs, subName)
 			}
 			line = fmt.Sprintf("%s [subs: %s]", line, strings.Join(subs, ", "))
 		}
 		lines = append(lines, line)
 	}
-	return lines
+	return lines, nil
 }
 
-func (d *DetailViewModel) ingredientName(id entity.IngredientID) string {
-	if id.IsZero() {
-		return "UNKNOWN"
-	}
+func (d *DetailViewModel) ingredientName(id entity.IngredientID) (string, error) {
 	ingredient, err := d.queries.Get(d.ctx, id)
 	if err != nil {
-		return id.String()
+		return "", errors.Internalf("could not load ingredient: %w", err)
 	}
 
-	return ingredient.Name
+	if ingredient == nil {
+		return "", errors.Internalf("ingredient %s missing", id.String())
+	}
+
+	name := strings.TrimSpace(ingredient.Name)
+	if name == "" {
+		return "", errors.Internalf("ingredient %s missing name", id.String())
+	}
+	return name, nil
 }
