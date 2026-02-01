@@ -121,15 +121,15 @@ Follow pattern from task-007b.
 
 ## Checklist
 
-- [ ] Create surfaces/tui/ directory under audit domain
-- [ ] Create messages.go with AuditLoadedMsg
-- [ ] Create items.go with auditItem
-- [ ] Create list_vm.go with ListViewModel
-- [ ] Load limited entries (50) by default
-- [ ] Create detail_vm.go with DetailViewModel
-- [ ] Display touched entities in detail
-- [ ] Create list_vm_test.go with required tests
-- [ ] Create detail_vm_test.go with required tests
-- [ ] Wire ListViewModel in App.currentViewModel()
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] Create surfaces/tui/ directory under audit domain
+- [x] Create messages.go with AuditLoadedMsg
+- [x] Create items.go with auditItem
+- [x] Create list_vm.go with ListViewModel
+- [x] Load limited entries (50) by default
+- [x] Create detail_vm.go with DetailViewModel
+- [x] Display touched entities in detail
+- [x] Create list_vm_test.go with required tests
+- [x] Create detail_vm_test.go with required tests
+- [x] Wire ListViewModel in App.currentViewModel()
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes

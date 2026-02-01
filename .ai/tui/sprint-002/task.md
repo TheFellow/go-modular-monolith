@@ -63,7 +63,7 @@ The dashboard view demonstrates the Styles/Keys subset pattern with `DashboardSt
 | 007b | [ViewModel Tests](done/task-007b-viewmodel-tests.md)            | Done    |
 | 008  | [Menu View](done/task-008-menu-view.md)                         | Done    |
 | 009  | [Orders View](done/task-009-orders-view.md)                     | Done    |
-| 010  | [Audit View](todo/task-010-audit-view.md)                       | Pending |
+| 010  | [Audit View](done/task-010-audit-view.md)                       | Done    |
 | 011  | [Error Handling Integration](todo/task-011-error-handling.md)   | Pending |
 | 012  | [Integration Testing](todo/task-012-integration.md)             | Pending |
 
@@ -92,7 +92,7 @@ Task 011 depends on 001 and all domain views. Task 012 is the final integration 
 - [ ] Shared components (Spinner, EmptyState, Badge) are reusable
 - [ ] Dashboard shows real counts from domain queries
 - [ ] Dashboard shows recent audit activity
-- [ ] All domain views (Drinks, Ingredients, Inventory, Menu, Orders, Audit) show real data
+- [x] All domain views (Drinks, Ingredients, Inventory, Menu, Orders, Audit) show real data
 - [ ] List views support filtering by typing
 - [ ] Detail pane updates on selection
 - [ ] Errors display with appropriate styling (error/warning/info)

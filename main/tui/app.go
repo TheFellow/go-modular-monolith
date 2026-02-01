@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/TheFellow/go-modular-monolith/app"
+	auditui "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/tui"
 	drinksui "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/tui"
 	ingredientsui "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/tui"
 	inventoryui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/tui"
@@ -169,7 +170,7 @@ func (a *App) currentViewModel() views.ViewModel {
 	case ViewOrders:
 		vm = ordersui.NewListViewModel(a.app, a.ctx, a.ordersListStyles(), a.ordersListKeys())
 	case ViewAudit:
-		vm = views.NewPlaceholder(viewTitle(a.currentView))
+		vm = auditui.NewListViewModel(a.app, a.ctx, a.auditListStyles(), a.auditListKeys())
 	default:
 		a.currentView = ViewDashboard
 		vm = views.NewDashboard(a.app, a.ctx, a.dashboardStyles(), a.dashboardKeys())
@@ -396,6 +397,29 @@ func (a *App) ordersListStyles() ordersui.ListViewStyles {
 
 func (a *App) ordersListKeys() ordersui.ListViewKeys {
 	return ordersui.ListViewKeys{
+		Up:      a.keys.Up,
+		Down:    a.keys.Down,
+		Enter:   a.keys.Enter,
+		Refresh: a.keys.Refresh,
+		Back:    a.keys.Back,
+	}
+}
+
+func (a *App) auditListStyles() auditui.ListViewStyles {
+	return auditui.ListViewStyles{
+		Title:       a.styles.Title,
+		Subtitle:    a.styles.Subtitle,
+		Muted:       a.styles.Unselected,
+		Selected:    a.styles.Selected,
+		ListPane:    a.styles.ListPane,
+		DetailPane:  a.styles.DetailPane,
+		ErrorText:   a.styles.ErrorText,
+		WarningText: a.styles.WarningText,
+	}
+}
+
+func (a *App) auditListKeys() auditui.ListViewKeys {
+	return auditui.ListViewKeys{
 		Up:      a.keys.Up,
 		Down:    a.keys.Down,
 		Enter:   a.keys.Enter,
