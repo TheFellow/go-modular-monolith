@@ -95,12 +95,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 ## Checklist
 
-- [ ] Import pkg/errors in app.go
-- [ ] Update statusBarView() to use ToTUIError()
-- [ ] Apply appropriate style based on TUIStyle
-- [ ] Test with different error types:
-  - [ ] NotFound (should show warning style)
-  - [ ] Invalid (should show error style)
-  - [ ] Permission (should show error style)
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] Import pkg/errors in app.go
+- [x] Update statusBarView() to use ToTUIError()
+- [x] Apply appropriate style based on TUIStyle
+- [x] Test with different error types:
+  - [x] NotFound (should show warning style)
+  - [x] Invalid (should show error style)
+  - [x] Permission (should show error style)
+- [x] `go build ./main/tui/...` passes
+- [x] `go test ./...` passes

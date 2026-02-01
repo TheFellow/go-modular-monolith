@@ -64,7 +64,7 @@ The dashboard view demonstrates the Styles/Keys subset pattern with `DashboardSt
 | 008  | [Menu View](done/task-008-menu-view.md)                         | Done    |
 | 009  | [Orders View](done/task-009-orders-view.md)                     | Done    |
 | 010  | [Audit View](done/task-010-audit-view.md)                       | Done    |
-| 011  | [Error Handling Integration](todo/task-011-error-handling.md)   | Pending |
+| 011  | [Error Handling Integration](done/task-011-error-handling.md)   | Done    |
 | 012  | [Integration Testing](todo/task-012-integration.md)             | Pending |
 
 ### Task Dependencies
@@ -95,7 +95,7 @@ Task 011 depends on 001 and all domain views. Task 012 is the final integration 
 - [x] All domain views (Drinks, Ingredients, Inventory, Menu, Orders, Audit) show real data
 - [ ] List views support filtering by typing
 - [ ] Detail pane updates on selection
-- [ ] Errors display with appropriate styling (error/warning/info)
+- [x] Errors display with appropriate styling (error/warning/info)
 - [ ] `r` key refreshes current view data
 - [ ] `go build ./...` passes
 - [ ] `go test ./...` passes

@@ -16,6 +16,7 @@ import (
 	menusui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
 	ordersui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
+	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -242,7 +243,19 @@ func (a *App) helpHeight() int {
 func (a *App) statusBarView() string {
 	var content string
 	if a.lastError != nil {
-		content = a.styles.ErrorText.Render("Error: " + a.lastError.Error())
+		tuiErr := perrors.ToTUIError(a.lastError)
+		style := a.styles.ErrorText
+		switch tuiErr.Style {
+		case perrors.TUIStyleWarning:
+			style = a.styles.WarningText
+		case perrors.TUIStyleInfo:
+			style = a.styles.InfoText
+		case perrors.TUIStyleError:
+			style = a.styles.ErrorText
+		default:
+			style = a.styles.ErrorText
+		}
+		content = style.Render(tuiErr.Message)
 	} else {
 		content = a.styles.HelpDesc.Render("View: " + viewTitle(a.currentView) + "  •  Press ? for help")
 	}
