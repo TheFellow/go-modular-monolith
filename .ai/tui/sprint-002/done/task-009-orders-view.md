@@ -129,15 +129,15 @@ Follow pattern from task-007b.
 
 ## Checklist
 
-- [ ] Create surfaces/tui/ directory under orders domain
-- [ ] Create messages.go with OrdersLoadedMsg
-- [ ] Create items.go with orderItem
-- [ ] Create list_vm.go with ListViewModel
-- [ ] Show status badge with appropriate color
-- [ ] Create detail_vm.go with DetailViewModel
-- [ ] Display line items with totals
-- [ ] Create list_vm_test.go with required tests
-- [ ] Create detail_vm_test.go with required tests
-- [ ] Wire ListViewModel in App.currentViewModel()
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] Create surfaces/tui/ directory under orders domain
+- [x] Create messages.go with OrdersLoadedMsg
+- [x] Create items.go with orderItem
+- [x] Create list_vm.go with ListViewModel
+- [x] Show status badge with appropriate color
+- [x] Create detail_vm.go with DetailViewModel
+- [x] Display line items with totals
+- [x] Create list_vm_test.go with required tests
+- [x] Create detail_vm_test.go with required tests
+- [x] Wire ListViewModel in App.currentViewModel()
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes

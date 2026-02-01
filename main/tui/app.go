@@ -13,6 +13,7 @@ import (
 	ingredientsui "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/tui"
 	inventoryui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/tui"
 	menusui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
+	ordersui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
@@ -165,7 +166,9 @@ func (a *App) currentViewModel() views.ViewModel {
 		vm = inventoryui.NewListViewModel(a.app, a.ctx, a.inventoryListStyles(), a.inventoryListKeys())
 	case ViewMenus:
 		vm = menusui.NewListViewModel(a.app, a.ctx, a.menusListStyles(), a.menusListKeys())
-	case ViewOrders, ViewAudit:
+	case ViewOrders:
+		vm = ordersui.NewListViewModel(a.app, a.ctx, a.ordersListStyles(), a.ordersListKeys())
+	case ViewAudit:
 		vm = views.NewPlaceholder(viewTitle(a.currentView))
 	default:
 		a.currentView = ViewDashboard
@@ -370,6 +373,29 @@ func (a *App) menusListStyles() menusui.ListViewStyles {
 
 func (a *App) menusListKeys() menusui.ListViewKeys {
 	return menusui.ListViewKeys{
+		Up:      a.keys.Up,
+		Down:    a.keys.Down,
+		Enter:   a.keys.Enter,
+		Refresh: a.keys.Refresh,
+		Back:    a.keys.Back,
+	}
+}
+
+func (a *App) ordersListStyles() ordersui.ListViewStyles {
+	return ordersui.ListViewStyles{
+		Title:       a.styles.Title,
+		Subtitle:    a.styles.Subtitle,
+		Muted:       a.styles.Unselected,
+		Selected:    a.styles.Selected,
+		ListPane:    a.styles.ListPane,
+		DetailPane:  a.styles.DetailPane,
+		ErrorText:   a.styles.ErrorText,
+		WarningText: a.styles.WarningText,
+	}
+}
+
+func (a *App) ordersListKeys() ordersui.ListViewKeys {
+	return ordersui.ListViewKeys{
 		Up:      a.keys.Up,
 		Down:    a.keys.Down,
 		Enter:   a.keys.Enter,
