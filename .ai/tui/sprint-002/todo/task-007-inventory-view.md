@@ -4,6 +4,13 @@
 
 Create the Inventory domain ListViewModel and DetailViewModel, using a table layout instead of a list.
 
+## Design Principles
+
+- **Keep it simple and direct** - Query data from domain queries, render it
+- **No fallback logic** - If data should exist and doesn't, that's an internal error
+- **Surface errors** - Return/display errors, never silently hide them
+- **Self-consistent data** - Inventory references ingredients; if ingredient missing, return error
+
 ## Files to Create/Modify
 
 - `app/domains/inventory/surfaces/tui/messages.go` (new)

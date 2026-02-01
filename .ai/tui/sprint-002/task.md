@@ -32,6 +32,13 @@ Replace placeholder views with real ViewModels displaying actual domain data. By
 
 The dashboard view demonstrates the Styles/Keys subset pattern with `DashboardStyles` and `DashboardKeys`. Domain ViewModels will follow this with `ListViewStyles` and `ListViewKeys`.
 
+## Design Principles
+
+1. **Keep it simple and direct** - Query data from domain queries, render it
+2. **No fallback logic** - If data should exist and doesn't, that's an internal error
+3. **Surface errors** - Return/display errors, never silently hide them
+4. **Self-consistent data** - The application guarantees referential integrity; trust it
+
 ## Key Implementation Notes from Sprint 001
 
 1. **App type is `*app.App`** (not `*app.Application`)

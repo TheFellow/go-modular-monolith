@@ -4,6 +4,12 @@
 
 Integrate the TUI error surface with the App model for styled error display in the status bar.
 
+## Design Principles
+
+- **Surface all errors** - Never silently swallow errors
+- **Styled by severity** - Use error/warning/info styles appropriately
+- **Self-consistent data violations are errors** - Missing referenced entities indicate bugs
+
 ## Files to Modify
 
 - `main/tui/app.go` - Use ToTUIError() in status bar rendering

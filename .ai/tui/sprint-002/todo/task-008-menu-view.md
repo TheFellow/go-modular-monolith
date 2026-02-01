@@ -4,6 +4,13 @@
 
 Create the Menu domain ListViewModel and DetailViewModel, replacing the placeholder view.
 
+## Design Principles
+
+- **Keep it simple and direct** - Query data from domain queries, render it
+- **No fallback logic** - If data should exist and doesn't, that's an internal error
+- **Surface errors** - Return/display errors, never silently hide them
+- **Self-consistent data** - Menu items reference drinks; if drink missing, return error
+
 ## Files to Create/Modify
 
 - `app/domains/menu/surfaces/tui/messages.go` (new)

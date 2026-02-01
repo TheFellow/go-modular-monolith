@@ -97,10 +97,10 @@ Dashboard -> [6] Audit -> [esc] -> Dashboard
 
 ## Common Issues to Check
 
-1. **Nil pointer errors** - Ensure views handle empty data
-2. **Layout overflow** - Check content fits in available space
-3. **Async race conditions** - Ensure loading states work correctly
-4. **Import cycles** - Verify no circular dependencies between packages
+1. **Layout overflow** - Check content fits in available space
+2. **Async race conditions** - Ensure loading states work correctly
+3. **Import cycles** - Verify no circular dependencies between packages
+4. **Errors displayed, not hidden** - All errors should surface in the UI, never silently swallowed
 
 ## Verification Commands
 

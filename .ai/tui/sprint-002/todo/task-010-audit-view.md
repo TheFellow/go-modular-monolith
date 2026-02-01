@@ -4,6 +4,12 @@
 
 Create the Audit domain ListViewModel and DetailViewModel, replacing the placeholder view.
 
+## Design Principles
+
+- **Keep it simple and direct** - Query data from domain queries, render it
+- **No fallback logic** - If data should exist and doesn't, that's an internal error
+- **Surface errors** - Return/display errors, never silently hide them
+
 ## Files to Create/Modify
 
 - `app/domains/audit/surfaces/tui/messages.go` (new)
