@@ -10,10 +10,11 @@ import (
 
 // DetailViewModel renders a drink detail pane.
 type DetailViewModel struct {
-	styles ListViewStyles
-	width  int
-	height int
-	drink  *models.Drink
+	styles      ListViewStyles
+	width       int
+	height      int
+	drink       *models.Drink
+	ingredients map[string]string
 }
 
 func NewDetailViewModel(styles ListViewStyles) *DetailViewModel {
@@ -27,6 +28,10 @@ func (d *DetailViewModel) SetSize(width, height int) {
 
 func (d *DetailViewModel) SetDrink(drink *models.Drink) {
 	d.drink = drink
+}
+
+func (d *DetailViewModel) SetIngredientNames(names map[string]string) {
+	d.ingredients = names
 }
 
 func (d *DetailViewModel) View() string {
@@ -81,15 +86,29 @@ func (d *DetailViewModel) renderIngredients(items []models.RecipeIngredient) []s
 		if item.Optional {
 			optionalLabel = " (optional)"
 		}
-		line := fmt.Sprintf("- %s %s%s", amount, item.IngredientID.String(), optionalLabel)
+		name := d.ingredientName(item.IngredientID.String())
+		line := fmt.Sprintf("- %s %s%s", amount, name, optionalLabel)
 		if len(item.Substitutes) > 0 {
 			subs := make([]string, 0, len(item.Substitutes))
 			for _, sub := range item.Substitutes {
-				subs = append(subs, sub.String())
+				subs = append(subs, d.ingredientName(sub.String()))
 			}
 			line = fmt.Sprintf("%s [subs: %s]", line, strings.Join(subs, ", "))
 		}
 		lines = append(lines, line)
 	}
 	return lines
+}
+
+func (d *DetailViewModel) ingredientName(id string) string {
+	if id == "" {
+		return ""
+	}
+	if d.ingredients == nil {
+		return id
+	}
+	if name, ok := d.ingredients[id]; ok && strings.TrimSpace(name) != "" {
+		return name
+	}
+	return id
 }
