@@ -18,6 +18,7 @@ Create the Orders domain ListViewModel and DetailViewModel, replacing the placeh
 - `app/domains/orders/surfaces/tui/detail_vm.go` (new)
 - `app/domains/orders/surfaces/tui/items.go` (new)
 - `app/domains/orders/surfaces/tui/list_vm_test.go` (new)
+- `app/domains/orders/surfaces/tui/detail_vm_test.go` (new)
 - `main/tui/app.go` - Wire OrdersListViewModel
 
 ## Pattern Reference
@@ -102,18 +103,29 @@ case ViewOrders:
 - Order.Items contains line items with drink reference and quantity
 - Total calculation: sum of (item.Price × item.Quantity)
 
-## Tests (list_vm_test.go)
+## Tests
 
-Follow pattern from task-007b. Required tests:
+Follow pattern from task-007b.
+
+### list_vm_test.go
 
 | Test | Verifies |
 |------|----------|
-| `ShowsOrdersAfterLoad` | View contains order IDs after load |
-| `ShowsLoadingState` | Loading spinner before data arrives |
-| `ShowsEmptyState` | Empty list renders without error |
-| `ShowsStatusBadge` | Pending/Completed/Cancelled status displayed |
-| `DetailShowsLineItems` | Selected order shows drink names and quantities |
-| `DetailShowsTotal` | Order total calculated and displayed |
+| `List_ShowsOrdersAfterLoad` | View contains order IDs after load |
+| `List_ShowsLoadingState` | Loading spinner before data arrives |
+| `List_ShowsEmptyState` | Empty list renders without error |
+| `List_ShowsStatusBadge` | Pending/Completed/Cancelled status displayed |
+| `List_SetSize_NarrowWidth` | Narrow width handled gracefully |
+
+### detail_vm_test.go
+
+| Test | Verifies |
+|------|----------|
+| `Detail_ShowsOrderData` | Order ID, status, menu name displayed |
+| `Detail_ShowsLineItems` | Line items with drink names and quantities |
+| `Detail_ShowsTotal` | Order total calculated and displayed |
+| `Detail_NilOrder` | Nil order shows placeholder |
+| `Detail_SetSize` | Resize handled gracefully |
 
 ## Checklist
 
@@ -125,6 +137,7 @@ Follow pattern from task-007b. Required tests:
 - [ ] Create detail_vm.go with DetailViewModel
 - [ ] Display line items with totals
 - [ ] Create list_vm_test.go with required tests
+- [ ] Create detail_vm_test.go with required tests
 - [ ] Wire ListViewModel in App.currentViewModel()
 - [ ] `go build ./...` passes
 - [ ] `go test ./...` passes

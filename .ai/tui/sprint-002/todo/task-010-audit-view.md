@@ -17,6 +17,7 @@ Create the Audit domain ListViewModel and DetailViewModel, replacing the placeho
 - `app/domains/audit/surfaces/tui/detail_vm.go` (new)
 - `app/domains/audit/surfaces/tui/items.go` (new)
 - `app/domains/audit/surfaces/tui/list_vm_test.go` (new)
+- `app/domains/audit/surfaces/tui/detail_vm_test.go` (new)
 - `main/tui/app.go` - Wire AuditListViewModel
 
 ## Pattern Reference
@@ -95,17 +96,28 @@ case ViewAudit:
 - Consider limiting initial load to recent entries (last 50)
 - "Jump to entity" feature can be added later (navigate to the entity's view)
 
-## Tests (list_vm_test.go)
+## Tests
 
-Follow pattern from task-007b. Required tests:
+Follow pattern from task-007b.
+
+### list_vm_test.go
 
 | Test | Verifies |
 |------|----------|
-| `ShowsEntriesAfterLoad` | View contains audit entries after load |
-| `ShowsLoadingState` | Loading spinner before data arrives |
-| `ShowsEmptyState` | Empty list renders without error |
-| `ShowsTimestampAndAction` | Entries show timestamp and action type |
-| `DetailShowsTouchedEntities` | Selected entry shows affected entities |
+| `List_ShowsEntriesAfterLoad` | View contains audit entries after load |
+| `List_ShowsLoadingState` | Loading spinner before data arrives |
+| `List_ShowsEmptyState` | Empty list renders without error |
+| `List_ShowsTimestampAndAction` | Entries show timestamp and action type |
+| `List_SetSize_NarrowWidth` | Narrow width handled gracefully |
+
+### detail_vm_test.go
+
+| Test | Verifies |
+|------|----------|
+| `Detail_ShowsEntryData` | Timestamp, actor, action displayed |
+| `Detail_ShowsTouchedEntities` | Affected entities listed |
+| `Detail_NilEntry` | Nil entry shows placeholder |
+| `Detail_SetSize` | Resize handled gracefully |
 
 ## Checklist
 
@@ -117,6 +129,7 @@ Follow pattern from task-007b. Required tests:
 - [ ] Create detail_vm.go with DetailViewModel
 - [ ] Display touched entities in detail
 - [ ] Create list_vm_test.go with required tests
+- [ ] Create detail_vm_test.go with required tests
 - [ ] Wire ListViewModel in App.currentViewModel()
 - [ ] `go build ./...` passes
 - [ ] `go test ./...` passes
