@@ -81,12 +81,12 @@ case ViewIngredients:
 
 ## Checklist
 
-- [ ] Create surfaces/tui/ directory under ingredients domain
-- [ ] Create messages.go with IngredientsLoadedMsg
-- [ ] Create items.go with ingredientItem
-- [ ] Create list_vm.go with ListViewModel
-- [ ] Create detail_vm.go with DetailViewModel
-- [ ] Wire ListViewModel in App.currentViewModel()
+- [x] Create surfaces/tui/ directory under ingredients domain
+- [x] Create messages.go with IngredientsLoadedMsg
+- [x] Create items.go with ingredientItem
+- [x] Create list_vm.go with ListViewModel
+- [x] Create detail_vm.go with DetailViewModel
+- [x] Wire ListViewModel in App.currentViewModel()
 - [ ] Test navigation and data display
 - [ ] `go build ./...` passes
 - [ ] `go test ./...` passes

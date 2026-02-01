@@ -4,11 +4,12 @@ import (
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
-	drinksdao "github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
-	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	drinksqueries "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
+	ingredientsdao "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/internal/dao"
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/charmbracelet/bubbles/key"
@@ -17,7 +18,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// ListViewStyles contains styles needed by the drinks list view.
+// ListViewStyles contains styles needed by the ingredients list view.
 type ListViewStyles struct {
 	Title       lipgloss.Style
 	Subtitle    lipgloss.Style
@@ -29,7 +30,7 @@ type ListViewStyles struct {
 	WarningText lipgloss.Style
 }
 
-// ListViewKeys contains key bindings needed by the drinks list view.
+// ListViewKeys contains key bindings needed by the ingredients list view.
 type ListViewKeys struct {
 	Up      key.Binding
 	Down    key.Binding
@@ -38,14 +39,14 @@ type ListViewKeys struct {
 	Back    key.Binding
 }
 
-// ListViewModel renders the drinks list and detail panes.
+// ListViewModel renders the ingredients list and detail panes.
 type ListViewModel struct {
 	app    *app.App
 	ctx    *middleware.Context
 	styles ListViewStyles
 	keys   ListViewKeys
 
-	drinksQueries *drinksqueries.Queries
+	queries *ingredientsqueries.Queries
 
 	list    list.Model
 	detail  *DetailViewModel
@@ -66,29 +67,29 @@ func NewListViewModel(app *app.App, ctx *middleware.Context, styles ListViewStyl
 	delegate.Styles.SelectedDesc = styles.Selected
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
-	l.Title = "Drinks"
+	l.Title = "Ingredients"
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 	l.SetShowPagination(false)
 	l.SetFilteringEnabled(true)
 
 	vm := &ListViewModel{
-		app:           app,
-		ctx:           ctx,
-		styles:        styles,
-		keys:          keys,
-		drinksQueries: drinksqueries.New(),
-		list:          l,
-		detail:        NewDetailViewModel(styles, ctx),
-		loading:       true,
+		app:     app,
+		ctx:     ctx,
+		styles:  styles,
+		keys:    keys,
+		queries: ingredientsqueries.New(),
+		list:    l,
+		detail:  NewDetailViewModel(styles),
+		loading: true,
 	}
-	vm.spinner = components.NewSpinner("Loading drinks...", styles.Subtitle)
+	vm.spinner = components.NewSpinner("Loading ingredients...", styles.Subtitle)
 	return vm
 }
 
 func (m *ListViewModel) Init() tea.Cmd {
 	m.loading = true
-	return tea.Batch(m.spinner.Init(), m.loadDrinks())
+	return tea.Batch(m.spinner.Init(), m.loadIngredients())
 }
 
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
@@ -101,14 +102,14 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		case key.Matches(msg, m.keys.Refresh):
 			m.loading = true
 			m.err = nil
-			return m, tea.Batch(m.spinner.Init(), m.loadDrinks())
+			return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
 		}
-	case DrinksLoadedMsg:
+	case IngredientsLoadedMsg:
 		m.loading = false
 		m.err = msg.Err
-		items := make([]list.Item, 0, len(msg.Drinks))
-		for _, drink := range msg.Drinks {
-			items = append(items, drinkItem{drink: drink})
+		items := make([]list.Item, 0, len(msg.Ingredients))
+		for _, ingredient := range msg.Ingredients {
+			items = append(items, ingredientItem{ingredient: ingredient})
 		}
 		m.list.SetItems(items)
 		m.syncDetail()
@@ -155,19 +156,22 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 	}
 }
 
-func (m *ListViewModel) loadDrinks() tea.Cmd {
+func (m *ListViewModel) loadIngredients() tea.Cmd {
 	return func() tea.Msg {
-		drinksList, err := m.drinksQueries.List(m.ctx, drinksdao.ListFilter{})
+		ingredientsList, err := m.queries.List(m.ctx, ingredientsdao.ListFilter{})
 		if err != nil {
-			return DrinksLoadedMsg{Err: err}
+			return IngredientsLoadedMsg{Err: err}
 		}
 
-		var items []models.Drink
-		for _, drink := range drinksList {
-			items = append(items, *drink)
+		items := make([]models.Ingredient, 0, len(ingredientsList))
+		for i, ingredient := range ingredientsList {
+			if ingredient == nil {
+				return IngredientsLoadedMsg{Err: errors.Internalf("ingredient %d missing", i)}
+			}
+			items = append(items, *ingredient)
 		}
 
-		return DrinksLoadedMsg{Drinks: items}
+		return IngredientsLoadedMsg{Ingredients: items}
 	}
 }
 
@@ -196,10 +200,10 @@ func (m *ListViewModel) setSize(width, height int) {
 }
 
 func (m *ListViewModel) syncDetail() {
-	item, ok := m.list.SelectedItem().(drinkItem)
+	item, ok := m.list.SelectedItem().(ingredientItem)
 	if !ok {
-		m.detail.SetDrink(optional.None[models.Drink]())
+		m.detail.SetIngredient(optional.None[models.Ingredient]())
 		return
 	}
-	m.detail.SetDrink(optional.Some(item.drink))
+	m.detail.SetIngredient(optional.Some(item.ingredient))
 }

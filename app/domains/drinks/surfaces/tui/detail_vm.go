@@ -9,6 +9,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -17,7 +18,7 @@ type DetailViewModel struct {
 	styles  ListViewStyles
 	width   int
 	height  int
-	drink   *models.Drink
+	drink   optional.Value[models.Drink]
 	ctx     *middleware.Context
 	queries *ingredientsqueries.Queries
 }
@@ -35,28 +36,29 @@ func (d *DetailViewModel) SetSize(width, height int) {
 	d.height = height
 }
 
-func (d *DetailViewModel) SetDrink(drink *models.Drink) {
+func (d *DetailViewModel) SetDrink(drink optional.Value[models.Drink]) {
 	d.drink = drink
 }
 
 func (d *DetailViewModel) View() string {
-	if d.drink == nil {
+	drink, ok := d.drink.Unwrap()
+	if !ok {
 		return d.styles.Subtitle.Render("Select a drink to view details")
 	}
 
 	lines := []string{
-		d.styles.Title.Render(d.drink.Name),
-		d.styles.Muted.Render("ID: " + d.drink.ID.String()),
-		d.styles.Subtitle.Render("Category: ") + string(d.drink.Category),
-		d.styles.Subtitle.Render("Glass: ") + string(d.drink.Glass),
+		d.styles.Title.Render(drink.Name),
+		d.styles.Muted.Render("ID: " + drink.ID.String()),
+		d.styles.Subtitle.Render("Category: ") + string(drink.Category),
+		d.styles.Subtitle.Render("Glass: ") + string(drink.Glass),
 	}
 
-	if d.drink.Description != "" {
-		lines = append(lines, "", d.styles.Subtitle.Render("Description"), d.drink.Description)
+	if drink.Description != "" {
+		lines = append(lines, "", d.styles.Subtitle.Render("Description"), drink.Description)
 	}
 
 	lines = append(lines, "", d.styles.Subtitle.Render("Recipe"))
-	ingredientLines, err := d.renderIngredients(d.drink.Recipe.Ingredients)
+	ingredientLines, err := d.renderIngredients(drink.Recipe.Ingredients)
 	if err != nil {
 		lines = append(lines, d.styles.ErrorText.Render(fmt.Sprintf("Error: %v", err)))
 		content := strings.Join(lines, "\n")
@@ -67,15 +69,15 @@ func (d *DetailViewModel) View() string {
 	}
 	lines = append(lines, ingredientLines...)
 
-	if len(d.drink.Recipe.Steps) > 0 {
+	if len(drink.Recipe.Steps) > 0 {
 		lines = append(lines, "", d.styles.Subtitle.Render("Steps"))
-		for i, step := range d.drink.Recipe.Steps {
+		for i, step := range drink.Recipe.Steps {
 			lines = append(lines, fmt.Sprintf("%d. %s", i+1, step))
 		}
 	}
 
-	if d.drink.Recipe.Garnish != "" {
-		lines = append(lines, "", d.styles.Subtitle.Render("Garnish"), d.drink.Recipe.Garnish)
+	if drink.Recipe.Garnish != "" {
+		lines = append(lines, "", d.styles.Subtitle.Render("Garnish"), drink.Recipe.Garnish)
 	}
 
 	content := strings.Join(lines, "\n")

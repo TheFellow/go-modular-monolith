@@ -58,7 +58,7 @@ The dashboard view demonstrates the Styles/Keys subset pattern with `DashboardSt
 | 003  | [Shared Components](done/task-003-shared-components.md)         | Done    |
 | 004  | [Dashboard Enhancement](done/task-004-dashboard-enhancement.md) | Done    |
 | 005  | [Drinks View](done/task-005-drinks-view.md)                     | Done    |
-| 006  | [Ingredients View](todo/task-006-ingredients-view.md)           | Pending |
+| 006  | [Ingredients View](done/task-006-ingredients-view.md)           | Done    |
 | 007  | [Inventory View](todo/task-007-inventory-view.md)               | Pending |
 | 008  | [Menu View](todo/task-008-menu-view.md)                         | Pending |
 | 009  | [Orders View](todo/task-009-orders-view.md)                     | Pending |
