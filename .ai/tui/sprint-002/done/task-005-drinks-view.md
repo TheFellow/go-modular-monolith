@@ -96,13 +96,13 @@ drinks "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/tui
 
 ## Checklist
 
-- [ ] Create surfaces/tui/ directory under drinks domain
-- [ ] Create messages.go with DrinksLoadedMsg
-- [ ] Create items.go with drinkItem list.Item impl
-- [ ] Create list_vm.go with ListViewModel
-- [ ] Create detail_vm.go with DetailViewModel
-- [ ] Wire ListViewModel in App.currentViewModel()
+- [x] Create surfaces/tui/ directory under drinks domain
+- [x] Create messages.go with DrinksLoadedMsg
+- [x] Create items.go with drinkItem list.Item impl
+- [x] Create list_vm.go with ListViewModel
+- [x] Create detail_vm.go with DetailViewModel
+- [x] Wire ListViewModel in App.currentViewModel()
 - [ ] Test navigation: Dashboard -> Drinks -> back
 - [ ] Test data loading and display
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes
