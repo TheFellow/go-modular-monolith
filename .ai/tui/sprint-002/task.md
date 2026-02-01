@@ -60,7 +60,7 @@ The dashboard view demonstrates the Styles/Keys subset pattern with `DashboardSt
 | 005  | [Drinks View](done/task-005-drinks-view.md)                     | Done    |
 | 006  | [Ingredients View](done/task-006-ingredients-view.md)           | Done    |
 | 007  | [Inventory View](done/task-007-inventory-view.md)               | Done    |
-| 007b | [ViewModel Tests](todo/task-007b-viewmodel-tests.md)            | Pending |
+| 007b | [ViewModel Tests](done/task-007b-viewmodel-tests.md)            | Done    |
 | 008  | [Menu View](todo/task-008-menu-view.md)                         | Pending |
 | 009  | [Orders View](todo/task-009-orders-view.md)                     | Pending |
 | 010  | [Audit View](todo/task-010-audit-view.md)                       | Pending |

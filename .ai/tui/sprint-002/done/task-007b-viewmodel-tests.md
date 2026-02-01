@@ -145,6 +145,50 @@ func testKeys() tui.ListViewKeys {
 | `ShowsEmptyState` | Empty list renders without error |
 | `ShowsErrorOnFailure` | Errors displayed in view, not swallowed |
 
+### Layout/Sizing Tests (All ViewModels)
+
+These tests prevent layout bugs like negative widths or columns not fitting:
+
+| Test | Verifies |
+|------|----------|
+| `SetSize_NarrowWidth` | Very narrow width (30) doesn't crash or produce negative widths |
+| `SetSize_ZeroWidth` | Zero width handled gracefully |
+| `SetSize_WideWidth` | Wide width (200) renders correctly |
+| `SetSize_ResizeSequence` | Multiple resize events handled correctly |
+
+```go
+func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
+    t.Parallel()
+    f := testutil.NewFixture(t)
+    vm := tui.NewListViewModel(f.App, f.OwnerContext(), testStyles(), testKeys())
+
+    // Simulate data load first
+    cmd := vm.Init()
+    msg := runCmd(cmd)
+    vm, _ = vm.Update(msg)
+
+    // Very narrow width - should not panic or produce garbage
+    vm, _ = vm.Update(tea.WindowSizeMsg{Width: 30, Height: 20})
+
+    view := vm.View()
+    if view == "" {
+        t.Error("expected non-empty view for narrow width")
+    }
+}
+
+func TestListViewModel_SetSize_ZeroWidth(t *testing.T) {
+    t.Parallel()
+    f := testutil.NewFixture(t)
+    vm := tui.NewListViewModel(f.App, f.OwnerContext(), testStyles(), testKeys())
+
+    // Zero width - should handle gracefully
+    vm, _ = vm.Update(tea.WindowSizeMsg{Width: 0, Height: 0})
+
+    // Should not panic
+    _ = vm.View()
+}
+```
+
 ### Drinks-specific
 
 | Test | Verifies |
@@ -164,12 +208,40 @@ func testKeys() tui.ListViewKeys {
 |------|----------|
 | `ShowsStockStatus` | LOW/OUT status shown for low stock items |
 | `ShowsIngredientName` | Ingredient name resolved (not just ID) |
+| `ColumnWidths_FitWithinWidth` | Table columns don't exceed available width |
+| `ColumnWidths_AccountForPadding` | Column widths account for ListPane padding |
+
+```go
+func TestInventoryColumns_FitWithinWidth(t *testing.T) {
+    testCases := []int{30, 50, 80, 120, 200}
+    for _, width := range testCases {
+        t.Run(fmt.Sprintf("width_%d", width), func(t *testing.T) {
+            cols := tui.InventoryColumns(width) // May need to export for testing
+
+            totalWidth := 0
+            for _, c := range cols {
+                if c.Width < 0 {
+                    t.Errorf("negative column width: %d", c.Width)
+                }
+                totalWidth += c.Width
+            }
+
+            // Total should fit within available width (accounting for gaps)
+            if totalWidth > width {
+                t.Errorf("columns total %d exceeds width %d", totalWidth, width)
+            }
+        })
+    }
+}
+```
 
 ## Checklist
 
-- [ ] Create drinks list_vm_test.go with core tests
-- [ ] Create ingredients list_vm_test.go with core tests
-- [ ] Create inventory list_vm_test.go with core tests
-- [ ] All tests pass with `go test ./app/domains/*/surfaces/tui/...`
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] Create drinks list_vm_test.go with core tests
+- [x] Create ingredients list_vm_test.go with core tests
+- [x] Create inventory list_vm_test.go with core tests
+- [x] Add layout/sizing tests for each ViewModel (narrow, zero, wide widths)
+- [x] Add inventory column width tests
+- [x] All tests pass with `go test ./app/domains/*/surfaces/tui/...`
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes
