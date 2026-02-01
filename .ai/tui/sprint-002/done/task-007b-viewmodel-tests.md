@@ -14,8 +14,11 @@ Add black-box tests for the ViewModels already built (Drinks, Ingredients, Inven
 ## Files to Create
 
 - `app/domains/drinks/surfaces/tui/list_vm_test.go`
+- `app/domains/drinks/surfaces/tui/detail_vm_test.go`
 - `app/domains/ingredients/surfaces/tui/list_vm_test.go`
+- `app/domains/ingredients/surfaces/tui/detail_vm_test.go`
 - `app/domains/inventory/surfaces/tui/list_vm_test.go`
+- `app/domains/inventory/surfaces/tui/detail_vm_test.go`
 
 ## Test Pattern
 
@@ -189,27 +192,112 @@ func TestListViewModel_SetSize_ZeroWidth(t *testing.T) {
 }
 ```
 
-### Drinks-specific
+### DetailViewModel Tests (All Domains)
 
 | Test | Verifies |
 |------|----------|
-| `DetailShowsIngredients` | Selected drink shows ingredient names (not IDs) |
-| `DetailShowsRecipeSteps` | Recipe steps displayed correctly |
+| `Detail_ShowsEntityData` | View contains entity name, ID, and key fields |
+| `Detail_NilEntity` | Nil/unset entity shows placeholder message |
+| `Detail_SetSize` | Resize handled gracefully |
+
+```go
+func TestDetailViewModel_ShowsDrinkData(t *testing.T) {
+    t.Parallel()
+    f := testutil.NewFixture(t)
+    b := f.Bootstrap().WithBasicIngredients()
+    lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
+
+    drink := b.WithDrink(models.Drink{
+        Name:     "Margarita",
+        Category: models.DrinkCategoryCocktail,
+        Recipe: models.Recipe{
+            Ingredients: []models.RecipeIngredient{
+                {IngredientID: lime.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)},
+            },
+            Steps: []string{"Shake with ice"},
+        },
+    })
+
+    detail := tui.NewDetailViewModel(testStyles(), f.OwnerContext())
+    detail.SetDrink(drink)
+    detail.SetSize(60, 40)
+
+    view := detail.View()
+
+    if !strings.Contains(view, "Margarita") {
+        t.Errorf("expected drink name in view")
+    }
+    if !strings.Contains(view, "Lime Juice") {
+        t.Errorf("expected ingredient name (not ID) in view")
+    }
+    if !strings.Contains(view, "Shake with ice") {
+        t.Errorf("expected recipe steps in view")
+    }
+}
+
+func TestDetailViewModel_NilDrink(t *testing.T) {
+    t.Parallel()
+    f := testutil.NewFixture(t)
+
+    detail := tui.NewDetailViewModel(testStyles(), f.OwnerContext())
+    detail.SetDrink(nil)
+
+    view := detail.View()
+
+    // Should show placeholder, not crash
+    if view == "" {
+        t.Error("expected placeholder view for nil drink")
+    }
+}
+```
+
+### Drinks-specific
+
+**ListViewModel:**
+
+| Test | Verifies |
+|------|----------|
+| `List_ShowsDrinkNames` | Drink names appear in list |
+
+**DetailViewModel:**
+
+| Test | Verifies |
+|------|----------|
+| `Detail_ShowsIngredientNames` | Ingredient names resolved (not IDs) |
+| `Detail_ShowsRecipeSteps` | Recipe steps displayed correctly |
+| `Detail_ShowsSubstitutes` | Substitute ingredients shown if present |
 
 ### Ingredients-specific
 
+**ListViewModel:**
+
 | Test | Verifies |
 |------|----------|
-| `ShowsCategoryAndUnit` | Category and unit displayed in list |
+| `List_ShowsCategoryAndUnit` | Category and unit displayed in list |
+
+**DetailViewModel:**
+
+| Test | Verifies |
+|------|----------|
+| `Detail_ShowsIngredientFields` | Name, ID, category, unit displayed |
 
 ### Inventory-specific
 
+**ListViewModel:**
+
 | Test | Verifies |
 |------|----------|
-| `ShowsStockStatus` | LOW/OUT status shown for low stock items |
-| `ShowsIngredientName` | Ingredient name resolved (not just ID) |
+| `List_ShowsStockStatus` | LOW/OUT status shown for low stock items |
+| `List_ShowsIngredientName` | Ingredient name resolved (not just ID) |
 | `ColumnWidths_FitWithinWidth` | Table columns don't exceed available width |
 | `ColumnWidths_AccountForPadding` | Column widths account for ListPane padding |
+
+**DetailViewModel:**
+
+| Test | Verifies |
+|------|----------|
+| `Detail_ShowsQuantityAndCost` | Quantity, unit, and cost displayed |
+| `Detail_ShowsIngredientName` | Ingredient name resolved |
 
 ```go
 func TestInventoryColumns_FitWithinWidth(t *testing.T) {
@@ -238,8 +326,11 @@ func TestInventoryColumns_FitWithinWidth(t *testing.T) {
 ## Checklist
 
 - [x] Create drinks list_vm_test.go with core tests
+- [x] Create drinks detail_vm_test.go with core tests
 - [x] Create ingredients list_vm_test.go with core tests
+- [x] Create ingredients detail_vm_test.go with core tests
 - [x] Create inventory list_vm_test.go with core tests
+- [x] Create inventory detail_vm_test.go with core tests
 - [x] Add layout/sizing tests for each ViewModel (narrow, zero, wide widths)
 - [x] Add inventory column width tests
 - [x] All tests pass with `go test ./app/domains/*/surfaces/tui/...`
