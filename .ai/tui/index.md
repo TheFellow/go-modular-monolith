@@ -13,6 +13,7 @@ This index tracks all TUI-related sprints for the Bubble Tea interactive termina
 | Sprint      | Description         | Plan                                                                     |
 |-------------|---------------------|--------------------------------------------------------------------------|
 | sprint-002b | TUI File Logging    | [sprint-002b-tui-logging.md](sprint-002b-tui-logging.md)                 |
+| sprint-002c | TUI Refactoring     | [sprint-002c/task.md](sprint-002c/task.md)                               |
 | sprint-003  | CRUD Operations     | [sprint-003-crud-operations.md](sprint-003-crud-operations.md)           |
 | sprint-003b | Saga Infrastructure | [sprint-003b-saga-infrastructure.md](sprint-003b-saga-infrastructure.md) |
 | sprint-004  | Workflows           | [sprint-004-workflows.md](sprint-004-workflows.md)                       |
