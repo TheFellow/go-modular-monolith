@@ -51,21 +51,21 @@ The dashboard view demonstrates the Styles/Keys subset pattern with `DashboardSt
 
 ## Tasks
 
-| Task | Description                                                     | Status  |
-|------|-----------------------------------------------------------------|---------|
-| 001  | [TUI Error Surface](done/task-001-tui-error-surface.md)         | Done    |
-| 002  | [Infrastructure Updates](done/task-002-infrastructure.md)       | Done    |
-| 003  | [Shared Components](done/task-003-shared-components.md)         | Done    |
-| 004  | [Dashboard Enhancement](done/task-004-dashboard-enhancement.md) | Done    |
-| 005  | [Drinks View](done/task-005-drinks-view.md)                     | Done    |
-| 006  | [Ingredients View](done/task-006-ingredients-view.md)           | Done    |
-| 007  | [Inventory View](done/task-007-inventory-view.md)               | Done    |
-| 007b | [ViewModel Tests](done/task-007b-viewmodel-tests.md)            | Done    |
-| 008  | [Menu View](done/task-008-menu-view.md)                         | Done    |
-| 009  | [Orders View](done/task-009-orders-view.md)                     | Done    |
-| 010  | [Audit View](done/task-010-audit-view.md)                       | Done    |
-| 011  | [Error Handling Integration](done/task-011-error-handling.md)   | Done    |
-| 012  | [Integration Testing](todo/task-012-integration.md)             | Pending |
+| Task | Description                                                     | Status |
+|------|-----------------------------------------------------------------|--------|
+| 001  | [TUI Error Surface](done/task-001-tui-error-surface.md)         | Done   |
+| 002  | [Infrastructure Updates](done/task-002-infrastructure.md)       | Done   |
+| 003  | [Shared Components](done/task-003-shared-components.md)         | Done   |
+| 004  | [Dashboard Enhancement](done/task-004-dashboard-enhancement.md) | Done   |
+| 005  | [Drinks View](done/task-005-drinks-view.md)                     | Done   |
+| 006  | [Ingredients View](done/task-006-ingredients-view.md)           | Done   |
+| 007  | [Inventory View](done/task-007-inventory-view.md)               | Done   |
+| 007b | [ViewModel Tests](done/task-007b-viewmodel-tests.md)            | Done   |
+| 008  | [Menu View](done/task-008-menu-view.md)                         | Done   |
+| 009  | [Orders View](done/task-009-orders-view.md)                     | Done   |
+| 010  | [Audit View](done/task-010-audit-view.md)                       | Done   |
+| 011  | [Error Handling Integration](done/task-011-error-handling.md)   | Done   |
+| 012  | [Integration Testing](done/task-012-integration.md)             | Done   |
 
 ### Task Dependencies
 
