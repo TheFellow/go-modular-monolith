@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/TheFellow/go-modular-monolith/app"
+	drinksui "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
@@ -153,7 +154,9 @@ func (a *App) currentViewModel() views.ViewModel {
 	switch a.currentView {
 	case ViewDashboard:
 		vm = views.NewDashboard(a.app, a.ctx, a.dashboardStyles(), a.dashboardKeys())
-	case ViewDrinks, ViewIngredients, ViewInventory, ViewMenus, ViewOrders, ViewAudit:
+	case ViewDrinks:
+		vm = drinksui.NewListViewModel(a.app, a.ctx, a.drinksListStyles(), a.drinksListKeys())
+	case ViewIngredients, ViewInventory, ViewMenus, ViewOrders, ViewAudit:
 		vm = views.NewPlaceholder(viewTitle(a.currentView))
 	default:
 		a.currentView = ViewDashboard
@@ -271,6 +274,29 @@ func (a *App) dashboardKeys() views.DashboardKeys {
 		Nav6: a.keys.Nav6,
 		Help: a.keys.Help,
 		Quit: a.keys.Quit,
+	}
+}
+
+func (a *App) drinksListStyles() drinksui.ListViewStyles {
+	return drinksui.ListViewStyles{
+		Title:       a.styles.Title,
+		Subtitle:    a.styles.Subtitle,
+		Muted:       a.styles.Unselected,
+		Selected:    a.styles.Selected,
+		ListPane:    a.styles.ListPane,
+		DetailPane:  a.styles.DetailPane,
+		ErrorText:   a.styles.ErrorText,
+		WarningText: a.styles.WarningText,
+	}
+}
+
+func (a *App) drinksListKeys() drinksui.ListViewKeys {
+	return drinksui.ListViewKeys{
+		Up:      a.keys.Up,
+		Down:    a.keys.Down,
+		Enter:   a.keys.Enter,
+		Refresh: a.keys.Refresh,
+		Back:    a.keys.Back,
 	}
 }
 
