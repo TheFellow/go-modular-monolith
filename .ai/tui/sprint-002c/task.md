@@ -64,7 +64,7 @@ Drinks detail and inventory list fetch ingredients one at a time.
 
 | Task | Description                                                                | Status  |
 |------|----------------------------------------------------------------------------|---------|
-| 001  | [Create pkg/tui shared types](todo/task-001-pkg-tui-types.md)              | Pending |
+| 001  | [Create pkg/tui shared types](done/task-001-pkg-tui-types.md)              | Done    |
 | 002  | [Update domains to use shared types](todo/task-002-domain-shared-types.md) | Pending |
 | 003  | [Remove app.go boilerplate](todo/task-003-remove-boilerplate.md)           | Pending |
 | 004  | [Re-export ListFilter from queries](todo/task-004-reexport-filters.md)     | Pending |

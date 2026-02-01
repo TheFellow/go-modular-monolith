@@ -83,6 +83,6 @@ type ListViewKeys struct {
 
 ## Checklist
 
-- [ ] Create `pkg/tui/types.go` with shared types
-- [ ] `go build ./pkg/tui/...` passes
-- [ ] `go build ./...` passes
+- [x] Create `pkg/tui/types.go` with shared types
+- [x] `go build ./pkg/tui/...` passes
+- [x] `go build ./...` passes
