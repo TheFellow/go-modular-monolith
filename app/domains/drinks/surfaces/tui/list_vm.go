@@ -1,19 +1,14 @@
 package tui
 
 import (
-	"context"
-	"errors"
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	drinksdao "github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	drinksqueries "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
-	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
-	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -49,8 +44,7 @@ type ListViewModel struct {
 	styles ListViewStyles
 	keys   ListViewKeys
 
-	drinksQueries      *drinksqueries.Queries
-	ingredientsQueries *ingredientsqueries.Queries
+	drinksQueries *drinksqueries.Queries
 
 	list    list.Model
 	detail  *DetailViewModel
@@ -78,15 +72,14 @@ func NewListViewModel(app *app.App, ctx *middleware.Context, styles ListViewStyl
 	l.SetFilteringEnabled(true)
 
 	vm := &ListViewModel{
-		app:                app,
-		ctx:                ctx,
-		styles:             styles,
-		keys:               keys,
-		drinksQueries:      drinksqueries.New(),
-		ingredientsQueries: ingredientsqueries.New(),
-		list:               l,
-		detail:             NewDetailViewModel(styles),
-		loading:            true,
+		app:           app,
+		ctx:           ctx,
+		styles:        styles,
+		keys:          keys,
+		drinksQueries: drinksqueries.New(),
+		list:          l,
+		detail:        NewDetailViewModel(styles, ctx),
+		loading:       true,
 	}
 	vm.spinner = components.NewSpinner("Loading drinks...", styles.Subtitle)
 	return vm
@@ -112,7 +105,6 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	case DrinksLoadedMsg:
 		m.loading = false
 		m.err = msg.Err
-		m.detail.SetIngredientNames(msg.IngredientNames)
 		items := make([]list.Item, 0, len(msg.Drinks))
 		for _, drink := range msg.Drinks {
 			items = append(items, drinkItem{drink: drink})
@@ -164,43 +156,26 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadDrinks() tea.Cmd {
 	return func() tea.Msg {
-		ctx, err := m.storeContext()
+		drinksList, err := m.drinksQueries.List(m.ctx, drinksdao.ListFilter{})
 		if err != nil {
 			return DrinksLoadedMsg{Err: err}
 		}
 
-		drinksList, err := m.drinksQueries.List(ctx, drinksdao.ListFilter{})
-		if err != nil {
-			return DrinksLoadedMsg{Err: err}
-		}
-
-		items := make([]models.Drink, 0, len(drinksList))
+		var items []models.Drink
 		for _, drink := range drinksList {
-			if drink == nil {
-				continue
-			}
 			items = append(items, *drink)
 		}
 
-		ingredientNames := make(map[string]string)
-		for _, id := range uniqueIngredientIDs(items) {
-			ingredient, err := m.ingredientsQueries.Get(ctx, id)
-			if err != nil || ingredient == nil {
-				continue
-			}
-			ingredientNames[ingredient.ID.String()] = ingredient.Name
-		}
-
-		return DrinksLoadedMsg{Drinks: items, IngredientNames: ingredientNames}
+		return DrinksLoadedMsg{Drinks: items}
 	}
 }
 
 func (m *ListViewModel) renderLoading() string {
 	content := m.spinner.View()
-	if m.width > 0 && m.height > 0 {
-		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+	if m.width <= 0 || m.height <= 0 {
+		return content
 	}
-	return content
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 }
 
 func (m *ListViewModel) setSize(width, height int) {
@@ -238,41 +213,4 @@ func (m *ListViewModel) syncDetail() {
 	}
 	drink := item.drink
 	m.detail.SetDrink(&drink)
-}
-
-func (m *ListViewModel) storeContext() (*middleware.Context, error) {
-	if m.ctx != nil {
-		return m.ctx, nil
-	}
-	if m.app == nil {
-		return nil, errors.New("drinks view requires app context")
-	}
-	return m.app.Context(context.Background(), authn.Anonymous()), nil
-}
-
-func uniqueIngredientIDs(drinks []models.Drink) []entity.IngredientID {
-	var out []entity.IngredientID
-	seen := make(map[string]struct{})
-	addMissing := func(id entity.IngredientID) {
-		if id.IsZero() {
-			return
-		}
-		key := id.String()
-		if _, ok := seen[key]; ok {
-			return
-		}
-		seen[key] = struct{}{}
-		out = append(out, id)
-	}
-
-	for _, drink := range drinks {
-		for _, ingredient := range drink.Recipe.Ingredients {
-			addMissing(ingredient.IngredientID)
-			for _, sub := range ingredient.Substitutes {
-				addMissing(sub)
-			}
-		}
-	}
-
-	return out
 }

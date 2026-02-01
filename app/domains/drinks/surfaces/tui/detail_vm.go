@@ -5,20 +5,28 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/charmbracelet/lipgloss"
 )
 
 // DetailViewModel renders a drink detail pane.
 type DetailViewModel struct {
-	styles      ListViewStyles
-	width       int
-	height      int
-	drink       *models.Drink
-	ingredients map[string]string
+	styles  ListViewStyles
+	width   int
+	height  int
+	drink   *models.Drink
+	ctx     *middleware.Context
+	queries *ingredientsqueries.Queries
 }
 
-func NewDetailViewModel(styles ListViewStyles) *DetailViewModel {
-	return &DetailViewModel{styles: styles}
+func NewDetailViewModel(styles ListViewStyles, ctx *middleware.Context) *DetailViewModel {
+	return &DetailViewModel{
+		styles:  styles,
+		ctx:     ctx,
+		queries: ingredientsqueries.New(),
+	}
 }
 
 func (d *DetailViewModel) SetSize(width, height int) {
@@ -28,10 +36,6 @@ func (d *DetailViewModel) SetSize(width, height int) {
 
 func (d *DetailViewModel) SetDrink(drink *models.Drink) {
 	d.drink = drink
-}
-
-func (d *DetailViewModel) SetIngredientNames(names map[string]string) {
-	d.ingredients = names
 }
 
 func (d *DetailViewModel) View() string {
@@ -46,7 +50,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Subtitle.Render("Glass: ") + string(d.drink.Glass),
 	}
 
-	if strings.TrimSpace(d.drink.Description) != "" {
+	if d.drink.Description != "" {
 		lines = append(lines, "", d.styles.Subtitle.Render("Description"), d.drink.Description)
 	}
 
@@ -60,8 +64,8 @@ func (d *DetailViewModel) View() string {
 		}
 	}
 
-	if garnish := strings.TrimSpace(d.drink.Recipe.Garnish); garnish != "" {
-		lines = append(lines, "", d.styles.Subtitle.Render("Garnish"), garnish)
+	if d.drink.Recipe.Garnish != "" {
+		lines = append(lines, "", d.styles.Subtitle.Render("Garnish"), d.drink.Recipe.Garnish)
 	}
 
 	content := strings.Join(lines, "\n")
@@ -86,12 +90,12 @@ func (d *DetailViewModel) renderIngredients(items []models.RecipeIngredient) []s
 		if item.Optional {
 			optionalLabel = " (optional)"
 		}
-		name := d.ingredientName(item.IngredientID.String())
+		name := d.ingredientName(item.IngredientID)
 		line := fmt.Sprintf("- %s %s%s", amount, name, optionalLabel)
 		if len(item.Substitutes) > 0 {
 			subs := make([]string, 0, len(item.Substitutes))
 			for _, sub := range item.Substitutes {
-				subs = append(subs, d.ingredientName(sub.String()))
+				subs = append(subs, d.ingredientName(sub))
 			}
 			line = fmt.Sprintf("%s [subs: %s]", line, strings.Join(subs, ", "))
 		}
@@ -100,15 +104,14 @@ func (d *DetailViewModel) renderIngredients(items []models.RecipeIngredient) []s
 	return lines
 }
 
-func (d *DetailViewModel) ingredientName(id string) string {
-	if id == "" {
-		return ""
+func (d *DetailViewModel) ingredientName(id entity.IngredientID) string {
+	if id.IsZero() {
+		return "UNKNOWN"
 	}
-	if d.ingredients == nil {
-		return id
+	ingredient, err := d.queries.Get(d.ctx, id)
+	if err != nil {
+		return id.String()
 	}
-	if name, ok := d.ingredients[id]; ok && strings.TrimSpace(name) != "" {
-		return name
-	}
-	return id
+
+	return ingredient.Name
 }
