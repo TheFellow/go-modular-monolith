@@ -33,7 +33,24 @@ Address architectural issues discovered during sprint-002 implementation to main
 
 **Solution:** With shared types, domains accept `tui.ListViewStyles` directly. One `ListViewStylesFrom()` function suffices.
 
-### 3. N+1 Ingredient Query Problem
+### 3. ListFilter Types in internal/dao
+
+`ListFilter` structs are defined in `internal/dao` for each domain, but:
+- The `queries` package exposes them in its public API signature
+- TUI surfaces import `internal/dao` directly to access them
+
+**Problem:** `internal/dao` should be truly internal. Having query-related types there forces consumers to reach into internal packages.
+
+**Solution:** Re-export filter types from the `queries` package:
+
+```go
+// app/domains/drinks/queries/filters.go
+type ListFilter = dao.ListFilter
+```
+
+TUI surfaces and other consumers then import `queries.ListFilter` instead of `dao.ListFilter`. This keeps query concerns in the queries package where they belong.
+
+### 4. N+1 Ingredient Query Problem
 
 When displaying drinks or inventory, each ingredient name is fetched individually:
 - `drinks/surfaces/tui/detail_vm.go`: `ingredientName()` calls `Get()` per ingredient
@@ -80,20 +97,27 @@ For each domain (drinks, ingredients, inventory, menus, orders):
 - Delete domain-specific style/key mapping methods
 - Use single `ListViewStylesFrom()` and `ListViewKeysFrom()`
 
-### Task 4: Implement ViewModel registry
+### Task 4: Re-export ListFilter from queries
+
+For each domain (drinks, ingredients, inventory, menus, orders, audit):
+- Create `queries/filters.go` with `type ListFilter = dao.ListFilter`
+- Update TUI surfaces to import `queries.ListFilter` instead of `dao.ListFilter`
+- Remove direct `internal/dao` imports from TUI surfaces
+
+### Task 5: Implement ViewModel registry
 
 - Create `pkg/tui/registry.go` with `Register()` and `Create()`
 - Define View constants in `pkg/tui/views.go`
 - Update `main/tui/app.go` to use registry
 - Add `register.go` to each domain's TUI surface
 
-### Task 5: Add batch ingredient lookup
+### Task 6: Add batch ingredient lookup
 
 - Add `GetMany(ctx, ids)` to ingredients queries
 - Update drinks detail_vm to batch fetch ingredients
 - Update inventory list_vm to batch fetch ingredients
 
-### Task 6: Update tests
+### Task 7: Update tests
 
 - Update test helpers to use shared types
 - Verify all existing tests pass
@@ -104,6 +128,7 @@ For each domain (drinks, ingredients, inventory, menus, orders):
 
 - [ ] `ListViewStyles`/`ListViewKeys` defined once in `pkg/tui/`
 - [ ] Zero duplicate struct definitions across domains
+- [ ] `ListFilter` re-exported from `queries` package (no `internal/dao` imports in TUI surfaces)
 - [ ] app.go uses registry pattern, no domain imports
 - [ ] Adding a new domain doesn't require modifying app.go
 - [ ] Ingredient lookups are batched (1 query for N ingredients)
