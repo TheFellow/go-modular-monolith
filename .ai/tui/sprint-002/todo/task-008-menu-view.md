@@ -17,6 +17,7 @@ Create the Menu domain ListViewModel and DetailViewModel, replacing the placehol
 - `app/domains/menu/surfaces/tui/list_vm.go` (new)
 - `app/domains/menu/surfaces/tui/detail_vm.go` (new)
 - `app/domains/menu/surfaces/tui/items.go` (new)
+- `app/domains/menu/surfaces/tui/list_vm_test.go` (new)
 - `main/tui/app.go` - Wire MenuListViewModel
 
 ## Pattern Reference
@@ -88,6 +89,18 @@ case ViewMenus:
 - Menu.Drinks contains the list of drinks on the menu
 - Consider using Badge component for status display
 
+## Tests (list_vm_test.go)
+
+Follow pattern from task-007b. Required tests:
+
+| Test | Verifies |
+|------|----------|
+| `ShowsMenusAfterLoad` | View contains menu names after load |
+| `ShowsLoadingState` | Loading spinner before data arrives |
+| `ShowsEmptyState` | Empty list renders without error |
+| `ShowsStatusBadge` | Draft/Published status displayed |
+| `DetailShowsDrinks` | Selected menu shows drink names |
+
 ## Checklist
 
 - [ ] Create surfaces/tui/ directory under menu domain
@@ -97,7 +110,7 @@ case ViewMenus:
 - [ ] Show status badge (Draft/Published)
 - [ ] Create detail_vm.go with DetailViewModel
 - [ ] Display drinks list in detail view
+- [ ] Create list_vm_test.go with required tests
 - [ ] Wire ListViewModel in App.currentViewModel()
-- [ ] Test navigation and data display
 - [ ] `go build ./...` passes
 - [ ] `go test ./...` passes

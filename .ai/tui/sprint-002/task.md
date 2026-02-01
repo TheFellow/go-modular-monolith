@@ -59,7 +59,8 @@ The dashboard view demonstrates the Styles/Keys subset pattern with `DashboardSt
 | 004  | [Dashboard Enhancement](done/task-004-dashboard-enhancement.md) | Done    |
 | 005  | [Drinks View](done/task-005-drinks-view.md)                     | Done    |
 | 006  | [Ingredients View](done/task-006-ingredients-view.md)           | Done    |
-| 007  | [Inventory View](todo/task-007-inventory-view.md)               | Pending |
+| 007  | [Inventory View](done/task-007-inventory-view.md)               | Done    |
+| 007b | [ViewModel Tests](todo/task-007b-viewmodel-tests.md)            | Pending |
 | 008  | [Menu View](todo/task-008-menu-view.md)                         | Pending |
 | 009  | [Orders View](todo/task-009-orders-view.md)                     | Pending |
 | 010  | [Audit View](todo/task-010-audit-view.md)                       | Pending |
@@ -72,11 +73,15 @@ The dashboard view demonstrates the Styles/Keys subset pattern with `DashboardSt
 001 (TUI error surface) ─┐
 002 (infrastructure) ────┼── 003 (components) ── 004 (dashboard) ─┐
                          │                                        │
-                         └────────────────────────────────────────┴── 005-010 (domain views) ── 011 (error handling) ── 012 (integration)
+                         └────────────────────────────────────────┴── 005-007 (domain views) ── 007b (tests for 005-007)
+                                                                                             ── 008-010 (domain views, include tests)
+                                                                                             ── 011 (error handling) ── 012 (integration)
 ```
 
 Tasks 001-002 can be done in parallel. Task 003 depends on 002. Task 004 depends on 003.
-Tasks 005-010 (domain views) can be done in parallel after task 004.
+Tasks 005-007 (domain views) can be done in parallel after task 004.
+Task 007b adds tests for views 005-007 (Drinks, Ingredients, Inventory).
+Tasks 008-010 include tests as part of the task (Menu, Orders, Audit).
 Task 011 depends on 001 and all domain views. Task 012 is the final integration test.
 
 ---

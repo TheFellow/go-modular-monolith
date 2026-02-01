@@ -17,6 +17,7 @@ Create the Orders domain ListViewModel and DetailViewModel, replacing the placeh
 - `app/domains/orders/surfaces/tui/list_vm.go` (new)
 - `app/domains/orders/surfaces/tui/detail_vm.go` (new)
 - `app/domains/orders/surfaces/tui/items.go` (new)
+- `app/domains/orders/surfaces/tui/list_vm_test.go` (new)
 - `main/tui/app.go` - Wire OrdersListViewModel
 
 ## Pattern Reference
@@ -101,6 +102,19 @@ case ViewOrders:
 - Order.Items contains line items with drink reference and quantity
 - Total calculation: sum of (item.Price × item.Quantity)
 
+## Tests (list_vm_test.go)
+
+Follow pattern from task-007b. Required tests:
+
+| Test | Verifies |
+|------|----------|
+| `ShowsOrdersAfterLoad` | View contains order IDs after load |
+| `ShowsLoadingState` | Loading spinner before data arrives |
+| `ShowsEmptyState` | Empty list renders without error |
+| `ShowsStatusBadge` | Pending/Completed/Cancelled status displayed |
+| `DetailShowsLineItems` | Selected order shows drink names and quantities |
+| `DetailShowsTotal` | Order total calculated and displayed |
+
 ## Checklist
 
 - [ ] Create surfaces/tui/ directory under orders domain
@@ -110,7 +124,7 @@ case ViewOrders:
 - [ ] Show status badge with appropriate color
 - [ ] Create detail_vm.go with DetailViewModel
 - [ ] Display line items with totals
+- [ ] Create list_vm_test.go with required tests
 - [ ] Wire ListViewModel in App.currentViewModel()
-- [ ] Test navigation and data display
 - [ ] `go build ./...` passes
 - [ ] `go test ./...` passes

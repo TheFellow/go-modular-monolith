@@ -104,13 +104,13 @@ case ViewInventory:
 
 ## Checklist
 
-- [ ] Create surfaces/tui/ directory under inventory domain
-- [ ] Create messages.go with InventoryLoadedMsg
-- [ ] Create list_vm.go with table-based ListViewModel
-- [ ] Define table columns with proper widths
-- [ ] Add stock status calculation and coloring
-- [ ] Create detail_vm.go with DetailViewModel
-- [ ] Wire ListViewModel in App.currentViewModel()
+- [x] Create surfaces/tui/ directory under inventory domain
+- [x] Create messages.go with InventoryLoadedMsg
+- [x] Create list_vm.go with table-based ListViewModel
+- [x] Define table columns with proper widths
+- [x] Add stock status calculation and coloring
+- [x] Create detail_vm.go with DetailViewModel
+- [x] Wire ListViewModel in App.currentViewModel()
 - [ ] Test tabular display and selection
 - [ ] `go build ./...` passes
 - [ ] `go test ./...` passes
