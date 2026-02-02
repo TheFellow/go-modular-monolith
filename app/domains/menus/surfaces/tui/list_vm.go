@@ -12,6 +12,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,13 +27,24 @@ type ListViewModel struct {
 	styles tui.ListViewStyles
 	keys   tui.ListViewKeys
 
+	formStyles   forms.FormStyles
+	formKeys     forms.FormKeys
+	dialogStyles dialog.DialogStyles
+	dialogKeys   dialog.DialogKeys
+
 	queries *queries.Queries
 
 	list    list.Model
 	detail  *DetailViewModel
+	create  *CreateMenuVM
+	rename  *RenameMenuVM
+	dialog  *dialog.ConfirmDialog
 	spinner components.Spinner
 	loading bool
 	err     error
+
+	deleteTarget  *menusmodels.Menu
+	publishTarget *menusmodels.Menu
 
 	width       int
 	height      int
@@ -39,7 +52,7 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys) *ListViewModel {
+func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys, formStyles forms.FormStyles, formKeys forms.FormKeys, dialogStyles dialog.DialogStyles, dialogKeys dialog.DialogKeys) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
 	delegate.Styles.SelectedTitle = styles.Selected
@@ -53,14 +66,18 @@ func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListView
 	l.SetFilteringEnabled(true)
 
 	vm := &ListViewModel{
-		app:     app,
-		ctx:     ctx,
-		styles:  styles,
-		keys:    keys,
-		queries: queries.New(),
-		list:    l,
-		detail:  NewDetailViewModel(styles, ctx),
-		loading: true,
+		app:          app,
+		ctx:          ctx,
+		styles:       styles,
+		keys:         keys,
+		formStyles:   formStyles,
+		formKeys:     formKeys,
+		dialogStyles: dialogStyles,
+		dialogKeys:   dialogKeys,
+		queries:      queries.New(),
+		list:         l,
+		detail:       NewDetailViewModel(styles, ctx),
+		loading:      true,
 	}
 	vm.spinner = components.NewSpinner("Loading menus...", styles.Subtitle)
 	return vm
@@ -75,13 +92,109 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
+		if m.create != nil {
+			m.create.SetWidth(m.detailWidth)
+		}
+		if m.rename != nil {
+			m.rename.SetWidth(m.detailWidth)
+		}
+		if m.dialog != nil {
+			m.dialog.SetWidth(m.width)
+		}
+		return m, nil
+	case MenuCreatedMsg:
+		m.create = nil
+		m.loading = true
+		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
+	case MenuRenamedMsg:
+		m.rename = nil
+		m.loading = true
+		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
+	case MenuDeletedMsg:
+		m.dialog = nil
+		m.deleteTarget = nil
+		m.loading = true
+		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
+	case MenuPublishedMsg:
+		m.dialog = nil
+		m.publishTarget = nil
+		m.loading = true
+		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
+	case DeleteErrorMsg:
+		m.dialog = nil
+		m.deleteTarget = nil
+		m.err = msg.Err
+		return m, nil
+	case PublishErrorMsg:
+		m.dialog = nil
+		m.publishTarget = nil
+		m.err = msg.Err
+		return m, nil
+	case showDeleteDialogMsg:
+		m.dialog = msg.dialog
+		m.deleteTarget = &msg.target
+		m.publishTarget = nil
+		if m.dialog != nil {
+			m.dialog.SetWidth(m.width)
+		}
+		return m, nil
+	case showPublishDialogMsg:
+		m.dialog = msg.dialog
+		m.publishTarget = &msg.target
+		m.deleteTarget = nil
+		if m.dialog != nil {
+			m.dialog.SetWidth(m.width)
+		}
+		return m, nil
+	case dialog.ConfirmMsg:
+		m.dialog = nil
+		if m.deleteTarget != nil {
+			return m, m.performDelete()
+		}
+		if m.publishTarget != nil {
+			return m, m.performPublish()
+		}
+		return m, nil
+	case dialog.CancelMsg:
+		m.dialog = nil
+		m.deleteTarget = nil
+		m.publishTarget = nil
 		return m, nil
 	case tea.KeyMsg:
+		if m.dialog != nil {
+			break
+		}
+		if m.create != nil {
+			if key.Matches(msg, m.keys.Back) {
+				m.create = nil
+				return m, nil
+			}
+			break
+		}
+		if m.rename != nil {
+			if key.Matches(msg, m.keys.Back) {
+				m.rename = nil
+				return m, nil
+			}
+			break
+		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
 			m.loading = true
 			m.err = nil
 			return m, tea.Batch(m.spinner.Init(), m.loadMenus())
+		case key.Matches(msg, m.keys.Create):
+			return m, m.startCreate()
+		case key.Matches(msg, m.keys.Edit), key.Matches(msg, m.keys.Enter):
+			return m, m.startRename()
+		case key.Matches(msg, m.keys.Delete):
+			return m, m.startDelete()
+		case key.Matches(msg, m.keys.Publish):
+			return m, m.startPublish()
 		}
 	case MenusLoadedMsg:
 		m.loading = false
@@ -93,6 +206,24 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.list.SetItems(items)
 		m.syncDetail()
 		return m, nil
+	}
+
+	if m.dialog != nil {
+		var cmd tea.Cmd
+		m.dialog, cmd = m.dialog.Update(msg)
+		return m, cmd
+	}
+
+	if m.rename != nil {
+		var cmd tea.Cmd
+		m.rename, cmd = m.rename.Update(msg)
+		return m, cmd
+	}
+
+	if m.create != nil {
+		var cmd tea.Cmd
+		m.create, cmd = m.create.Update(msg)
+		return m, cmd
 	}
 
 	if m.loading {
@@ -112,6 +243,14 @@ func (m *ListViewModel) View() string {
 		return m.renderLoading()
 	}
 
+	if m.dialog != nil {
+		dialogView := m.dialog.View()
+		if m.width > 0 && m.height > 0 {
+			return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialogView)
+		}
+		return dialogView
+	}
+
 	listView := m.list.View()
 	if m.err != nil {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
@@ -119,18 +258,42 @@ func (m *ListViewModel) View() string {
 	listView = m.styles.ListPane.Width(m.listWidth).Render(listView)
 
 	detailView := m.detail.View()
+	if m.create != nil {
+		detailView = m.create.View()
+	} else if m.rename != nil {
+		detailView = m.rename.View()
+	}
 	detailView = m.styles.DetailPane.Width(m.detailWidth).Render(detailView)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Refresh, m.keys.Back}
+	if m.dialog != nil {
+		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
+	}
+	if m.create != nil || m.rename != nil {
+		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
+	}
+	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Refresh, m.keys.Back}
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
+	if m.dialog != nil {
+		return [][]key.Binding{
+			{m.dialogKeys.Confirm, m.keys.Back},
+			{m.dialogKeys.Switch},
+		}
+	}
+	if m.create != nil || m.rename != nil {
+		return [][]key.Binding{
+			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
+			{m.keys.Back},
+		}
+	}
 	return [][]key.Binding{
 		{m.keys.Up, m.keys.Down, m.keys.Enter},
+		{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish},
 		{m.keys.Refresh, m.keys.Back},
 	}
 }
@@ -152,6 +315,151 @@ func (m *ListViewModel) loadMenus() tea.Cmd {
 
 		return MenusLoadedMsg{Menus: menus}
 	}
+}
+
+func (m *ListViewModel) startCreate() tea.Cmd {
+	m.create = NewCreateMenuVM(CreateDeps{
+		FormStyles: m.formStyles,
+		FormKeys:   m.formKeys,
+		Ctx:        m.ctx,
+		CreateFunc: m.app.Menu.Create,
+	})
+	m.create.SetWidth(m.detailWidth)
+	return m.create.Init()
+}
+
+type showDeleteDialogMsg struct {
+	dialog *dialog.ConfirmDialog
+	target menusmodels.Menu
+}
+
+type showPublishDialogMsg struct {
+	dialog *dialog.ConfirmDialog
+	target menusmodels.Menu
+}
+
+func (m *ListViewModel) startRename() tea.Cmd {
+	menu := m.selectedMenu()
+	if menu == nil {
+		return nil
+	}
+	m.rename = NewRenameMenuVM(menu, RenameDeps{
+		FormStyles: m.formStyles,
+		FormKeys:   m.formKeys,
+		Ctx:        m.ctx,
+		UpdateFunc: m.app.Menu.Update,
+	})
+	m.rename.SetWidth(m.detailWidth)
+	return m.rename.Init()
+}
+
+func (m *ListViewModel) startDelete() tea.Cmd {
+	menu := m.selectedMenu()
+	if menu == nil {
+		return nil
+	}
+	return m.showDeleteConfirm(menu)
+}
+
+func (m *ListViewModel) showDeleteConfirm(menu *menusmodels.Menu) tea.Cmd {
+	if menu == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		if menu.Status != menusmodels.MenuStatusDraft {
+			return DeleteErrorMsg{Err: errors.Invalidf("only draft menus can be deleted")}
+		}
+		itemCount := len(menu.Items)
+		message := fmt.Sprintf("Delete %q?", menu.Name)
+		if itemCount > 0 {
+			message = fmt.Sprintf(
+				"Delete %q?\n\nThis menu contains %d item(s).",
+				menu.Name,
+				itemCount,
+			)
+		}
+		confirm := dialog.NewConfirmDialog(
+			"Delete Menu",
+			message,
+			dialog.WithDangerous(),
+			dialog.WithFocusCancel(),
+			dialog.WithConfirmText("Delete"),
+			dialog.WithStyles(m.dialogStyles),
+			dialog.WithKeys(m.dialogKeys),
+		)
+		return showDeleteDialogMsg{dialog: confirm, target: *menu}
+	}
+}
+
+func (m *ListViewModel) performDelete() tea.Cmd {
+	if m.deleteTarget == nil {
+		return nil
+	}
+	target := m.deleteTarget
+	return func() tea.Msg {
+		deleted, err := m.app.Menu.Delete(m.ctx, target.ID)
+		if err != nil {
+			return DeleteErrorMsg{Err: err}
+		}
+		return MenuDeletedMsg{Menu: deleted}
+	}
+}
+
+func (m *ListViewModel) startPublish() tea.Cmd {
+	menu := m.selectedMenu()
+	if menu == nil {
+		return nil
+	}
+	return m.showPublishConfirm(menu)
+}
+
+func (m *ListViewModel) showPublishConfirm(menu *menusmodels.Menu) tea.Cmd {
+	if menu == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		if menu.Status != menusmodels.MenuStatusDraft {
+			return PublishErrorMsg{Err: errors.Invalidf("only draft menus can be published")}
+		}
+		if len(menu.Items) == 0 {
+			return PublishErrorMsg{Err: errors.Invalidf("cannot publish empty menu")}
+		}
+		message := fmt.Sprintf(
+			"Publish menu %q?\n\nThis will make the menu available for orders.\nPublished menus cannot be modified.",
+			menu.Name,
+		)
+		confirm := dialog.NewConfirmDialog(
+			"Publish Menu",
+			message,
+			dialog.WithConfirmText("Publish"),
+			dialog.WithStyles(m.dialogStyles),
+			dialog.WithKeys(m.dialogKeys),
+		)
+		return showPublishDialogMsg{dialog: confirm, target: *menu}
+	}
+}
+
+func (m *ListViewModel) performPublish() tea.Cmd {
+	if m.publishTarget == nil {
+		return nil
+	}
+	target := m.publishTarget
+	return func() tea.Msg {
+		published, err := m.app.Menu.Publish(m.ctx, &menusmodels.Menu{ID: target.ID})
+		if err != nil {
+			return PublishErrorMsg{Err: err}
+		}
+		return MenuPublishedMsg{Menu: published}
+	}
+}
+
+func (m *ListViewModel) selectedMenu() *menusmodels.Menu {
+	item, ok := m.list.SelectedItem().(menuItem)
+	if !ok {
+		return nil
+	}
+	menu := item.menu
+	return &menu
 }
 
 func (m *ListViewModel) renderLoading() string {

@@ -27,6 +27,7 @@ type KeyMap struct {
 	Delete  key.Binding
 	Adjust  key.Binding
 	Set     key.Binding
+	Publish key.Binding
 
 	// Form keys
 	NextField key.Binding
@@ -104,6 +105,10 @@ func NewKeyMap() KeyMap {
 		Delete: key.NewBinding(
 			key.WithKeys("d"),
 			key.WithHelp("d", "delete"),
+		),
+		Publish: key.NewBinding(
+			key.WithKeys("p"),
+			key.WithHelp("p", "publish"),
 		),
 		Adjust: key.NewBinding(
 			key.WithKeys("a"),

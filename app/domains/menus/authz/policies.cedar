@@ -14,6 +14,8 @@ permit(
     principal == Mixology::Actor::"manager",
     action in [
         Mixology::Menu::Action::"create",
+        Mixology::Menu::Action::"update",
+        Mixology::Menu::Action::"delete",
         Mixology::Menu::Action::"add_drink",
         Mixology::Menu::Action::"remove_drink",
         Mixology::Menu::Action::"publish"

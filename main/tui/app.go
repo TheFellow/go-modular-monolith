@@ -192,7 +192,16 @@ func (a *App) currentViewModel() views.ViewModel {
 			FormKeysFrom(a.keys),
 		)
 	case ViewMenus:
-		vm = menusui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
+		vm = menusui.NewListViewModel(
+			a.app,
+			a.ctx,
+			ListViewStylesFrom(a.styles),
+			ListViewKeysFrom(a.keys),
+			FormStylesFrom(a.styles),
+			FormKeysFrom(a.keys),
+			DialogStylesFrom(a.styles),
+			DialogKeysFrom(a.keys),
+		)
 	case ViewOrders:
 		vm = ordersui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
 	case ViewAudit:

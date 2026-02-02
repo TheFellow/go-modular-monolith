@@ -324,34 +324,34 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 ## Checklist
 
 ### Key Infrastructure
-- [ ] Add `Publish` binding to `main/tui/keys.go` KeyMap
-- [ ] Add `Publish` to `pkg/tui/types.go` ListViewKeys
-- [ ] Add `Publish` mapping to `main/tui/viewmodel_types.go` ListViewKeysFrom()
+- [x] Add `Publish` binding to `main/tui/keys.go` KeyMap
+- [x] Add `Publish` to `pkg/tui/types.go` ListViewKeys
+- [x] Add `Publish` mapping to `main/tui/viewmodel_types.go` ListViewKeysFrom()
 
 ### App Initialization
-- [ ] Update `main/tui/app.go` ViewMenus case to pass FormStyles, FormKeys, DialogStyles, DialogKeys
+- [x] Update `main/tui/app.go` ViewMenus case to pass FormStyles, FormKeys, DialogStyles, DialogKeys
 
 ### ViewModels
-- [ ] Create `create_vm.go` with CreateMenuVM
-- [ ] Create `rename_vm.go` with RenameMenuVM (inline edit)
-- [ ] Add `MenuCreatedMsg`, `MenuRenamedMsg`, `MenuDeletedMsg`, `MenuPublishedMsg` messages
+- [x] Create `create_vm.go` with CreateMenuVM
+- [x] Create `rename_vm.go` with RenameMenuVM (inline edit)
+- [x] Add `MenuCreatedMsg`, `MenuRenamedMsg`, `MenuDeletedMsg`, `MenuPublishedMsg` messages
 
 ### List ViewModel Updates
-- [ ] Add `create`, `rename`, `dialog` state fields to ListViewModel
-- [ ] Add `formKeys`, `dialogKeys` fields to ListViewModel
-- [ ] Update constructor signature to accept FormKeys/FormStyles/DialogKeys/DialogStyles
-- [ ] Add `c` → create handler
-- [ ] Add `e` → edit/rename handler (uses Edit key, not `r`)
-- [ ] Add `d` → delete handler with draft-only check
-- [ ] Add `p` → publish handler with draft-only, non-empty checks
-- [ ] Handle form/dialog escape with Back key
-- [ ] Delegate updates to active form/dialog
-- [ ] Render active form in detail pane, center dialog
-- [ ] Update ShortHelp() for dialog/form/list modes
-- [ ] Update FullHelp() for dialog/form/list modes
-- [ ] Show appropriate error messages for invalid operations
+- [x] Add `create`, `rename`, `dialog` state fields to ListViewModel
+- [x] Add `formKeys`, `dialogKeys` fields to ListViewModel
+- [x] Update constructor signature to accept FormKeys/FormStyles/DialogKeys/DialogStyles
+- [x] Add `c` → create handler
+- [x] Add `e` → edit/rename handler (uses Edit key, not `r`)
+- [x] Add `d` → delete handler with draft-only check
+- [x] Add `p` → publish handler with draft-only, non-empty checks
+- [x] Handle form/dialog escape with Back key
+- [x] Delegate updates to active form/dialog
+- [x] Render active form in detail pane, center dialog
+- [x] Update ShortHelp() for dialog/form/list modes
+- [x] Update FullHelp() for dialog/form/list modes
+- [x] Show appropriate error messages for invalid operations
 
 ### Verification
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes
 - [ ] Manual testing: create/rename/delete/publish menu

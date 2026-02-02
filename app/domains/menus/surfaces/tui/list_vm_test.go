@@ -11,6 +11,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -25,6 +27,10 @@ func TestListViewModel_ShowsMenusAfterLoad(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
+		dialog.DialogStyles{},
+		dialog.DialogKeys{},
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -41,6 +47,10 @@ func TestListViewModel_ShowsLoadingState(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
+		dialog.DialogStyles{},
+		dialog.DialogKeys{},
 	)
 	_ = model.Init()
 
@@ -57,6 +67,10 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
+		dialog.DialogStyles{},
+		dialog.DialogKeys{},
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -84,6 +98,10 @@ func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 		ctx,
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
+		dialog.DialogStyles{},
+		dialog.DialogKeys{},
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -122,6 +140,10 @@ func TestListViewModel_DetailShowsDrinks(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
+		dialog.DialogStyles{},
+		dialog.DialogKeys{},
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
