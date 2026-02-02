@@ -30,9 +30,9 @@ func testStyles() tui.ListViewStyles {
 }
 
 // After
-import pkgtui "github.com/TheFellow/go-modular-monolith/pkg/tui"
+import "github.com/TheFellow/go-modular-monolith/pkg/tui"
 
-func testStyles() pkgtui.ListViewStyles {
+func testStyles() tui.ListViewStyles {
     return pkgtui.ListViewStyles{...}
 }
 ```

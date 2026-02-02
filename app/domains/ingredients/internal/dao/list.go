@@ -2,6 +2,7 @@ package dao
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/mjl-/bstore"
 )
@@ -10,6 +11,7 @@ import (
 type ListFilter struct {
 	Category models.Category
 	Name     string // Exact match on Name (uses bstore unique index)
+	IDs      []entity.IngredientID
 	// IncludeDeleted includes soft-deleted rows (DeletedAt != nil).
 	IncludeDeleted bool
 }
@@ -58,6 +60,16 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[IngredientRo
 	}
 	if filter.Name != "" {
 		q = q.FilterEqual("Name", filter.Name)
+	}
+	if len(filter.IDs) > 0 {
+		idSet := make(map[string]struct{}, len(filter.IDs))
+		for _, id := range filter.IDs {
+			idSet[id.String()] = struct{}{}
+		}
+		q = q.FilterFn(func(r IngredientRow) bool {
+			_, ok := idSet[r.ID]
+			return ok
+		})
 	}
 	if !filter.IncludeDeleted {
 		q = q.FilterFn(func(r IngredientRow) bool {

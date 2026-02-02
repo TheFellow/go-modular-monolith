@@ -129,10 +129,10 @@ Collect all ingredient IDs from inventory items, batch fetch, build lookup map.
 
 ## Checklist
 
-- [ ] Add `IDs` field to ingredients `ListFilter`
-- [ ] Update DAO query to filter by IDs
-- [ ] Update drinks detail_vm to batch fetch and cache
-- [ ] Update inventory list_vm to batch fetch
-- [ ] Add/update tests for batch filtering
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] Add `IDs` field to ingredients `ListFilter`
+- [x] Update DAO query to filter by IDs
+- [x] Update drinks detail_vm to batch fetch and cache
+- [x] Update inventory list_vm to batch fetch
+- [x] Add/update tests for batch filtering
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes

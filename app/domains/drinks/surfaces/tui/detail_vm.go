@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -16,19 +16,21 @@ import (
 
 // DetailViewModel renders a drink detail pane.
 type DetailViewModel struct {
-	styles  tui.ListViewStyles
-	width   int
-	height  int
-	drink   optional.Value[models.Drink]
-	ctx     *middleware.Context
-	queries *ingredientsqueries.Queries
+	styles          tui.ListViewStyles
+	width           int
+	height          int
+	drink           optional.Value[models.Drink]
+	ctx             *middleware.Context
+	queries         *queries.Queries
+	ingredientNames map[entity.IngredientID]string
+	ingredientErr   error
 }
 
 func NewDetailViewModel(styles tui.ListViewStyles, ctx *middleware.Context) *DetailViewModel {
 	return &DetailViewModel{
 		styles:  styles,
 		ctx:     ctx,
-		queries: ingredientsqueries.New(),
+		queries: queries.New(),
 	}
 }
 
@@ -39,6 +41,36 @@ func (d *DetailViewModel) SetSize(width, height int) {
 
 func (d *DetailViewModel) SetDrink(drink optional.Value[models.Drink]) {
 	d.drink = drink
+	d.ingredientNames = nil
+	d.ingredientErr = nil
+
+	loaded, ok := drink.Unwrap()
+	if !ok {
+		return
+	}
+
+	ids := collectIngredientIDs(loaded.Recipe.Ingredients)
+	if len(ids) == 0 {
+		return
+	}
+
+	ingredients, err := d.queries.List(d.ctx, queries.ListFilter{IDs: ids})
+	if err != nil {
+		d.ingredientErr = err
+		return
+	}
+
+	cache := make(map[entity.IngredientID]string, len(ingredients))
+	for _, ingredient := range ingredients {
+		if ingredient == nil {
+			continue
+		}
+		name := strings.TrimSpace(ingredient.Name)
+		if name != "" {
+			cache[ingredient.ID] = name
+		}
+	}
+	d.ingredientNames = cache
 }
 
 func (d *DetailViewModel) View() string {
@@ -122,18 +154,43 @@ func (d *DetailViewModel) renderIngredients(items []models.RecipeIngredient) ([]
 }
 
 func (d *DetailViewModel) ingredientName(id entity.IngredientID) (string, error) {
-	ingredient, err := d.queries.Get(d.ctx, id)
-	if err != nil {
-		return "", errors.Internalf("could not load ingredient: %w", err)
+	if d.ingredientErr != nil {
+		return "", errors.Internalf("could not load ingredients: %w", d.ingredientErr)
 	}
-
-	if ingredient == nil {
+	if d.ingredientNames == nil {
+		return "", errors.Internalf("ingredient cache missing")
+	}
+	name, ok := d.ingredientNames[id]
+	if !ok {
 		return "", errors.Internalf("ingredient %s missing", id.String())
 	}
-
-	name := strings.TrimSpace(ingredient.Name)
 	if name == "" {
 		return "", errors.Internalf("ingredient %s missing name", id.String())
 	}
 	return name, nil
+}
+
+func collectIngredientIDs(items []models.RecipeIngredient) []entity.IngredientID {
+	if len(items) == 0 {
+		return nil
+	}
+
+	unique := make(map[entity.IngredientID]struct{}, len(items))
+	for _, item := range items {
+		if !item.IngredientID.IsZero() {
+			unique[item.IngredientID] = struct{}{}
+		}
+		for _, sub := range item.Substitutes {
+			if sub.IsZero() {
+				continue
+			}
+			unique[sub] = struct{}{}
+		}
+	}
+
+	ids := make([]entity.IngredientID, 0, len(unique))
+	for id := range unique {
+		ids = append(ids, id)
+	}
+	return ids
 }

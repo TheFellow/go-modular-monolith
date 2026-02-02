@@ -4,8 +4,10 @@ import (
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
 	inventoryqueries "github.com/TheFellow/go-modular-monolith/app/domains/inventory/queries"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
@@ -144,15 +146,37 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 			return InventoryLoadedMsg{Err: err}
 		}
 
-		rows := make([]InventoryRow, 0, len(inventoryList))
+		ingredientIDs := make(map[entity.IngredientID]struct{}, len(inventoryList))
 		for _, item := range inventoryList {
 			if item.IngredientID.IsZero() {
 				return InventoryLoadedMsg{Err: errors.Internalf("inventory %s missing ingredient", item.ID.String())}
 			}
+			ingredientIDs[item.IngredientID] = struct{}{}
+		}
 
-			ingredient, err := m.ingredientQueries.Get(m.ctx, item.IngredientID)
-			if err != nil {
-				return InventoryLoadedMsg{Err: errors.Internalf("load ingredient %s: %w", item.IngredientID.String(), err)}
+		ids := make([]entity.IngredientID, 0, len(ingredientIDs))
+		for id := range ingredientIDs {
+			ids = append(ids, id)
+		}
+
+		ingredientList, err := m.ingredientQueries.List(m.ctx, ingredientsqueries.ListFilter{IDs: ids})
+		if err != nil {
+			return InventoryLoadedMsg{Err: errors.Internalf("load ingredients: %w", err)}
+		}
+
+		ingredientByID := make(map[entity.IngredientID]*ingredientsmodels.Ingredient, len(ingredientList))
+		for _, ingredient := range ingredientList {
+			if ingredient == nil {
+				continue
+			}
+			ingredientByID[ingredient.ID] = ingredient
+		}
+
+		rows := make([]InventoryRow, 0, len(inventoryList))
+		for _, item := range inventoryList {
+			ingredient, ok := ingredientByID[item.IngredientID]
+			if !ok {
+				return InventoryLoadedMsg{Err: errors.Internalf("ingredient %s missing", item.IngredientID.String())}
 			}
 
 			quantity := item.Amount.String()

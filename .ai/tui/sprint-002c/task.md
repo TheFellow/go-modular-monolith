@@ -67,7 +67,7 @@ Drinks detail and inventory list fetch ingredients one at a time.
 | 002  | [Update domains to use shared types](done/task-002-domain-shared-types.md) | Done    |
 | 003  | [Remove app.go boilerplate](done/task-003-remove-boilerplate.md)           | Done    |
 | 004  | [Re-export ListFilter from queries](done/task-004-reexport-filters.md)     | Done    |
-| 005  | [Add batch ingredient lookup](todo/task-005-batch-ingredients.md)          | Pending |
+| 005  | [Add batch ingredient lookup](done/task-005-batch-ingredients.md)          | Done    |
 | 006  | [Update tests](todo/task-006-update-tests.md)                              | Pending |
 
 ---
@@ -77,6 +77,6 @@ Drinks detail and inventory list fetch ingredients one at a time.
 - [ ] `ListViewStyles`/`ListViewKeys` defined once in `pkg/tui/`
 - [ ] Zero duplicate struct definitions across domains
 - [ ] `ListFilter` re-exported from `queries` package (no `internal/dao` imports in TUI surfaces)
-- [ ] Ingredient lookups are batched (1 query for N ingredients)
+- [x] Ingredient lookups are batched (1 query for N ingredients)
 - [ ] `go build ./...` passes
 - [ ] `go test ./...` passes
