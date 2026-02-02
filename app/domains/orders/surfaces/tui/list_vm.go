@@ -284,6 +284,7 @@ func (m *ListViewModel) showCompleteConfirm(order *ordersmodels.Order) tea.Cmd {
 	}
 	return func() tea.Msg {
 		switch order.Status {
+		case ordersmodels.OrderStatusPending, ordersmodels.OrderStatusPreparing:
 		case ordersmodels.OrderStatusCompleted:
 			return CompleteErrorMsg{Err: errors.Invalidf("order is already completed")}
 		case ordersmodels.OrderStatusCancelled:
@@ -333,6 +334,7 @@ func (m *ListViewModel) showCancelConfirm(order *ordersmodels.Order) tea.Cmd {
 	}
 	return func() tea.Msg {
 		switch order.Status {
+		case ordersmodels.OrderStatusPending, ordersmodels.OrderStatusPreparing:
 		case ordersmodels.OrderStatusCompleted:
 			return CancelErrorMsg{Err: errors.Invalidf("cannot cancel a completed order")}
 		case ordersmodels.OrderStatusCancelled:

@@ -87,11 +87,17 @@ mixology --help
 ## Checklist
 
 - [x] Each command/query starts with a fresh logger in middleware
-- [ ] TUI with `--log-file` works, logs appear in file
-- [ ] CLI with `--log-file` works
-- [ ] Environment variable `MIXOLOGY_LOG_FILE` works
-- [ ] Combined options (`--log-level`, `--log-format`) work with `--log-file`
-- [ ] Invalid file paths produce clear error messages
-- [ ] Help text shows the new flag
+- [x] TUI with `--log-file` works, logs appear in file
+- [x] CLI with `--log-file` works
+- [x] Environment variable `MIXOLOGY_LOG_FILE` works
+- [x] Combined options (`--log-level`, `--log-format`) work with `--log-file`
+- [x] Invalid file paths produce clear error messages
+- [x] Help text shows the new flag
 - [x] `go build ./...` passes
 - [x] `go test ./...` passes
+- [x] `go tool go-check-sumtype ./...` passes
+- [x] `go tool exhaustive ./...` passes
+
+## Status Notes
+
+- TUI manual checks completed.

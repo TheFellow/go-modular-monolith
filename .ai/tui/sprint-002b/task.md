@@ -67,7 +67,7 @@ output either corrupts the display or is hidden.
 |------|-------------------------------------------------------------|---------|
 | 001  | [Add --log-file flag](done/task-001-log-file-flag.md)       | Done    |
 | 002  | [Add file cleanup + TUI default log file](done/task-002-file-cleanup.md) | Done    |
-| 003  | [Fresh logger + docs/testing](todo/task-003-documentation.md) | In Progress |
+| 003  | [Fresh logger + docs/testing](done/task-003-documentation.md) | Done |
 
 ### Task Dependencies
 
