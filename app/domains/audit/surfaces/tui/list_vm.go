@@ -4,9 +4,8 @@ import (
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
-	auditdao "github.com/TheFellow/go-modular-monolith/app/domains/audit/internal/dao"
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
-	auditqueries "github.com/TheFellow/go-modular-monolith/app/domains/audit/queries"
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit/queries"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -28,7 +27,7 @@ type ListViewModel struct {
 	styles tui.ListViewStyles
 	keys   tui.ListViewKeys
 
-	queries *auditqueries.Queries
+	queries *queries.Queries
 
 	list    list.Model
 	detail  *DetailViewModel
@@ -60,7 +59,7 @@ func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListView
 		ctx:     ctx,
 		styles:  styles,
 		keys:    keys,
-		queries: auditqueries.New(),
+		queries: queries.New(),
 		list:    l,
 		detail:  NewDetailViewModel(styles),
 		loading: true,
@@ -140,7 +139,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadEntries() tea.Cmd {
 	return func() tea.Msg {
-		entries, err := m.queries.List(m.ctx, auditdao.ListFilter{Limit: auditDefaultLimit})
+		entries, err := m.queries.List(m.ctx, queries.ListFilter{Limit: auditDefaultLimit})
 		if err != nil {
 			return AuditLoadedMsg{Err: err}
 		}

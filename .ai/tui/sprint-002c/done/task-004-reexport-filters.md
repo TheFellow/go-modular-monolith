@@ -72,18 +72,18 @@ drinksList, err := m.drinksQueries.List(m.ctx, drinksqueries.ListFilter{})
 
 ## Checklist
 
-- [ ] Create `queries/filters.go` for drinks
-- [ ] Create `queries/filters.go` for ingredients
-- [ ] Create `queries/filters.go` for inventory
-- [ ] Create `queries/filters.go` for menus
-- [ ] Create `queries/filters.go` for orders
-- [ ] Create `queries/filters.go` for audit
-- [ ] Update drinks TUI surface to use `queries.ListFilter`
-- [ ] Update ingredients TUI surface
-- [ ] Update inventory TUI surface
-- [ ] Update menus TUI surface
-- [ ] Update orders TUI surface
-- [ ] Update audit TUI surface
-- [ ] Verify no TUI surfaces import `internal/dao`
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] Create `queries/filters.go` for drinks
+- [x] Create `queries/filters.go` for ingredients
+- [x] Create `queries/filters.go` for inventory
+- [x] Create `queries/filters.go` for menus
+- [x] Create `queries/filters.go` for orders
+- [x] Create `queries/filters.go` for audit
+- [x] Update drinks TUI surface to use `queries.ListFilter`
+- [x] Update ingredients TUI surface
+- [x] Update inventory TUI surface
+- [x] Update menus TUI surface
+- [x] Update orders TUI surface
+- [x] Update audit TUI surface
+- [x] Verify no TUI surfaces import `internal/dao`
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes

@@ -4,9 +4,8 @@ import (
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
-	ingredientsdao "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -26,7 +25,7 @@ type ListViewModel struct {
 	styles tui.ListViewStyles
 	keys   tui.ListViewKeys
 
-	queries *ingredientsqueries.Queries
+	queries *queries.Queries
 
 	list    list.Model
 	detail  *DetailViewModel
@@ -58,7 +57,7 @@ func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListView
 		ctx:     ctx,
 		styles:  styles,
 		keys:    keys,
-		queries: ingredientsqueries.New(),
+		queries: queries.New(),
 		list:    l,
 		detail:  NewDetailViewModel(styles),
 		loading: true,
@@ -138,7 +137,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadIngredients() tea.Cmd {
 	return func() tea.Msg {
-		ingredientsList, err := m.queries.List(m.ctx, ingredientsdao.ListFilter{})
+		ingredientsList, err := m.queries.List(m.ctx, queries.ListFilter{})
 		if err != nil {
 			return IngredientsLoadedMsg{Err: err}
 		}

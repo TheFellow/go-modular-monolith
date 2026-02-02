@@ -5,7 +5,6 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
-	inventorydao "github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/dao"
 	inventoryqueries "github.com/TheFellow/go-modular-monolith/app/domains/inventory/queries"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
@@ -140,7 +139,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadInventory() tea.Cmd {
 	return func() tea.Msg {
-		inventoryList, err := m.inventoryQueries.List(m.ctx, inventorydao.ListFilter{})
+		inventoryList, err := m.inventoryQueries.List(m.ctx, inventoryqueries.ListFilter{})
 		if err != nil {
 			return InventoryLoadedMsg{Err: err}
 		}

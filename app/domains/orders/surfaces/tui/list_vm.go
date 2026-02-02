@@ -6,9 +6,8 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	menusqueries "github.com/TheFellow/go-modular-monolith/app/domains/menus/queries"
-	ordersdao "github.com/TheFellow/go-modular-monolith/app/domains/orders/internal/dao"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
-	ordersqueries "github.com/TheFellow/go-modular-monolith/app/domains/orders/queries"
+	"github.com/TheFellow/go-modular-monolith/app/domains/orders/queries"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
@@ -29,7 +28,7 @@ type ListViewModel struct {
 	styles tui.ListViewStyles
 	keys   tui.ListViewKeys
 
-	ordersQueries *ordersqueries.Queries
+	ordersQueries *queries.Queries
 	menuQueries   *menusqueries.Queries
 
 	list    list.Model
@@ -62,7 +61,7 @@ func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListView
 		ctx:           ctx,
 		styles:        styles,
 		keys:          keys,
-		ordersQueries: ordersqueries.New(),
+		ordersQueries: queries.New(),
 		menuQueries:   menusqueries.New(),
 		list:          l,
 		detail:        NewDetailViewModel(styles, ctx),
@@ -148,7 +147,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadOrders() tea.Cmd {
 	return func() tea.Msg {
-		ordersList, err := m.ordersQueries.List(m.ctx, ordersdao.ListFilter{})
+		ordersList, err := m.ordersQueries.List(m.ctx, queries.ListFilter{})
 		if err != nil {
 			return OrdersLoadedMsg{Err: err}
 		}
