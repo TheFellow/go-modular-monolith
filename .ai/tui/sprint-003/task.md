@@ -94,15 +94,36 @@ type ConfirmDialog struct {
 
 ## Tasks
 
-Tasks will be populated during breakdown phase. Phases identified:
+| Task | Description                                                                           | Status  |
+|------|---------------------------------------------------------------------------------------|---------|
+| 001  | [Form Infrastructure](done/task-001-form-infrastructure.md)                           | Done    |
+| 002  | [Confirmation Dialog](todo/task-002-confirm-dialog.md)                                | Pending |
+| 003  | [Main TUI Form Styles](todo/task-003-main-tui-form-styles.md)                         | Pending |
+| 004  | [Ingredient Create Form](todo/task-004-ingredient-create-form.md)                     | Pending |
+| 005  | [Ingredient Edit/Delete](todo/task-005-ingredient-edit-delete.md)                     | Pending |
+| 006  | [Drinks CRUD](todo/task-006-drinks-crud.md)                                           | Pending |
+| 007  | [Inventory Operations](todo/task-007-inventory-operations.md)                         | Pending |
+| 008  | [Menu Operations](todo/task-008-menu-operations.md)                                   | Pending |
+| 009  | [Order Operations](todo/task-009-order-operations.md)                                 | Pending |
 
-1. **Form Infrastructure** - Base form model, field types, validation, dialogs
-2. **Ingredients CRUD** - Create, edit, delete with cascade warnings
-3. **Drinks CRUD** - Create, edit, delete (basic fields, recipe editing in Sprint 004)
-4. **Inventory Operations** - Adjust stock, set stock
-5. **Menu Operations** - Create, rename, delete draft, publish
-6. **Order Operations** - Complete, cancel
-7. **Form UX Polish** - Tab navigation, validation display, keyboard shortcuts
+### Task Dependencies
+
+```
+001 (Form Infrastructure) ──┬──► 004 (Ingredient Create) ──► 005 (Ingredient Edit/Delete)
+                            │
+002 (Confirm Dialog) ───────┼──► 005, 006, 007, 008, 009 (all delete/confirm operations)
+                            │
+003 (Form Styles) ──────────┴──► 004, 005, 006, 007, 008 (all forms)
+```
+
+### Phases
+
+1. **Infrastructure** (Tasks 001-003) - Shared form/dialog components in `pkg/tui/`
+2. **Ingredients** (Tasks 004-005) - Full CRUD for ingredients
+3. **Drinks** (Task 006) - Full CRUD for drinks (basic fields only)
+4. **Inventory** (Task 007) - Adjust and set operations
+5. **Menus** (Task 008) - Create, rename, delete, publish
+6. **Orders** (Task 009) - Complete and cancel
 
 ---
 
