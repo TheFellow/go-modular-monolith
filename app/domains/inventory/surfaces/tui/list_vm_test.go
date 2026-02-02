@@ -13,6 +13,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -26,6 +27,8 @@ func TestListViewModel_ShowsInventoryAfterLoad(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -42,6 +45,8 @@ func TestListViewModel_ShowsLoadingState(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
 	)
 	_ = model.Init()
 
@@ -58,6 +63,8 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -77,6 +84,8 @@ func TestListViewModel_ShowsErrorOnFailure(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -94,6 +103,8 @@ func TestListViewModel_ShowsStockStatus(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -121,6 +132,8 @@ func TestListViewModel_ShowsIngredientName(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -138,6 +151,8 @@ func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 30, Height: 20})
 
@@ -154,6 +169,8 @@ func TestListViewModel_SetSize_ZeroWidth(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 0, Height: 0})
 
@@ -170,6 +187,8 @@ func TestListViewModel_SetSize_WideWidth(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
 
@@ -187,6 +206,8 @@ func TestListViewModel_SetSize_ResizeSequence(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
 	))
 	sizes := []tea.WindowSizeMsg{
 		{Width: 30, Height: 20},
@@ -211,6 +232,8 @@ func TestListViewModel_ColumnWidths_FitWithinWidth(t *testing.T) {
 		f.OwnerContext(),
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
 	))
 	widths := []int{70, 100, 140}
 	for _, width := range widths {
@@ -244,6 +267,8 @@ func TestListViewModel_ColumnWidths_AccountForPadding(t *testing.T) {
 		f.OwnerContext(),
 		styles,
 		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		forms.FormStyles{},
+		forms.FormKeys{},
 	))
 
 	width := 70

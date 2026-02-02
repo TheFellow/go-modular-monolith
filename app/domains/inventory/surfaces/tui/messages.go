@@ -18,3 +18,13 @@ type InventoryLoadedMsg struct {
 	Rows []InventoryRow
 	Err  error
 }
+
+// InventoryAdjustedMsg is sent when inventory is adjusted.
+type InventoryAdjustedMsg struct {
+	Inventory *inventorymodels.Inventory
+}
+
+// InventorySetMsg is sent when inventory is set.
+type InventorySetMsg struct {
+	Inventory *inventorymodels.Inventory
+}

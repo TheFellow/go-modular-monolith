@@ -27,4 +27,6 @@ type ListViewKeys struct {
 	Create  key.Binding
 	Edit    key.Binding
 	Delete  key.Binding
+	Adjust  key.Binding
+	Set     key.Binding
 }

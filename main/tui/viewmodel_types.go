@@ -32,6 +32,8 @@ func ListViewKeysFrom(k KeyMap) tui.ListViewKeys {
 		Create:  k.Create,
 		Edit:    k.Edit,
 		Delete:  k.Delete,
+		Adjust:  k.Adjust,
+		Set:     k.Set,
 	}
 }
 

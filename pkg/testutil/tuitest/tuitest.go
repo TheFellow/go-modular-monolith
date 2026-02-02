@@ -32,6 +32,8 @@ type listViewKeys interface {
 		Create  key.Binding
 		Edit    key.Binding
 		Delete  key.Binding
+		Adjust  key.Binding
+		Set     key.Binding
 	}
 }
 
@@ -60,6 +62,8 @@ func DefaultListViewKeys[T listViewKeys]() T {
 		Create:  key.NewBinding(key.WithKeys("c")),
 		Edit:    key.NewBinding(key.WithKeys("e")),
 		Delete:  key.NewBinding(key.WithKeys("d")),
+		Adjust:  key.NewBinding(key.WithKeys("a")),
+		Set:     key.NewBinding(key.WithKeys("s")),
 	}
 }
 

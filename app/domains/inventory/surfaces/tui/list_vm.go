@@ -16,6 +16,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -34,11 +35,16 @@ type ListViewModel struct {
 	styles tui.ListViewStyles
 	keys   tui.ListViewKeys
 
+	formStyles forms.FormStyles
+	formKeys   forms.FormKeys
+
 	inventoryQueries  *inventoryqueries.Queries
 	ingredientQueries *ingredientsqueries.Queries
 	rows              []InventoryRow
 	table             table.Model
 	detail            *DetailViewModel
+	adjust            *AdjustInventoryVM
+	set               *SetInventoryVM
 	spinner           components.Spinner
 	loading           bool
 	err               error
@@ -48,7 +54,7 @@ type ListViewModel struct {
 	detailWidth       int
 }
 
-func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys) *ListViewModel {
+func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys, formStyles forms.FormStyles, formKeys forms.FormKeys) *ListViewModel {
 	columns := inventoryColumns(0)
 	model := table.New(
 		table.WithColumns(columns),
@@ -62,6 +68,8 @@ func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListView
 		ctx:               ctx,
 		styles:            styles,
 		keys:              keys,
+		formStyles:        formStyles,
+		formKeys:          formKeys,
 		inventoryQueries:  inventoryqueries.New(),
 		ingredientQueries: ingredientsqueries.New(),
 		table:             model,
@@ -81,13 +89,47 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
+		if m.adjust != nil {
+			m.adjust.SetWidth(m.detailWidth)
+		}
+		if m.set != nil {
+			m.set.SetWidth(m.detailWidth)
+		}
 		return m, nil
+	case InventoryAdjustedMsg:
+		m.adjust = nil
+		m.loading = true
+		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
+	case InventorySetMsg:
+		m.set = nil
+		m.loading = true
+		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
 	case tea.KeyMsg:
+		if m.adjust != nil {
+			if key.Matches(msg, m.keys.Back) {
+				m.adjust = nil
+				return m, nil
+			}
+			break
+		}
+		if m.set != nil {
+			if key.Matches(msg, m.keys.Back) {
+				m.set = nil
+				return m, nil
+			}
+			break
+		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
 			m.loading = true
 			m.err = nil
 			return m, tea.Batch(m.spinner.Init(), m.loadInventory())
+		case key.Matches(msg, m.keys.Adjust):
+			return m, m.startAdjust()
+		case key.Matches(msg, m.keys.Set):
+			return m, m.startSet()
 		}
 	case InventoryLoadedMsg:
 		m.loading = false
@@ -97,6 +139,18 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.table.SetCursor(0)
 		m.syncDetail()
 		return m, nil
+	}
+
+	if m.adjust != nil {
+		var cmd tea.Cmd
+		m.adjust, cmd = m.adjust.Update(msg)
+		return m, cmd
+	}
+
+	if m.set != nil {
+		var cmd tea.Cmd
+		m.set, cmd = m.set.Update(msg)
+		return m, cmd
 	}
 
 	if m.loading {
@@ -123,18 +177,33 @@ func (m *ListViewModel) View() string {
 	listView = m.styles.ListPane.Width(m.listWidth).Render(listView)
 
 	detailView := m.detail.View()
+	if m.adjust != nil {
+		detailView = m.adjust.View()
+	} else if m.set != nil {
+		detailView = m.set.View()
+	}
 	detailView = m.styles.DetailPane.Width(m.detailWidth).Render(detailView)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Refresh, m.keys.Back}
+	if m.adjust != nil || m.set != nil {
+		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
+	}
+	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Adjust, m.keys.Set, m.keys.Refresh, m.keys.Back}
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
+	if m.adjust != nil || m.set != nil {
+		return [][]key.Binding{
+			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
+			{m.keys.Back},
+		}
+	}
 	return [][]key.Binding{
 		{m.keys.Up, m.keys.Down, m.keys.Enter},
+		{m.keys.Adjust, m.keys.Set},
 		{m.keys.Refresh, m.keys.Back},
 	}
 }
@@ -197,6 +266,47 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 
 		return InventoryLoadedMsg{Rows: rows}
 	}
+}
+
+func (m *ListViewModel) startAdjust() tea.Cmd {
+	row, ok := m.selectedRow()
+	if !ok {
+		return nil
+	}
+	m.adjust = NewAdjustInventoryVM(row, AdjustDeps{
+		FormStyles: m.formStyles,
+		FormKeys:   m.formKeys,
+		Ctx:        m.ctx,
+		AdjustFunc: m.app.Inventory.Adjust,
+	})
+	m.adjust.SetWidth(m.detailWidth)
+	return m.adjust.Init()
+}
+
+func (m *ListViewModel) startSet() tea.Cmd {
+	row, ok := m.selectedRow()
+	if !ok {
+		return nil
+	}
+	m.set = NewSetInventoryVM(row, SetDeps{
+		FormStyles: m.formStyles,
+		FormKeys:   m.formKeys,
+		Ctx:        m.ctx,
+		SetFunc:    m.app.Inventory.Set,
+	})
+	m.set.SetWidth(m.detailWidth)
+	return m.set.Init()
+}
+
+func (m *ListViewModel) selectedRow() (InventoryRow, bool) {
+	if len(m.rows) == 0 {
+		return InventoryRow{}, false
+	}
+	idx := m.table.Cursor()
+	if idx < 0 || idx >= len(m.rows) {
+		return InventoryRow{}, false
+	}
+	return m.rows[idx], true
 }
 
 func (m *ListViewModel) renderLoading() string {

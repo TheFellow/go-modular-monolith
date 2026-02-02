@@ -183,7 +183,14 @@ func (a *App) currentViewModel() views.ViewModel {
 			DialogKeysFrom(a.keys),
 		)
 	case ViewInventory:
-		vm = inventoryui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
+		vm = inventoryui.NewListViewModel(
+			a.app,
+			a.ctx,
+			ListViewStylesFrom(a.styles),
+			ListViewKeysFrom(a.keys),
+			FormStylesFrom(a.styles),
+			FormKeysFrom(a.keys),
+		)
 	case ViewMenus:
 		vm = menusui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
 	case ViewOrders:

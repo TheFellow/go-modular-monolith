@@ -102,7 +102,7 @@ type ConfirmDialog struct {
 | 004  | [Ingredient Create Form](done/task-004-ingredient-create-form.md)                     | Done    |
 | 005  | [Ingredient Edit/Delete](done/task-005-ingredient-edit-delete.md)                     | Done    |
 | 006  | [Drinks CRUD](done/task-006-drinks-crud.md)                                           | Done    |
-| 007  | [Inventory Operations](todo/task-007-inventory-operations.md)                         | Pending |
+| 007  | [Inventory Operations](done/task-007-inventory-operations.md)                         | Done    |
 | 008  | [Menu Operations](todo/task-008-menu-operations.md)                                   | Pending |
 | 009  | [Order Operations](todo/task-009-order-operations.md)                                 | Pending |
 

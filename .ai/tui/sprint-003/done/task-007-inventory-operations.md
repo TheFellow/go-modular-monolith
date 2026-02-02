@@ -325,33 +325,33 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 ## Checklist
 
 ### Key Infrastructure
-- [ ] Add `Adjust` and `Set` bindings to `main/tui/keys.go` KeyMap
-- [ ] Add `Adjust` and `Set` to `pkg/tui/types.go` ListViewKeys
-- [ ] Add `Adjust` and `Set` mappings to `main/tui/viewmodel_types.go` ListViewKeysFrom()
+- [x] Add `Adjust` and `Set` bindings to `main/tui/keys.go` KeyMap
+- [x] Add `Adjust` and `Set` to `pkg/tui/types.go` ListViewKeys
+- [x] Add `Adjust` and `Set` mappings to `main/tui/viewmodel_types.go` ListViewKeysFrom()
 
 ### ViewModels
-- [ ] Create `adjust_vm.go` with AdjustInventoryVM
-- [ ] Create `set_vm.go` with SetInventoryVM
-- [ ] Add `InventoryAdjustedMsg` and `InventorySetMsg` messages
+- [x] Create `adjust_vm.go` with AdjustInventoryVM
+- [x] Create `set_vm.go` with SetInventoryVM
+- [x] Add `InventoryAdjustedMsg` and `InventorySetMsg` messages
 
 ### App Initialization
-- [ ] Update `main/tui/app.go` ViewInventory case to pass FormStyles and FormKeys (follow drinks pattern)
+- [x] Update `main/tui/app.go` ViewInventory case to pass FormStyles and FormKeys (follow drinks pattern)
 
 ### List ViewModel Updates
-- [ ] Add `adjust` and `set` form state fields to ListViewModel
-- [ ] Update constructor signature to accept FormKeys/FormStyles (follow drinks pattern)
-- [ ] Add `a` → adjust and `s` → set handlers in Update()
-- [ ] Handle form escape with Back key
-- [ ] Delegate updates to active form
-- [ ] Render active form in detail pane in View()
-- [ ] Update ShortHelp() for form vs list mode
-- [ ] Update FullHelp() for form vs list mode
+- [x] Add `adjust` and `set` form state fields to ListViewModel
+- [x] Update constructor signature to accept FormKeys/FormStyles (follow drinks pattern)
+- [x] Add `a` → adjust and `s` → set handlers in Update()
+- [x] Handle form escape with Back key
+- [x] Delegate updates to active form
+- [x] Render active form in detail pane in View()
+- [x] Update ShortHelp() for form vs list mode
+- [x] Update FullHelp() for form vs list mode
 
 ### Form Implementation
-- [ ] Display current inventory context in form header
-- [ ] Wire up form submission to commands
+- [x] Display current inventory context in form header
+- [x] Wire up form submission to commands
 
 ### Verification
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes
 - [ ] Manual testing: adjust and set inventory values
