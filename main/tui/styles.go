@@ -24,6 +24,22 @@ type Styles struct {
 	HelpKey     lipgloss.Style
 	HelpDesc    lipgloss.Style
 
+	// Form styles
+	FormLabel         lipgloss.Style
+	FormLabelRequired lipgloss.Style
+	FormInput         lipgloss.Style
+	FormInputFocused  lipgloss.Style
+	FormError         lipgloss.Style
+	FormHelp          lipgloss.Style
+
+	// Dialog styles
+	DialogModal       lipgloss.Style
+	DialogTitle       lipgloss.Style
+	DialogMessage     lipgloss.Style
+	DialogButton      lipgloss.Style
+	DialogButtonFocus lipgloss.Style
+	DialogDanger      lipgloss.Style
+
 	// Layout styles
 	Border        lipgloss.Style
 	FocusedBorder lipgloss.Style
@@ -63,6 +79,27 @@ func NewStyles() Styles {
 	styles.InfoText = lipgloss.NewStyle().Foreground(styles.Muted)
 	styles.HelpKey = lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
 	styles.HelpDesc = lipgloss.NewStyle().Foreground(styles.Muted)
+
+	styles.FormLabel = lipgloss.NewStyle().Foreground(styles.Muted)
+	styles.FormLabelRequired = lipgloss.NewStyle().Bold(true).Foreground(styles.Error)
+	styles.FormInput = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#0f172a", Dark: "#e2e8f0"})
+	styles.FormInputFocused = lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
+	styles.FormError = styles.ErrorText
+	styles.FormHelp = styles.InfoText
+
+	styles.DialogModal = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(styles.Primary).
+		Padding(1, 2)
+	styles.DialogTitle = styles.Title
+	styles.DialogMessage = lipgloss.NewStyle().Foreground(styles.Muted)
+	styles.DialogButton = lipgloss.NewStyle().
+		Foreground(styles.Primary).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(styles.Muted).
+		Padding(0, 1)
+	styles.DialogButtonFocus = lipgloss.NewStyle().Bold(true).Underline(true)
+	styles.DialogDanger = lipgloss.NewStyle().Bold(true).Foreground(styles.Error)
 
 	styles.Border = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

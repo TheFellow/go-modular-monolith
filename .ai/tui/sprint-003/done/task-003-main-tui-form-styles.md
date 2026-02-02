@@ -123,12 +123,12 @@ func DialogKeysFrom(k KeyMap) dialog.DialogKeys {
 
 ## Checklist
 
-- [ ] Add form styles to `main/tui/styles.go`
-- [ ] Add dialog styles to `main/tui/styles.go`
-- [ ] Add form keys to `main/tui/keys.go`
-- [ ] Add `FormStylesFrom()` to `viewmodel_types.go`
-- [ ] Add `FormKeysFrom()` to `viewmodel_types.go`
-- [ ] Add `DialogStylesFrom()` to `viewmodel_types.go`
-- [ ] Add `DialogKeysFrom()` to `viewmodel_types.go`
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] Add form styles to `main/tui/styles.go`
+- [x] Add dialog styles to `main/tui/styles.go`
+- [x] Add form keys to `main/tui/keys.go`
+- [x] Add `FormStylesFrom()` to `viewmodel_types.go`
+- [x] Add `FormKeysFrom()` to `viewmodel_types.go`
+- [x] Add `DialogStylesFrom()` to `viewmodel_types.go`
+- [x] Add `DialogKeysFrom()` to `viewmodel_types.go`
+- [x] `go build ./main/tui/...` passes
+- [x] `go test ./...` passes

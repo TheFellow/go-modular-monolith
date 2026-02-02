@@ -22,6 +22,15 @@ type KeyMap struct {
 	Down    key.Binding
 	Enter   key.Binding
 	Refresh key.Binding
+
+	// Form keys
+	NextField key.Binding
+	PrevField key.Binding
+	Submit    key.Binding
+
+	// Dialog keys
+	Confirm   key.Binding
+	SwitchBtn key.Binding
 }
 
 // NewKeyMap creates a KeyMap with default bindings.
@@ -78,6 +87,26 @@ func NewKeyMap() KeyMap {
 		Refresh: key.NewBinding(
 			key.WithKeys("r"),
 			key.WithHelp("r", "refresh"),
+		),
+		NextField: key.NewBinding(
+			key.WithKeys("tab"),
+			key.WithHelp("tab", "next"),
+		),
+		PrevField: key.NewBinding(
+			key.WithKeys("shift+tab"),
+			key.WithHelp("shift+tab", "previous"),
+		),
+		Submit: key.NewBinding(
+			key.WithKeys("ctrl+s"),
+			key.WithHelp("ctrl+s", "submit"),
+		),
+		Confirm: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "confirm"),
+		),
+		SwitchBtn: key.NewBinding(
+			key.WithKeys("tab", "left", "right"),
+			key.WithHelp("tab/←/→", "switch"),
 		),
 	}
 }
