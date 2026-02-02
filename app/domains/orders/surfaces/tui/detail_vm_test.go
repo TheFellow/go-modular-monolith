@@ -12,6 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
+	pkgtui "github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
 func TestDetailViewModel_ShowsOrderData(t *testing.T) {
@@ -44,7 +45,7 @@ func TestDetailViewModel_ShowsOrderData(t *testing.T) {
 	testutil.Ok(t, err)
 
 	detail := tui.NewDetailViewModel(
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
 		f.OwnerContext(),
 	)
 	detail.SetSize(80, 40)
@@ -86,7 +87,7 @@ func TestDetailViewModel_ShowsLineItems(t *testing.T) {
 	testutil.Ok(t, err)
 
 	detail := tui.NewDetailViewModel(
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
 		f.OwnerContext(),
 	)
 	detail.SetSize(80, 40)
@@ -127,7 +128,7 @@ func TestDetailViewModel_ShowsTotal(t *testing.T) {
 	testutil.Ok(t, err)
 
 	detail := tui.NewDetailViewModel(
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
 		f.OwnerContext(),
 	)
 	detail.SetSize(80, 40)
@@ -141,7 +142,7 @@ func TestDetailViewModel_NilOrder(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	detail := tui.NewDetailViewModel(
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
 		f.OwnerContext(),
 	)
 	detail.SetOrder(optional.None[ordersmodels.Order]())
@@ -180,7 +181,7 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 	testutil.Ok(t, err)
 
 	detail := tui.NewDetailViewModel(
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
 		f.OwnerContext(),
 	)
 	detail.SetOrder(optional.Some(*order))

@@ -12,6 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
+	pkgtui "github.com/TheFellow/go-modular-monolith/pkg/tui"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -23,8 +24,8 @@ func TestListViewModel_ShowsInventoryAfterLoad(t *testing.T) {
 	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -39,8 +40,8 @@ func TestListViewModel_ShowsLoadingState(t *testing.T) {
 	model := tui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
 	)
 	_ = model.Init()
 
@@ -55,8 +56,8 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -74,8 +75,8 @@ func TestListViewModel_ShowsErrorOnFailure(t *testing.T) {
 	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -91,8 +92,8 @@ func TestListViewModel_ShowsStockStatus(t *testing.T) {
 	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -118,8 +119,8 @@ func TestListViewModel_ShowsIngredientName(t *testing.T) {
 	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -135,8 +136,8 @@ func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 30, Height: 20})
 
@@ -151,8 +152,8 @@ func TestListViewModel_SetSize_ZeroWidth(t *testing.T) {
 	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 0, Height: 0})
 
@@ -167,8 +168,8 @@ func TestListViewModel_SetSize_WideWidth(t *testing.T) {
 	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
 
@@ -184,8 +185,8 @@ func TestListViewModel_SetSize_ResizeSequence(t *testing.T) {
 	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
 	))
 	sizes := []tea.WindowSizeMsg{
 		{Width: 30, Height: 20},
@@ -208,8 +209,8 @@ func TestListViewModel_ColumnWidths_FitWithinWidth(t *testing.T) {
 	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
 	))
 	widths := []int{70, 100, 140}
 	for _, width := range widths {
@@ -236,13 +237,13 @@ func TestListViewModel_ColumnWidths_AccountForPadding(t *testing.T) {
 	f := testutil.NewFixture(t)
 	f.Bootstrap().WithBasicIngredients().WithStock(5)
 
-	styles := tuitest.DefaultListViewStyles[tui.ListViewStyles]()
+	styles := tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]()
 	styles.ListPane = styles.ListPane.Padding(0, 2)
 	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
 		styles,
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
+		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
 	))
 
 	width := 70

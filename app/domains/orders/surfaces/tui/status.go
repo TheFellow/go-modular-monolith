@@ -6,6 +6,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -24,7 +25,7 @@ func orderStatusLabel(status models.OrderStatus) string {
 	}
 }
 
-func orderStatusStyle(status models.OrderStatus, styles ListViewStyles) lipgloss.Style {
+func orderStatusStyle(status models.OrderStatus, styles tui.ListViewStyles) lipgloss.Style {
 	switch status {
 	case models.OrderStatusPending:
 		return styles.WarningText
@@ -39,7 +40,7 @@ func orderStatusStyle(status models.OrderStatus, styles ListViewStyles) lipgloss
 	}
 }
 
-func orderStatusBadge(status models.OrderStatus, styles ListViewStyles) string {
+func orderStatusBadge(status models.OrderStatus, styles tui.ListViewStyles) string {
 	label := orderStatusLabel(status)
 	style := orderStatusStyle(status, styles)
 	return components.NewBadge(label, style).View()

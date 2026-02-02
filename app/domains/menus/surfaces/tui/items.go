@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
 type menuItem struct {
@@ -11,7 +12,7 @@ type menuItem struct {
 	description string
 }
 
-func newMenuItem(menu models.Menu, styles ListViewStyles) menuItem {
+func newMenuItem(menu models.Menu, styles tui.ListViewStyles) menuItem {
 	status := menuStatusBadge(menu.Status, styles)
 	description := fmt.Sprintf("%s | %d drinks", status, len(menu.Items))
 	return menuItem{menu: menu, description: description}

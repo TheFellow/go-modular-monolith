@@ -12,6 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
+	pkgtui "github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
 func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
@@ -36,7 +37,7 @@ func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
 		Status:     "LOW",
 	}
 
-	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
+	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]())
 	detail.SetSize(80, 40)
 	detail.SetRow(optional.Some(row))
 
@@ -51,7 +52,7 @@ func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
 
 func TestDetailViewModel_NilRow(t *testing.T) {
 	t.Parallel()
-	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
+	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]())
 	detail.SetRow(optional.None[tui.InventoryRow]())
 
 	view := detail.View()
@@ -79,7 +80,7 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 		Status:     "LOW",
 	}
 
-	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
+	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]())
 	detail.SetRow(optional.Some(row))
 	detail.SetSize(20, 10)
 

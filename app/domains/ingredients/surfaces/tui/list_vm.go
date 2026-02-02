@@ -12,39 +12,19 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-// ListViewStyles contains styles needed by the ingredients list view.
-type ListViewStyles struct {
-	Title       lipgloss.Style
-	Subtitle    lipgloss.Style
-	Muted       lipgloss.Style
-	Selected    lipgloss.Style
-	ListPane    lipgloss.Style
-	DetailPane  lipgloss.Style
-	ErrorText   lipgloss.Style
-	WarningText lipgloss.Style
-}
-
-// ListViewKeys contains key bindings needed by the ingredients list view.
-type ListViewKeys struct {
-	Up      key.Binding
-	Down    key.Binding
-	Enter   key.Binding
-	Refresh key.Binding
-	Back    key.Binding
-}
-
 // ListViewModel renders the ingredients list and detail panes.
 type ListViewModel struct {
 	app    *app.App
 	ctx    *middleware.Context
-	styles ListViewStyles
-	keys   ListViewKeys
+	styles tui.ListViewStyles
+	keys   tui.ListViewKeys
 
 	queries *ingredientsqueries.Queries
 
@@ -60,7 +40,7 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App, ctx *middleware.Context, styles ListViewStyles, keys ListViewKeys) *ListViewModel {
+func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
 	delegate.Styles.SelectedTitle = styles.Selected

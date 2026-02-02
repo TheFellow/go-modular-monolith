@@ -70,12 +70,12 @@ func NewListViewModel(
 
 ## Checklist
 
-- [ ] Update drinks TUI surface
-- [ ] Update ingredients TUI surface
-- [ ] Update inventory TUI surface
-- [ ] Update menus TUI surface
-- [ ] Update orders TUI surface
-- [ ] Update audit TUI surface
-- [ ] Update corresponding test files
-- [ ] `go build ./app/domains/*/surfaces/tui/...` passes
-- [ ] `go test ./app/domains/*/surfaces/tui/...` passes
+- [x] Update drinks TUI surface
+- [x] Update ingredients TUI surface
+- [x] Update inventory TUI surface
+- [x] Update menus TUI surface
+- [x] Update orders TUI surface
+- [x] Update audit TUI surface
+- [x] Update corresponding test files
+- [x] `go build ./app/domains/*/surfaces/tui/...` passes
+- [x] `go test ./app/domains/*/surfaces/tui/...` passes

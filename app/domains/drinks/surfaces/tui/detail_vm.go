@@ -10,12 +10,13 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/charmbracelet/lipgloss"
 )
 
 // DetailViewModel renders a drink detail pane.
 type DetailViewModel struct {
-	styles  ListViewStyles
+	styles  tui.ListViewStyles
 	width   int
 	height  int
 	drink   optional.Value[models.Drink]
@@ -23,7 +24,7 @@ type DetailViewModel struct {
 	queries *ingredientsqueries.Queries
 }
 
-func NewDetailViewModel(styles ListViewStyles, ctx *middleware.Context) *DetailViewModel {
+func NewDetailViewModel(styles tui.ListViewStyles, ctx *middleware.Context) *DetailViewModel {
 	return &DetailViewModel{
 		styles:  styles,
 		ctx:     ctx,

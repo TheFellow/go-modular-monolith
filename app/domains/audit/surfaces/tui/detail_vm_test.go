@@ -12,6 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
+	pkgtui "github.com/TheFellow/go-modular-monolith/pkg/tui"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -30,7 +31,7 @@ func TestDetailViewModel_ShowsEntryData(t *testing.T) {
 		Success:     true,
 	}
 
-	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
+	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]())
 	detail.SetSize(80, 40)
 	detail.SetEntry(optional.Some(entry))
 
@@ -57,7 +58,7 @@ func TestDetailViewModel_ShowsTouchedEntities(t *testing.T) {
 		Touches:   []cedar.EntityUID{touchA, touchB},
 	}
 
-	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
+	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]())
 	detail.SetEntry(optional.Some(entry))
 	detail.SetSize(80, 40)
 
@@ -68,7 +69,7 @@ func TestDetailViewModel_ShowsTouchedEntities(t *testing.T) {
 
 func TestDetailViewModel_NilEntry(t *testing.T) {
 	t.Parallel()
-	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
+	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]())
 	detail.SetEntry(optional.None[auditmodels.AuditEntry]())
 
 	view := detail.View()
@@ -85,7 +86,7 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 		Success:   true,
 	}
 
-	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
+	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]())
 	detail.SetEntry(optional.Some(entry))
 	detail.SetSize(20, 10)
 

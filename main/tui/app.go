@@ -18,6 +18,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
 const (
@@ -303,8 +304,8 @@ func (a *App) dashboardKeys() views.DashboardKeys {
 	}
 }
 
-func (a *App) drinksListStyles() drinksui.ListViewStyles {
-	return drinksui.ListViewStyles{
+func (a *App) drinksListStyles() tui.ListViewStyles {
+	return tui.ListViewStyles{
 		Title:       a.styles.Title,
 		Subtitle:    a.styles.Subtitle,
 		Muted:       a.styles.Unselected,
@@ -316,8 +317,8 @@ func (a *App) drinksListStyles() drinksui.ListViewStyles {
 	}
 }
 
-func (a *App) drinksListKeys() drinksui.ListViewKeys {
-	return drinksui.ListViewKeys{
+func (a *App) drinksListKeys() tui.ListViewKeys {
+	return tui.ListViewKeys{
 		Up:      a.keys.Up,
 		Down:    a.keys.Down,
 		Enter:   a.keys.Enter,
@@ -326,8 +327,8 @@ func (a *App) drinksListKeys() drinksui.ListViewKeys {
 	}
 }
 
-func (a *App) ingredientsListStyles() ingredientsui.ListViewStyles {
-	return ingredientsui.ListViewStyles{
+func (a *App) ingredientsListStyles() tui.ListViewStyles {
+	return tui.ListViewStyles{
 		Title:       a.styles.Title,
 		Subtitle:    a.styles.Subtitle,
 		Muted:       a.styles.Unselected,
@@ -339,8 +340,8 @@ func (a *App) ingredientsListStyles() ingredientsui.ListViewStyles {
 	}
 }
 
-func (a *App) ingredientsListKeys() ingredientsui.ListViewKeys {
-	return ingredientsui.ListViewKeys{
+func (a *App) ingredientsListKeys() tui.ListViewKeys {
+	return tui.ListViewKeys{
 		Up:      a.keys.Up,
 		Down:    a.keys.Down,
 		Enter:   a.keys.Enter,
@@ -349,8 +350,8 @@ func (a *App) ingredientsListKeys() ingredientsui.ListViewKeys {
 	}
 }
 
-func (a *App) inventoryListStyles() inventoryui.ListViewStyles {
-	return inventoryui.ListViewStyles{
+func (a *App) inventoryListStyles() tui.ListViewStyles {
+	return tui.ListViewStyles{
 		Title:       a.styles.Title,
 		Subtitle:    a.styles.Subtitle,
 		Muted:       a.styles.Unselected,
@@ -362,8 +363,8 @@ func (a *App) inventoryListStyles() inventoryui.ListViewStyles {
 	}
 }
 
-func (a *App) inventoryListKeys() inventoryui.ListViewKeys {
-	return inventoryui.ListViewKeys{
+func (a *App) inventoryListKeys() tui.ListViewKeys {
+	return tui.ListViewKeys{
 		Up:      a.keys.Up,
 		Down:    a.keys.Down,
 		Enter:   a.keys.Enter,
@@ -372,8 +373,8 @@ func (a *App) inventoryListKeys() inventoryui.ListViewKeys {
 	}
 }
 
-func (a *App) menusListStyles() menusui.ListViewStyles {
-	return menusui.ListViewStyles{
+func (a *App) menusListStyles() tui.ListViewStyles {
+	return tui.ListViewStyles{
 		Title:       a.styles.Title,
 		Subtitle:    a.styles.Subtitle,
 		Muted:       a.styles.Unselected,
@@ -385,8 +386,8 @@ func (a *App) menusListStyles() menusui.ListViewStyles {
 	}
 }
 
-func (a *App) menusListKeys() menusui.ListViewKeys {
-	return menusui.ListViewKeys{
+func (a *App) menusListKeys() tui.ListViewKeys {
+	return tui.ListViewKeys{
 		Up:      a.keys.Up,
 		Down:    a.keys.Down,
 		Enter:   a.keys.Enter,
@@ -395,8 +396,8 @@ func (a *App) menusListKeys() menusui.ListViewKeys {
 	}
 }
 
-func (a *App) ordersListStyles() ordersui.ListViewStyles {
-	return ordersui.ListViewStyles{
+func (a *App) ordersListStyles() tui.ListViewStyles {
+	return tui.ListViewStyles{
 		Title:       a.styles.Title,
 		Subtitle:    a.styles.Subtitle,
 		Muted:       a.styles.Unselected,
@@ -408,8 +409,8 @@ func (a *App) ordersListStyles() ordersui.ListViewStyles {
 	}
 }
 
-func (a *App) ordersListKeys() ordersui.ListViewKeys {
-	return ordersui.ListViewKeys{
+func (a *App) ordersListKeys() tui.ListViewKeys {
+	return tui.ListViewKeys{
 		Up:      a.keys.Up,
 		Down:    a.keys.Down,
 		Enter:   a.keys.Enter,
@@ -418,8 +419,8 @@ func (a *App) ordersListKeys() ordersui.ListViewKeys {
 	}
 }
 
-func (a *App) auditListStyles() auditui.ListViewStyles {
-	return auditui.ListViewStyles{
+func (a *App) auditListStyles() tui.ListViewStyles {
+	return tui.ListViewStyles{
 		Title:       a.styles.Title,
 		Subtitle:    a.styles.Subtitle,
 		Muted:       a.styles.Unselected,
@@ -431,8 +432,8 @@ func (a *App) auditListStyles() auditui.ListViewStyles {
 	}
 }
 
-func (a *App) auditListKeys() auditui.ListViewKeys {
-	return auditui.ListViewKeys{
+func (a *App) auditListKeys() tui.ListViewKeys {
+	return tui.ListViewKeys{
 		Up:      a.keys.Up,
 		Down:    a.keys.Down,
 		Enter:   a.keys.Enter,

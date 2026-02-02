@@ -7,19 +7,20 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/lipgloss"
 )
 
 // DetailViewModel renders an audit detail pane.
 type DetailViewModel struct {
-	styles ListViewStyles
+	styles tui.ListViewStyles
 	width  int
 	height int
 	entry  optional.Value[models.AuditEntry]
 }
 
-func NewDetailViewModel(styles ListViewStyles) *DetailViewModel {
+func NewDetailViewModel(styles tui.ListViewStyles) *DetailViewModel {
 	return &DetailViewModel{styles: styles}
 }
 

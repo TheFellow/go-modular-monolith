@@ -14,13 +14,14 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/govalues/decimal"
 )
 
 // DetailViewModel renders an order detail pane.
 type DetailViewModel struct {
-	styles       ListViewStyles
+	styles       tui.ListViewStyles
 	width        int
 	height       int
 	order        optional.Value[models.Order]
@@ -29,7 +30,7 @@ type DetailViewModel struct {
 	menuQueries  *menusqueries.Queries
 }
 
-func NewDetailViewModel(styles ListViewStyles, ctx *middleware.Context) *DetailViewModel {
+func NewDetailViewModel(styles tui.ListViewStyles, ctx *middleware.Context) *DetailViewModel {
 	return &DetailViewModel{
 		styles:       styles,
 		ctx:          ctx,

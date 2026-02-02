@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
 type orderItem struct {
@@ -13,7 +14,7 @@ type orderItem struct {
 	displayID   string
 }
 
-func newOrderItem(order models.Order, menuName string, styles ListViewStyles) orderItem {
+func newOrderItem(order models.Order, menuName string, styles tui.ListViewStyles) orderItem {
 	status := orderStatusBadge(order.Status, styles)
 	description := fmt.Sprintf("%s | %s | %d items", status, menuName, len(order.Items))
 	return orderItem{

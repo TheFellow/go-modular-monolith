@@ -5,18 +5,19 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/charmbracelet/lipgloss"
 )
 
 // DetailViewModel renders an inventory detail pane.
 type DetailViewModel struct {
-	styles ListViewStyles
+	styles tui.ListViewStyles
 	width  int
 	height int
 	row    optional.Value[InventoryRow]
 }
 
-func NewDetailViewModel(styles ListViewStyles) *DetailViewModel {
+func NewDetailViewModel(styles tui.ListViewStyles) *DetailViewModel {
 	return &DetailViewModel{styles: styles}
 }
 

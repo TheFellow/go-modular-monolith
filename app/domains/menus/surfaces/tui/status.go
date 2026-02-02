@@ -6,6 +6,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -22,7 +23,7 @@ func menuStatusLabel(status models.MenuStatus) string {
 	}
 }
 
-func menuStatusStyle(status models.MenuStatus, styles ListViewStyles) lipgloss.Style {
+func menuStatusStyle(status models.MenuStatus, styles tui.ListViewStyles) lipgloss.Style {
 	switch status {
 	case models.MenuStatusDraft:
 		return styles.WarningText
@@ -35,7 +36,7 @@ func menuStatusStyle(status models.MenuStatus, styles ListViewStyles) lipgloss.S
 	}
 }
 
-func menuStatusBadge(status models.MenuStatus, styles ListViewStyles) string {
+func menuStatusBadge(status models.MenuStatus, styles tui.ListViewStyles) string {
 	label := menuStatusLabel(status)
 	style := menuStatusStyle(status, styles)
 	return components.NewBadge(label, style).View()

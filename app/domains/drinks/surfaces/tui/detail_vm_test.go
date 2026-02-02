@@ -11,6 +11,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
+	pkgtui "github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
 func TestDetailViewModel_ShowsDrinkData(t *testing.T) {
@@ -46,7 +47,7 @@ func TestDetailViewModel_ShowsDrinkData(t *testing.T) {
 	})
 
 	detail := tui.NewDetailViewModel(
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
 		f.OwnerContext(),
 	)
 	detail.SetSize(80, 40)
@@ -68,7 +69,7 @@ func TestDetailViewModel_NilDrink(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	detail := tui.NewDetailViewModel(
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
 		f.OwnerContext(),
 	)
 	detail.SetDrink(optional.None[drinksmodels.Drink]())
@@ -95,7 +96,7 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 	})
 
 	detail := tui.NewDetailViewModel(
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
 		f.OwnerContext(),
 	)
 	detail.SetDrink(optional.Some(*drink))

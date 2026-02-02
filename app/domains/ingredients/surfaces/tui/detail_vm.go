@@ -5,18 +5,19 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/charmbracelet/lipgloss"
 )
 
 // DetailViewModel renders an ingredient detail pane.
 type DetailViewModel struct {
-	styles     ListViewStyles
+	styles     tui.ListViewStyles
 	width      int
 	height     int
 	ingredient optional.Value[models.Ingredient]
 }
 
-func NewDetailViewModel(styles ListViewStyles) *DetailViewModel {
+func NewDetailViewModel(styles tui.ListViewStyles) *DetailViewModel {
 	return &DetailViewModel{styles: styles}
 }
 

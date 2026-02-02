@@ -14,6 +14,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,33 +26,12 @@ const (
 	inventoryColumnGap = 1
 )
 
-// ListViewStyles contains styles needed by the inventory list view.
-type ListViewStyles struct {
-	Title       lipgloss.Style
-	Subtitle    lipgloss.Style
-	Muted       lipgloss.Style
-	Selected    lipgloss.Style
-	ListPane    lipgloss.Style
-	DetailPane  lipgloss.Style
-	ErrorText   lipgloss.Style
-	WarningText lipgloss.Style
-}
-
-// ListViewKeys contains key bindings needed by the inventory list view.
-type ListViewKeys struct {
-	Up      key.Binding
-	Down    key.Binding
-	Enter   key.Binding
-	Refresh key.Binding
-	Back    key.Binding
-}
-
 // ListViewModel renders the inventory list and detail panes.
 type ListViewModel struct {
 	app    *app.App
 	ctx    *middleware.Context
-	styles ListViewStyles
-	keys   ListViewKeys
+	styles tui.ListViewStyles
+	keys   tui.ListViewKeys
 
 	inventoryQueries  *inventoryqueries.Queries
 	ingredientQueries *ingredientsqueries.Queries
@@ -67,7 +47,7 @@ type ListViewModel struct {
 	detailWidth       int
 }
 
-func NewListViewModel(app *app.App, ctx *middleware.Context, styles ListViewStyles, keys ListViewKeys) *ListViewModel {
+func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys) *ListViewModel {
 	columns := inventoryColumns(0)
 	model := table.New(
 		table.WithColumns(columns),
@@ -278,7 +258,7 @@ func inventoryColumns(width int) []table.Column {
 	}
 }
 
-func inventoryTableStyles(styles ListViewStyles) table.Styles {
+func inventoryTableStyles(styles tui.ListViewStyles) table.Styles {
 	tableStyles := table.DefaultStyles()
 	tableStyles.Header = styles.Subtitle.Bold(true).PaddingRight(inventoryColumnGap)
 	tableStyles.Cell = lipgloss.NewStyle().PaddingRight(inventoryColumnGap)
@@ -286,7 +266,7 @@ func inventoryTableStyles(styles ListViewStyles) table.Styles {
 	return tableStyles
 }
 
-func buildInventoryTableRows(rows []InventoryRow, styles ListViewStyles) []table.Row {
+func buildInventoryTableRows(rows []InventoryRow, styles tui.ListViewStyles) []table.Row {
 	out := make([]table.Row, 0, len(rows))
 	for _, row := range rows {
 		status := renderStatus(row.Status, styles)
@@ -301,7 +281,7 @@ func buildInventoryTableRows(rows []InventoryRow, styles ListViewStyles) []table
 	return out
 }
 
-func renderStatus(status string, styles ListViewStyles) string {
+func renderStatus(status string, styles tui.ListViewStyles) string {
 	switch status {
 	case "OUT":
 		return styles.ErrorText.Render(status)
