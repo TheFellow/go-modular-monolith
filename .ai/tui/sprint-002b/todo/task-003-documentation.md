@@ -1,8 +1,9 @@
-# Task 003: Documentation and Testing
+# Task 003: Fresh Logger per Middleware Call + Documentation and Testing
 
 ## Goal
 
-Verify the logging functionality works correctly and document its usage.
+Ensure each command/query uses a fresh logger (so log attributes do not accumulate in long-running TUI sessions), then
+verify logging functionality and document usage.
 
 ## Files to Modify/Create
 
@@ -10,7 +11,12 @@ Verify the logging functionality works correctly and document its usage.
 
 ## Implementation
 
-### 1. Manual Testing
+### 1. Fresh logger per middleware call
+
+Reset the context logger to the root logger at the start of each middleware invocation, then attach per-call attributes
+like action/resource. This prevents cross-command attribute accumulation in the TUI.
+
+### 2. Manual Testing
 
 Test the following scenarios:
 
@@ -56,14 +62,14 @@ mixology --tui --log-file /nonexistent/path/debug.log
 mixology --tui --log-file /etc/debug.log
 ```
 
-### 2. Verify Existing Tests Pass
+### 3. Verify Existing Tests Pass
 
 ```bash
 go test ./main/cli/...
 go test ./...
 ```
 
-### 3. Verify Help Text
+### 4. Verify Help Text
 
 ```bash
 mixology --help
@@ -80,11 +86,12 @@ mixology --help
 
 ## Checklist
 
+- [x] Each command/query starts with a fresh logger in middleware
 - [ ] TUI with `--log-file` works, logs appear in file
 - [ ] CLI with `--log-file` works
 - [ ] Environment variable `MIXOLOGY_LOG_FILE` works
 - [ ] Combined options (`--log-level`, `--log-format`) work with `--log-file`
 - [ ] Invalid file paths produce clear error messages
 - [ ] Help text shows the new flag
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes

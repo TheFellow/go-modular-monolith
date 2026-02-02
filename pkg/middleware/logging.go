@@ -11,6 +11,7 @@ import (
 
 func CommandLogging() CommandMiddleware {
 	return func(ctx *Context, action cedar.EntityUID, next CommandNext) error {
+		ctx.Context = log.ResetLogger(ctx.Context)
 		ctx.Context = log.WithLogAttrs(ctx.Context, log.Action(action))
 
 		logger := log.FromContext(ctx)
@@ -39,6 +40,7 @@ func CommandLogging() CommandMiddleware {
 
 func QueryLogging() QueryMiddleware {
 	return func(ctx *Context, action cedar.EntityUID, next QueryNext) error {
+		ctx.Context = log.ResetLogger(ctx.Context)
 		ctx.Context = log.WithLogAttrs(ctx.Context, log.Action(action))
 
 		logger := log.FromContext(ctx)
@@ -62,6 +64,7 @@ func QueryLogging() QueryMiddleware {
 
 func QueryWithResourceLogging() QueryWithResourceMiddleware {
 	return func(ctx *Context, action cedar.EntityUID, resource cedar.Entity, next QueryWithResourceNext) error {
+		ctx.Context = log.ResetLogger(ctx.Context)
 		ctx.Context = log.WithLogAttrs(ctx.Context, log.Action(action), log.Resource(resource.UID))
 
 		logger := log.FromContext(ctx)
