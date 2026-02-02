@@ -97,7 +97,7 @@ type ConfirmDialog struct {
 | Task | Description                                                                           | Status  |
 |------|---------------------------------------------------------------------------------------|---------|
 | 001  | [Form Infrastructure](done/task-001-form-infrastructure.md)                           | Done    |
-| 002  | [Confirmation Dialog](todo/task-002-confirm-dialog.md)                                | Pending |
+| 002  | [Confirmation Dialog](done/task-002-confirm-dialog.md)                                | Done    |
 | 003  | [Main TUI Form Styles](todo/task-003-main-tui-form-styles.md)                         | Pending |
 | 004  | [Ingredient Create Form](todo/task-004-ingredient-create-form.md)                     | Pending |
 | 005  | [Ingredient Edit/Delete](todo/task-005-ingredient-edit-delete.md)                     | Pending |

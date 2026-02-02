@@ -139,10 +139,10 @@ The dialog renders as a centered modal:
 
 ## Checklist
 
-- [ ] Create `pkg/tui/dialog/` directory
-- [ ] Implement `confirm.go` with ConfirmDialog
-- [ ] Implement `styles.go` with DialogStyles
-- [ ] Implement `keys.go` with DialogKeys
-- [ ] Add tests for keyboard navigation and message sending
-- [ ] `go build ./pkg/tui/dialog/...` passes
-- [ ] `go test ./pkg/tui/dialog/...` passes
+- [x] Create `pkg/tui/dialog/` directory
+- [x] Implement `confirm.go` with ConfirmDialog
+- [x] Implement `styles.go` with DialogStyles
+- [x] Implement `keys.go` with DialogKeys
+- [x] Add tests for keyboard navigation and message sending
+- [x] `go build ./pkg/tui/dialog/...` passes
+- [x] `go test ./pkg/tui/dialog/...` passes
