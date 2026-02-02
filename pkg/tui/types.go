@@ -19,15 +19,17 @@ type ListViewStyles struct {
 
 // ListViewKeys contains key bindings needed by domain list ViewModels.
 type ListViewKeys struct {
-	Up      key.Binding
-	Down    key.Binding
-	Enter   key.Binding
-	Refresh key.Binding
-	Back    key.Binding
-	Create  key.Binding
-	Edit    key.Binding
-	Delete  key.Binding
-	Adjust  key.Binding
-	Set     key.Binding
-	Publish key.Binding
+	Up          key.Binding
+	Down        key.Binding
+	Enter       key.Binding
+	Refresh     key.Binding
+	Back        key.Binding
+	Create      key.Binding
+	Edit        key.Binding
+	Delete      key.Binding
+	Adjust      key.Binding
+	Set         key.Binding
+	Publish     key.Binding
+	Complete    key.Binding
+	CancelOrder key.Binding
 }

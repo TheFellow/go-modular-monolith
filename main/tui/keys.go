@@ -18,16 +18,18 @@ type KeyMap struct {
 	Nav6 key.Binding // Audit
 
 	// List navigation (used by list views)
-	Up      key.Binding
-	Down    key.Binding
-	Enter   key.Binding
-	Refresh key.Binding
-	Create  key.Binding
-	Edit    key.Binding
-	Delete  key.Binding
-	Adjust  key.Binding
-	Set     key.Binding
-	Publish key.Binding
+	Up          key.Binding
+	Down        key.Binding
+	Enter       key.Binding
+	Refresh     key.Binding
+	Create      key.Binding
+	Edit        key.Binding
+	Delete      key.Binding
+	Adjust      key.Binding
+	Set         key.Binding
+	Publish     key.Binding
+	Complete    key.Binding
+	CancelOrder key.Binding
 
 	// Form keys
 	NextField key.Binding
@@ -109,6 +111,14 @@ func NewKeyMap() KeyMap {
 		Publish: key.NewBinding(
 			key.WithKeys("p"),
 			key.WithHelp("p", "publish"),
+		),
+		Complete: key.NewBinding(
+			key.WithKeys("o"),
+			key.WithHelp("o", "complete"),
+		),
+		CancelOrder: key.NewBinding(
+			key.WithKeys("x"),
+			key.WithHelp("x", "cancel order"),
 		),
 		Adjust: key.NewBinding(
 			key.WithKeys("a"),

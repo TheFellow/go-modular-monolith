@@ -15,6 +15,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -28,14 +29,21 @@ type ListViewModel struct {
 	styles tui.ListViewStyles
 	keys   tui.ListViewKeys
 
+	dialogStyles dialog.DialogStyles
+	dialogKeys   dialog.DialogKeys
+
 	ordersQueries *queries.Queries
 	menuQueries   *menusqueries.Queries
 
 	list    list.Model
 	detail  *DetailViewModel
+	dialog  *dialog.ConfirmDialog
 	spinner components.Spinner
 	loading bool
 	err     error
+
+	completeTarget *ordersmodels.Order
+	cancelTarget   *ordersmodels.Order
 
 	width       int
 	height      int
@@ -43,7 +51,7 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys) *ListViewModel {
+func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys, dialogStyles dialog.DialogStyles, dialogKeys dialog.DialogKeys) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
 	delegate.Styles.SelectedTitle = styles.Selected
@@ -61,6 +69,8 @@ func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListView
 		ctx:           ctx,
 		styles:        styles,
 		keys:          keys,
+		dialogStyles:  dialogStyles,
+		dialogKeys:    dialogKeys,
 		ordersQueries: queries.New(),
 		menuQueries:   menusqueries.New(),
 		list:          l,
@@ -80,13 +90,75 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
+		if m.dialog != nil {
+			m.dialog.SetWidth(m.width)
+		}
+		return m, nil
+	case OrderCompletedMsg:
+		m.dialog = nil
+		m.completeTarget = nil
+		m.loading = true
+		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadOrders())
+	case OrderCancelledMsg:
+		m.dialog = nil
+		m.cancelTarget = nil
+		m.loading = true
+		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadOrders())
+	case CompleteErrorMsg:
+		m.dialog = nil
+		m.completeTarget = nil
+		m.err = msg.Err
+		return m, nil
+	case CancelErrorMsg:
+		m.dialog = nil
+		m.cancelTarget = nil
+		m.err = msg.Err
+		return m, nil
+	case showCompleteDialogMsg:
+		m.dialog = msg.dialog
+		m.completeTarget = &msg.target
+		m.cancelTarget = nil
+		if m.dialog != nil {
+			m.dialog.SetWidth(m.width)
+		}
+		return m, nil
+	case showCancelDialogMsg:
+		m.dialog = msg.dialog
+		m.cancelTarget = &msg.target
+		m.completeTarget = nil
+		if m.dialog != nil {
+			m.dialog.SetWidth(m.width)
+		}
+		return m, nil
+	case dialog.ConfirmMsg:
+		m.dialog = nil
+		if m.completeTarget != nil {
+			return m, m.performComplete()
+		}
+		if m.cancelTarget != nil {
+			return m, m.performCancel()
+		}
+		return m, nil
+	case dialog.CancelMsg:
+		m.dialog = nil
+		m.completeTarget = nil
+		m.cancelTarget = nil
 		return m, nil
 	case tea.KeyMsg:
+		if m.dialog != nil {
+			break
+		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
 			m.loading = true
 			m.err = nil
 			return m, tea.Batch(m.spinner.Init(), m.loadOrders())
+		case key.Matches(msg, m.keys.Complete):
+			return m, m.startComplete()
+		case key.Matches(msg, m.keys.CancelOrder):
+			return m, m.startCancel()
 		}
 	case OrdersLoadedMsg:
 		m.loading = false
@@ -103,6 +175,12 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.list.SetItems(items)
 		m.syncDetail()
 		return m, nil
+	}
+
+	if m.dialog != nil {
+		var cmd tea.Cmd
+		m.dialog, cmd = m.dialog.Update(msg)
+		return m, cmd
 	}
 
 	if m.loading {
@@ -122,6 +200,14 @@ func (m *ListViewModel) View() string {
 		return m.renderLoading()
 	}
 
+	if m.dialog != nil {
+		dialogView := m.dialog.View()
+		if m.width > 0 && m.height > 0 {
+			return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialogView)
+		}
+		return dialogView
+	}
+
 	listView := m.list.View()
 	if m.err != nil {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
@@ -135,12 +221,22 @@ func (m *ListViewModel) View() string {
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Refresh, m.keys.Back}
+	if m.dialog != nil {
+		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
+	}
+	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Complete, m.keys.CancelOrder, m.keys.Refresh, m.keys.Back}
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
+	if m.dialog != nil {
+		return [][]key.Binding{
+			{m.dialogKeys.Confirm, m.keys.Back},
+			{m.dialogKeys.Switch},
+		}
+	}
 	return [][]key.Binding{
 		{m.keys.Up, m.keys.Down, m.keys.Enter},
+		{m.keys.Complete, m.keys.CancelOrder},
 		{m.keys.Refresh, m.keys.Back},
 	}
 }
@@ -162,6 +258,125 @@ func (m *ListViewModel) loadOrders() tea.Cmd {
 
 		return OrdersLoadedMsg{Orders: orders}
 	}
+}
+
+type showCompleteDialogMsg struct {
+	dialog *dialog.ConfirmDialog
+	target ordersmodels.Order
+}
+
+type showCancelDialogMsg struct {
+	dialog *dialog.ConfirmDialog
+	target ordersmodels.Order
+}
+
+func (m *ListViewModel) startComplete() tea.Cmd {
+	order := m.selectedOrder()
+	if order == nil {
+		return nil
+	}
+	return m.showCompleteConfirm(order)
+}
+
+func (m *ListViewModel) showCompleteConfirm(order *ordersmodels.Order) tea.Cmd {
+	if order == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		switch order.Status {
+		case ordersmodels.OrderStatusCompleted:
+			return CompleteErrorMsg{Err: errors.Invalidf("order is already completed")}
+		case ordersmodels.OrderStatusCancelled:
+			return CompleteErrorMsg{Err: errors.Invalidf("cannot complete a cancelled order")}
+		}
+		message := fmt.Sprintf(
+			"Complete order #%s?\n\n%d item(s) will be marked as served.\nInventory will be decremented accordingly.",
+			truncateID(order.ID.String()),
+			len(order.Items),
+		)
+		confirm := dialog.NewConfirmDialog(
+			"Complete Order",
+			message,
+			dialog.WithConfirmText("Complete"),
+			dialog.WithStyles(m.dialogStyles),
+			dialog.WithKeys(m.dialogKeys),
+		)
+		return showCompleteDialogMsg{dialog: confirm, target: *order}
+	}
+}
+
+func (m *ListViewModel) performComplete() tea.Cmd {
+	if m.completeTarget == nil {
+		return nil
+	}
+	target := m.completeTarget
+	return func() tea.Msg {
+		updated, err := m.app.Orders.Complete(m.ctx, &ordersmodels.Order{ID: target.ID})
+		if err != nil {
+			return CompleteErrorMsg{Err: err}
+		}
+		return OrderCompletedMsg{Order: updated}
+	}
+}
+
+func (m *ListViewModel) startCancel() tea.Cmd {
+	order := m.selectedOrder()
+	if order == nil {
+		return nil
+	}
+	return m.showCancelConfirm(order)
+}
+
+func (m *ListViewModel) showCancelConfirm(order *ordersmodels.Order) tea.Cmd {
+	if order == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		switch order.Status {
+		case ordersmodels.OrderStatusCompleted:
+			return CancelErrorMsg{Err: errors.Invalidf("cannot cancel a completed order")}
+		case ordersmodels.OrderStatusCancelled:
+			return CancelErrorMsg{Err: errors.Invalidf("order is already cancelled")}
+		}
+		message := fmt.Sprintf(
+			"Cancel order #%s?\n\nThis order has %d item(s).\nNo inventory changes will be made.",
+			truncateID(order.ID.String()),
+			len(order.Items),
+		)
+		confirm := dialog.NewConfirmDialog(
+			"Cancel Order",
+			message,
+			dialog.WithDangerous(),
+			dialog.WithFocusCancel(),
+			dialog.WithConfirmText("Cancel Order"),
+			dialog.WithStyles(m.dialogStyles),
+			dialog.WithKeys(m.dialogKeys),
+		)
+		return showCancelDialogMsg{dialog: confirm, target: *order}
+	}
+}
+
+func (m *ListViewModel) performCancel() tea.Cmd {
+	if m.cancelTarget == nil {
+		return nil
+	}
+	target := m.cancelTarget
+	return func() tea.Msg {
+		updated, err := m.app.Orders.Cancel(m.ctx, &ordersmodels.Order{ID: target.ID})
+		if err != nil {
+			return CancelErrorMsg{Err: err}
+		}
+		return OrderCancelledMsg{Order: updated}
+	}
+}
+
+func (m *ListViewModel) selectedOrder() *ordersmodels.Order {
+	item, ok := m.list.SelectedItem().(orderItem)
+	if !ok {
+		return nil
+	}
+	order := item.order
+	return &order
 }
 
 func (m *ListViewModel) renderLoading() string {

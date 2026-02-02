@@ -62,10 +62,10 @@ output either corrupts the display or is hidden.
 
 ## Tasks
 
-| Task | Description                                 | Status  |
-|------|---------------------------------------------|---------|
-| 001  | [Add --log-file flag](todo/task-001-log-file-flag.md) | Pending |
-| 002  | [Add file cleanup](todo/task-002-file-cleanup.md)     | Pending |
+| Task | Description                                                 | Status  |
+|------|-------------------------------------------------------------|---------|
+| 001  | [Add --log-file flag](todo/task-001-log-file-flag.md)       | Pending |
+| 002  | [Add file cleanup](todo/task-002-file-cleanup.md)           | Pending |
 | 003  | [Documentation and testing](todo/task-003-documentation.md) | Pending |
 
 ### Task Dependencies

@@ -104,7 +104,7 @@ type ConfirmDialog struct {
 | 006  | [Drinks CRUD](done/task-006-drinks-crud.md)                                           | Done    |
 | 007  | [Inventory Operations](done/task-007-inventory-operations.md)                         | Done    |
 | 008  | [Menu Operations](done/task-008-menu-operations.md)                                   | Done    |
-| 009  | [Order Operations](todo/task-009-order-operations.md)                                 | Pending |
+| 009  | [Order Operations](done/task-009-order-operations.md)                                 | Done    |
 
 ### Task Dependencies
 

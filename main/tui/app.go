@@ -203,7 +203,14 @@ func (a *App) currentViewModel() views.ViewModel {
 			DialogKeysFrom(a.keys),
 		)
 	case ViewOrders:
-		vm = ordersui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
+		vm = ordersui.NewListViewModel(
+			a.app,
+			a.ctx,
+			ListViewStylesFrom(a.styles),
+			ListViewKeysFrom(a.keys),
+			DialogStylesFrom(a.styles),
+			DialogKeysFrom(a.keys),
+		)
 	case ViewAudit:
 		vm = auditui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
 	default:

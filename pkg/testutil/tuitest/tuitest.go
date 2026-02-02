@@ -24,17 +24,19 @@ type listViewStyles interface {
 
 type listViewKeys interface {
 	~struct {
-		Up      key.Binding
-		Down    key.Binding
-		Enter   key.Binding
-		Refresh key.Binding
-		Back    key.Binding
-		Create  key.Binding
-		Edit    key.Binding
-		Delete  key.Binding
-		Adjust  key.Binding
-		Set     key.Binding
-		Publish key.Binding
+		Up          key.Binding
+		Down        key.Binding
+		Enter       key.Binding
+		Refresh     key.Binding
+		Back        key.Binding
+		Create      key.Binding
+		Edit        key.Binding
+		Delete      key.Binding
+		Adjust      key.Binding
+		Set         key.Binding
+		Publish     key.Binding
+		Complete    key.Binding
+		CancelOrder key.Binding
 	}
 }
 
@@ -55,17 +57,19 @@ func DefaultListViewStyles[T listViewStyles]() T {
 // DefaultListViewKeys returns key bindings for view model tests.
 func DefaultListViewKeys[T listViewKeys]() T {
 	return T{
-		Up:      key.NewBinding(key.WithKeys("up")),
-		Down:    key.NewBinding(key.WithKeys("down")),
-		Enter:   key.NewBinding(key.WithKeys("enter")),
-		Refresh: key.NewBinding(key.WithKeys("r")),
-		Back:    key.NewBinding(key.WithKeys("esc")),
-		Create:  key.NewBinding(key.WithKeys("c")),
-		Edit:    key.NewBinding(key.WithKeys("e")),
-		Delete:  key.NewBinding(key.WithKeys("d")),
-		Adjust:  key.NewBinding(key.WithKeys("a")),
-		Set:     key.NewBinding(key.WithKeys("s")),
-		Publish: key.NewBinding(key.WithKeys("p")),
+		Up:          key.NewBinding(key.WithKeys("up")),
+		Down:        key.NewBinding(key.WithKeys("down")),
+		Enter:       key.NewBinding(key.WithKeys("enter")),
+		Refresh:     key.NewBinding(key.WithKeys("r")),
+		Back:        key.NewBinding(key.WithKeys("esc")),
+		Create:      key.NewBinding(key.WithKeys("c")),
+		Edit:        key.NewBinding(key.WithKeys("e")),
+		Delete:      key.NewBinding(key.WithKeys("d")),
+		Adjust:      key.NewBinding(key.WithKeys("a")),
+		Set:         key.NewBinding(key.WithKeys("s")),
+		Publish:     key.NewBinding(key.WithKeys("p")),
+		Complete:    key.NewBinding(key.WithKeys("o")),
+		CancelOrder: key.NewBinding(key.WithKeys("x")),
 	}
 }
 

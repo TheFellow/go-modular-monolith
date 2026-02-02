@@ -245,33 +245,33 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 ## Checklist
 
 ### Key Infrastructure
-- [ ] Add `Complete` binding (`o` key) to `main/tui/keys.go` KeyMap
-- [ ] Add `CancelOrder` binding (`x` key) to `main/tui/keys.go` KeyMap
-- [ ] Add `Complete` and `CancelOrder` to `pkg/tui/types.go` ListViewKeys
-- [ ] Add `Complete` and `CancelOrder` mappings to `main/tui/viewmodel_types.go` ListViewKeysFrom()
+- [x] Add `Complete` binding (`o` key) to `main/tui/keys.go` KeyMap
+- [x] Add `CancelOrder` binding (`x` key) to `main/tui/keys.go` KeyMap
+- [x] Add `Complete` and `CancelOrder` to `pkg/tui/types.go` ListViewKeys
+- [x] Add `Complete` and `CancelOrder` mappings to `main/tui/viewmodel_types.go` ListViewKeysFrom()
 
 ### App Initialization
-- [ ] Update `main/tui/app.go` ViewOrders case to pass DialogStyles, DialogKeys
+- [x] Update `main/tui/app.go` ViewOrders case to pass DialogStyles, DialogKeys
 
 ### List ViewModel Updates
-- [ ] Add `dialog` state field to ListViewModel
-- [ ] Add `dialogKeys` field to ListViewModel
-- [ ] Update constructor signature to accept DialogKeys/DialogStyles
-- [ ] Add `o` → complete handler with status validation
-- [ ] Add `x` → cancel handler with status validation
-- [ ] Handle dialog escape with Back key
-- [ ] Delegate updates to active dialog
-- [ ] Center dialog in View()
-- [ ] Update ShortHelp() for dialog/list modes
-- [ ] Update FullHelp() for dialog/list modes
-- [ ] Show error messages for invalid status transitions
+- [x] Add `dialog` state field to ListViewModel
+- [x] Add `dialogKeys` field to ListViewModel
+- [x] Update constructor signature to accept DialogKeys/DialogStyles
+- [x] Add `o` → complete handler with status validation
+- [x] Add `x` → cancel handler with status validation
+- [x] Handle dialog escape with Back key
+- [x] Delegate updates to active dialog
+- [x] Center dialog in View()
+- [x] Update ShortHelp() for dialog/list modes
+- [x] Update FullHelp() for dialog/list modes
+- [x] Show error messages for invalid status transitions
 
 ### Messages
-- [ ] Add `OrderCompletedMsg` and `OrderCancelledMsg` messages
-- [ ] Handle completion success → refresh list
-- [ ] Handle cancellation success → refresh list
+- [x] Add `OrderCompletedMsg` and `OrderCancelledMsg` messages
+- [x] Handle completion success → refresh list
+- [x] Handle cancellation success → refresh list
 
 ### Verification
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes
 - [ ] Manual testing: complete and cancel orders
