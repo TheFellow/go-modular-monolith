@@ -4,9 +4,9 @@ This index tracks all TUI-related sprints for the Bubble Tea interactive termina
 
 ## Active Sprints
 
-| Sprint                                 | Description      | Tasks                            |
-|----------------------------------------|------------------|----------------------------------|
-| [sprint-002b](sprint-002b/task.md)     | TUI File Logging | [Tasks](sprint-002b/todo/)       |
+| Sprint | Description | Tasks |
+|--------|-------------|-------|
+| (none) | | |
 
 ## Planned Sprints
 
@@ -18,9 +18,10 @@ This index tracks all TUI-related sprints for the Bubble Tea interactive termina
 
 ## Completed Sprints
 
-| Sprint                             | Description                  | Summary                              |
-|------------------------------------|------------------------------|--------------------------------------|
-| [sprint-003](sprint-003/task.md)   | CRUD Operations              | [Summary](sprint-003/summary.md)     |
+| Sprint                               | Description                  | Summary                              |
+|--------------------------------------|------------------------------|--------------------------------------|
+| [sprint-003](sprint-003/task.md)     | CRUD Operations              | [Summary](sprint-003/summary.md)     |
+| [sprint-002b](sprint-002b/task.md)   | TUI File Logging             | [Summary](sprint-002b/summary.md)    |
 | [sprint-002c](sprint-002c/task.md) | TUI Refactoring              | [Summary](sprint-002c/summary.md)    |
 | [sprint-002](sprint-002/task.md)   | Read-Only Views              | [Summary](sprint-002/summary.md)     |
 | [sprint-001](sprint-001/task.md)   | TUI Foundation & Scaffolding | [Summary](sprint-001/summary.md)     |
