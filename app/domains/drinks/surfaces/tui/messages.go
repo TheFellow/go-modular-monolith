@@ -7,3 +7,13 @@ type DrinksLoadedMsg struct {
 	Drinks []models.Drink
 	Err    error
 }
+
+// DrinkDeletedMsg is sent when a drink has been deleted.
+type DrinkDeletedMsg struct {
+	Drink *models.Drink
+}
+
+// DeleteErrorMsg is sent when delete fails.
+type DeleteErrorMsg struct {
+	Err error
+}

@@ -150,13 +150,13 @@ Same pattern as ingredients:
 
 ## Checklist
 
-- [ ] Create `create_vm.go` with CreateDrinkVM
-- [ ] Create `edit_vm.go` with EditDrinkVM
-- [ ] Add DrinkCategory and GlassType select options
-- [ ] Add `c`/`e`/`d` key handlers in list_vm.go
-- [ ] Implement cascade warning query (menu count)
-- [ ] Show ConfirmDialog for delete
-- [ ] Add `DrinkCreatedMsg`, `DrinkUpdatedMsg`, `DrinkDeletedMsg` messages
-- [ ] Wire up form navigation in parent
-- [ ] `go build ./app/domains/drinks/surfaces/tui/...` passes
+- [x] Create `create_vm.go` with CreateDrinkVM
+- [x] Create `edit_vm.go` with EditDrinkVM
+- [x] Add DrinkCategory and GlassType select options
+- [x] Add `c`/`e`/`d` key handlers in list_vm.go
+- [x] Implement cascade warning query (menu count)
+- [x] Show ConfirmDialog for delete
+- [x] Add `DrinkCreatedMsg`, `DrinkUpdatedMsg`, `DrinkDeletedMsg` messages
+- [x] Wire up form navigation in parent
+- [x] `go build ./app/domains/drinks/surfaces/tui/...` passes
 - [ ] Manual testing: create/edit/delete drink

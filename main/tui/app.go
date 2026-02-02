@@ -161,7 +161,16 @@ func (a *App) currentViewModel() views.ViewModel {
 	case ViewDashboard:
 		vm = views.NewDashboard(a.app, a.ctx, a.dashboardStyles(), a.dashboardKeys())
 	case ViewDrinks:
-		vm = drinksui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
+		vm = drinksui.NewListViewModel(
+			a.app,
+			a.ctx,
+			ListViewStylesFrom(a.styles),
+			ListViewKeysFrom(a.keys),
+			FormStylesFrom(a.styles),
+			FormKeysFrom(a.keys),
+			DialogStylesFrom(a.styles),
+			DialogKeysFrom(a.keys),
+		)
 	case ViewIngredients:
 		vm = ingredientsui.NewListViewModel(
 			a.app,
