@@ -14,7 +14,6 @@ Address architectural issues discovered during sprint-002 implementation to main
 - Remove duplicate struct definitions across domains
 - Remove boilerplate mapping methods from app.go
 - Re-export `ListFilter` from queries packages
-- Implement ViewModel registry pattern
 - Add batch ingredient lookup to fix N+1 queries
 
 **Out of Scope:**
@@ -68,9 +67,8 @@ Drinks detail and inventory list fetch ingredients one at a time.
 | 002  | [Update domains to use shared types](done/task-002-domain-shared-types.md) | Done    |
 | 003  | [Remove app.go boilerplate](done/task-003-remove-boilerplate.md)           | Done    |
 | 004  | [Re-export ListFilter from queries](done/task-004-reexport-filters.md)     | Done    |
-| 005  | [Implement ViewModel registry](todo/task-005-viewmodel-registry.md)        | Pending |
-| 006  | [Add batch ingredient lookup](todo/task-006-batch-ingredients.md)          | Pending |
-| 007  | [Update tests](todo/task-007-update-tests.md)                              | Pending |
+| 005  | [Add batch ingredient lookup](todo/task-005-batch-ingredients.md)          | Pending |
+| 006  | [Update tests](todo/task-006-update-tests.md)                              | Pending |
 
 ---
 
@@ -79,8 +77,6 @@ Drinks detail and inventory list fetch ingredients one at a time.
 - [ ] `ListViewStyles`/`ListViewKeys` defined once in `pkg/tui/`
 - [ ] Zero duplicate struct definitions across domains
 - [ ] `ListFilter` re-exported from `queries` package (no `internal/dao` imports in TUI surfaces)
-- [ ] app.go uses registry pattern, no domain imports
-- [ ] Adding a new domain doesn't require modifying app.go
 - [ ] Ingredient lookups are batched (1 query for N ingredients)
 - [ ] `go build ./...` passes
 - [ ] `go test ./...` passes
