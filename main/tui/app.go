@@ -18,7 +18,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
 const (
@@ -162,17 +161,17 @@ func (a *App) currentViewModel() views.ViewModel {
 	case ViewDashboard:
 		vm = views.NewDashboard(a.app, a.ctx, a.dashboardStyles(), a.dashboardKeys())
 	case ViewDrinks:
-		vm = drinksui.NewListViewModel(a.app, a.ctx, a.drinksListStyles(), a.drinksListKeys())
+		vm = drinksui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
 	case ViewIngredients:
-		vm = ingredientsui.NewListViewModel(a.app, a.ctx, a.ingredientsListStyles(), a.ingredientsListKeys())
+		vm = ingredientsui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
 	case ViewInventory:
-		vm = inventoryui.NewListViewModel(a.app, a.ctx, a.inventoryListStyles(), a.inventoryListKeys())
+		vm = inventoryui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
 	case ViewMenus:
-		vm = menusui.NewListViewModel(a.app, a.ctx, a.menusListStyles(), a.menusListKeys())
+		vm = menusui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
 	case ViewOrders:
-		vm = ordersui.NewListViewModel(a.app, a.ctx, a.ordersListStyles(), a.ordersListKeys())
+		vm = ordersui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
 	case ViewAudit:
-		vm = auditui.NewListViewModel(a.app, a.ctx, a.auditListStyles(), a.auditListKeys())
+		vm = auditui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
 	default:
 		a.currentView = ViewDashboard
 		vm = views.NewDashboard(a.app, a.ctx, a.dashboardStyles(), a.dashboardKeys())
@@ -301,144 +300,6 @@ func (a *App) dashboardKeys() views.DashboardKeys {
 		Nav6: a.keys.Nav6,
 		Help: a.keys.Help,
 		Quit: a.keys.Quit,
-	}
-}
-
-func (a *App) drinksListStyles() tui.ListViewStyles {
-	return tui.ListViewStyles{
-		Title:       a.styles.Title,
-		Subtitle:    a.styles.Subtitle,
-		Muted:       a.styles.Unselected,
-		Selected:    a.styles.Selected,
-		ListPane:    a.styles.ListPane,
-		DetailPane:  a.styles.DetailPane,
-		ErrorText:   a.styles.ErrorText,
-		WarningText: a.styles.WarningText,
-	}
-}
-
-func (a *App) drinksListKeys() tui.ListViewKeys {
-	return tui.ListViewKeys{
-		Up:      a.keys.Up,
-		Down:    a.keys.Down,
-		Enter:   a.keys.Enter,
-		Refresh: a.keys.Refresh,
-		Back:    a.keys.Back,
-	}
-}
-
-func (a *App) ingredientsListStyles() tui.ListViewStyles {
-	return tui.ListViewStyles{
-		Title:       a.styles.Title,
-		Subtitle:    a.styles.Subtitle,
-		Muted:       a.styles.Unselected,
-		Selected:    a.styles.Selected,
-		ListPane:    a.styles.ListPane,
-		DetailPane:  a.styles.DetailPane,
-		ErrorText:   a.styles.ErrorText,
-		WarningText: a.styles.WarningText,
-	}
-}
-
-func (a *App) ingredientsListKeys() tui.ListViewKeys {
-	return tui.ListViewKeys{
-		Up:      a.keys.Up,
-		Down:    a.keys.Down,
-		Enter:   a.keys.Enter,
-		Refresh: a.keys.Refresh,
-		Back:    a.keys.Back,
-	}
-}
-
-func (a *App) inventoryListStyles() tui.ListViewStyles {
-	return tui.ListViewStyles{
-		Title:       a.styles.Title,
-		Subtitle:    a.styles.Subtitle,
-		Muted:       a.styles.Unselected,
-		Selected:    a.styles.Selected,
-		ListPane:    a.styles.ListPane,
-		DetailPane:  a.styles.DetailPane,
-		ErrorText:   a.styles.ErrorText,
-		WarningText: a.styles.WarningText,
-	}
-}
-
-func (a *App) inventoryListKeys() tui.ListViewKeys {
-	return tui.ListViewKeys{
-		Up:      a.keys.Up,
-		Down:    a.keys.Down,
-		Enter:   a.keys.Enter,
-		Refresh: a.keys.Refresh,
-		Back:    a.keys.Back,
-	}
-}
-
-func (a *App) menusListStyles() tui.ListViewStyles {
-	return tui.ListViewStyles{
-		Title:       a.styles.Title,
-		Subtitle:    a.styles.Subtitle,
-		Muted:       a.styles.Unselected,
-		Selected:    a.styles.Selected,
-		ListPane:    a.styles.ListPane,
-		DetailPane:  a.styles.DetailPane,
-		ErrorText:   a.styles.ErrorText,
-		WarningText: a.styles.WarningText,
-	}
-}
-
-func (a *App) menusListKeys() tui.ListViewKeys {
-	return tui.ListViewKeys{
-		Up:      a.keys.Up,
-		Down:    a.keys.Down,
-		Enter:   a.keys.Enter,
-		Refresh: a.keys.Refresh,
-		Back:    a.keys.Back,
-	}
-}
-
-func (a *App) ordersListStyles() tui.ListViewStyles {
-	return tui.ListViewStyles{
-		Title:       a.styles.Title,
-		Subtitle:    a.styles.Subtitle,
-		Muted:       a.styles.Unselected,
-		Selected:    a.styles.Selected,
-		ListPane:    a.styles.ListPane,
-		DetailPane:  a.styles.DetailPane,
-		ErrorText:   a.styles.ErrorText,
-		WarningText: a.styles.WarningText,
-	}
-}
-
-func (a *App) ordersListKeys() tui.ListViewKeys {
-	return tui.ListViewKeys{
-		Up:      a.keys.Up,
-		Down:    a.keys.Down,
-		Enter:   a.keys.Enter,
-		Refresh: a.keys.Refresh,
-		Back:    a.keys.Back,
-	}
-}
-
-func (a *App) auditListStyles() tui.ListViewStyles {
-	return tui.ListViewStyles{
-		Title:       a.styles.Title,
-		Subtitle:    a.styles.Subtitle,
-		Muted:       a.styles.Unselected,
-		Selected:    a.styles.Selected,
-		ListPane:    a.styles.ListPane,
-		DetailPane:  a.styles.DetailPane,
-		ErrorText:   a.styles.ErrorText,
-		WarningText: a.styles.WarningText,
-	}
-}
-
-func (a *App) auditListKeys() tui.ListViewKeys {
-	return tui.ListViewKeys{
-		Up:      a.keys.Up,
-		Down:    a.keys.Down,
-		Enter:   a.keys.Enter,
-		Refresh: a.keys.Refresh,
-		Back:    a.keys.Back,
 	}
 }
 

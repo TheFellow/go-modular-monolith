@@ -66,7 +66,7 @@ Drinks detail and inventory list fetch ingredients one at a time.
 |------|----------------------------------------------------------------------------|---------|
 | 001  | [Create pkg/tui shared types](done/task-001-pkg-tui-types.md)              | Done    |
 | 002  | [Update domains to use shared types](done/task-002-domain-shared-types.md) | Done    |
-| 003  | [Remove app.go boilerplate](todo/task-003-remove-boilerplate.md)           | Pending |
+| 003  | [Remove app.go boilerplate](done/task-003-remove-boilerplate.md)           | Done    |
 | 004  | [Re-export ListFilter from queries](todo/task-004-reexport-filters.md)     | Pending |
 | 005  | [Implement ViewModel registry](todo/task-005-viewmodel-registry.md)        | Pending |
 | 006  | [Add batch ingredient lookup](todo/task-006-batch-ingredients.md)          | Pending |

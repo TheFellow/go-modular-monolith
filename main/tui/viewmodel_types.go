@@ -1,34 +1,10 @@
 package tui
 
-import (
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/lipgloss"
-)
-
-// ListViewStyles contains styles needed by domain list ViewModels.
-type ListViewStyles struct {
-	Title       lipgloss.Style
-	Subtitle    lipgloss.Style
-	Muted       lipgloss.Style
-	Selected    lipgloss.Style
-	ListPane    lipgloss.Style
-	DetailPane  lipgloss.Style
-	ErrorText   lipgloss.Style
-	WarningText lipgloss.Style
-}
-
-// ListViewKeys contains key bindings needed by domain list ViewModels.
-type ListViewKeys struct {
-	Up      key.Binding
-	Down    key.Binding
-	Enter   key.Binding
-	Refresh key.Binding
-	Back    key.Binding
-}
+import "github.com/TheFellow/go-modular-monolith/pkg/tui"
 
 // ListViewStylesFrom creates ListViewStyles from the main Styles.
-func ListViewStylesFrom(s Styles) ListViewStyles {
-	return ListViewStyles{
+func ListViewStylesFrom(s Styles) tui.ListViewStyles {
+	return tui.ListViewStyles{
 		Title:       s.Title,
 		Subtitle:    s.Subtitle,
 		Muted:       s.Unselected,
@@ -41,8 +17,8 @@ func ListViewStylesFrom(s Styles) ListViewStyles {
 }
 
 // ListViewKeysFrom creates ListViewKeys from the main KeyMap.
-func ListViewKeysFrom(k KeyMap) ListViewKeys {
-	return ListViewKeys{
+func ListViewKeysFrom(k KeyMap) tui.ListViewKeys {
+	return tui.ListViewKeys{
 		Up:      k.Up,
 		Down:    k.Down,
 		Enter:   k.Enter,

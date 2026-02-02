@@ -59,8 +59,8 @@ case ViewDrinks:
 
 ## Checklist
 
-- [ ] Update `viewmodel_types.go` to use `pkg/tui` types
-- [ ] Delete domain-specific style/key methods from `app.go`
-- [ ] Update `currentViewModel()` to use shared conversion functions
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] Update `viewmodel_types.go` to use `pkg/tui` types
+- [x] Delete domain-specific style/key methods from `app.go`
+- [x] Update `currentViewModel()` to use shared conversion functions
+- [x] `go build ./main/tui/...` passes
+- [x] `go test ./...` passes
