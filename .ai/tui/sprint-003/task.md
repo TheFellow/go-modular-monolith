@@ -1,6 +1,6 @@
 # Sprint 003: CRUD Operations
 
-**Status:** Planned
+**Status:** Complete
 
 ## Goal
 
