@@ -6,11 +6,11 @@ import (
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	tui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
+	menustui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
-	pkgtui "github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -20,11 +20,11 @@ func TestListViewModel_ShowsMenusAfterLoad(t *testing.T) {
 	_, err := f.Menu.Create(f.OwnerContext(), &menumodels.Menu{Name: "Happy Hour"})
 	testutil.Ok(t, err)
 
-	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
+	model := tuitest.InitAndLoad(t, menustui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -36,11 +36,11 @@ func TestListViewModel_ShowsLoadingState(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := tui.NewListViewModel(
+	model := menustui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
 	)
 	_ = model.Init()
 
@@ -52,11 +52,11 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
+	model := tuitest.InitAndLoad(t, menustui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -79,11 +79,11 @@ func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 
 	_ = draft
 
-	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
+	model := tuitest.InitAndLoad(t, menustui.NewListViewModel(
 		f.App,
 		ctx,
-		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -117,11 +117,11 @@ func TestListViewModel_DetailShowsDrinks(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
+	model := tuitest.InitAndLoad(t, menustui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 

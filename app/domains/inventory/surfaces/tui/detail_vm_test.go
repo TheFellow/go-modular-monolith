@@ -5,14 +5,14 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	tui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/tui"
+	inventorytui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
-	pkgtui "github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
 func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
@@ -29,7 +29,7 @@ func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	row := tui.InventoryRow{
+	row := inventorytui.InventoryRow{
 		Inventory:  *inv,
 		Ingredient: *ingredient,
 		Quantity:   inv.Amount.String(),
@@ -37,7 +37,7 @@ func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
 		Status:     "LOW",
 	}
 
-	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]())
+	detail := inventorytui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
 	detail.SetSize(80, 40)
 	detail.SetRow(optional.Some(row))
 
@@ -52,8 +52,8 @@ func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
 
 func TestDetailViewModel_NilRow(t *testing.T) {
 	t.Parallel()
-	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]())
-	detail.SetRow(optional.None[tui.InventoryRow]())
+	detail := inventorytui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
+	detail.SetRow(optional.None[inventorytui.InventoryRow]())
 
 	view := detail.View()
 	testutil.ErrorIf(t, !strings.Contains(view, "Select a stock item"), "expected placeholder view, got:\n%s", view)
@@ -72,7 +72,7 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	row := tui.InventoryRow{
+	row := inventorytui.InventoryRow{
 		Inventory:  *inv,
 		Ingredient: *ingredient,
 		Quantity:   inv.Amount.String(),
@@ -80,7 +80,7 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 		Status:     "LOW",
 	}
 
-	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]())
+	detail := inventorytui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
 	detail.SetRow(optional.Some(row))
 	detail.SetSize(20, 10)
 

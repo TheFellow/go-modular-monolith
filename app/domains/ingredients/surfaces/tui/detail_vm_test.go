@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	tui "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/tui"
+	ingredientstui "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
-	pkgtui "github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
 func TestDetailViewModel_ShowsIngredientFields(t *testing.T) {
@@ -24,7 +24,7 @@ func TestDetailViewModel_ShowsIngredientFields(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]())
+	detail := ingredientstui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
 	detail.SetSize(80, 40)
 	detail.SetIngredient(optional.Some(*ingredient))
 
@@ -39,7 +39,7 @@ func TestDetailViewModel_ShowsIngredientFields(t *testing.T) {
 
 func TestDetailViewModel_NilIngredient(t *testing.T) {
 	t.Parallel()
-	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]())
+	detail := ingredientstui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
 	detail.SetIngredient(optional.None[ingredientsmodels.Ingredient]())
 
 	view := detail.View()
@@ -56,7 +56,7 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	detail := tui.NewDetailViewModel(tuitest.DefaultListViewStyles[pkgtui.ListViewStyles]())
+	detail := ingredientstui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
 	detail.SetIngredient(optional.Some(*ingredient))
 	detail.SetSize(20, 10)
 

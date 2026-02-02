@@ -7,13 +7,13 @@ import (
 
 	auditdao "github.com/TheFellow/go-modular-monolith/app/domains/audit/internal/dao"
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
-	tui "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/tui"
+	audittui "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
-	pkgtui "github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mjl-/bstore"
 )
@@ -34,11 +34,11 @@ func TestListViewModel_ShowsEntriesAfterLoad(t *testing.T) {
 	}
 	insertAuditEntry(t, f, *entry)
 
-	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
+	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -50,11 +50,11 @@ func TestListViewModel_ShowsLoadingState(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := tui.NewListViewModel(
+	model := audittui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
 	)
 	_ = model.Init()
 
@@ -66,11 +66,11 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
+	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -95,11 +95,11 @@ func TestListViewModel_ShowsTimestampAndAction(t *testing.T) {
 	}
 	insertAuditEntry(t, f, *entry)
 
-	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
+	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -124,11 +124,11 @@ func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 	}
 	insertAuditEntry(t, f, *entry)
 
-	model := tuitest.InitAndLoad(t, tui.NewListViewModel(
+	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(
 		f.App,
 		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[pkgtui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[pkgtui.ListViewKeys](),
+		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 30, Height: 20})
 
