@@ -1,6 +1,6 @@
 # Sprint 002c: TUI Refactoring
 
-**Status:** Planned
+**Status:** Complete
 
 ## Goal
 

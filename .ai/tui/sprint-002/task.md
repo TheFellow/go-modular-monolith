@@ -1,6 +1,6 @@
 # Sprint 002: Read-Only Views
 
-**Status:** Active
+**Status:** Complete
 
 ## Goal
 
