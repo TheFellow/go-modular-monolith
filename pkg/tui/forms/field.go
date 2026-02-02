@@ -97,3 +97,13 @@ func WithMaxLength(n int) FieldOption {
 		}
 	}
 }
+
+// WithInitialValue sets the initial value of a field.
+func WithInitialValue(v any) FieldOption {
+	return func(field Field) {
+		if field == nil {
+			return
+		}
+		_ = field.SetValue(v)
+	}
+}

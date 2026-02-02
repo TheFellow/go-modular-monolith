@@ -100,7 +100,7 @@ type ConfirmDialog struct {
 | 002  | [Confirmation Dialog](done/task-002-confirm-dialog.md)                                | Done    |
 | 003  | [Main TUI Form Styles](done/task-003-main-tui-form-styles.md)                         | Done    |
 | 004  | [Ingredient Create Form](done/task-004-ingredient-create-form.md)                     | Done    |
-| 005  | [Ingredient Edit/Delete](todo/task-005-ingredient-edit-delete.md)                     | Pending |
+| 005  | [Ingredient Edit/Delete](done/task-005-ingredient-edit-delete.md)                     | Done    |
 | 006  | [Drinks CRUD](todo/task-006-drinks-crud.md)                                           | Pending |
 | 007  | [Inventory Operations](todo/task-007-inventory-operations.md)                         | Pending |
 | 008  | [Menu Operations](todo/task-008-menu-operations.md)                                   | Pending |

@@ -181,13 +181,13 @@ func (m *ListIngredientVM) showDeleteConfirm() tea.Cmd {
 
 ## Checklist
 
-- [ ] Create `edit_vm.go` with EditIngredientVM
-- [ ] Add `WithInitialValue()` option to form fields (Task 001)
-- [ ] Add `e`/`enter` → edit and `d` → delete handlers in list_vm.go
-- [ ] Implement cascade warning query (drink count)
-- [ ] Show ConfirmDialog for delete with danger styling
-- [ ] Handle ConfirmMsg → perform delete
-- [ ] Handle CancelMsg → dismiss dialog
-- [ ] Add `IngredientUpdatedMsg` and `IngredientDeletedMsg` message types
-- [ ] `go build ./app/domains/ingredients/surfaces/tui/...` passes
+- [x] Create `edit_vm.go` with EditIngredientVM
+- [x] Add `WithInitialValue()` option to form fields (Task 001)
+- [x] Add `e`/`enter` → edit and `d` → delete handlers in list_vm.go
+- [x] Implement cascade warning query (drink count)
+- [x] Show ConfirmDialog for delete with danger styling
+- [x] Handle ConfirmMsg → perform delete
+- [x] Handle CancelMsg → dismiss dialog
+- [x] Add `IngredientUpdatedMsg` and `IngredientDeletedMsg` message types
+- [x] `go build ./app/domains/ingredients/surfaces/tui/...` passes
 - [ ] Manual testing: edit ingredient, delete ingredient with cascade warning
