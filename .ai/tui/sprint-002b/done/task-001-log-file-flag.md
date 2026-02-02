@@ -96,10 +96,10 @@ Ensure `io` is imported (check if already present).
 
 ## Checklist
 
-- [ ] Add `logFile` field to CLI struct
-- [ ] Add `logFileHandle` field to CLI struct
-- [ ] Add `--log-file` flag with `MIXOLOGY_LOG_FILE` env var support
-- [ ] Update Before hook to open file and pass to pkglog.Setup
-- [ ] Store file handle in `c.logFileHandle`
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] Add `logFile` field to CLI struct
+- [x] Add `logFileHandle` field to CLI struct
+- [x] Add `--log-file` flag with `MIXOLOGY_LOG_FILE` env var support
+- [x] Update Before hook to open file and pass to pkglog.Setup
+- [x] Store file handle in `c.logFileHandle`
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes

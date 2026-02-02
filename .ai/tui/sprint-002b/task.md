@@ -4,8 +4,9 @@
 
 ## Goal
 
-Add opt-in file-based logging for TUI mode. When the TUI is active, logs written to stderr corrupt the display or are
-hidden entirely. This sprint adds a `--log-file` flag to redirect logs to a file when running in TUI mode.
+Add file-based logging for TUI mode. When the TUI is active, logs written to stderr corrupt the display or are hidden
+entirely. This sprint adds a `--log-file` flag to redirect logs to a file and defaults TUI logging to a file when the
+flag is not provided.
 
 ## Scope
 
@@ -13,13 +14,13 @@ hidden entirely. This sprint adds a `--log-file` flag to redirect logs to a file
 
 - Add `--log-file` CLI flag to redirect application logs to a file
 - Support both CLI and TUI modes with the same flag
+- Default TUI logging to a file when `--log-file` is not set
 - Use Bubble Tea's `tea.LogToFile()` pattern for compatibility
 - Proper file handle cleanup on application exit
 
 **Out of Scope:**
 
 - Log rotation (users can use external tools like logrotate)
-- Automatic log file creation for TUI mode without flag
 - Log aggregation or remote logging
 
 ## Reference
@@ -64,8 +65,8 @@ output either corrupts the display or is hidden.
 
 | Task | Description                                                 | Status  |
 |------|-------------------------------------------------------------|---------|
-| 001  | [Add --log-file flag](todo/task-001-log-file-flag.md)       | Pending |
-| 002  | [Add file cleanup](todo/task-002-file-cleanup.md)           | Pending |
+| 001  | [Add --log-file flag](done/task-001-log-file-flag.md)       | Done    |
+| 002  | [Add file cleanup + TUI default log file](done/task-002-file-cleanup.md) | Done    |
 | 003  | [Documentation and testing](todo/task-003-documentation.md) | Pending |
 
 ### Task Dependencies
@@ -83,6 +84,7 @@ Tasks are sequential - each depends on the previous.
 - [ ] `--log-file` flag added to CLI
 - [ ] Environment variable `MIXOLOGY_LOG_FILE` works
 - [ ] Logs redirected to file when flag is set
+- [ ] TUI defaults to a log file when `--log-file` is not set
 - [ ] File is properly closed on exit (both normal and error)
 - [ ] TUI runs cleanly without log corruption when using `--log-file`
 - [ ] CLI commands also work with `--log-file`
@@ -94,6 +96,9 @@ Tasks are sequential - each depends on the previous.
 ```bash
 # TUI with logging to file
 mixology --tui --log-file debug.log
+
+# TUI defaults to data/mixology-tui.log when no log file is specified
+mixology --tui
 
 # TUI with logging via env var
 MIXOLOGY_LOG_FILE=debug.log mixology --tui

@@ -1,8 +1,9 @@
-# Task 002: Add File Cleanup
+# Task 002: Add File Cleanup and TUI Default Log File
 
 ## Goal
 
-Ensure the log file handle is properly closed when the application exits.
+Ensure the log file handle is properly closed when the application exits, and default TUI mode to log to a file when
+`--log-file` is not provided.
 
 ## File to Modify
 
@@ -35,6 +36,11 @@ After: func(ctx context.Context, _ *cli.Command) error {
 
 ## Implementation
 
+### Default log file for TUI
+
+When `--tui` is present and `--log-file` is empty, set a default log file path (e.g. `data/mixology-tui.log`) and create
+the log directory if needed before opening the file.
+
 ### Update After hook
 
 Add log file cleanup before the return statement:
@@ -66,7 +72,9 @@ After: func(ctx context.Context, _ *cli.Command) error {
 
 ## Checklist
 
-- [ ] Add log file cleanup to After hook
-- [ ] Cleanup happens after app.Close() and metrics shutdown
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] Default `--tui` to a log file when `--log-file` is empty
+- [x] Log directory is created for the default path
+- [x] Add log file cleanup to After hook
+- [x] Cleanup happens after app.Close() and metrics shutdown
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes

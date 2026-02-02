@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/main/tui"
@@ -23,6 +25,8 @@ type CLI struct {
 	actor           string
 	logLevel        string
 	logFormat       string
+	logFile         string
+	logFileHandle   *os.File
 	enableMetrics   bool
 	metricsServer   *http.Server
 	metricsShutdown func(context.Context) error
@@ -71,6 +75,12 @@ func (c *CLI) Command() *cli.Command {
 				Sources:     cli.EnvVars("MIXOLOGY_LOG_FORMAT"),
 			},
 			&cli.StringFlag{
+				Name:        "log-file",
+				Usage:       "Write logs to file instead of stderr",
+				Destination: &c.logFile,
+				Sources:     cli.EnvVars("MIXOLOGY_LOG_FILE"),
+			},
+			&cli.StringFlag{
 				Name:        "actor",
 				Aliases:     []string{"as"},
 				Usage:       "Actor to run as (owner|manager|sommelier|bartender|anonymous)",
@@ -85,7 +95,28 @@ func (c *CLI) Command() *cli.Command {
 			},
 		},
 		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
-			logger := pkglog.Setup(c.logLevel, c.logFormat, os.Stderr)
+			if cmd != nil && cmd.Bool("tui") && c.logFile == "" {
+				logDir := filepath.Dir(c.dbPath)
+				if logDir != "" && logDir != "." {
+					if err := os.MkdirAll(logDir, 0o755); err != nil {
+						return ctx, fmt.Errorf("create log dir: %w", err)
+					}
+					c.logFile = filepath.Join(logDir, "mixology-tui.log")
+				} else {
+					c.logFile = "mixology-tui.log"
+				}
+			}
+
+			var logOutput io.Writer = os.Stderr
+			if c.logFile != "" {
+				f, err := os.OpenFile(c.logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
+				if err != nil {
+					return ctx, fmt.Errorf("open log file: %w", err)
+				}
+				logOutput = f
+				c.logFileHandle = f
+			}
+			logger := pkglog.Setup(c.logLevel, c.logFormat, logOutput)
 
 			var metrics telemetry.Metrics = telemetry.Nop()
 			if c.enableMetrics {
@@ -157,6 +188,9 @@ func (c *CLI) Command() *cli.Command {
 			}
 			if c.metricsShutdown != nil {
 				_ = c.metricsShutdown(ctx)
+			}
+			if c.logFileHandle != nil {
+				_ = c.logFileHandle.Close()
 			}
 			return nil
 		},
