@@ -22,6 +22,9 @@ type KeyMap struct {
 	Down    key.Binding
 	Enter   key.Binding
 	Refresh key.Binding
+	Create  key.Binding
+	Edit    key.Binding
+	Delete  key.Binding
 
 	// Form keys
 	NextField key.Binding
@@ -87,6 +90,18 @@ func NewKeyMap() KeyMap {
 		Refresh: key.NewBinding(
 			key.WithKeys("r"),
 			key.WithHelp("r", "refresh"),
+		),
+		Create: key.NewBinding(
+			key.WithKeys("c"),
+			key.WithHelp("c", "create"),
+		),
+		Edit: key.NewBinding(
+			key.WithKeys("e"),
+			key.WithHelp("e", "edit"),
+		),
+		Delete: key.NewBinding(
+			key.WithKeys("d"),
+			key.WithHelp("d", "delete"),
 		),
 		NextField: key.NewBinding(
 			key.WithKeys("tab"),

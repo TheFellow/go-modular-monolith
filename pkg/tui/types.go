@@ -24,4 +24,7 @@ type ListViewKeys struct {
 	Enter   key.Binding
 	Refresh key.Binding
 	Back    key.Binding
+	Create  key.Binding
+	Edit    key.Binding
+	Delete  key.Binding
 }

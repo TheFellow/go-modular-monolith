@@ -163,11 +163,11 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			m.loading = true
 			m.err = nil
 			return m, tea.Batch(m.spinner.Init(), m.loadDrinks())
-		case msg.String() == "c":
+		case key.Matches(msg, m.keys.Create):
 			return m, m.startCreate()
-		case msg.String() == "e", key.Matches(msg, m.keys.Enter):
+		case key.Matches(msg, m.keys.Edit), key.Matches(msg, m.keys.Enter):
 			return m, m.startEdit()
-		case msg.String() == "d":
+		case key.Matches(msg, m.keys.Delete):
 			return m, m.startDelete()
 		}
 	case DrinksLoadedMsg:
@@ -243,12 +243,31 @@ func (m *ListViewModel) View() string {
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Refresh, m.keys.Back}
+	if m.dialog != nil {
+		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
+	}
+	if m.create != nil || m.edit != nil {
+		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
+	}
+	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Refresh, m.keys.Back}
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
+	if m.dialog != nil {
+		return [][]key.Binding{
+			{m.dialogKeys.Confirm, m.keys.Back},
+			{m.dialogKeys.Switch},
+		}
+	}
+	if m.create != nil || m.edit != nil {
+		return [][]key.Binding{
+			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
+			{m.keys.Back},
+		}
+	}
 	return [][]key.Binding{
 		{m.keys.Up, m.keys.Down, m.keys.Enter},
+		{m.keys.Create, m.keys.Edit, m.keys.Delete},
 		{m.keys.Refresh, m.keys.Back},
 	}
 }

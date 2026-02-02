@@ -29,6 +29,9 @@ type listViewKeys interface {
 		Enter   key.Binding
 		Refresh key.Binding
 		Back    key.Binding
+		Create  key.Binding
+		Edit    key.Binding
+		Delete  key.Binding
 	}
 }
 
@@ -54,6 +57,9 @@ func DefaultListViewKeys[T listViewKeys]() T {
 		Enter:   key.NewBinding(key.WithKeys("enter")),
 		Refresh: key.NewBinding(key.WithKeys("r")),
 		Back:    key.NewBinding(key.WithKeys("esc")),
+		Create:  key.NewBinding(key.WithKeys("c")),
+		Edit:    key.NewBinding(key.WithKeys("e")),
+		Delete:  key.NewBinding(key.WithKeys("d")),
 	}
 }
 
