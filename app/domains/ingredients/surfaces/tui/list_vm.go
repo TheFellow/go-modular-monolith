@@ -12,6 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,10 +26,14 @@ type ListViewModel struct {
 	styles tui.ListViewStyles
 	keys   tui.ListViewKeys
 
+	formStyles forms.FormStyles
+	formKeys   forms.FormKeys
+
 	queries *queries.Queries
 
 	list    list.Model
 	detail  *DetailViewModel
+	create  *CreateIngredientVM
 	spinner components.Spinner
 	loading bool
 	err     error
@@ -39,7 +44,7 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys) *ListViewModel {
+func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys, formStyles forms.FormStyles, formKeys forms.FormKeys) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
 	delegate.Styles.SelectedTitle = styles.Selected
@@ -53,14 +58,16 @@ func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListView
 	l.SetFilteringEnabled(true)
 
 	vm := &ListViewModel{
-		app:     app,
-		ctx:     ctx,
-		styles:  styles,
-		keys:    keys,
-		queries: queries.New(),
-		list:    l,
-		detail:  NewDetailViewModel(styles),
-		loading: true,
+		app:        app,
+		ctx:        ctx,
+		styles:     styles,
+		keys:       keys,
+		formStyles: formStyles,
+		formKeys:   formKeys,
+		queries:    queries.New(),
+		list:       l,
+		detail:     NewDetailViewModel(styles),
+		loading:    true,
 	}
 	vm.spinner = components.NewSpinner("Loading ingredients...", styles.Subtitle)
 	return vm
@@ -75,13 +82,30 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
+		if m.create != nil {
+			m.create.SetWidth(m.detailWidth)
+		}
 		return m, nil
+	case IngredientCreatedMsg:
+		m.create = nil
+		m.loading = true
+		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, m.keys.Refresh):
-			m.loading = true
-			m.err = nil
-			return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
+		if m.create != nil {
+			if key.Matches(msg, m.keys.Back) {
+				m.create = nil
+				return m, nil
+			}
+		} else {
+			switch {
+			case key.Matches(msg, m.keys.Refresh):
+				m.loading = true
+				m.err = nil
+				return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
+			case msg.String() == "c":
+				return m, m.startCreate()
+			}
 		}
 	case IngredientsLoadedMsg:
 		m.loading = false
@@ -93,6 +117,12 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.list.SetItems(items)
 		m.syncDetail()
 		return m, nil
+	}
+
+	if m.create != nil {
+		var cmd tea.Cmd
+		m.create, cmd = m.create.Update(msg)
+		return m, cmd
 	}
 
 	if m.loading {
@@ -119,6 +149,9 @@ func (m *ListViewModel) View() string {
 	listView = m.styles.ListPane.Width(m.listWidth).Render(listView)
 
 	detailView := m.detail.View()
+	if m.create != nil {
+		detailView = m.create.View()
+	}
 	detailView = m.styles.DetailPane.Width(m.detailWidth).Render(detailView)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
@@ -152,6 +185,17 @@ func (m *ListViewModel) loadIngredients() tea.Cmd {
 
 		return IngredientsLoadedMsg{Ingredients: items}
 	}
+}
+
+func (m *ListViewModel) startCreate() tea.Cmd {
+	m.create = NewCreateIngredientVM(CreateDeps{
+		FormStyles: m.formStyles,
+		FormKeys:   m.formKeys,
+		Ctx:        m.ctx,
+		CreateFunc: m.app.Ingredients.Create,
+	})
+	m.create.SetWidth(m.detailWidth)
+	return m.create.Init()
 }
 
 func (m *ListViewModel) renderLoading() string {

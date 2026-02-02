@@ -152,10 +152,10 @@ The parent ViewModel (ListIngredientVM or main app) handles:
 
 ## Checklist
 
-- [ ] Create `create_vm.go` with CreateIngredientVM
-- [ ] Implement form with Name, Category, Unit, Description fields
-- [ ] Handle ctrl+s submit and esc cancel
-- [ ] Add `IngredientCreatedMsg` and `CreateErrorMsg` message types
-- [ ] Wire up in parent ViewModel (list_vm.go or app.go)
-- [ ] `go build ./app/domains/ingredients/surfaces/tui/...` passes
+- [x] Create `create_vm.go` with CreateIngredientVM
+- [x] Implement form with Name, Category, Unit, Description fields
+- [x] Handle ctrl+s submit and esc cancel
+- [x] Add `IngredientCreatedMsg` and `CreateErrorMsg` message types
+- [x] Wire up in parent ViewModel (list_vm.go or app.go)
+- [x] `go build ./app/domains/ingredients/surfaces/tui/...` passes
 - [ ] Manual testing: create ingredient via TUI
