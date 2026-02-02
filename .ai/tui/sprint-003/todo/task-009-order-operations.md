@@ -4,14 +4,87 @@
 
 Implement order complete and cancel operations. Orders have a simple lifecycle: pending → completed/cancelled. No create form in TUI (orders created via order placement workflow in Sprint 004).
 
-## Files to Modify
+## Files to Create/Modify
 
 ```
+main/tui/keys.go                    # Add Complete and CancelOrder key bindings (modify)
+main/tui/viewmodel_types.go         # Add Complete and CancelOrder to ListViewKeysFrom (modify)
+pkg/tui/types.go                    # Add Complete and CancelOrder to ListViewKeys (modify)
+main/tui/app.go                     # Update ViewOrders to pass dialog deps (modify)
 app/domains/orders/surfaces/tui/
-└── list_vm.go      # Add complete/cancel key handlers (modify)
+└── list_vm.go      # Add complete/cancel key handlers, update help (modify)
 ```
 
 ## Implementation
+
+### Key Infrastructure
+
+**Note on key bindings:**
+- `c` is already bound to Create in common keys, but orders can't be created from TUI
+- To avoid confusion, use `o` for complete ("order done") instead of repurposing `c`
+- Add `CancelOrder` key (`x`) - distinct from Back/Escape cancel
+
+**In `main/tui/keys.go`:**
+
+```go
+type KeyMap struct {
+    // ... existing keys ...
+    Complete    key.Binding  // NEW - order-specific
+    CancelOrder key.Binding  // NEW - order-specific (not same as Back)
+}
+
+func NewKeyMap() KeyMap {
+    return KeyMap{
+        // ... existing bindings ...
+        Complete: key.NewBinding(
+            key.WithKeys("o"),
+            key.WithHelp("o", "complete"),
+        ),
+        CancelOrder: key.NewBinding(
+            key.WithKeys("x"),
+            key.WithHelp("x", "cancel order"),
+        ),
+    }
+}
+```
+
+**In `pkg/tui/types.go`:**
+
+```go
+type ListViewKeys struct {
+    // ... existing keys ...
+    Complete    key.Binding  // NEW
+    CancelOrder key.Binding  // NEW
+}
+```
+
+**In `main/tui/viewmodel_types.go`:**
+
+```go
+func ListViewKeysFrom(k KeyMap) tui.ListViewKeys {
+    return tui.ListViewKeys{
+        // ... existing mappings ...
+        Complete:    k.Complete,     // NEW
+        CancelOrder: k.CancelOrder,  // NEW
+    }
+}
+```
+
+### App Initialization
+
+Update `main/tui/app.go` ViewOrders case to pass DialogStyles and DialogKeys (no forms needed, just dialogs):
+
+```go
+case ViewOrders:
+    vm = ordersui.NewListViewModel(
+        a.app,
+        a.ctx,
+        ListViewStylesFrom(a.styles),
+        ListViewKeysFrom(a.keys),
+        DialogStylesFrom(a.styles),    // NEW
+        DialogKeysFrom(a.keys),        // NEW
+    )
+```
 
 ### Order Model
 
@@ -103,16 +176,57 @@ type OrderCancelledMsg struct {
 }
 ```
 
+### List ViewModel Updates
+
+Following the pattern from drinks/ingredients list_vm.go:
+
+**Add state fields:**
+
+```go
+type ListViewModel struct {
+    // ... existing fields ...
+    dialog     *dialog.ConfirmDialog  // NEW: active confirmation dialog
+    dialogKeys tui.DialogKeys         // NEW
+}
+```
+
+**Update ShortHelp/FullHelp:**
+
+```go
+func (m *ListViewModel) ShortHelp() []key.Binding {
+    if m.dialog != nil {
+        return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
+    }
+    return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Complete, m.keys.CancelOrder, m.keys.Refresh, m.keys.Back}
+}
+
+func (m *ListViewModel) FullHelp() [][]key.Binding {
+    if m.dialog != nil {
+        return [][]key.Binding{
+            {m.dialogKeys.Confirm, m.keys.Back},
+            {m.dialogKeys.Switch},
+        }
+    }
+    return [][]key.Binding{
+        {m.keys.Up, m.keys.Down, m.keys.Enter},
+        {m.keys.Complete, m.keys.CancelOrder},
+        {m.keys.Refresh, m.keys.Back},
+    }
+}
+```
+
 ### Key Bindings
 
 | Key | Action                    | Condition                    |
 |-----|---------------------------|------------------------------|
-| `c` | Complete selected order   | Pending/preparing only       |
+| `o` | Complete selected order   | Pending/preparing only       |
 | `x` | Cancel selected order     | Pending/preparing only       |
+
+**Note:** Using `o` for complete (not `c`) to avoid conflict with Create key in common infrastructure.
 
 ### Status-Based Actions
 
-| Current Status | `c` (Complete) | `x` (Cancel) |
+| Current Status | `o` (Complete) | `x` (Cancel) |
 |----------------|----------------|--------------|
 | pending        | ✓ Allowed      | ✓ Allowed    |
 | preparing      | ✓ Allowed      | ✓ Allowed    |
@@ -130,13 +244,34 @@ type OrderCancelledMsg struct {
 
 ## Checklist
 
-- [ ] Add `c` → complete handler in list_vm.go
-- [ ] Add `x` → cancel handler in list_vm.go
-- [ ] Implement status validation for both operations
-- [ ] Show appropriate confirmation dialogs
+### Key Infrastructure
+- [ ] Add `Complete` binding (`o` key) to `main/tui/keys.go` KeyMap
+- [ ] Add `CancelOrder` binding (`x` key) to `main/tui/keys.go` KeyMap
+- [ ] Add `Complete` and `CancelOrder` to `pkg/tui/types.go` ListViewKeys
+- [ ] Add `Complete` and `CancelOrder` mappings to `main/tui/viewmodel_types.go` ListViewKeysFrom()
+
+### App Initialization
+- [ ] Update `main/tui/app.go` ViewOrders case to pass DialogStyles, DialogKeys
+
+### List ViewModel Updates
+- [ ] Add `dialog` state field to ListViewModel
+- [ ] Add `dialogKeys` field to ListViewModel
+- [ ] Update constructor signature to accept DialogKeys/DialogStyles
+- [ ] Add `o` → complete handler with status validation
+- [ ] Add `x` → cancel handler with status validation
+- [ ] Handle dialog escape with Back key
+- [ ] Delegate updates to active dialog
+- [ ] Center dialog in View()
+- [ ] Update ShortHelp() for dialog/list modes
+- [ ] Update FullHelp() for dialog/list modes
 - [ ] Show error messages for invalid status transitions
+
+### Messages
 - [ ] Add `OrderCompletedMsg` and `OrderCancelledMsg` messages
-- [ ] Handle completion success → refresh list, show success
-- [ ] Handle cancellation success → refresh list, show success
-- [ ] `go build ./app/domains/orders/surfaces/tui/...` passes
+- [ ] Handle completion success → refresh list
+- [ ] Handle cancellation success → refresh list
+
+### Verification
+- [ ] `go build ./...` passes
+- [ ] `go test ./...` passes
 - [ ] Manual testing: complete and cancel orders

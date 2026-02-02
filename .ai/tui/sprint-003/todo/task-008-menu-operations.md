@@ -7,13 +7,81 @@ Implement menu create, rename, delete, and publish operations. Menus have lifecy
 ## Files to Create/Modify
 
 ```
+main/tui/keys.go                    # Add Publish key binding (modify)
+main/tui/viewmodel_types.go         # Add Publish to ListViewKeysFrom (modify)
+pkg/tui/types.go                    # Add Publish to ListViewKeys (modify)
+main/tui/app.go                     # Update ViewMenus to pass form/dialog deps (modify)
 app/domains/menus/surfaces/tui/
 ├── create_vm.go    # CreateMenuVM (new)
 ├── rename_vm.go    # Inline rename functionality (new)
-└── list_vm.go      # Add CRUD/lifecycle key handlers (modify)
+└── list_vm.go      # Add CRUD/lifecycle key handlers, update help (modify)
 ```
 
 ## Implementation
+
+### Key Infrastructure
+
+**Note on key bindings:**
+- `c` (Create), `e` (Edit), `d` (Delete) are already in common ListViewKeys
+- Use `e` for rename/edit (not `r` which is used for refresh)
+- Add `Publish` key (`p`) for menu-specific publish operation
+
+**In `main/tui/keys.go`:**
+
+```go
+type KeyMap struct {
+    // ... existing keys ...
+    Publish key.Binding  // NEW - menu-specific
+}
+
+func NewKeyMap() KeyMap {
+    return KeyMap{
+        // ... existing bindings ...
+        Publish: key.NewBinding(
+            key.WithKeys("p"),
+            key.WithHelp("p", "publish"),
+        ),
+    }
+}
+```
+
+**In `pkg/tui/types.go`:**
+
+```go
+type ListViewKeys struct {
+    // ... existing keys ...
+    Publish key.Binding  // NEW
+}
+```
+
+**In `main/tui/viewmodel_types.go`:**
+
+```go
+func ListViewKeysFrom(k KeyMap) tui.ListViewKeys {
+    return tui.ListViewKeys{
+        // ... existing mappings ...
+        Publish: k.Publish,  // NEW
+    }
+}
+```
+
+### App Initialization
+
+Update `main/tui/app.go` ViewMenus case to pass FormStyles, FormKeys, DialogStyles, DialogKeys (follow drinks pattern):
+
+```go
+case ViewMenus:
+    vm = menusui.NewListViewModel(
+        a.app,
+        a.ctx,
+        ListViewStylesFrom(a.styles),
+        ListViewKeysFrom(a.keys),
+        FormStylesFrom(a.styles),      // NEW
+        FormKeysFrom(a.keys),          // NEW
+        DialogStylesFrom(a.styles),    // NEW
+        DialogKeysFrom(a.keys),        // NEW
+    )
+```
 
 ### Menu Model
 
@@ -170,13 +238,64 @@ func (m *ListMenuVM) showPublishConfirm() tea.Cmd {
 }
 ```
 
+### List ViewModel Updates
+
+Following the pattern from drinks/ingredients list_vm.go:
+
+**Add state fields:**
+
+```go
+type ListViewModel struct {
+    // ... existing fields ...
+    create     *CreateMenuVM       // NEW: active create form
+    rename     *RenameMenuVM       // NEW: active rename form
+    dialog     *dialog.ConfirmDialog  // NEW: active confirmation dialog
+    formKeys   tui.FormKeys        // NEW
+    dialogKeys tui.DialogKeys      // NEW
+}
+```
+
+**Update ShortHelp/FullHelp:**
+
+```go
+func (m *ListViewModel) ShortHelp() []key.Binding {
+    if m.dialog != nil {
+        return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
+    }
+    if m.create != nil || m.rename != nil {
+        return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
+    }
+    return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Refresh, m.keys.Back}
+}
+
+func (m *ListViewModel) FullHelp() [][]key.Binding {
+    if m.dialog != nil {
+        return [][]key.Binding{
+            {m.dialogKeys.Confirm, m.keys.Back},
+            {m.dialogKeys.Switch},
+        }
+    }
+    if m.create != nil || m.rename != nil {
+        return [][]key.Binding{
+            {m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
+            {m.keys.Back},
+        }
+    }
+    return [][]key.Binding{
+        {m.keys.Up, m.keys.Down, m.keys.Enter},
+        {m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish},
+        {m.keys.Refresh, m.keys.Back},
+    }
+}
+```
+
 ### Key Bindings
 
-| Key | Action                    | Condition           |
-|-----|---------------------------|---------------------|
-| `c` | Create new menu           | Always              |
-| `r` | Rename selected menu      | Any status          |
-| `d` | Delete selected menu      | Draft only          |
+| Key | Action                    | Condition             |
+|-----|---------------------------|-----------------------|
+| `c` | Create new menu           | Always                |
+| `e` | Edit/rename selected menu | Any status (uses Edit key, not `r`) |
+| `d` | Delete selected menu      | Draft only            |
 | `p` | Publish selected menu     | Draft only, non-empty |
 
 ### Form Fields
@@ -204,13 +323,35 @@ func (m *ListMenuVM) showPublishConfirm() tea.Cmd {
 
 ## Checklist
 
+### Key Infrastructure
+- [ ] Add `Publish` binding to `main/tui/keys.go` KeyMap
+- [ ] Add `Publish` to `pkg/tui/types.go` ListViewKeys
+- [ ] Add `Publish` mapping to `main/tui/viewmodel_types.go` ListViewKeysFrom()
+
+### App Initialization
+- [ ] Update `main/tui/app.go` ViewMenus case to pass FormStyles, FormKeys, DialogStyles, DialogKeys
+
+### ViewModels
 - [ ] Create `create_vm.go` with CreateMenuVM
 - [ ] Create `rename_vm.go` with RenameMenuVM (inline edit)
-- [ ] Add `c` → create handler in list_vm.go
-- [ ] Add `r` → rename handler in list_vm.go
+- [ ] Add `MenuCreatedMsg`, `MenuRenamedMsg`, `MenuDeletedMsg`, `MenuPublishedMsg` messages
+
+### List ViewModel Updates
+- [ ] Add `create`, `rename`, `dialog` state fields to ListViewModel
+- [ ] Add `formKeys`, `dialogKeys` fields to ListViewModel
+- [ ] Update constructor signature to accept FormKeys/FormStyles/DialogKeys/DialogStyles
+- [ ] Add `c` → create handler
+- [ ] Add `e` → edit/rename handler (uses Edit key, not `r`)
 - [ ] Add `d` → delete handler with draft-only check
 - [ ] Add `p` → publish handler with draft-only, non-empty checks
+- [ ] Handle form/dialog escape with Back key
+- [ ] Delegate updates to active form/dialog
+- [ ] Render active form in detail pane, center dialog
+- [ ] Update ShortHelp() for dialog/form/list modes
+- [ ] Update FullHelp() for dialog/form/list modes
 - [ ] Show appropriate error messages for invalid operations
-- [ ] Add `MenuCreatedMsg`, `MenuRenamedMsg`, `MenuDeletedMsg`, `MenuPublishedMsg` messages
-- [ ] `go build ./app/domains/menus/surfaces/tui/...` passes
+
+### Verification
+- [ ] `go build ./...` passes
+- [ ] `go test ./...` passes
 - [ ] Manual testing: create/rename/delete/publish menu

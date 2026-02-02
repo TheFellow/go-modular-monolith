@@ -7,13 +7,66 @@ Implement inventory adjustment and set operations. Inventory doesn't use traditi
 ## Files to Create/Modify
 
 ```
+main/tui/keys.go                    # Add Adjust and Set key bindings (modify)
+main/tui/viewmodel_types.go         # Add Adjust and Set to ListViewKeysFrom (modify)
+pkg/tui/types.go                    # Add Adjust and Set to ListViewKeys (modify)
 app/domains/inventory/surfaces/tui/
 ├── adjust_vm.go    # AdjustInventoryVM (new)
 ├── set_vm.go       # SetInventoryVM (new)
-└── list_vm.go      # Add adjust/set key handlers (modify)
+└── list_vm.go      # Add adjust/set key handlers, update help (modify)
 ```
 
 ## Implementation
+
+### Key Infrastructure (Following Create/Edit/Delete Pattern)
+
+Add `Adjust` and `Set` bindings to the common key infrastructure, following the pattern from the recent commit that added Create/Edit/Delete.
+
+**In `main/tui/keys.go`:**
+
+```go
+type KeyMap struct {
+    // ... existing keys ...
+    Adjust key.Binding  // NEW
+    Set    key.Binding  // NEW
+}
+
+func NewKeyMap() KeyMap {
+    return KeyMap{
+        // ... existing bindings ...
+        Adjust: key.NewBinding(
+            key.WithKeys("a"),
+            key.WithHelp("a", "adjust"),
+        ),
+        Set: key.NewBinding(
+            key.WithKeys("s"),
+            key.WithHelp("s", "set"),
+        ),
+    }
+}
+```
+
+**In `pkg/tui/types.go`:**
+
+```go
+type ListViewKeys struct {
+    // ... existing keys ...
+    Adjust key.Binding  // NEW
+    Set    key.Binding  // NEW
+}
+```
+
+**In `main/tui/viewmodel_types.go`:**
+
+```go
+func ListViewKeysFrom(k KeyMap) tui.ListViewKeys {
+    return tui.ListViewKeys{
+        // ... existing mappings ...
+        Adjust: k.Adjust,  // NEW
+        Set:    k.Set,     // NEW
+    }
+}
+```
 
 ### Inventory Model
 
@@ -138,17 +191,104 @@ func (m *SetInventoryVM) View() string {
 }
 ```
 
-### List Key Handlers
+### List ViewModel Updates
+
+Following the pattern from drinks/ingredients list_vm.go:
+
+**Add form state fields:**
 
 ```go
-// In list_vm.go Update method
+type ListViewModel struct {
+    // ... existing fields ...
+    adjust     *AdjustInventoryVM  // NEW: active adjust form
+    set        *SetInventoryVM     // NEW: active set form
+    formKeys   tui.FormKeys        // NEW: form navigation keys
+}
+```
+
+**Update constructor to accept form keys/styles** (similar to drinks/ingredients).
+
+**Update Update() method:**
+
+```go
 case tea.KeyMsg:
-    if key.Matches(msg, m.keys.Adjust) && m.selected != nil {
-        return m, m.showAdjustForm()
+    // Handle escape from forms
+    if m.adjust != nil {
+        if key.Matches(msg, m.keys.Back) {
+            m.adjust = nil
+            return m, nil
+        }
+        break
     }
-    if key.Matches(msg, m.keys.Set) && m.selected != nil {
-        return m, m.showSetForm()
+    if m.set != nil {
+        if key.Matches(msg, m.keys.Back) {
+            m.set = nil
+            return m, nil
+        }
+        break
     }
+    // Handle key bindings when no form active
+    switch {
+    case key.Matches(msg, m.keys.Refresh):
+        // ... existing refresh handling ...
+    case key.Matches(msg, m.keys.Adjust):
+        return m, m.startAdjust()
+    case key.Matches(msg, m.keys.Set):
+        return m, m.startSet()
+    }
+
+// Delegate to active form
+if m.adjust != nil {
+    var cmd tea.Cmd
+    m.adjust, cmd = m.adjust.Update(msg)
+    return m, cmd
+}
+if m.set != nil {
+    var cmd tea.Cmd
+    m.set, cmd = m.set.Update(msg)
+    return m, cmd
+}
+```
+
+**Update View() to render forms in detail pane:**
+
+```go
+func (m *ListViewModel) View() string {
+    // ... existing loading/error handling ...
+
+    detailView := m.detail.View()
+    if m.adjust != nil {
+        detailView = m.adjust.View()
+    } else if m.set != nil {
+        detailView = m.set.View()
+    }
+    // ... rest unchanged ...
+}
+```
+
+**Update ShortHelp/FullHelp following drinks/ingredients pattern:**
+
+```go
+func (m *ListViewModel) ShortHelp() []key.Binding {
+    if m.adjust != nil || m.set != nil {
+        return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
+    }
+    return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Adjust, m.keys.Set, m.keys.Refresh, m.keys.Back}
+}
+
+func (m *ListViewModel) FullHelp() [][]key.Binding {
+    if m.adjust != nil || m.set != nil {
+        return [][]key.Binding{
+            {m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
+            {m.keys.Back},
+        }
+    }
+    return [][]key.Binding{
+        {m.keys.Up, m.keys.Down, m.keys.Enter},
+        {m.keys.Adjust, m.keys.Set},
+        {m.keys.Refresh, m.keys.Back},
+    }
+}
 ```
 
 ### Key Bindings
@@ -162,17 +302,17 @@ case tea.KeyMsg:
 
 #### Adjust Form
 
-| Field  | Type        | Validation           | Notes                            |
-|--------|-------------|----------------------|----------------------------------|
-| Amount | NumberField | Required             | Can be negative for reductions   |
-| Reason | SelectField | Required             | received/used/spilled/expired/corrected |
+| Field  | Type        | Validation | Notes                                   |
+|--------|-------------|------------|-----------------------------------------|
+| Amount | NumberField | Required   | Can be negative for reductions          |
+| Reason | SelectField | Required   | received/used/spilled/expired/corrected |
 
 #### Set Form
 
-| Field        | Type        | Validation       | Notes                    |
-|--------------|-------------|------------------|--------------------------|
-| Quantity     | NumberField | Required, >= 0   | Pre-filled with current  |
-| Cost Per Unit| NumberField | Optional, >= 0   | Price per unit           |
+| Field         | Type        | Validation     | Notes                   |
+|---------------|-------------|----------------|-------------------------|
+| Quantity      | NumberField | Required, >= 0 | Pre-filled with current |
+| Cost Per Unit | NumberField | Optional, >= 0 | Price per unit          |
 
 ## Notes
 
@@ -184,11 +324,34 @@ case tea.KeyMsg:
 
 ## Checklist
 
+### Key Infrastructure
+- [ ] Add `Adjust` and `Set` bindings to `main/tui/keys.go` KeyMap
+- [ ] Add `Adjust` and `Set` to `pkg/tui/types.go` ListViewKeys
+- [ ] Add `Adjust` and `Set` mappings to `main/tui/viewmodel_types.go` ListViewKeysFrom()
+
+### ViewModels
 - [ ] Create `adjust_vm.go` with AdjustInventoryVM
 - [ ] Create `set_vm.go` with SetInventoryVM
-- [ ] Add `a` → adjust and `s` → set handlers in list_vm.go
-- [ ] Display current inventory context in form header
 - [ ] Add `InventoryAdjustedMsg` and `InventorySetMsg` messages
-- [ ] Wire up form navigation in parent
-- [ ] `go build ./app/domains/inventory/surfaces/tui/...` passes
+
+### App Initialization
+- [ ] Update `main/tui/app.go` ViewInventory case to pass FormStyles and FormKeys (follow drinks pattern)
+
+### List ViewModel Updates
+- [ ] Add `adjust` and `set` form state fields to ListViewModel
+- [ ] Update constructor signature to accept FormKeys/FormStyles (follow drinks pattern)
+- [ ] Add `a` → adjust and `s` → set handlers in Update()
+- [ ] Handle form escape with Back key
+- [ ] Delegate updates to active form
+- [ ] Render active form in detail pane in View()
+- [ ] Update ShortHelp() for form vs list mode
+- [ ] Update FullHelp() for form vs list mode
+
+### Form Implementation
+- [ ] Display current inventory context in form header
+- [ ] Wire up form submission to commands
+
+### Verification
+- [ ] `go build ./...` passes
+- [ ] `go test ./...` passes
 - [ ] Manual testing: adjust and set inventory values
