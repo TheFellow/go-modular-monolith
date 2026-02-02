@@ -113,13 +113,13 @@ func TestDetailViewModel_BatchFetchesIngredients(t *testing.T) {
 
 ## Checklist
 
-- [ ] Update drinks TUI test files
-- [ ] Update ingredients TUI test files
-- [ ] Update inventory TUI test files
-- [ ] Update menus TUI test files
-- [ ] Update orders TUI test files
-- [ ] Update audit TUI test files
-- [ ] Add batch ingredient fetch test
-- [ ] `go test ./app/domains/*/surfaces/tui/...` passes
-- [ ] `go test ./main/tui/...` passes
-- [ ] `go test ./...` passes
+- [x] Update drinks TUI test files
+- [x] Update ingredients TUI test files
+- [x] Update inventory TUI test files
+- [x] Update menus TUI test files
+- [x] Update orders TUI test files
+- [x] Update audit TUI test files
+- [x] Add batch ingredient fetch test
+- [x] `go test ./app/domains/*/surfaces/tui/...` passes
+- [x] `go test ./main/tui/...` passes
+- [x] `go test ./...` passes

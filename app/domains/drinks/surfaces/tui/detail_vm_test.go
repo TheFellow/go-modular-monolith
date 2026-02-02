@@ -105,3 +105,37 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 	view := detail.View()
 	testutil.StringNonEmpty(t, view, "expected non-empty view after resizing")
 }
+
+func TestDetailViewModel_BatchFetchesIngredients(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	b := f.Bootstrap().WithBasicIngredients()
+
+	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
+	tequila := b.WithIngredient("Tequila", measurement.UnitOz)
+	salt := b.WithIngredient("Salt", measurement.UnitDash)
+
+	drink := b.WithDrink(drinksmodels.Drink{
+		Name:     "Margarita",
+		Category: drinksmodels.DrinkCategoryCocktail,
+		Recipe: drinksmodels.Recipe{
+			Ingredients: []drinksmodels.RecipeIngredient{
+				{IngredientID: lime.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)},
+				{IngredientID: tequila.ID, Amount: measurement.MustAmount(2, measurement.UnitOz)},
+				{IngredientID: salt.ID, Amount: measurement.MustAmount(1, measurement.UnitDash)},
+			},
+			Steps: []string{"Shake"},
+		},
+	})
+
+	detail := drinkstui.NewDetailViewModel(
+		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
+		f.OwnerContext(),
+	)
+	detail.SetDrink(optional.Some(*drink))
+
+	view := detail.View()
+	testutil.ErrorIf(t, !strings.Contains(view, "Lime Juice"), "expected Lime Juice in view, got:\n%s", view)
+	testutil.ErrorIf(t, !strings.Contains(view, "Tequila"), "expected Tequila in view, got:\n%s", view)
+	testutil.ErrorIf(t, !strings.Contains(view, "Salt"), "expected Salt in view, got:\n%s", view)
+}

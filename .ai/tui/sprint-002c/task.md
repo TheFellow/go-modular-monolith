@@ -68,15 +68,15 @@ Drinks detail and inventory list fetch ingredients one at a time.
 | 003  | [Remove app.go boilerplate](done/task-003-remove-boilerplate.md)           | Done    |
 | 004  | [Re-export ListFilter from queries](done/task-004-reexport-filters.md)     | Done    |
 | 005  | [Add batch ingredient lookup](done/task-005-batch-ingredients.md)          | Done    |
-| 006  | [Update tests](todo/task-006-update-tests.md)                              | Pending |
+| 006  | [Update tests](done/task-006-update-tests.md)                              | Done    |
 
 ---
 
 ## Success Criteria
 
-- [ ] `ListViewStyles`/`ListViewKeys` defined once in `pkg/tui/`
-- [ ] Zero duplicate struct definitions across domains
-- [ ] `ListFilter` re-exported from `queries` package (no `internal/dao` imports in TUI surfaces)
+- [x] `ListViewStyles`/`ListViewKeys` defined once in `pkg/tui/`
+- [x] Zero duplicate struct definitions across domains
+- [x] `ListFilter` re-exported from `queries` package (no `internal/dao` imports in TUI surfaces)
 - [x] Ingredient lookups are batched (1 query for N ingredients)
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes
