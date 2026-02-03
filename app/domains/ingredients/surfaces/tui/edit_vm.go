@@ -1,30 +1,30 @@
 package tui
 
 import (
+	"context"
 	"errors"
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// EditDeps defines dependencies for the edit ingredient form.
-type EditDeps struct {
-	FormStyles forms.FormStyles
-	FormKeys   forms.FormKeys
-	Ctx        *middleware.Context
-	UpdateFunc func(ctx *middleware.Context, ing *models.Ingredient) (*models.Ingredient, error)
-}
-
 // EditIngredientVM renders an edit ingredient form.
 type EditIngredientVM struct {
+	app         *app.App
+	principal   cedar.EntityUID
 	form        *forms.Form
 	ingredient  *models.Ingredient
-	deps        EditDeps
+	styles      forms.FormStyles
+	keys        forms.FormKeys
 	err         error
 	submitting  bool
 	nameField   *forms.TextField
@@ -44,7 +44,7 @@ type UpdateErrorMsg struct {
 }
 
 // NewEditIngredientVM builds an EditIngredientVM with fields configured.
-func NewEditIngredientVM(ingredient *models.Ingredient, deps EditDeps) *EditIngredientVM {
+func NewEditIngredientVM(app *app.App, principal cedar.EntityUID, ingredient *models.Ingredient) *EditIngredientVM {
 	if ingredient == nil {
 		ingredient = &models.Ingredient{}
 	}
@@ -82,9 +82,11 @@ func NewEditIngredientVM(ingredient *models.Ingredient, deps EditDeps) *EditIngr
 		forms.WithInitialValue(ingredient.Description),
 	)
 
+	formStyles := tuistyles.Form
+	formKeys := tuikeys.Form
 	form := forms.New(
-		deps.FormStyles,
-		deps.FormKeys,
+		formStyles,
+		formKeys,
 		nameField,
 		categoryField,
 		unitField,
@@ -92,8 +94,11 @@ func NewEditIngredientVM(ingredient *models.Ingredient, deps EditDeps) *EditIngr
 	)
 
 	return &EditIngredientVM{
+		app:         app,
+		principal:   principal,
 		form:        form,
-		deps:        deps,
+		styles:      formStyles,
+		keys:        formKeys,
 		ingredient:  ingredient,
 		nameField:   nameField,
 		category:    categoryField,
@@ -115,7 +120,7 @@ func (m *EditIngredientVM) Update(msg tea.Msg) (*EditIngredientVM, tea.Cmd) {
 		m.err = typed.Err
 		return m, nil
 	case tea.KeyMsg:
-		if key.Matches(typed, m.deps.FormKeys.Submit) {
+		if key.Matches(typed, m.keys.Submit) {
 			return m, m.submit()
 		}
 	}
@@ -129,7 +134,7 @@ func (m *EditIngredientVM) Update(msg tea.Msg) (*EditIngredientVM, tea.Cmd) {
 func (m *EditIngredientVM) View() string {
 	view := m.form.View()
 	if m.err != nil {
-		errText := m.deps.FormStyles.Error.Render("Error: " + m.err.Error())
+		errText := m.styles.Error.Render("Error: " + m.err.Error())
 		return strings.Join([]string{errText, "", view}, "\n")
 	}
 	return view
@@ -153,10 +158,6 @@ func (m *EditIngredientVM) submit() tea.Cmd {
 		m.err = err
 		return nil
 	}
-	if m.deps.UpdateFunc == nil {
-		m.err = errors.New("update function not configured")
-		return nil
-	}
 	if m.ingredient == nil {
 		m.err = errors.New("ingredient not loaded")
 		return nil
@@ -173,10 +174,14 @@ func (m *EditIngredientVM) submit() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		ingredient, err := m.deps.UpdateFunc(m.deps.Ctx, updated)
+		ingredient, err := m.app.Ingredients.Update(m.context(), updated)
 		if err != nil {
 			return UpdateErrorMsg{Err: err}
 		}
 		return IngredientUpdatedMsg{Ingredient: ingredient}
 	}
+}
+
+func (m *EditIngredientVM) context() *middleware.Context {
+	return m.app.Context(context.Background(), m.principal)
 }

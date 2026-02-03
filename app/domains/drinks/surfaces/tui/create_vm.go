@@ -1,31 +1,30 @@
 package tui
 
 import (
+	"context"
 	"errors"
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	ingredients "github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// CreateDeps defines dependencies for the create drink form.
-type CreateDeps struct {
-	FormStyles      forms.FormStyles
-	FormKeys        forms.FormKeys
-	Ctx             *middleware.Context
-	CreateFunc      func(ctx *middleware.Context, drink *models.Drink) (*models.Drink, error)
-	ListIngredients func(ctx *middleware.Context) ([]*ingredientsmodels.Ingredient, error)
-}
-
 // CreateDrinkVM renders a create drink form.
 type CreateDrinkVM struct {
+	app         *app.App
+	principal   cedar.EntityUID
 	form        *forms.Form
-	deps        CreateDeps
+	styles      forms.FormStyles
+	keys        forms.FormKeys
 	err         error
 	submitting  bool
 	nameField   *forms.TextField
@@ -45,7 +44,7 @@ type CreateErrorMsg struct {
 }
 
 // NewCreateDrinkVM builds a CreateDrinkVM with fields configured.
-func NewCreateDrinkVM(deps CreateDeps) *CreateDrinkVM {
+func NewCreateDrinkVM(app *app.App, principal cedar.EntityUID) *CreateDrinkVM {
 	categoryOptions := make([]forms.SelectOption, len(models.AllDrinkCategories()))
 	for i, c := range models.AllDrinkCategories() {
 		categoryOptions[i] = forms.SelectOption{Label: string(c), Value: c}
@@ -76,9 +75,11 @@ func NewCreateDrinkVM(deps CreateDeps) *CreateDrinkVM {
 		forms.WithMaxLength(500),
 	)
 
+	formStyles := tuistyles.Form
+	formKeys := tuikeys.Form
 	form := forms.New(
-		deps.FormStyles,
-		deps.FormKeys,
+		formStyles,
+		formKeys,
 		nameField,
 		categoryField,
 		glassField,
@@ -86,8 +87,11 @@ func NewCreateDrinkVM(deps CreateDeps) *CreateDrinkVM {
 	)
 
 	return &CreateDrinkVM{
+		app:         app,
+		principal:   principal,
 		form:        form,
-		deps:        deps,
+		styles:      formStyles,
+		keys:        formKeys,
 		nameField:   nameField,
 		category:    categoryField,
 		glass:       glassField,
@@ -112,7 +116,7 @@ func (m *CreateDrinkVM) Update(msg tea.Msg) (*CreateDrinkVM, tea.Cmd) {
 		m.err = nil
 		return m, nil
 	case tea.KeyMsg:
-		if key.Matches(typed, m.deps.FormKeys.Submit) {
+		if key.Matches(typed, m.keys.Submit) {
 			return m, m.submit()
 		}
 	}
@@ -126,7 +130,7 @@ func (m *CreateDrinkVM) Update(msg tea.Msg) (*CreateDrinkVM, tea.Cmd) {
 func (m *CreateDrinkVM) View() string {
 	view := m.form.View()
 	if m.err != nil {
-		errText := m.deps.FormStyles.Error.Render("Error: " + m.err.Error())
+		errText := m.styles.Error.Render("Error: " + m.err.Error())
 		return strings.Join([]string{errText, "", view}, "\n")
 	}
 	return view
@@ -150,10 +154,6 @@ func (m *CreateDrinkVM) submit() tea.Cmd {
 		m.err = err
 		return nil
 	}
-	if m.deps.CreateFunc == nil {
-		m.err = errors.New("create function not configured")
-		return nil
-	}
 	recipe, err := m.defaultRecipe()
 	if err != nil {
 		m.err = err
@@ -171,7 +171,7 @@ func (m *CreateDrinkVM) submit() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		created, err := m.deps.CreateFunc(m.deps.Ctx, drink)
+		created, err := m.app.Drinks.Create(m.context(), drink)
 		if err != nil {
 			return CreateErrorMsg{Err: err}
 		}
@@ -180,10 +180,7 @@ func (m *CreateDrinkVM) submit() tea.Cmd {
 }
 
 func (m *CreateDrinkVM) defaultRecipe() (models.Recipe, error) {
-	if m.deps.ListIngredients == nil {
-		return models.Recipe{}, errors.New("ingredient list function not configured")
-	}
-	ingredients, err := m.deps.ListIngredients(m.deps.Ctx)
+	ingredients, err := m.app.Ingredients.List(m.context(), ingredients.ListRequest{})
 	if err != nil {
 		return models.Recipe{}, err
 	}
@@ -201,6 +198,10 @@ func (m *CreateDrinkVM) defaultRecipe() (models.Recipe, error) {
 		},
 		Steps: []string{"Add ingredients and serve."},
 	}, nil
+}
+
+func (m *CreateDrinkVM) context() *middleware.Context {
+	return m.app.Context(context.Background(), m.principal)
 }
 
 func toString(value any) string {

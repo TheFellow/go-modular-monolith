@@ -9,9 +9,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -32,16 +29,7 @@ func TestListViewModel_ShowsDrinksAfterLoad(t *testing.T) {
 		},
 	})
 
-	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		forms.FormStyles{},
-		forms.FormKeys{},
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
-	))
+	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(f.App, f.OwnerContext().Principal()))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -52,16 +40,7 @@ func TestListViewModel_ShowsLoadingState(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := drinkstui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		forms.FormStyles{},
-		forms.FormKeys{},
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
-	)
+	model := drinkstui.NewListViewModel(f.App, f.OwnerContext().Principal())
 	_ = model.Init()
 
 	view := model.View()
@@ -72,16 +51,7 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		forms.FormStyles{},
-		forms.FormKeys{},
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
-	))
+	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(f.App, f.OwnerContext().Principal()))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -95,16 +65,7 @@ func TestListViewModel_ShowsErrorOnFailure(t *testing.T) {
 		t.Fatalf("close app: %v", err)
 	}
 
-	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		forms.FormStyles{},
-		forms.FormKeys{},
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
-	))
+	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(f.App, f.OwnerContext().Principal()))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -128,16 +89,7 @@ func TestListViewModel_DetailShowsIngredients(t *testing.T) {
 		},
 	})
 
-	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		forms.FormStyles{},
-		forms.FormKeys{},
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
-	))
+	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(f.App, f.OwnerContext().Principal()))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -161,16 +113,7 @@ func TestListViewModel_DetailShowsRecipeSteps(t *testing.T) {
 		},
 	})
 
-	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		forms.FormStyles{},
-		forms.FormKeys{},
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
-	))
+	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(f.App, f.OwnerContext().Principal()))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -187,16 +130,7 @@ func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 	f := testutil.NewFixture(t)
 	f.Bootstrap().WithBasicIngredients()
 
-	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		forms.FormStyles{},
-		forms.FormKeys{},
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
-	))
+	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(f.App, f.OwnerContext().Principal()))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 30, Height: 20})
 
 	view := model.View()
@@ -207,16 +141,7 @@ func TestListViewModel_SetSize_ZeroWidth(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		forms.FormStyles{},
-		forms.FormKeys{},
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
-	))
+	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(f.App, f.OwnerContext().Principal()))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 0, Height: 0})
 
 	_ = model.View()
@@ -227,16 +152,7 @@ func TestListViewModel_SetSize_WideWidth(t *testing.T) {
 	f := testutil.NewFixture(t)
 	f.Bootstrap().WithBasicIngredients()
 
-	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		forms.FormStyles{},
-		forms.FormKeys{},
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
-	))
+	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(f.App, f.OwnerContext().Principal()))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
 
 	view := model.View()
@@ -248,16 +164,7 @@ func TestListViewModel_SetSize_ResizeSequence(t *testing.T) {
 	f := testutil.NewFixture(t)
 	f.Bootstrap().WithBasicIngredients()
 
-	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		forms.FormStyles{},
-		forms.FormKeys{},
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
-	))
+	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(f.App, f.OwnerContext().Principal()))
 	sizes := []tea.WindowSizeMsg{
 		{Width: 30, Height: 20},
 		{Width: 120, Height: 40},

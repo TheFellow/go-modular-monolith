@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
@@ -11,12 +12,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
+	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -30,10 +34,10 @@ const (
 
 // ListViewModel renders the inventory list and detail panes.
 type ListViewModel struct {
-	app    *app.App
-	ctx    *middleware.Context
-	styles tui.ListViewStyles
-	keys   tui.ListViewKeys
+	app       *app.App
+	principal cedar.EntityUID
+	styles    tui.ListViewStyles
+	keys      tui.ListViewKeys
 
 	formStyles forms.FormStyles
 	formKeys   forms.FormKeys
@@ -54,29 +58,29 @@ type ListViewModel struct {
 	detailWidth       int
 }
 
-func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys, formStyles forms.FormStyles, formKeys forms.FormKeys) *ListViewModel {
+func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 	columns := inventoryColumns(0)
 	model := table.New(
 		table.WithColumns(columns),
 		table.WithRows(nil),
 		table.WithFocused(true),
 	)
-	model.SetStyles(inventoryTableStyles(styles))
+	model.SetStyles(inventoryTableStyles(tuistyles.ListView))
 
 	vm := &ListViewModel{
 		app:               app,
-		ctx:               ctx,
-		styles:            styles,
-		keys:              keys,
-		formStyles:        formStyles,
-		formKeys:          formKeys,
+		principal:         principal,
+		styles:            tuistyles.ListView,
+		keys:              tuikeys.ListView,
+		formStyles:        tuistyles.Form,
+		formKeys:          tuikeys.Form,
 		inventoryQueries:  inventoryqueries.New(),
 		ingredientQueries: ingredientsqueries.New(),
 		table:             model,
-		detail:            NewDetailViewModel(styles),
+		detail:            NewDetailViewModel(tuistyles.ListView),
 		loading:           true,
 	}
-	vm.spinner = components.NewSpinner("Loading inventory...", styles.Subtitle)
+	vm.spinner = components.NewSpinner("Loading inventory...", vm.styles.Subtitle)
 	return vm
 }
 
@@ -210,7 +214,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadInventory() tea.Cmd {
 	return func() tea.Msg {
-		inventoryList, err := m.inventoryQueries.List(m.ctx, inventoryqueries.ListFilter{})
+		inventoryList, err := m.inventoryQueries.List(m.context(), inventoryqueries.ListFilter{})
 		if err != nil {
 			return InventoryLoadedMsg{Err: err}
 		}
@@ -228,7 +232,7 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 			ids = append(ids, id)
 		}
 
-		ingredientList, err := m.ingredientQueries.List(m.ctx, ingredientsqueries.ListFilter{IDs: ids})
+		ingredientList, err := m.ingredientQueries.List(m.context(), ingredientsqueries.ListFilter{IDs: ids})
 		if err != nil {
 			return InventoryLoadedMsg{Err: errors.Internalf("load ingredients: %w", err)}
 		}
@@ -273,12 +277,7 @@ func (m *ListViewModel) startAdjust() tea.Cmd {
 	if !ok {
 		return nil
 	}
-	m.adjust = NewAdjustInventoryVM(row, AdjustDeps{
-		FormStyles: m.formStyles,
-		FormKeys:   m.formKeys,
-		Ctx:        m.ctx,
-		AdjustFunc: m.app.Inventory.Adjust,
-	})
+	m.adjust = NewAdjustInventoryVM(m.app, m.principal, row)
 	m.adjust.SetWidth(m.detailWidth)
 	return m.adjust.Init()
 }
@@ -288,12 +287,7 @@ func (m *ListViewModel) startSet() tea.Cmd {
 	if !ok {
 		return nil
 	}
-	m.set = NewSetInventoryVM(row, SetDeps{
-		FormStyles: m.formStyles,
-		FormKeys:   m.formKeys,
-		Ctx:        m.ctx,
-		SetFunc:    m.app.Inventory.Set,
-	})
+	m.set = NewSetInventoryVM(m.app, m.principal, row)
 	m.set.SetWidth(m.detailWidth)
 	return m.set.Init()
 }
@@ -356,6 +350,10 @@ func (m *ListViewModel) syncDetail() {
 	}
 
 	m.detail.SetRow(optional.Some(m.rows[idx]))
+}
+
+func (m *ListViewModel) context() *middleware.Context {
+	return m.app.Context(context.Background(), m.principal)
 }
 
 func inventoryColumns(width int) []table.Column {

@@ -46,7 +46,8 @@ func TestDetailViewModel_ShowsOrderData(t *testing.T) {
 
 	detail := orderstui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		f.OwnerContext(),
+		f.App,
+		f.OwnerContext().Principal(),
 	)
 	detail.SetSize(80, 40)
 	detail.SetOrder(optional.Some(*order))
@@ -88,7 +89,8 @@ func TestDetailViewModel_ShowsLineItems(t *testing.T) {
 
 	detail := orderstui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		f.OwnerContext(),
+		f.App,
+		f.OwnerContext().Principal(),
 	)
 	detail.SetSize(80, 40)
 	detail.SetOrder(optional.Some(*order))
@@ -129,7 +131,8 @@ func TestDetailViewModel_ShowsTotal(t *testing.T) {
 
 	detail := orderstui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		f.OwnerContext(),
+		f.App,
+		f.OwnerContext().Principal(),
 	)
 	detail.SetSize(80, 40)
 	detail.SetOrder(optional.Some(*order))
@@ -143,7 +146,8 @@ func TestDetailViewModel_NilOrder(t *testing.T) {
 	f := testutil.NewFixture(t)
 	detail := orderstui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		f.OwnerContext(),
+		f.App,
+		f.OwnerContext().Principal(),
 	)
 	detail.SetOrder(optional.None[ordersmodels.Order]())
 
@@ -182,7 +186,8 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 
 	detail := orderstui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		f.OwnerContext(),
+		f.App,
+		f.OwnerContext().Principal(),
 	)
 	detail.SetOrder(optional.Some(*order))
 	detail.SetSize(20, 10)

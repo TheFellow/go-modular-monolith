@@ -1,17 +1,21 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/queries"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
+	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -22,10 +26,10 @@ const auditDefaultLimit = 50
 
 // ListViewModel renders the audit list and detail panes.
 type ListViewModel struct {
-	app    *app.App
-	ctx    *middleware.Context
-	styles tui.ListViewStyles
-	keys   tui.ListViewKeys
+	app       *app.App
+	principal cedar.EntityUID
+	styles    tui.ListViewStyles
+	keys      tui.ListViewKeys
 
 	queries *queries.Queries
 
@@ -41,11 +45,11 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys) *ListViewModel {
+func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
-	delegate.Styles.SelectedTitle = styles.Selected
-	delegate.Styles.SelectedDesc = styles.Selected
+	delegate.Styles.SelectedTitle = tuistyles.ListView.Selected
+	delegate.Styles.SelectedDesc = tuistyles.ListView.Selected
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.Title = "Audit"
@@ -55,16 +59,16 @@ func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListView
 	l.SetFilteringEnabled(true)
 
 	vm := &ListViewModel{
-		app:     app,
-		ctx:     ctx,
-		styles:  styles,
-		keys:    keys,
-		queries: queries.New(),
-		list:    l,
-		detail:  NewDetailViewModel(styles),
-		loading: true,
+		app:       app,
+		principal: principal,
+		styles:    tuistyles.ListView,
+		keys:      tuikeys.ListView,
+		queries:   queries.New(),
+		list:      l,
+		detail:    NewDetailViewModel(tuistyles.ListView),
+		loading:   true,
 	}
-	vm.spinner = components.NewSpinner("Loading audit entries...", styles.Subtitle)
+	vm.spinner = components.NewSpinner("Loading audit entries...", vm.styles.Subtitle)
 	return vm
 }
 
@@ -139,7 +143,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadEntries() tea.Cmd {
 	return func() tea.Msg {
-		entries, err := m.queries.List(m.ctx, queries.ListFilter{Limit: auditDefaultLimit})
+		entries, err := m.queries.List(m.context(), queries.ListFilter{Limit: auditDefaultLimit})
 		if err != nil {
 			return AuditLoadedMsg{Err: err}
 		}
@@ -187,4 +191,8 @@ func (m *ListViewModel) syncDetail() {
 		return
 	}
 	m.detail.SetEntry(optional.Some(item.entry))
+}
+
+func (m *ListViewModel) context() *middleware.Context {
+	return m.app.Context(context.Background(), m.principal)
 }

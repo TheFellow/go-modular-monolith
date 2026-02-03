@@ -48,7 +48,8 @@ func TestDetailViewModel_ShowsDrinkData(t *testing.T) {
 
 	detail := drinkstui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		f.OwnerContext(),
+		f.App,
+		f.OwnerContext().Principal(),
 	)
 	detail.SetSize(80, 40)
 	detail.SetDrink(optional.Some(*drink))
@@ -70,7 +71,8 @@ func TestDetailViewModel_NilDrink(t *testing.T) {
 	f := testutil.NewFixture(t)
 	detail := drinkstui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		f.OwnerContext(),
+		f.App,
+		f.OwnerContext().Principal(),
 	)
 	detail.SetDrink(optional.None[drinksmodels.Drink]())
 
@@ -97,7 +99,8 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 
 	detail := drinkstui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		f.OwnerContext(),
+		f.App,
+		f.OwnerContext().Principal(),
 	)
 	detail.SetDrink(optional.Some(*drink))
 	detail.SetSize(20, 10)
@@ -130,7 +133,8 @@ func TestDetailViewModel_BatchFetchesIngredients(t *testing.T) {
 
 	detail := drinkstui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		f.OwnerContext(),
+		f.App,
+		f.OwnerContext().Principal(),
 	)
 	detail.SetDrink(optional.Some(*drink))
 

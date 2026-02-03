@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
@@ -8,6 +9,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
+	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -15,6 +18,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -23,10 +27,10 @@ import (
 
 // ListViewModel renders the ingredients list and detail panes.
 type ListViewModel struct {
-	app    *app.App
-	ctx    *middleware.Context
-	styles tui.ListViewStyles
-	keys   tui.ListViewKeys
+	app       *app.App
+	principal cedar.EntityUID
+	styles    tui.ListViewStyles
+	keys      tui.ListViewKeys
 
 	formStyles   forms.FormStyles
 	formKeys     forms.FormKeys
@@ -53,11 +57,11 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys, formStyles forms.FormStyles, formKeys forms.FormKeys, dialogStyles dialog.DialogStyles, dialogKeys dialog.DialogKeys) *ListViewModel {
+func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
-	delegate.Styles.SelectedTitle = styles.Selected
-	delegate.Styles.SelectedDesc = styles.Selected
+	delegate.Styles.SelectedTitle = tuistyles.ListView.Selected
+	delegate.Styles.SelectedDesc = tuistyles.ListView.Selected
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.Title = "Ingredients"
@@ -68,20 +72,20 @@ func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListView
 
 	vm := &ListViewModel{
 		app:          app,
-		ctx:          ctx,
-		styles:       styles,
-		keys:         keys,
-		formStyles:   formStyles,
-		formKeys:     formKeys,
-		dialogStyles: dialogStyles,
-		dialogKeys:   dialogKeys,
+		principal:    principal,
+		styles:       tuistyles.ListView,
+		keys:         tuikeys.ListView,
+		formStyles:   tuistyles.Form,
+		formKeys:     tuikeys.Form,
+		dialogStyles: tuistyles.Dialog,
+		dialogKeys:   tuikeys.Dialog,
 		queries:      queries.New(),
 		drinkQueries: drinksqueries.New(),
 		list:         l,
-		detail:       NewDetailViewModel(styles),
+		detail:       NewDetailViewModel(tuistyles.ListView),
 		loading:      true,
 	}
-	vm.spinner = components.NewSpinner("Loading ingredients...", styles.Subtitle)
+	vm.spinner = components.NewSpinner("Loading ingredients...", vm.styles.Subtitle)
 	return vm
 }
 
@@ -273,7 +277,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadIngredients() tea.Cmd {
 	return func() tea.Msg {
-		ingredientsList, err := m.queries.List(m.ctx, queries.ListFilter{})
+		ingredientsList, err := m.queries.List(m.context(), queries.ListFilter{})
 		if err != nil {
 			return IngredientsLoadedMsg{Err: err}
 		}
@@ -291,12 +295,7 @@ func (m *ListViewModel) loadIngredients() tea.Cmd {
 }
 
 func (m *ListViewModel) startCreate() tea.Cmd {
-	m.create = NewCreateIngredientVM(CreateDeps{
-		FormStyles: m.formStyles,
-		FormKeys:   m.formKeys,
-		Ctx:        m.ctx,
-		CreateFunc: m.app.Ingredients.Create,
-	})
+	m.create = NewCreateIngredientVM(m.app, m.principal)
 	m.create.SetWidth(m.detailWidth)
 	return m.create.Init()
 }
@@ -311,12 +310,7 @@ func (m *ListViewModel) startEdit() tea.Cmd {
 	if ingredient == nil {
 		return nil
 	}
-	m.edit = NewEditIngredientVM(ingredient, EditDeps{
-		FormStyles: m.formStyles,
-		FormKeys:   m.formKeys,
-		Ctx:        m.ctx,
-		UpdateFunc: m.app.Ingredients.Update,
-	})
+	m.edit = NewEditIngredientVM(m.app, m.principal, ingredient)
 	m.edit.SetWidth(m.detailWidth)
 	return m.edit.Init()
 }
@@ -334,7 +328,7 @@ func (m *ListViewModel) showDeleteConfirm(ingredient *models.Ingredient) tea.Cmd
 		return nil
 	}
 	return func() tea.Msg {
-		drinks, err := m.drinkQueries.ListByIngredient(m.ctx, ingredient.ID)
+		drinks, err := m.drinkQueries.ListByIngredient(m.context(), ingredient.ID)
 		if err != nil {
 			return DeleteErrorMsg{Err: err}
 		}
@@ -366,12 +360,16 @@ func (m *ListViewModel) performDelete() tea.Cmd {
 	}
 	target := m.deleteTarget
 	return func() tea.Msg {
-		deleted, err := m.app.Ingredients.Delete(m.ctx, target.ID)
+		deleted, err := m.app.Ingredients.Delete(m.context(), target.ID)
 		if err != nil {
 			return DeleteErrorMsg{Err: err}
 		}
 		return IngredientDeletedMsg{Ingredient: deleted}
 	}
+}
+
+func (m *ListViewModel) context() *middleware.Context {
+	return m.app.Context(context.Background(), m.principal)
 }
 
 func (m *ListViewModel) selectedIngredient() *models.Ingredient {

@@ -1,28 +1,27 @@
 package tui
 
 import (
-	"errors"
+	"context"
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// CreateDeps defines dependencies for the create menu form.
-type CreateDeps struct {
-	FormStyles forms.FormStyles
-	FormKeys   forms.FormKeys
-	Ctx        *middleware.Context
-	CreateFunc func(ctx *middleware.Context, menu *models.Menu) (*models.Menu, error)
-}
-
 // CreateMenuVM renders a create menu form.
 type CreateMenuVM struct {
+	app         *app.App
+	principal   cedar.EntityUID
 	form        *forms.Form
-	deps        CreateDeps
+	styles      forms.FormStyles
+	keys        forms.FormKeys
 	err         error
 	submitting  bool
 	nameField   *forms.TextField
@@ -40,7 +39,7 @@ type CreateErrorMsg struct {
 }
 
 // NewCreateMenuVM builds a CreateMenuVM with fields configured.
-func NewCreateMenuVM(deps CreateDeps) *CreateMenuVM {
+func NewCreateMenuVM(app *app.App, principal cedar.EntityUID) *CreateMenuVM {
 	nameField := forms.NewTextField(
 		"Name",
 		forms.WithRequired(),
@@ -53,16 +52,21 @@ func NewCreateMenuVM(deps CreateDeps) *CreateMenuVM {
 		forms.WithPlaceholder("Optional description"),
 	)
 
+	formStyles := tuistyles.Form
+	formKeys := tuikeys.Form
 	form := forms.New(
-		deps.FormStyles,
-		deps.FormKeys,
+		formStyles,
+		formKeys,
 		nameField,
 		descriptionField,
 	)
 
 	return &CreateMenuVM{
+		app:         app,
+		principal:   principal,
 		form:        form,
-		deps:        deps,
+		styles:      formStyles,
+		keys:        formKeys,
 		nameField:   nameField,
 		description: descriptionField,
 	}
@@ -85,7 +89,7 @@ func (m *CreateMenuVM) Update(msg tea.Msg) (*CreateMenuVM, tea.Cmd) {
 		m.err = nil
 		return m, nil
 	case tea.KeyMsg:
-		if key.Matches(typed, m.deps.FormKeys.Submit) {
+		if key.Matches(typed, m.keys.Submit) {
 			return m, m.submit()
 		}
 	}
@@ -99,7 +103,7 @@ func (m *CreateMenuVM) Update(msg tea.Msg) (*CreateMenuVM, tea.Cmd) {
 func (m *CreateMenuVM) View() string {
 	view := m.form.View()
 	if m.err != nil {
-		errText := m.deps.FormStyles.Error.Render("Error: " + m.err.Error())
+		errText := m.styles.Error.Render("Error: " + m.err.Error())
 		return strings.Join([]string{errText, "", view}, "\n")
 	}
 	return view
@@ -123,10 +127,6 @@ func (m *CreateMenuVM) submit() tea.Cmd {
 		m.err = err
 		return nil
 	}
-	if m.deps.CreateFunc == nil {
-		m.err = errors.New("create function not configured")
-		return nil
-	}
 	m.err = nil
 	m.submitting = true
 
@@ -136,12 +136,16 @@ func (m *CreateMenuVM) submit() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		created, err := m.deps.CreateFunc(m.deps.Ctx, menu)
+		created, err := m.app.Menu.Create(m.context(), menu)
 		if err != nil {
 			return CreateErrorMsg{Err: err}
 		}
 		return MenuCreatedMsg{Menu: created}
 	}
+}
+
+func (m *CreateMenuVM) context() *middleware.Context {
+	return m.app.Context(context.Background(), m.principal)
 }
 
 func toString(value any) string {

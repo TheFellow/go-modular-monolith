@@ -1,6 +1,11 @@
-package tui
+package keys
 
-import "github.com/charmbracelet/bubbles/key"
+import (
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/charmbracelet/bubbles/key"
+)
 
 // KeyMap defines all key bindings for the TUI.
 type KeyMap struct {
@@ -39,6 +44,29 @@ type KeyMap struct {
 	// Dialog keys
 	Confirm   key.Binding
 	SwitchBtn key.Binding
+}
+
+// App is the shared application key map.
+var App = newKeyMap()
+
+// Pre-computed key subsets.
+var (
+	ListView  = listViewKeysFrom(App)
+	Form      = formKeysFrom(App)
+	Dialog    = dialogKeysFrom(App)
+	Dashboard = dashboardKeysFrom(App)
+)
+
+// DashboardKeys defines the key bindings used by the dashboard.
+type DashboardKeys struct {
+	Nav1 key.Binding
+	Nav2 key.Binding
+	Nav3 key.Binding
+	Nav4 key.Binding
+	Nav5 key.Binding
+	Nav6 key.Binding
+	Help key.Binding
+	Quit key.Binding
 }
 
 // newKeyMap creates a KeyMap with default bindings.
@@ -162,5 +190,53 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		{k.Nav1, k.Nav2, k.Nav3, k.Nav4, k.Nav5, k.Nav6},
 		{k.Up, k.Down, k.Enter, k.Refresh},
 		{k.Back, k.Help, k.Quit},
+	}
+}
+
+func listViewKeysFrom(k KeyMap) tui.ListViewKeys {
+	return tui.ListViewKeys{
+		Up:          k.Up,
+		Down:        k.Down,
+		Enter:       k.Enter,
+		Refresh:     k.Refresh,
+		Back:        k.Back,
+		Create:      k.Create,
+		Edit:        k.Edit,
+		Delete:      k.Delete,
+		Adjust:      k.Adjust,
+		Set:         k.Set,
+		Publish:     k.Publish,
+		Complete:    k.Complete,
+		CancelOrder: k.CancelOrder,
+	}
+}
+
+func formKeysFrom(k KeyMap) forms.FormKeys {
+	return forms.FormKeys{
+		NextField: k.NextField,
+		PrevField: k.PrevField,
+		Submit:    k.Submit,
+		Cancel:    k.Back,
+	}
+}
+
+func dialogKeysFrom(k KeyMap) dialog.DialogKeys {
+	return dialog.DialogKeys{
+		Confirm: k.Confirm,
+		Cancel:  k.Back,
+		Switch:  k.SwitchBtn,
+	}
+}
+
+func dashboardKeysFrom(k KeyMap) DashboardKeys {
+	return DashboardKeys{
+		Nav1: k.Nav1,
+		Nav2: k.Nav2,
+		Nav3: k.Nav3,
+		Nav4: k.Nav4,
+		Nav5: k.Nav5,
+		Nav6: k.Nav6,
+		Help: k.Help,
+		Quit: k.Quit,
 	}
 }

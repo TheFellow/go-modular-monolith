@@ -11,8 +11,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -47,11 +45,7 @@ func TestListViewModel_ShowsOrdersAfterLoad(t *testing.T) {
 
 	model := tuitest.InitAndLoad(t, orderstui.NewListViewModel(
 		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
+		f.OwnerContext().Principal(),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -67,11 +61,7 @@ func TestListViewModel_ShowsLoadingState(t *testing.T) {
 
 	model := orderstui.NewListViewModel(
 		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
+		f.OwnerContext().Principal(),
 	)
 	_ = model.Init()
 
@@ -85,11 +75,7 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 
 	model := tuitest.InitAndLoad(t, orderstui.NewListViewModel(
 		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
+		f.OwnerContext().Principal(),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -153,11 +139,7 @@ func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 
 	model := tuitest.InitAndLoad(t, orderstui.NewListViewModel(
 		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
+		f.OwnerContext().Principal(),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -198,11 +180,7 @@ func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 
 	model := tuitest.InitAndLoad(t, orderstui.NewListViewModel(
 		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-		dialog.DialogStyles{},
-		dialog.DialogKeys{},
+		f.OwnerContext().Principal(),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 30, Height: 20})
 

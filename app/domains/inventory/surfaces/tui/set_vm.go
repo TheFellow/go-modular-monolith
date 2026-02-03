@@ -1,33 +1,33 @@
 package tui
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// SetDeps defines dependencies for the set inventory form.
-type SetDeps struct {
-	FormStyles forms.FormStyles
-	FormKeys   forms.FormKeys
-	Ctx        *middleware.Context
-	SetFunc    func(ctx *middleware.Context, update *models.Update) (*models.Inventory, error)
-}
-
 // SetInventoryVM renders an inventory set form.
 type SetInventoryVM struct {
+	app        *app.App
+	principal  cedar.EntityUID
 	form       *forms.Form
 	row        InventoryRow
-	deps       SetDeps
+	styles     forms.FormStyles
+	keys       forms.FormKeys
 	err        error
 	submitting bool
 	quantity   *forms.NumberField
@@ -40,7 +40,7 @@ type SetErrorMsg struct {
 }
 
 // NewSetInventoryVM builds a SetInventoryVM with fields configured.
-func NewSetInventoryVM(row InventoryRow, deps SetDeps) *SetInventoryVM {
+func NewSetInventoryVM(app *app.App, principal cedar.EntityUID, row InventoryRow) *SetInventoryVM {
 	quantityField := forms.NewNumberField(
 		"Quantity",
 		forms.WithRequired(),
@@ -63,19 +63,24 @@ func NewSetInventoryVM(row InventoryRow, deps SetDeps) *SetInventoryVM {
 	}
 	costField := forms.NewNumberField("Cost Per Unit", costOpts...)
 
+	formStyles := tuistyles.Form
+	formKeys := tuikeys.Form
 	form := forms.New(
-		deps.FormStyles,
-		deps.FormKeys,
+		formStyles,
+		formKeys,
 		quantityField,
 		costField,
 	)
 
 	return &SetInventoryVM{
-		form:     form,
-		row:      row,
-		deps:     deps,
-		quantity: quantityField,
-		cost:     costField,
+		app:       app,
+		principal: principal,
+		form:      form,
+		row:       row,
+		styles:    formStyles,
+		keys:      formKeys,
+		quantity:  quantityField,
+		cost:      costField,
 	}
 }
 
@@ -96,7 +101,7 @@ func (m *SetInventoryVM) Update(msg tea.Msg) (*SetInventoryVM, tea.Cmd) {
 		m.err = nil
 		return m, nil
 	case tea.KeyMsg:
-		if key.Matches(typed, m.deps.FormKeys.Submit) {
+		if key.Matches(typed, m.keys.Submit) {
 			return m, m.submit()
 		}
 	}
@@ -119,7 +124,7 @@ func (m *SetInventoryVM) View() string {
 
 	view := strings.Join([]string{title, unit, "", m.form.View()}, "\n")
 	if m.err != nil {
-		errText := m.deps.FormStyles.Error.Render("Error: " + m.err.Error())
+		errText := m.styles.Error.Render("Error: " + m.err.Error())
 		return strings.Join([]string{errText, "", view}, "\n")
 	}
 	return view
@@ -141,10 +146,6 @@ func (m *SetInventoryVM) submit() tea.Cmd {
 	}
 	if err := m.form.Validate(); err != nil {
 		m.err = err
-		return nil
-	}
-	if m.deps.SetFunc == nil {
-		m.err = errors.New("set function not configured")
 		return nil
 	}
 
@@ -179,12 +180,16 @@ func (m *SetInventoryVM) submit() tea.Cmd {
 	m.submitting = true
 
 	return func() tea.Msg {
-		updated, err := m.deps.SetFunc(m.deps.Ctx, update)
+		updated, err := m.app.Inventory.Set(m.context(), update)
 		if err != nil {
 			return SetErrorMsg{Err: err}
 		}
 		return InventorySetMsg{Inventory: updated}
 	}
+}
+
+func (m *SetInventoryVM) context() *middleware.Context {
+	return m.app.Context(context.Background(), m.principal)
 }
 
 func (m *SetInventoryVM) parseCost() (money.Price, error) {

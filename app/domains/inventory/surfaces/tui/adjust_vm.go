@@ -1,34 +1,34 @@
 package tui
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// AdjustDeps defines dependencies for the adjust inventory form.
-type AdjustDeps struct {
-	FormStyles forms.FormStyles
-	FormKeys   forms.FormKeys
-	Ctx        *middleware.Context
-	AdjustFunc func(ctx *middleware.Context, patch *models.Patch) (*models.Inventory, error)
-}
-
 // AdjustInventoryVM renders an inventory adjustment form.
 type AdjustInventoryVM struct {
+	app        *app.App
+	principal  cedar.EntityUID
 	form       *forms.Form
 	row        InventoryRow
-	deps       AdjustDeps
+	styles     forms.FormStyles
+	keys       forms.FormKeys
 	err        error
 	submitting bool
 	amount     *forms.NumberField
@@ -41,7 +41,7 @@ type AdjustErrorMsg struct {
 }
 
 // NewAdjustInventoryVM builds an AdjustInventoryVM with fields configured.
-func NewAdjustInventoryVM(row InventoryRow, deps AdjustDeps) *AdjustInventoryVM {
+func NewAdjustInventoryVM(app *app.App, principal cedar.EntityUID, row InventoryRow) *AdjustInventoryVM {
 	reasonOptions := []forms.SelectOption{
 		{Label: "Received", Value: models.ReasonReceived},
 		{Label: "Used", Value: models.ReasonUsed},
@@ -63,19 +63,24 @@ func NewAdjustInventoryVM(row InventoryRow, deps AdjustDeps) *AdjustInventoryVM 
 		forms.WithRequired(),
 	)
 
+	formStyles := tuistyles.Form
+	formKeys := tuikeys.Form
 	form := forms.New(
-		deps.FormStyles,
-		deps.FormKeys,
+		formStyles,
+		formKeys,
 		amountField,
 		reasonField,
 	)
 
 	return &AdjustInventoryVM{
-		form:   form,
-		row:    row,
-		deps:   deps,
-		amount: amountField,
-		reason: reasonField,
+		app:       app,
+		principal: principal,
+		form:      form,
+		row:       row,
+		styles:    formStyles,
+		keys:      formKeys,
+		amount:    amountField,
+		reason:    reasonField,
 	}
 }
 
@@ -96,7 +101,7 @@ func (m *AdjustInventoryVM) Update(msg tea.Msg) (*AdjustInventoryVM, tea.Cmd) {
 		m.err = nil
 		return m, nil
 	case tea.KeyMsg:
-		if key.Matches(typed, m.deps.FormKeys.Submit) {
+		if key.Matches(typed, m.keys.Submit) {
 			return m, m.submit()
 		}
 	}
@@ -120,7 +125,7 @@ func (m *AdjustInventoryVM) View() string {
 
 	view := strings.Join([]string{title, current, "", m.form.View()}, "\n")
 	if m.err != nil {
-		errText := m.deps.FormStyles.Error.Render("Error: " + m.err.Error())
+		errText := m.styles.Error.Render("Error: " + m.err.Error())
 		return strings.Join([]string{errText, "", view}, "\n")
 	}
 	return view
@@ -142,10 +147,6 @@ func (m *AdjustInventoryVM) submit() tea.Cmd {
 	}
 	if err := m.form.Validate(); err != nil {
 		m.err = err
-		return nil
-	}
-	if m.deps.AdjustFunc == nil {
-		m.err = errors.New("adjust function not configured")
 		return nil
 	}
 
@@ -176,12 +177,16 @@ func (m *AdjustInventoryVM) submit() tea.Cmd {
 	m.submitting = true
 
 	return func() tea.Msg {
-		adjusted, err := m.deps.AdjustFunc(m.deps.Ctx, patch)
+		adjusted, err := m.app.Inventory.Adjust(m.context(), patch)
 		if err != nil {
 			return AdjustErrorMsg{Err: err}
 		}
 		return InventoryAdjustedMsg{Inventory: adjusted}
 	}
+}
+
+func (m *AdjustInventoryVM) context() *middleware.Context {
+	return m.app.Context(context.Background(), m.principal)
 }
 
 func toAdjustmentReason(value any) models.AdjustmentReason {

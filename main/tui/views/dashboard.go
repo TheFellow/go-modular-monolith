@@ -20,19 +20,21 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
-	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/cedar-policy/cedar-go"
 )
 
 // Dashboard is the main navigation hub of the TUI.
 type Dashboard struct {
-	app    *app.App
-	ctx    *middleware.Context
-	styles DashboardStyles
-	keys   DashboardKeys
-	width  int
-	height int
+	app       *app.App
+	principal cedar.EntityUID
+	styles    styles.DashboardStyles
+	keys      keys.DashboardKeys
+	width     int
+	height    int
 
 	loading bool
 	spinner components.Spinner
@@ -72,36 +74,16 @@ type DashboardLoadedMsg struct {
 	Err  error
 }
 
-// DashboardStyles contains the lipgloss styles used by the dashboard.
-type DashboardStyles struct {
-	Title    lipgloss.Style
-	Subtitle lipgloss.Style
-	Card     lipgloss.Style
-	HelpKey  lipgloss.Style
-}
-
-// DashboardKeys defines the key bindings used by the dashboard.
-type DashboardKeys struct {
-	Nav1 key.Binding
-	Nav2 key.Binding
-	Nav3 key.Binding
-	Nav4 key.Binding
-	Nav5 key.Binding
-	Nav6 key.Binding
-	Help key.Binding
-	Quit key.Binding
-}
-
 // NewDashboard creates a new Dashboard view.
-func NewDashboard(app *app.App, ctx *middleware.Context, styles DashboardStyles, keys DashboardKeys) *Dashboard {
+func NewDashboard(app *app.App, principal cedar.EntityUID) *Dashboard {
 	d := &Dashboard{
-		app:     app,
-		ctx:     ctx,
-		styles:  styles,
-		keys:    keys,
-		loading: true,
+		app:       app,
+		principal: principal,
+		styles:    styles.Dashboard,
+		keys:      keys.Dashboard,
+		loading:   true,
 	}
-	d.spinner = components.NewSpinner("Loading dashboard...", styles.Subtitle)
+	d.spinner = components.NewSpinner("Loading dashboard...", d.styles.Subtitle)
 	return d
 }
 
@@ -209,10 +191,7 @@ func (d *Dashboard) loadData() tea.Cmd {
 			return DashboardLoadedMsg{Err: errors.New("dashboard requires app")}
 		}
 
-		ctx := d.ctx
-		if ctx == nil {
-			ctx = d.app.Context(context.Background(), authn.Anonymous())
-		}
+		ctx := d.context()
 
 		data := &DashboardData{
 			DrinkCount:      dashboardUnknown,
@@ -321,6 +300,10 @@ func (d *Dashboard) loadData() tea.Cmd {
 
 		return DashboardLoadedMsg{Data: data, Err: loadErr}
 	}
+}
+
+func (d *Dashboard) context() *middleware.Context {
+	return d.app.Context(context.Background(), d.principal)
 }
 
 func (d *Dashboard) renderLoading() string {

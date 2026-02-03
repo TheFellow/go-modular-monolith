@@ -227,24 +227,24 @@ func (d *Dashboard) context() *middleware.Context {
 ## Checklist
 
 ### Core Infrastructure
-- [ ] Update `main/cli/cli.go` to pass principal to tui.Run
-- [ ] Update `main/tui/main.go` Run signature
-- [ ] Update `main/tui/app.go` to store principal, update currentViewModel
+- [x] Update `main/cli/cli.go` to pass principal to tui.Run
+- [x] Update `main/tui/main.go` Run signature
+- [x] Update `main/tui/app.go` to store principal, update currentViewModel
 
 ### ViewModels
-- [ ] Update `main/tui/views/dashboard.go`
-- [ ] Update `app/domains/drinks/surfaces/tui/` (list_vm, create_vm, edit_vm)
-- [ ] Update `app/domains/ingredients/surfaces/tui/` (list_vm, create_vm, edit_vm)
-- [ ] Update `app/domains/inventory/surfaces/tui/` (list_vm, adjust_vm, set_vm)
-- [ ] Update `app/domains/menus/surfaces/tui/` (list_vm, create_vm, rename_vm)
-- [ ] Update `app/domains/orders/surfaces/tui/` (list_vm)
-- [ ] Update `app/domains/audit/surfaces/tui/` (list_vm)
+- [x] Update `main/tui/views/dashboard.go`
+- [x] Update `app/domains/drinks/surfaces/tui/` (list_vm, create_vm, edit_vm)
+- [x] Update `app/domains/ingredients/surfaces/tui/` (list_vm, create_vm, edit_vm)
+- [x] Update `app/domains/inventory/surfaces/tui/` (list_vm, adjust_vm, set_vm)
+- [x] Update `app/domains/menus/surfaces/tui/` (list_vm, create_vm, rename_vm)
+- [x] Update `app/domains/orders/surfaces/tui/` (list_vm)
+- [x] Update `app/domains/audit/surfaces/tui/` (list_vm)
 
 ### Fresh Context
-- [ ] Add `context()` helper to each ViewModel
-- [ ] Replace all `m.ctx` usages with `m.context()`
+- [x] Add `context()` helper to each ViewModel
+- [x] Replace all `m.ctx` usages with `m.context()`
 
 ### Verification
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
-- [ ] Manual test: TUI session with multiple operations, verify no log accumulation
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes
+- [x] Manual test: TUI session with multiple operations, verify no log accumulation

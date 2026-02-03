@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -10,12 +11,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/queries"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
+	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -24,10 +28,10 @@ import (
 
 // ListViewModel renders the orders list and detail panes.
 type ListViewModel struct {
-	app    *app.App
-	ctx    *middleware.Context
-	styles tui.ListViewStyles
-	keys   tui.ListViewKeys
+	app       *app.App
+	principal cedar.EntityUID
+	styles    tui.ListViewStyles
+	keys      tui.ListViewKeys
 
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
@@ -51,11 +55,11 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys, dialogStyles dialog.DialogStyles, dialogKeys dialog.DialogKeys) *ListViewModel {
+func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
-	delegate.Styles.SelectedTitle = styles.Selected
-	delegate.Styles.SelectedDesc = styles.Selected
+	delegate.Styles.SelectedTitle = tuistyles.ListView.Selected
+	delegate.Styles.SelectedDesc = tuistyles.ListView.Selected
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.Title = "Orders"
@@ -66,18 +70,18 @@ func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListView
 
 	vm := &ListViewModel{
 		app:           app,
-		ctx:           ctx,
-		styles:        styles,
-		keys:          keys,
-		dialogStyles:  dialogStyles,
-		dialogKeys:    dialogKeys,
+		principal:     principal,
+		styles:        tuistyles.ListView,
+		keys:          tuikeys.ListView,
+		dialogStyles:  tuistyles.Dialog,
+		dialogKeys:    tuikeys.Dialog,
 		ordersQueries: queries.New(),
 		menuQueries:   menusqueries.New(),
 		list:          l,
-		detail:        NewDetailViewModel(styles, ctx),
+		detail:        NewDetailViewModel(tuistyles.ListView, app, principal),
 		loading:       true,
 	}
-	vm.spinner = components.NewSpinner("Loading orders...", styles.Subtitle)
+	vm.spinner = components.NewSpinner("Loading orders...", vm.styles.Subtitle)
 	return vm
 }
 
@@ -243,7 +247,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadOrders() tea.Cmd {
 	return func() tea.Msg {
-		ordersList, err := m.ordersQueries.List(m.ctx, queries.ListFilter{})
+		ordersList, err := m.ordersQueries.List(m.context(), queries.ListFilter{})
 		if err != nil {
 			return OrdersLoadedMsg{Err: err}
 		}
@@ -312,7 +316,7 @@ func (m *ListViewModel) performComplete() tea.Cmd {
 	}
 	target := m.completeTarget
 	return func() tea.Msg {
-		updated, err := m.app.Orders.Complete(m.ctx, &ordersmodels.Order{ID: target.ID})
+		updated, err := m.app.Orders.Complete(m.context(), &ordersmodels.Order{ID: target.ID})
 		if err != nil {
 			return CompleteErrorMsg{Err: err}
 		}
@@ -364,7 +368,7 @@ func (m *ListViewModel) performCancel() tea.Cmd {
 	}
 	target := m.cancelTarget
 	return func() tea.Msg {
-		updated, err := m.app.Orders.Cancel(m.ctx, &ordersmodels.Order{ID: target.ID})
+		updated, err := m.app.Orders.Cancel(m.context(), &ordersmodels.Order{ID: target.ID})
 		if err != nil {
 			return CancelErrorMsg{Err: err}
 		}
@@ -418,7 +422,7 @@ func (m *ListViewModel) menuName(menuID entity.MenuID) (string, error) {
 	if menuID.IsZero() {
 		return "", errors.Internalf("order missing menu id")
 	}
-	menu, err := m.menuQueries.Get(m.ctx, menuID)
+	menu, err := m.menuQueries.Get(m.context(), menuID)
 	if err != nil {
 		return "", errors.Internalf("load menu %s: %w", menuID.String(), err)
 	}
@@ -430,4 +434,8 @@ func (m *ListViewModel) menuName(menuID entity.MenuID) (string, error) {
 		return "", errors.Internalf("menu %s missing name", menuID.String())
 	}
 	return name, nil
+}
+
+func (m *ListViewModel) context() *middleware.Context {
+	return m.app.Context(context.Background(), m.principal)
 }

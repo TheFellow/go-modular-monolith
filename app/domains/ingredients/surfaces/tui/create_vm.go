@@ -1,29 +1,28 @@
 package tui
 
 import (
-	"errors"
+	"context"
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// CreateDeps defines dependencies for the create ingredient form.
-type CreateDeps struct {
-	FormStyles forms.FormStyles
-	FormKeys   forms.FormKeys
-	Ctx        *middleware.Context
-	CreateFunc func(ctx *middleware.Context, ing *models.Ingredient) (*models.Ingredient, error)
-}
-
 // CreateIngredientVM renders a create ingredient form.
 type CreateIngredientVM struct {
+	app         *app.App
+	principal   cedar.EntityUID
 	form        *forms.Form
-	deps        CreateDeps
+	styles      forms.FormStyles
+	keys        forms.FormKeys
 	err         error
 	submitting  bool
 	nameField   *forms.TextField
@@ -43,7 +42,7 @@ type CreateErrorMsg struct {
 }
 
 // NewCreateIngredientVM builds a CreateIngredientVM with fields configured.
-func NewCreateIngredientVM(deps CreateDeps) *CreateIngredientVM {
+func NewCreateIngredientVM(app *app.App, principal cedar.EntityUID) *CreateIngredientVM {
 	categoryOptions := make([]forms.SelectOption, len(models.AllCategories()))
 	for i, c := range models.AllCategories() {
 		categoryOptions[i] = forms.SelectOption{Label: string(c), Value: c}
@@ -76,9 +75,11 @@ func NewCreateIngredientVM(deps CreateDeps) *CreateIngredientVM {
 		forms.WithPlaceholder("Optional description"),
 	)
 
+	formStyles := tuistyles.Form
+	formKeys := tuikeys.Form
 	form := forms.New(
-		deps.FormStyles,
-		deps.FormKeys,
+		formStyles,
+		formKeys,
 		nameField,
 		categoryField,
 		unitField,
@@ -86,8 +87,11 @@ func NewCreateIngredientVM(deps CreateDeps) *CreateIngredientVM {
 	)
 
 	return &CreateIngredientVM{
+		app:         app,
+		principal:   principal,
 		form:        form,
-		deps:        deps,
+		styles:      formStyles,
+		keys:        formKeys,
 		nameField:   nameField,
 		category:    categoryField,
 		unit:        unitField,
@@ -112,7 +116,7 @@ func (m *CreateIngredientVM) Update(msg tea.Msg) (*CreateIngredientVM, tea.Cmd) 
 		m.err = nil
 		return m, nil
 	case tea.KeyMsg:
-		if key.Matches(typed, m.deps.FormKeys.Submit) {
+		if key.Matches(typed, m.keys.Submit) {
 			return m, m.submit()
 		}
 	}
@@ -126,7 +130,7 @@ func (m *CreateIngredientVM) Update(msg tea.Msg) (*CreateIngredientVM, tea.Cmd) 
 func (m *CreateIngredientVM) View() string {
 	view := m.form.View()
 	if m.err != nil {
-		errText := m.deps.FormStyles.Error.Render("Error: " + m.err.Error())
+		errText := m.styles.Error.Render("Error: " + m.err.Error())
 		return strings.Join([]string{errText, "", view}, "\n")
 	}
 	return view
@@ -150,10 +154,6 @@ func (m *CreateIngredientVM) submit() tea.Cmd {
 		m.err = err
 		return nil
 	}
-	if m.deps.CreateFunc == nil {
-		m.err = errors.New("create function not configured")
-		return nil
-	}
 	m.err = nil
 	m.submitting = true
 
@@ -165,12 +165,16 @@ func (m *CreateIngredientVM) submit() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		created, err := m.deps.CreateFunc(m.deps.Ctx, ingredient)
+		created, err := m.app.Ingredients.Create(m.context(), ingredient)
 		if err != nil {
 			return CreateErrorMsg{Err: err}
 		}
 		return IngredientCreatedMsg{Ingredient: created}
 	}
+}
+
+func (m *CreateIngredientVM) context() *middleware.Context {
+	return m.app.Context(context.Background(), m.principal)
 }
 
 func toString(value any) string {

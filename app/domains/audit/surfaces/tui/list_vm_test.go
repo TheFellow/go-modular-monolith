@@ -12,7 +12,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	cedar "github.com/cedar-policy/cedar-go"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -24,12 +23,7 @@ func TestListViewModel_ShowsEntriesAfterLoad(t *testing.T) {
 	ingredient := createIngredient(t, f)
 	entry := auditEntryFor(t, f, ingredientsauthz.ActionCreate, ingredient.ID.EntityUID())
 
-	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-	))
+	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(f.App, f.OwnerContext().Principal()))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -40,12 +34,7 @@ func TestListViewModel_ShowsLoadingState(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := audittui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-	)
+	model := audittui.NewListViewModel(f.App, f.OwnerContext().Principal())
 	_ = model.Init()
 
 	view := model.View()
@@ -56,12 +45,7 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-	))
+	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(f.App, f.OwnerContext().Principal()))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -75,12 +59,7 @@ func TestListViewModel_ShowsTimestampAndAction(t *testing.T) {
 	ingredient := createIngredient(t, f)
 	entry := auditEntryFor(t, f, ingredientsauthz.ActionCreate, ingredient.ID.EntityUID())
 
-	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-	))
+	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(f.App, f.OwnerContext().Principal()))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -94,12 +73,7 @@ func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 
 	_ = createIngredient(t, f)
 
-	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(
-		f.App,
-		f.OwnerContext(),
-		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
-		tuitest.DefaultListViewKeys[tui.ListViewKeys](),
-	))
+	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(f.App, f.OwnerContext().Principal()))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 30, Height: 20})
 
 	view := model.View()

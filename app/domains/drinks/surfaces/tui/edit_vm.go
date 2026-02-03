@@ -1,29 +1,29 @@
 package tui
 
 import (
+	"context"
 	"errors"
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// EditDeps defines dependencies for the edit drink form.
-type EditDeps struct {
-	FormStyles forms.FormStyles
-	FormKeys   forms.FormKeys
-	Ctx        *middleware.Context
-	UpdateFunc func(ctx *middleware.Context, drink *models.Drink) (*models.Drink, error)
-}
-
 // EditDrinkVM renders an edit drink form.
 type EditDrinkVM struct {
+	app         *app.App
+	principal   cedar.EntityUID
 	form        *forms.Form
 	drink       *models.Drink
-	deps        EditDeps
+	styles      forms.FormStyles
+	keys        forms.FormKeys
 	err         error
 	submitting  bool
 	nameField   *forms.TextField
@@ -43,7 +43,7 @@ type UpdateErrorMsg struct {
 }
 
 // NewEditDrinkVM builds an EditDrinkVM with fields configured.
-func NewEditDrinkVM(drink *models.Drink, deps EditDeps) *EditDrinkVM {
+func NewEditDrinkVM(app *app.App, principal cedar.EntityUID, drink *models.Drink) *EditDrinkVM {
 	if drink == nil {
 		drink = &models.Drink{}
 	}
@@ -81,9 +81,11 @@ func NewEditDrinkVM(drink *models.Drink, deps EditDeps) *EditDrinkVM {
 		forms.WithInitialValue(drink.Description),
 	)
 
+	formStyles := tuistyles.Form
+	formKeys := tuikeys.Form
 	form := forms.New(
-		deps.FormStyles,
-		deps.FormKeys,
+		formStyles,
+		formKeys,
 		nameField,
 		categoryField,
 		glassField,
@@ -91,9 +93,12 @@ func NewEditDrinkVM(drink *models.Drink, deps EditDeps) *EditDrinkVM {
 	)
 
 	return &EditDrinkVM{
+		app:         app,
+		principal:   principal,
 		form:        form,
 		drink:       drink,
-		deps:        deps,
+		styles:      formStyles,
+		keys:        formKeys,
 		nameField:   nameField,
 		category:    categoryField,
 		glass:       glassField,
@@ -114,7 +119,7 @@ func (m *EditDrinkVM) Update(msg tea.Msg) (*EditDrinkVM, tea.Cmd) {
 		m.err = typed.Err
 		return m, nil
 	case tea.KeyMsg:
-		if key.Matches(typed, m.deps.FormKeys.Submit) {
+		if key.Matches(typed, m.keys.Submit) {
 			return m, m.submit()
 		}
 	}
@@ -128,7 +133,7 @@ func (m *EditDrinkVM) Update(msg tea.Msg) (*EditDrinkVM, tea.Cmd) {
 func (m *EditDrinkVM) View() string {
 	view := m.form.View()
 	if m.err != nil {
-		errText := m.deps.FormStyles.Error.Render("Error: " + m.err.Error())
+		errText := m.styles.Error.Render("Error: " + m.err.Error())
 		return strings.Join([]string{errText, "", view}, "\n")
 	}
 	return view
@@ -152,10 +157,6 @@ func (m *EditDrinkVM) submit() tea.Cmd {
 		m.err = err
 		return nil
 	}
-	if m.deps.UpdateFunc == nil {
-		m.err = errors.New("update function not configured")
-		return nil
-	}
 	if m.drink == nil {
 		m.err = errors.New("drink not loaded")
 		return nil
@@ -170,10 +171,14 @@ func (m *EditDrinkVM) submit() tea.Cmd {
 	updated.Description = strings.TrimSpace(toString(m.description.Value()))
 
 	return func() tea.Msg {
-		drink, err := m.deps.UpdateFunc(m.deps.Ctx, &updated)
+		drink, err := m.app.Drinks.Update(m.context(), &updated)
 		if err != nil {
 			return UpdateErrorMsg{Err: err}
 		}
 		return DrinkUpdatedMsg{Drink: drink}
 	}
+}
+
+func (m *EditDrinkVM) context() *middleware.Context {
+	return m.app.Context(context.Background(), m.principal)
 }

@@ -1,11 +1,13 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	drinksqueries "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	menusqueries "github.com/TheFellow/go-modular-monolith/app/domains/menus/queries"
@@ -15,6 +17,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/govalues/decimal"
 )
@@ -25,15 +28,17 @@ type DetailViewModel struct {
 	width        int
 	height       int
 	order        optional.Value[models.Order]
-	ctx          *middleware.Context
+	app          *app.App
+	principal    cedar.EntityUID
 	drinkQueries *drinksqueries.Queries
 	menuQueries  *menusqueries.Queries
 }
 
-func NewDetailViewModel(styles tui.ListViewStyles, ctx *middleware.Context) *DetailViewModel {
+func NewDetailViewModel(styles tui.ListViewStyles, app *app.App, principal cedar.EntityUID) *DetailViewModel {
 	return &DetailViewModel{
 		styles:       styles,
-		ctx:          ctx,
+		app:          app,
+		principal:    principal,
 		drinkQueries: drinksqueries.New(),
 		menuQueries:  menusqueries.New(),
 	}
@@ -162,7 +167,7 @@ func (d *DetailViewModel) drinkName(id entity.DrinkID) (string, error) {
 	if id.IsZero() {
 		return "", errors.Internalf("order item missing drink id")
 	}
-	item, err := d.drinkQueries.Get(d.ctx, id)
+	item, err := d.drinkQueries.Get(d.context(), id)
 	if err != nil {
 		return "", errors.Internalf("load drink %s: %w", id.String(), err)
 	}
@@ -180,7 +185,7 @@ func (d *DetailViewModel) menu(id entity.MenuID) (*menusmodels.Menu, error) {
 	if id.IsZero() {
 		return nil, errors.Internalf("order missing menu id")
 	}
-	menu, err := d.menuQueries.Get(d.ctx, id)
+	menu, err := d.menuQueries.Get(d.context(), id)
 	if err != nil {
 		return nil, errors.Internalf("load menu %s: %w", id.String(), err)
 	}
@@ -191,6 +196,10 @@ func (d *DetailViewModel) menu(id entity.MenuID) (*menusmodels.Menu, error) {
 		return nil, errors.Internalf("menu %s missing name", id.String())
 	}
 	return menu, nil
+}
+
+func (d *DetailViewModel) context() *middleware.Context {
+	return d.app.Context(context.Background(), d.principal)
 }
 
 func formatTime(t time.Time) string {

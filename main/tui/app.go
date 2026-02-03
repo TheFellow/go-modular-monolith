@@ -15,9 +15,11 @@ import (
 	inventoryui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/tui"
 	menusui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
 	ordersui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/tui"
+	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/cedar-policy/cedar-go"
 )
 
 const (
@@ -38,12 +40,12 @@ type App struct {
 	prevViews   []View
 
 	// Application layer
-	app *app.App
-	ctx *middleware.Context
+	app       *app.App
+	principal cedar.EntityUID
 
 	// UI State
-	styles    Styles
-	keys      KeyMap
+	styles    styles.Styles
+	keys      keys.KeyMap
 	help      help.Model
 	width     int
 	height    int
@@ -55,7 +57,7 @@ type App struct {
 }
 
 // NewApp creates a new App with the given application and initial view.
-func NewApp(ctx *middleware.Context, application *app.App, initialView View) *App {
+func NewApp(principal cedar.EntityUID, application *app.App, initialView View) *App {
 	if !isValidView(initialView) {
 		initialView = ViewDashboard
 	}
@@ -66,9 +68,9 @@ func NewApp(ctx *middleware.Context, application *app.App, initialView View) *Ap
 	return &App{
 		currentView: initialView,
 		app:         application,
-		ctx:         ctx,
-		styles:      appStyles,
-		keys:        appKeys,
+		principal:   principal,
+		styles:      styles.App,
+		keys:        keys.App,
 		help:        helpModel,
 		views:       make(map[View]views.ViewModel),
 	}
@@ -159,63 +161,22 @@ func (a *App) currentViewModel() views.ViewModel {
 	var vm views.ViewModel
 	switch a.currentView {
 	case ViewDashboard:
-		vm = views.NewDashboard(a.app, a.ctx, a.dashboardStyles(), a.dashboardKeys())
+		vm = views.NewDashboard(a.app, a.principal)
 	case ViewDrinks:
-		vm = drinksui.NewListViewModel(
-			a.app,
-			a.ctx,
-			listViewStylesFrom(a.styles),
-			listViewKeysFrom(a.keys),
-			formStylesFrom(a.styles),
-			formKeysFrom(a.keys),
-			dialogStylesFrom(a.styles),
-			dialogKeysFrom(a.keys),
-		)
+		vm = drinksui.NewListViewModel(a.app, a.principal)
 	case ViewIngredients:
-		vm = ingredientsui.NewListViewModel(
-			a.app,
-			a.ctx,
-			listViewStylesFrom(a.styles),
-			listViewKeysFrom(a.keys),
-			formStylesFrom(a.styles),
-			formKeysFrom(a.keys),
-			dialogStylesFrom(a.styles),
-			dialogKeysFrom(a.keys),
-		)
+		vm = ingredientsui.NewListViewModel(a.app, a.principal)
 	case ViewInventory:
-		vm = inventoryui.NewListViewModel(
-			a.app,
-			a.ctx,
-			listViewStylesFrom(a.styles),
-			listViewKeysFrom(a.keys),
-			formStylesFrom(a.styles),
-			formKeysFrom(a.keys),
-		)
+		vm = inventoryui.NewListViewModel(a.app, a.principal)
 	case ViewMenus:
-		vm = menusui.NewListViewModel(
-			a.app,
-			a.ctx,
-			listViewStylesFrom(a.styles),
-			listViewKeysFrom(a.keys),
-			formStylesFrom(a.styles),
-			formKeysFrom(a.keys),
-			dialogStylesFrom(a.styles),
-			dialogKeysFrom(a.keys),
-		)
+		vm = menusui.NewListViewModel(a.app, a.principal)
 	case ViewOrders:
-		vm = ordersui.NewListViewModel(
-			a.app,
-			a.ctx,
-			listViewStylesFrom(a.styles),
-			listViewKeysFrom(a.keys),
-			dialogStylesFrom(a.styles),
-			dialogKeysFrom(a.keys),
-		)
+		vm = ordersui.NewListViewModel(a.app, a.principal)
 	case ViewAudit:
-		vm = auditui.NewListViewModel(a.app, a.ctx, listViewStylesFrom(a.styles), listViewKeysFrom(a.keys))
+		vm = auditui.NewListViewModel(a.app, a.principal)
 	default:
 		a.currentView = ViewDashboard
-		vm = views.NewDashboard(a.app, a.ctx, a.dashboardStyles(), a.dashboardKeys())
+		vm = views.NewDashboard(a.app, a.principal)
 	}
 
 	a.views[a.currentView] = vm
@@ -320,28 +281,6 @@ func (a *App) renderTooSmallWarning() string {
 	}
 
 	return content
-}
-
-func (a *App) dashboardStyles() views.DashboardStyles {
-	return views.DashboardStyles{
-		Title:    a.styles.Title,
-		Subtitle: a.styles.Subtitle,
-		Card:     a.styles.Card,
-		HelpKey:  a.styles.HelpKey,
-	}
-}
-
-func (a *App) dashboardKeys() views.DashboardKeys {
-	return views.DashboardKeys{
-		Nav1: a.keys.Nav1,
-		Nav2: a.keys.Nav2,
-		Nav3: a.keys.Nav3,
-		Nav4: a.keys.Nav4,
-		Nav5: a.keys.Nav5,
-		Nav6: a.keys.Nav6,
-		Help: a.keys.Help,
-		Quit: a.keys.Quit,
-	}
 }
 
 func isValidView(view View) bool {

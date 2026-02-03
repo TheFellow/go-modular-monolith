@@ -1,6 +1,11 @@
-package tui
+package styles
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/charmbracelet/lipgloss"
+)
 
 // Styles holds all the Lip Gloss styles used in the TUI.
 type Styles struct {
@@ -46,6 +51,25 @@ type Styles struct {
 	Card          lipgloss.Style
 	ListPane      lipgloss.Style
 	DetailPane    lipgloss.Style
+}
+
+// App is the shared application style set.
+var App = newStyles()
+
+// Pre-computed style subsets.
+var (
+	ListView  = listViewStylesFrom(App)
+	Form      = formStylesFrom(App)
+	Dialog    = dialogStylesFrom(App)
+	Dashboard = dashboardStylesFrom(App)
+)
+
+// DashboardStyles contains the lipgloss styles used by the dashboard.
+type DashboardStyles struct {
+	Title    lipgloss.Style
+	Subtitle lipgloss.Style
+	Card     lipgloss.Style
+	HelpKey  lipgloss.Style
 }
 
 // newStyles creates a Styles instance with the default theme.
@@ -122,4 +146,49 @@ func newStyles() Styles {
 		BorderForeground(styles.Muted)
 
 	return styles
+}
+
+func listViewStylesFrom(s Styles) tui.ListViewStyles {
+	return tui.ListViewStyles{
+		Title:       s.Title,
+		Subtitle:    s.Subtitle,
+		Muted:       s.Unselected,
+		Selected:    s.Selected,
+		ListPane:    s.ListPane,
+		DetailPane:  s.DetailPane,
+		ErrorText:   s.ErrorText,
+		WarningText: s.WarningText,
+	}
+}
+
+func formStylesFrom(s Styles) forms.FormStyles {
+	return forms.FormStyles{
+		Form:          lipgloss.NewStyle(),
+		Label:         s.FormLabel,
+		LabelRequired: s.FormLabelRequired,
+		Input:         s.FormInput,
+		InputFocused:  s.FormInputFocused,
+		Error:         s.FormError,
+		Help:          s.FormHelp,
+	}
+}
+
+func dialogStylesFrom(s Styles) dialog.DialogStyles {
+	return dialog.DialogStyles{
+		Modal:         s.DialogModal,
+		Title:         s.DialogTitle,
+		Message:       s.DialogMessage,
+		Button:        s.DialogButton,
+		ButtonFocused: s.DialogButtonFocus,
+		DangerButton:  s.DialogDanger,
+	}
+}
+
+func dashboardStylesFrom(s Styles) DashboardStyles {
+	return DashboardStyles{
+		Title:    s.Title,
+		Subtitle: s.Subtitle,
+		Card:     s.Card,
+		HelpKey:  s.HelpKey,
+	}
 }

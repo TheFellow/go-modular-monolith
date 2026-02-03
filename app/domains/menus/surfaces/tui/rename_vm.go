@@ -1,30 +1,30 @@
 package tui
 
 import (
+	"context"
 	"errors"
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// RenameDeps defines dependencies for the rename menu form.
-type RenameDeps struct {
-	FormStyles forms.FormStyles
-	FormKeys   forms.FormKeys
-	Ctx        *middleware.Context
-	UpdateFunc func(ctx *middleware.Context, menu *models.Menu) (*models.Menu, error)
-}
-
 // RenameMenuVM renders an inline rename form.
 type RenameMenuVM struct {
+	app        *app.App
+	principal  cedar.EntityUID
 	input      textinput.Model
 	menu       *models.Menu
-	deps       RenameDeps
+	styles     forms.FormStyles
+	keys       forms.FormKeys
 	err        error
 	submitting bool
 }
@@ -40,7 +40,7 @@ type RenameErrorMsg struct {
 }
 
 // NewRenameMenuVM builds a RenameMenuVM with input configured.
-func NewRenameMenuVM(menu *models.Menu, deps RenameDeps) *RenameMenuVM {
+func NewRenameMenuVM(app *app.App, principal cedar.EntityUID, menu *models.Menu) *RenameMenuVM {
 	if menu == nil {
 		menu = &models.Menu{}
 	}
@@ -51,9 +51,12 @@ func NewRenameMenuVM(menu *models.Menu, deps RenameDeps) *RenameMenuVM {
 	input.Focus()
 
 	return &RenameMenuVM{
-		input: input,
-		menu:  menu,
-		deps:  deps,
+		app:       app,
+		principal: principal,
+		input:     input,
+		menu:      menu,
+		styles:    tuistyles.Form,
+		keys:      tuikeys.Form,
 	}
 }
 
@@ -74,7 +77,7 @@ func (m *RenameMenuVM) Update(msg tea.Msg) (*RenameMenuVM, tea.Cmd) {
 		m.err = nil
 		return m, nil
 	case tea.KeyMsg:
-		if key.Matches(typed, m.deps.FormKeys.Submit) || typed.String() == "enter" {
+		if key.Matches(typed, m.keys.Submit) || typed.String() == "enter" {
 			return m, m.submit()
 		}
 	}
@@ -86,16 +89,16 @@ func (m *RenameMenuVM) Update(msg tea.Msg) (*RenameMenuVM, tea.Cmd) {
 
 // View renders the rename form.
 func (m *RenameMenuVM) View() string {
-	label := m.deps.FormStyles.Label.Render("Name")
+	label := m.styles.Label.Render("Name")
 	inputView := m.input.View()
 	if m.input.Focused() {
-		inputView = m.deps.FormStyles.InputFocused.Render(inputView)
+		inputView = m.styles.InputFocused.Render(inputView)
 	} else {
-		inputView = m.deps.FormStyles.Input.Render(inputView)
+		inputView = m.styles.Input.Render(inputView)
 	}
 	view := strings.Join([]string{"Rename Menu", "", label, inputView}, "\n")
 	if m.err != nil {
-		errText := m.deps.FormStyles.Error.Render("Error: " + m.err.Error())
+		errText := m.styles.Error.Render("Error: " + m.err.Error())
 		return strings.Join([]string{errText, "", view}, "\n")
 	}
 	return view
@@ -123,10 +126,6 @@ func (m *RenameMenuVM) submit() tea.Cmd {
 		m.err = errors.New("name is required")
 		return nil
 	}
-	if m.deps.UpdateFunc == nil {
-		m.err = errors.New("update function not configured")
-		return nil
-	}
 	if m.menu == nil {
 		m.err = errors.New("menu not loaded")
 		return nil
@@ -140,10 +139,14 @@ func (m *RenameMenuVM) submit() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		menu, err := m.deps.UpdateFunc(m.deps.Ctx, updated)
+		menu, err := m.app.Menu.Update(m.context(), updated)
 		if err != nil {
 			return RenameErrorMsg{Err: err}
 		}
 		return MenuRenamedMsg{Menu: menu}
 	}
+}
+
+func (m *RenameMenuVM) context() *middleware.Context {
+	return m.app.Context(context.Background(), m.principal)
 }

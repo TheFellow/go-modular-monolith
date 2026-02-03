@@ -1,23 +1,25 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
-	ingredients "github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	menus "github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
+	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -26,10 +28,10 @@ import (
 
 // ListViewModel renders the drinks list and detail panes.
 type ListViewModel struct {
-	app    *app.App
-	ctx    *middleware.Context
-	styles tui.ListViewStyles
-	keys   tui.ListViewKeys
+	app       *app.App
+	principal cedar.EntityUID
+	styles    tui.ListViewStyles
+	keys      tui.ListViewKeys
 
 	formStyles   forms.FormStyles
 	formKeys     forms.FormKeys
@@ -55,11 +57,11 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListViewStyles, keys tui.ListViewKeys, formStyles forms.FormStyles, formKeys forms.FormKeys, dialogStyles dialog.DialogStyles, dialogKeys dialog.DialogKeys) *ListViewModel {
+func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
-	delegate.Styles.SelectedTitle = styles.Selected
-	delegate.Styles.SelectedDesc = styles.Selected
+	delegate.Styles.SelectedTitle = tuistyles.ListView.Selected
+	delegate.Styles.SelectedDesc = tuistyles.ListView.Selected
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.Title = "Drinks"
@@ -70,19 +72,19 @@ func NewListViewModel(app *app.App, ctx *middleware.Context, styles tui.ListView
 
 	vm := &ListViewModel{
 		app:           app,
-		ctx:           ctx,
-		styles:        styles,
-		keys:          keys,
-		formStyles:    formStyles,
-		formKeys:      formKeys,
-		dialogStyles:  dialogStyles,
-		dialogKeys:    dialogKeys,
+		principal:     principal,
+		styles:        tuistyles.ListView,
+		keys:          tuikeys.ListView,
+		formStyles:    tuistyles.Form,
+		formKeys:      tuikeys.Form,
+		dialogStyles:  tuistyles.Dialog,
+		dialogKeys:    tuikeys.Dialog,
 		drinksQueries: queries.New(),
 		list:          l,
-		detail:        NewDetailViewModel(styles, ctx),
+		detail:        NewDetailViewModel(tuistyles.ListView, app, principal),
 		loading:       true,
 	}
-	vm.spinner = components.NewSpinner("Loading drinks...", styles.Subtitle)
+	vm.spinner = components.NewSpinner("Loading drinks...", vm.styles.Subtitle)
 	return vm
 }
 
@@ -274,7 +276,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadDrinks() tea.Cmd {
 	return func() tea.Msg {
-		drinksList, err := m.drinksQueries.List(m.ctx, queries.ListFilter{})
+		drinksList, err := m.drinksQueries.List(m.context(), queries.ListFilter{})
 		if err != nil {
 			return DrinksLoadedMsg{Err: err}
 		}
@@ -294,15 +296,7 @@ type showDeleteDialogMsg struct {
 }
 
 func (m *ListViewModel) startCreate() tea.Cmd {
-	m.create = NewCreateDrinkVM(CreateDeps{
-		FormStyles: m.formStyles,
-		FormKeys:   m.formKeys,
-		Ctx:        m.ctx,
-		CreateFunc: m.app.Drinks.Create,
-		ListIngredients: func(ctx *middleware.Context) ([]*ingredientsmodels.Ingredient, error) {
-			return m.app.Ingredients.List(ctx, ingredients.ListRequest{})
-		},
-	})
+	m.create = NewCreateDrinkVM(m.app, m.principal)
 	m.create.SetWidth(m.detailWidth)
 	return m.create.Init()
 }
@@ -312,12 +306,7 @@ func (m *ListViewModel) startEdit() tea.Cmd {
 	if drink == nil {
 		return nil
 	}
-	m.edit = NewEditDrinkVM(drink, EditDeps{
-		FormStyles: m.formStyles,
-		FormKeys:   m.formKeys,
-		Ctx:        m.ctx,
-		UpdateFunc: m.app.Drinks.Update,
-	})
+	m.edit = NewEditDrinkVM(m.app, m.principal, drink)
 	m.edit.SetWidth(m.detailWidth)
 	return m.edit.Init()
 }
@@ -335,7 +324,7 @@ func (m *ListViewModel) showDeleteConfirm(drink *models.Drink) tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		menusList, err := m.app.Menu.List(m.ctx, menus.ListRequest{})
+		menusList, err := m.app.Menu.List(m.context(), menus.ListRequest{})
 		if err != nil {
 			return DeleteErrorMsg{Err: err}
 		}
@@ -367,12 +356,16 @@ func (m *ListViewModel) performDelete() tea.Cmd {
 	}
 	target := m.deleteTarget
 	return func() tea.Msg {
-		deleted, err := m.app.Drinks.Delete(m.ctx, target.ID)
+		deleted, err := m.app.Drinks.Delete(m.context(), target.ID)
 		if err != nil {
 			return DeleteErrorMsg{Err: err}
 		}
 		return DrinkDeletedMsg{Drink: deleted}
 	}
+}
+
+func (m *ListViewModel) context() *middleware.Context {
+	return m.app.Context(context.Background(), m.principal)
 }
 
 func (m *ListViewModel) selectedDrink() *models.Drink {

@@ -168,7 +168,7 @@ func (c *CLI) Command() *cli.Command {
 					return ctx, cli.Exit(fmt.Errorf("too many arguments for --tui"), apperrors.ExitUsage)
 				}
 
-				if err := tui.Run(mctx, c.app, initialView); err != nil {
+				if err := tui.Run(p, c.app, initialView); err != nil {
 					return ctx, err
 				}
 				return ctx, cli.Exit("", 0)
