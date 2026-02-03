@@ -7,8 +7,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// ListViewStylesFrom creates ListViewStyles from the main Styles.
-func ListViewStylesFrom(s Styles) tui.ListViewStyles {
+// listViewStylesFrom creates ListViewStyles from the main Styles.
+func listViewStylesFrom(s Styles) tui.ListViewStyles {
 	return tui.ListViewStyles{
 		Title:       s.Title,
 		Subtitle:    s.Subtitle,
@@ -21,8 +21,8 @@ func ListViewStylesFrom(s Styles) tui.ListViewStyles {
 	}
 }
 
-// ListViewKeysFrom creates ListViewKeys from the main KeyMap.
-func ListViewKeysFrom(k KeyMap) tui.ListViewKeys {
+// listViewKeysFrom creates ListViewKeys from the main KeyMap.
+func listViewKeysFrom(k KeyMap) tui.ListViewKeys {
 	return tui.ListViewKeys{
 		Up:          k.Up,
 		Down:        k.Down,
@@ -40,8 +40,8 @@ func ListViewKeysFrom(k KeyMap) tui.ListViewKeys {
 	}
 }
 
-// FormStylesFrom creates FormStyles from the main Styles.
-func FormStylesFrom(s Styles) forms.FormStyles {
+// formStylesFrom creates FormStyles from the main Styles.
+func formStylesFrom(s Styles) forms.FormStyles {
 	return forms.FormStyles{
 		Form:          lipgloss.NewStyle(),
 		Label:         s.FormLabel,
@@ -53,8 +53,8 @@ func FormStylesFrom(s Styles) forms.FormStyles {
 	}
 }
 
-// FormKeysFrom creates FormKeys from the main KeyMap.
-func FormKeysFrom(k KeyMap) forms.FormKeys {
+// formKeysFrom creates FormKeys from the main KeyMap.
+func formKeysFrom(k KeyMap) forms.FormKeys {
 	return forms.FormKeys{
 		NextField: k.NextField,
 		PrevField: k.PrevField,
@@ -63,8 +63,8 @@ func FormKeysFrom(k KeyMap) forms.FormKeys {
 	}
 }
 
-// DialogStylesFrom creates DialogStyles from the main Styles.
-func DialogStylesFrom(s Styles) dialog.DialogStyles {
+// dialogStylesFrom creates DialogStyles from the main Styles.
+func dialogStylesFrom(s Styles) dialog.DialogStyles {
 	return dialog.DialogStyles{
 		Modal:         s.DialogModal,
 		Title:         s.DialogTitle,
@@ -75,8 +75,8 @@ func DialogStylesFrom(s Styles) dialog.DialogStyles {
 	}
 }
 
-// DialogKeysFrom creates DialogKeys from the main KeyMap.
-func DialogKeysFrom(k KeyMap) dialog.DialogKeys {
+// dialogKeysFrom creates DialogKeys from the main KeyMap.
+func dialogKeysFrom(k KeyMap) dialog.DialogKeys {
 	return dialog.DialogKeys{
 		Confirm: k.Confirm,
 		Cancel:  k.Back,

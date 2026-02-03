@@ -41,8 +41,8 @@ type KeyMap struct {
 	SwitchBtn key.Binding
 }
 
-// NewKeyMap creates a KeyMap with default bindings.
-func NewKeyMap() KeyMap {
+// newKeyMap creates a KeyMap with default bindings.
+func newKeyMap() KeyMap {
 	return KeyMap{
 		Quit: key.NewBinding(
 			key.WithKeys("q", "ctrl+c"),

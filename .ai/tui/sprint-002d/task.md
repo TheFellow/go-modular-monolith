@@ -93,7 +93,7 @@ func NewListViewModel(
 
 | Task | Description                                            | Status  |
 |------|--------------------------------------------------------|---------|
-| 001  | [Package-level config](todo/task-001-package-config.md) | Pending |
+| 001  | [Package-level config](done/task-001-package-config.md) | Done |
 | 002  | [ViewModel architecture](todo/task-002-viewmodel-architecture.md) | Pending |
 | 003  | [Cleanup](todo/task-003-cleanup.md)                    | Pending |
 | 004  | [README](todo/task-004-readme.md)                      | Pending |

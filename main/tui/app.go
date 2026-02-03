@@ -67,8 +67,8 @@ func NewApp(ctx *middleware.Context, application *app.App, initialView View) *Ap
 		currentView: initialView,
 		app:         application,
 		ctx:         ctx,
-		styles:      NewStyles(),
-		keys:        NewKeyMap(),
+		styles:      appStyles,
+		keys:        appKeys,
 		help:        helpModel,
 		views:       make(map[View]views.ViewModel),
 	}
@@ -164,55 +164,55 @@ func (a *App) currentViewModel() views.ViewModel {
 		vm = drinksui.NewListViewModel(
 			a.app,
 			a.ctx,
-			ListViewStylesFrom(a.styles),
-			ListViewKeysFrom(a.keys),
-			FormStylesFrom(a.styles),
-			FormKeysFrom(a.keys),
-			DialogStylesFrom(a.styles),
-			DialogKeysFrom(a.keys),
+			listViewStylesFrom(a.styles),
+			listViewKeysFrom(a.keys),
+			formStylesFrom(a.styles),
+			formKeysFrom(a.keys),
+			dialogStylesFrom(a.styles),
+			dialogKeysFrom(a.keys),
 		)
 	case ViewIngredients:
 		vm = ingredientsui.NewListViewModel(
 			a.app,
 			a.ctx,
-			ListViewStylesFrom(a.styles),
-			ListViewKeysFrom(a.keys),
-			FormStylesFrom(a.styles),
-			FormKeysFrom(a.keys),
-			DialogStylesFrom(a.styles),
-			DialogKeysFrom(a.keys),
+			listViewStylesFrom(a.styles),
+			listViewKeysFrom(a.keys),
+			formStylesFrom(a.styles),
+			formKeysFrom(a.keys),
+			dialogStylesFrom(a.styles),
+			dialogKeysFrom(a.keys),
 		)
 	case ViewInventory:
 		vm = inventoryui.NewListViewModel(
 			a.app,
 			a.ctx,
-			ListViewStylesFrom(a.styles),
-			ListViewKeysFrom(a.keys),
-			FormStylesFrom(a.styles),
-			FormKeysFrom(a.keys),
+			listViewStylesFrom(a.styles),
+			listViewKeysFrom(a.keys),
+			formStylesFrom(a.styles),
+			formKeysFrom(a.keys),
 		)
 	case ViewMenus:
 		vm = menusui.NewListViewModel(
 			a.app,
 			a.ctx,
-			ListViewStylesFrom(a.styles),
-			ListViewKeysFrom(a.keys),
-			FormStylesFrom(a.styles),
-			FormKeysFrom(a.keys),
-			DialogStylesFrom(a.styles),
-			DialogKeysFrom(a.keys),
+			listViewStylesFrom(a.styles),
+			listViewKeysFrom(a.keys),
+			formStylesFrom(a.styles),
+			formKeysFrom(a.keys),
+			dialogStylesFrom(a.styles),
+			dialogKeysFrom(a.keys),
 		)
 	case ViewOrders:
 		vm = ordersui.NewListViewModel(
 			a.app,
 			a.ctx,
-			ListViewStylesFrom(a.styles),
-			ListViewKeysFrom(a.keys),
-			DialogStylesFrom(a.styles),
-			DialogKeysFrom(a.keys),
+			listViewStylesFrom(a.styles),
+			listViewKeysFrom(a.keys),
+			dialogStylesFrom(a.styles),
+			dialogKeysFrom(a.keys),
 		)
 	case ViewAudit:
-		vm = auditui.NewListViewModel(a.app, a.ctx, ListViewStylesFrom(a.styles), ListViewKeysFrom(a.keys))
+		vm = auditui.NewListViewModel(a.app, a.ctx, listViewStylesFrom(a.styles), listViewKeysFrom(a.keys))
 	default:
 		a.currentView = ViewDashboard
 		vm = views.NewDashboard(a.app, a.ctx, a.dashboardStyles(), a.dashboardKeys())

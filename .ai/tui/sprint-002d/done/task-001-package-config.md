@@ -118,11 +118,11 @@ func NewApp(ctx *middleware.Context, application *app.App, initialView View) *Ap
 
 ## Checklist
 
-- [ ] Create `main/tui/config.go` with package-level vars
-- [ ] Rename `NewStyles()` → `newStyles()` in styles.go
-- [ ] Rename `NewKeyMap()` → `newKeyMap()` in keys.go
-- [ ] Rename all `XxxFrom()` → `xxxFrom()` in viewmodel_types.go
-- [ ] Update `NewApp()` to use `appStyles` and `appKeys`
-- [ ] Add `AppStyles()` and `AppKeys()` accessor functions
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] Create `main/tui/config.go` with package-level vars
+- [x] Rename `NewStyles()` → `newStyles()` in styles.go
+- [x] Rename `NewKeyMap()` → `newKeyMap()` in keys.go
+- [x] Rename all `XxxFrom()` → `xxxFrom()` in viewmodel_types.go
+- [x] Update `NewApp()` to use `appStyles` and `appKeys`
+- [x] Add `AppStyles()` and `AppKeys()` accessor functions
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes

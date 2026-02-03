@@ -48,8 +48,8 @@ type Styles struct {
 	DetailPane    lipgloss.Style
 }
 
-// NewStyles creates a Styles instance with the default theme.
-func NewStyles() Styles {
+// newStyles creates a Styles instance with the default theme.
+func newStyles() Styles {
 	styles := Styles{
 		Primary:   lipgloss.AdaptiveColor{Light: "#1d4ed8", Dark: "#7aa2f7"},
 		Secondary: lipgloss.AdaptiveColor{Light: "#0f766e", Dark: "#2dd4bf"},
