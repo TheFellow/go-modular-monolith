@@ -508,6 +508,7 @@ func (m *ListViewModel) showDraftConfirm(menu *menusmodels.Menu) tea.Cmd {
 		confirm := dialog.NewConfirmDialog(
 			"Draft Menu",
 			message,
+			dialog.WithDangerous(),
 			dialog.WithConfirmText("Draft"),
 			dialog.WithStyles(m.dialogStyles),
 			dialog.WithKeys(m.dialogKeys),

@@ -128,7 +128,9 @@ func newStyles() Styles {
 		BorderForeground(styles.Muted).
 		Padding(0, 1)
 	styles.DialogButtonFocus = lipgloss.NewStyle().Bold(true).Underline(true)
-	styles.DialogDanger = lipgloss.NewStyle().Bold(true).Foreground(styles.Error)
+	styles.DialogDanger = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.AdaptiveColor{Light: "#991b1b", Dark: "#f87171"})
 
 	styles.Border = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

@@ -180,17 +180,18 @@ func (d *ConfirmDialog) renderButtons() string {
 
 	confirmStyle := d.styles.Button
 	if d.dangerous {
-		confirmStyle = d.styles.DangerButton
+		confirmStyle = d.styles.DangerButton.Inherit(d.styles.Button)
+	}
+	if d.focused == 0 {
+		confirmStyle = confirmStyle.Inherit(d.styles.ButtonFocused)
 	}
 	confirmView := confirmStyle.Render(confirmLabel)
-	if d.focused == 0 {
-		confirmView = d.styles.ButtonFocused.Render(confirmView)
-	}
 
-	cancelView := d.styles.Button.Render(cancelLabel)
+	cancelStyle := d.styles.Button
 	if d.focused == 1 {
-		cancelView = d.styles.ButtonFocused.Render(cancelView)
+		cancelStyle = cancelStyle.Inherit(d.styles.ButtonFocused)
 	}
+	cancelView := cancelStyle.Render(cancelLabel)
 
 	return lipgloss.JoinHorizontal(lipgloss.Center, confirmView, "  ", cancelView)
 }

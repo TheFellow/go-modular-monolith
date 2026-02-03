@@ -429,7 +429,7 @@ func DeduplicatePermissions(perms []Permission) []Permission {
 
 type MenuSaga struct {
     data       MenuData
-    app        *app.Application
+    app        *app.App
     resolution *saga.Resolution  // Tracks created IDs during execution
 }
 
@@ -442,22 +442,22 @@ type MenuData struct {
 
 type IngredientDef struct {
     Name     string
-    Category string
-    Unit     string
+    Category ingredientmodels.Category  // e.g., "spirit", "mixer", "garnish"
+    Unit     measurement.Unit           // e.g., "oz", "ml", "dash"
 }
 
 type DrinkDef struct {
     Name        string
-    Category    string
-    Glass       string
-    Price       *float64
+    Category    drinkmodels.DrinkCategory
+    Glass       drinkmodels.GlassType
     Ingredients []DrinkIngredient  // Can reference keys or existing IDs
+    Steps       []string           // Recipe steps
 }
 
 type DrinkIngredient struct {
-    Key      string            // Reference to defined ingredient
-    ID       entity.IngredientID  // Or existing ingredient
-    Quantity string
+    Key    string                // Reference to defined ingredient
+    ID     entity.IngredientID   // Or existing ingredient
+    Amount measurement.Amount    // Quantity with unit
 }
 
 type DrinkRef struct {
@@ -466,7 +466,7 @@ type DrinkRef struct {
     Price *float64        // Optional price override
 }
 
-func NewMenuSaga(app *app.Application) *MenuSaga {
+func NewMenuSaga(app *app.App) *MenuSaga {
     return &MenuSaga{
         data: MenuData{
             Ingredients: make(map[string]IngredientDef),
@@ -597,22 +597,23 @@ It simply performs the domain operations in the correct order.
 ```go
 func (s *MenuSaga) Execute(ctx *middleware.Context) (entity.MenuID, error) {
     // Phase 1: Create all ingredients
+    // Note: Module APIs accept model structs, not separate command structs
     for key, def := range s.data.Ingredients {
-        id, err := s.app.Ingredients.Create(ctx, commands.CreateIngredientCommand{
+        ingredient, err := s.app.Ingredients.Create(ctx, &ingredientmodels.Ingredient{
             Name:     def.Name,
-            Category: def.Category,
-            Unit:     def.Unit,
+            Category: def.Category,  // ingredientmodels.Category
+            Unit:     def.Unit,      // measurement.Unit
         })
         if err != nil {
             return entity.MenuID{}, fmt.Errorf("create ingredient %q: %w", def.Name, err)
         }
-        s.resolution.SetIngredient(key, id)
+        s.resolution.SetIngredient(key, ingredient.ID)
     }
 
     // Phase 2: Create all drinks
     for key, def := range s.data.Drinks {
-        // Resolve ingredient references
-        ingredients := make([]commands.DrinkIngredient, len(def.Ingredients))
+        // Resolve ingredient references and build recipe
+        recipeIngredients := make([]drinkmodels.RecipeIngredient, len(def.Ingredients))
         for i, ing := range def.Ingredients {
             var ingID entity.IngredientID
             if ing.Key != "" {
@@ -624,24 +625,29 @@ func (s *MenuSaga) Execute(ctx *middleware.Context) (entity.MenuID, error) {
             } else {
                 ingID = ing.ID
             }
-            ingredients[i] = commands.DrinkIngredient{ID: ingID, Quantity: ing.Quantity}
+            recipeIngredients[i] = drinkmodels.RecipeIngredient{
+                IngredientID: ingID,
+                Amount:       ing.Amount,  // measurement.Amount
+            }
         }
 
-        id, err := s.app.Drinks.Create(ctx, commands.CreateDrinkCommand{
-            Name:        def.Name,
-            Category:    def.Category,
-            Glass:       def.Glass,
-            Price:       def.Price,
-            Ingredients: ingredients,
+        drink, err := s.app.Drinks.Create(ctx, &drinkmodels.Drink{
+            Name:     def.Name,
+            Category: def.Category,
+            Glass:    def.Glass,
+            Recipe: drinkmodels.Recipe{
+                Ingredients: recipeIngredients,
+                Steps:       def.Steps,
+            },
         })
         if err != nil {
             return entity.MenuID{}, fmt.Errorf("create drink %q: %w", def.Name, err)
         }
-        s.resolution.SetDrink(key, id)
+        s.resolution.SetDrink(key, drink.ID)
     }
 
     // Phase 3: Create menu
-    menuID, err := s.app.Menu.Create(ctx, commands.CreateMenuCommand{
+    menu, err := s.app.Menu.Create(ctx, &menumodels.Menu{
         Name: s.data.Name,
     })
     if err != nil {
@@ -661,17 +667,17 @@ func (s *MenuSaga) Execute(ctx *middleware.Context) (entity.MenuID, error) {
             drinkID = ref.ID
         }
 
-        err := s.app.Menu.AddDrink(ctx, commands.AddDrinkToMenuCommand{
-            MenuID:  menuID,
+        // AddDrink uses a MenuPatch model
+        _, err := s.app.Menu.AddDrink(ctx, &menumodels.MenuPatch{
+            MenuID:  menu.ID,
             DrinkID: drinkID,
-            Price:   ref.Price,
         })
         if err != nil {
             return entity.MenuID{}, fmt.Errorf("add drink to menu: %w", err)
         }
     }
 
-    return menuID, nil
+    return menu.ID, nil
 }
 ```
 
@@ -774,13 +780,14 @@ Concrete sagas live in their domain directories (not `pkg/saga/`):
 
 - [ ] Saga data can be modified in any order
 - [ ] `Validate()` catches incomplete/inconsistent data
-- [ ] `Plan()` returns actions AND required permissions
-- [ ] `Authorize()` checks all permissions before execution
+- [ ] `RequiredPermissions()` returns all Cedar permissions needed
+- [ ] `Preview()` returns human-readable operation descriptions
+- [ ] `SagaAuthorize` middleware checks all permissions before execution
 - [ ] Permission failure provides clear, actionable error message
-- [ ] `Commit()` runs all actions in single database transaction
+- [ ] `SagaTransaction` middleware wraps execution in single database transaction
 - [ ] Any failure automatically rolls back (no orphan data)
 - [ ] **No compensating actions / Rollback() needed**
-- [ ] Hooks enable TUI progress display
+- [ ] `Preview()` enables TUI confirmation display before commit
 
 ## Usage Examples
 
