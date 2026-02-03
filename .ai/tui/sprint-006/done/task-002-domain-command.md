@@ -116,9 +116,9 @@ In `permissions_test.go`, add a test case for the draft permission following the
 
 ## Checklist
 
-- [ ] Create `events/menu-drafted.go`
-- [ ] Create `internal/commands/draft.go`
-- [ ] Create `draft.go` facade
-- [ ] Add draft permission test to `permissions_test.go`
-- [ ] `go build ./app/domains/menus/...` passes
-- [ ] `go test ./app/domains/menus/...` passes
+- [x] Create `events/menu-drafted.go`
+- [x] Create `internal/commands/draft.go`
+- [x] Create `draft.go` facade
+- [x] Add draft permission test to `permissions_test.go`
+- [x] `go build ./app/domains/menus/...` passes
+- [x] `go test ./app/domains/menus/...` passes

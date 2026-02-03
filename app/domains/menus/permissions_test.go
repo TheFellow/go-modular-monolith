@@ -92,6 +92,13 @@ func TestPermissions_Menu(t *testing.T) {
 			} else {
 				testutil.PermissionTestFail(t, err)
 			}
+
+			_, err = a.Menu.Draft(ctx, &menuM.Menu{ID: menuRecord.ID})
+			if tc.canWrite {
+				testutil.PermissionTestPass(t, err)
+			} else {
+				testutil.PermissionTestFail(t, err)
+			}
 		})
 	}
 }
