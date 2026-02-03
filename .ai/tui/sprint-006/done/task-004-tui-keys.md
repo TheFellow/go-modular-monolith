@@ -82,9 +82,9 @@ type ListViewKeys struct {
 
 ## Checklist
 
-- [ ] Add `Draft` field to `KeyMap` struct
-- [ ] Add `Draft` key binding in `newKeyMap()`
-- [ ] Add `Draft` to `listViewKeysFrom()` function
-- [ ] Add `Draft` field to `ListViewKeys` in `pkg/tui/types.go`
-- [ ] `go build ./main/tui/...` passes
-- [ ] `go build ./pkg/tui/...` passes
+- [x] Add `Draft` field to `KeyMap` struct
+- [x] Add `Draft` key binding in `newKeyMap()`
+- [x] Add `Draft` to `listViewKeysFrom()` function
+- [x] Add `Draft` field to `ListViewKeys` in `pkg/tui/types.go`
+- [x] `go build ./main/tui/...` passes
+- [x] `go build ./pkg/tui/...` passes

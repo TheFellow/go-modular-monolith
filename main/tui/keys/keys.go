@@ -33,6 +33,7 @@ type KeyMap struct {
 	Adjust      key.Binding
 	Set         key.Binding
 	Publish     key.Binding
+	Draft       key.Binding
 	Complete    key.Binding
 	CancelOrder key.Binding
 
@@ -139,6 +140,10 @@ func newKeyMap() KeyMap {
 			key.WithKeys("p"),
 			key.WithHelp("p", "publish"),
 		),
+		Draft: key.NewBinding(
+			key.WithKeys("u"),
+			key.WithHelp("u", "draft"),
+		),
 		Complete: key.NewBinding(
 			key.WithKeys("o"),
 			key.WithHelp("o", "complete"),
@@ -212,6 +217,7 @@ func listViewKeysFrom(k KeyMap) tui.ListViewKeys {
 		Adjust:      k.Adjust,
 		Set:         k.Set,
 		Publish:     k.Publish,
+		Draft:       k.Draft,
 		Complete:    k.Complete,
 		CancelOrder: k.CancelOrder,
 	}

@@ -30,6 +30,7 @@ type ListViewKeys struct {
 	Adjust      key.Binding
 	Set         key.Binding
 	Publish     key.Binding
+	Draft       key.Binding
 	Complete    key.Binding
 	CancelOrder key.Binding
 }
