@@ -74,13 +74,13 @@ These are built into `bubbles/list` by default.
 
 ## Checklist
 
-- [ ] Enable pagination in drinks list_vm.go
-- [ ] Enable pagination in ingredients list_vm.go
-- [ ] Enable pagination in menus list_vm.go
-- [ ] Enable pagination in orders list_vm.go
-- [ ] Enable pagination in audit list_vm.go
-- [ ] Decide on paginator style (dots vs Arabic)
+- [x] Enable pagination in drinks list_vm.go
+- [x] Enable pagination in ingredients list_vm.go
+- [x] Enable pagination in menus list_vm.go
+- [x] Enable pagination in orders list_vm.go
+- [x] Enable pagination in audit list_vm.go
+- [x] Decide on paginator style (dots vs Arabic)
 - [ ] Verify pagination appears and works with long lists
 - [ ] Verify page navigation keys work (PgUp/PgDown)
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes

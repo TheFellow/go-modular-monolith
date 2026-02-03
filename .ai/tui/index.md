@@ -16,6 +16,7 @@ This index tracks all TUI-related sprints for the Bubble Tea interactive termina
 | sprint-003b | Saga Infrastructure  | [sprint-003b-saga-infrastructure.md](sprint-003b-saga-infrastructure.md) |
 | sprint-004  | Workflows           | [sprint-004-workflows.md](sprint-004-workflows.md)                       |
 | sprint-005  | Polish              | [sprint-005-polish.md](sprint-005-polish.md)                             |
+| sprint-006  | Menu Unpublish       | [sprint-006-unpublish-menu.md](sprint-006-unpublish-menu.md)             |
 
 ## Completed Sprints
 

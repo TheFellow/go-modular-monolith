@@ -20,6 +20,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/paginator"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -62,7 +63,8 @@ func NewListViewModel(app *app.App) *ListViewModel {
 	l.Title = "Orders"
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
-	l.SetShowPagination(false)
+	l.SetShowPagination(true)
+	l.Paginator.Type = paginator.Arabic
 	l.SetFilteringEnabled(true)
 
 	vm := &ListViewModel{
@@ -224,7 +226,12 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	if m.dialog != nil {
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
 	}
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Complete, m.keys.CancelOrder, m.keys.Refresh, m.keys.Back}
+	return []key.Binding{
+		m.keys.Up, m.keys.Down,
+		m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
+		m.keys.Complete, m.keys.CancelOrder,
+		m.keys.Refresh, m.keys.Back,
+	}
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
@@ -236,6 +243,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 	}
 	return [][]key.Binding{
 		{m.keys.Up, m.keys.Down, m.keys.Enter},
+		{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
 		{m.keys.Complete, m.keys.CancelOrder},
 		{m.keys.Refresh, m.keys.Back},
 	}
