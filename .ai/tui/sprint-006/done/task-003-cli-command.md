@@ -54,7 +54,7 @@ Add a new subcommand after the `publish` command:
 
 ## Checklist
 
-- [ ] Add `draft` subcommand to `menu.go`
-- [ ] `go build ./main/cli/...` passes
-- [ ] `go test ./main/cli/...` passes
-- [ ] Manual test: `mixology menu draft --id <published-menu-id>` works
+- [x] Add `draft` subcommand to `menu.go`
+- [x] `go build ./main/cli/...` passes
+- [x] `go test ./main/cli/...` passes
+- [x] Manual test: `mixology menu draft --id <published-menu-id>` works

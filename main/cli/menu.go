@@ -311,6 +311,31 @@ func (c *CLI) menuCommands() *cli.Command {
 					return nil
 				}),
 			},
+			{
+				Name:  "draft",
+				Usage: "Return a published menu to draft status",
+				Flags: []cli.Flag{
+					JSONFlag,
+					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
+				},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					menuID, err := entity.ParseMenuID(cmd.String("id"))
+					if err != nil {
+						return err
+					}
+					drafted, err := c.app.Menu.Draft(ctx, &menumodels.Menu{ID: menuID})
+					if err != nil {
+						return err
+					}
+
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*drafted))
+					}
+
+					fmt.Println(drafted.ID.String())
+					return nil
+				}),
+			},
 		},
 	}
 }

@@ -77,7 +77,7 @@ Use `u` for "undraft" / "unpublish" in TUI (currently unused). The command is ca
 |------|------------------------------------------------------------------------|---------|
 | 001  | [Domain: Add Draft action and policy](done/task-001-domain-action.md)  | Done    |
 | 002  | [Domain: Add Draft command and event](done/task-002-domain-command.md) | Done    |
-| 003  | [CLI: Add menu draft subcommand](todo/task-003-cli-command.md)         | Pending |
+| 003  | [CLI: Add menu draft subcommand](done/task-003-cli-command.md)         | Done    |
 | 004  | [TUI: Add Draft key binding](todo/task-004-tui-keys.md)                | Pending |
 | 005  | [TUI: Add Draft flow to menus list](todo/task-005-tui-menus.md)        | Pending |
 
