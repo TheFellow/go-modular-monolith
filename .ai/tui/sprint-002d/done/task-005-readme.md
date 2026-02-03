@@ -99,10 +99,10 @@ sequenceDiagram
 
 ## Checklist
 
-- [ ] Create `main/tui/README.md`
-- [ ] Include architecture overview
-- [ ] Add mermaid diagram(s)
-- [ ] Document key concepts (App, ViewModels, fresh context)
-- [ ] Add file organization reference
-- [ ] Brief guide for adding new views
+- [x] Create `main/tui/README.md`
+- [x] Include architecture overview
+- [x] Add mermaid diagram(s)
+- [x] Document key concepts (App, ViewModels, fresh context)
+- [x] Add file organization reference
+- [x] Brief guide for adding new views
 - [ ] Verify mermaid renders correctly (test in GitHub preview)
