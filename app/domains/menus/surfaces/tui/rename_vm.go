@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"errors"
 	"strings"
 
@@ -11,7 +10,6 @@ import (
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,7 +18,6 @@ import (
 // RenameMenuVM renders an inline rename form.
 type RenameMenuVM struct {
 	app        *app.App
-	principal  cedar.EntityUID
 	input      textinput.Model
 	menu       *models.Menu
 	styles     forms.FormStyles
@@ -40,7 +37,7 @@ type RenameErrorMsg struct {
 }
 
 // NewRenameMenuVM builds a RenameMenuVM with input configured.
-func NewRenameMenuVM(app *app.App, principal cedar.EntityUID, menu *models.Menu) *RenameMenuVM {
+func NewRenameMenuVM(app *app.App, menu *models.Menu) *RenameMenuVM {
 	if menu == nil {
 		menu = &models.Menu{}
 	}
@@ -51,12 +48,11 @@ func NewRenameMenuVM(app *app.App, principal cedar.EntityUID, menu *models.Menu)
 	input.Focus()
 
 	return &RenameMenuVM{
-		app:       app,
-		principal: principal,
-		input:     input,
-		menu:      menu,
-		styles:    tuistyles.App.Form,
-		keys:      tuikeys.App.Form,
+		app:    app,
+		input:  input,
+		menu:   menu,
+		styles: tuistyles.App.Form,
+		keys:   tuikeys.App.Form,
 	}
 }
 
@@ -148,5 +144,5 @@ func (m *RenameMenuVM) submit() tea.Cmd {
 }
 
 func (m *RenameMenuVM) context() *middleware.Context {
-	return m.app.Context(context.Background(), m.principal)
+	return m.app.Context()
 }

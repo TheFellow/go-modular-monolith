@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"errors"
 	"strings"
 
@@ -11,7 +10,6 @@ import (
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -19,7 +17,6 @@ import (
 // EditDrinkVM renders an edit drink form.
 type EditDrinkVM struct {
 	app         *app.App
-	principal   cedar.EntityUID
 	form        *forms.Form
 	drink       *models.Drink
 	styles      forms.FormStyles
@@ -43,7 +40,7 @@ type UpdateErrorMsg struct {
 }
 
 // NewEditDrinkVM builds an EditDrinkVM with fields configured.
-func NewEditDrinkVM(app *app.App, principal cedar.EntityUID, drink *models.Drink) *EditDrinkVM {
+func NewEditDrinkVM(app *app.App, drink *models.Drink) *EditDrinkVM {
 	if drink == nil {
 		drink = &models.Drink{}
 	}
@@ -94,7 +91,6 @@ func NewEditDrinkVM(app *app.App, principal cedar.EntityUID, drink *models.Drink
 
 	return &EditDrinkVM{
 		app:         app,
-		principal:   principal,
 		form:        form,
 		drink:       drink,
 		styles:      formStyles,
@@ -180,5 +176,5 @@ func (m *EditDrinkVM) submit() tea.Cmd {
 }
 
 func (m *EditDrinkVM) context() *middleware.Context {
-	return m.app.Context(context.Background(), m.principal)
+	return m.app.Context()
 }

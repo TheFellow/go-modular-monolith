@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -28,10 +26,9 @@ import (
 
 // ListViewModel renders the orders list and detail panes.
 type ListViewModel struct {
-	app       *app.App
-	principal cedar.EntityUID
-	styles    tui.ListViewStyles
-	keys      tui.ListViewKeys
+	app    *app.App
+	styles tui.ListViewStyles
+	keys   tui.ListViewKeys
 
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
@@ -55,7 +52,7 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
+func NewListViewModel(app *app.App) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
 	delegate.Styles.SelectedTitle = tuistyles.App.ListView.Selected
@@ -70,7 +67,6 @@ func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 
 	vm := &ListViewModel{
 		app:           app,
-		principal:     principal,
 		styles:        tuistyles.App.ListView,
 		keys:          tuikeys.App.ListView,
 		dialogStyles:  tuistyles.App.Dialog,
@@ -78,7 +74,7 @@ func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 		ordersQueries: queries.New(),
 		menuQueries:   menusqueries.New(),
 		list:          l,
-		detail:        NewDetailViewModel(tuistyles.App.ListView, app, principal),
+		detail:        NewDetailViewModel(tuistyles.App.ListView, app),
 		loading:       true,
 	}
 	vm.spinner = components.NewSpinner("Loading orders...", vm.styles.Subtitle)
@@ -437,5 +433,5 @@ func (m *ListViewModel) menuName(menuID entity.MenuID) (string, error) {
 }
 
 func (m *ListViewModel) context() *middleware.Context {
-	return m.app.Context(context.Background(), m.principal)
+	return m.app.Context()
 }

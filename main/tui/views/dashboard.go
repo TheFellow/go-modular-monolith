@@ -1,7 +1,6 @@
 package views
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -24,17 +23,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/cedar-policy/cedar-go"
 )
 
 // Dashboard is the main navigation hub of the TUI.
 type Dashboard struct {
-	app       *app.App
-	principal cedar.EntityUID
-	styles    styles.DashboardStyles
-	keys      keys.DashboardKeys
-	width     int
-	height    int
+	app    *app.App
+	styles styles.DashboardStyles
+	keys   keys.DashboardKeys
+	width  int
+	height int
 
 	loading bool
 	spinner components.Spinner
@@ -75,13 +72,12 @@ type DashboardLoadedMsg struct {
 }
 
 // NewDashboard creates a new Dashboard view.
-func NewDashboard(app *app.App, principal cedar.EntityUID) *Dashboard {
+func NewDashboard(app *app.App) *Dashboard {
 	d := &Dashboard{
-		app:       app,
-		principal: principal,
-		styles:    styles.App.Dashboard,
-		keys:      keys.App.Dashboard,
-		loading:   true,
+		app:     app,
+		styles:  styles.App.Dashboard,
+		keys:    keys.App.Dashboard,
+		loading: true,
 	}
 	d.spinner = components.NewSpinner("Loading dashboard...", d.styles.Subtitle)
 	return d
@@ -303,7 +299,7 @@ func (d *Dashboard) loadData() tea.Cmd {
 }
 
 func (d *Dashboard) context() *middleware.Context {
-	return d.app.Context(context.Background(), d.principal)
+	return d.app.Context()
 }
 
 func (d *Dashboard) renderLoading() string {

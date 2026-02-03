@@ -45,16 +45,17 @@ func NewFixture(t testing.TB) *Fixture {
 
 	metrics := telemetry.Memory()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	p, err := authn.ParseActor("owner")
+	Ok(t, err)
 	a := app.New(
 		app.WithStore(s),
 		app.WithLogger(logger),
 		app.WithMetrics(metrics),
+		app.WithPrincipal(p),
 	)
 	t.Cleanup(func() { _ = a.Close() })
 
-	p, err := authn.ParseActor("owner")
-	Ok(t, err)
-	ownerCtx := a.Context(context.Background(), p)
+	ownerCtx := a.Context()
 
 	return &Fixture{
 		T:       t,
@@ -82,7 +83,7 @@ func (f *Fixture) ActorContext(actor string) *middleware.Context {
 	f.T.Helper()
 	p, err := authn.ParseActor(actor)
 	Ok(f.T, err)
-	return f.App.Context(context.Background(), p)
+	return f.App.ContextFor(context.Background(), p)
 }
 
 func (f *Fixture) Bootstrap() *Bootstrap {

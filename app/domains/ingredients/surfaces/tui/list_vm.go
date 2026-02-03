@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
@@ -18,7 +17,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -27,10 +25,9 @@ import (
 
 // ListViewModel renders the ingredients list and detail panes.
 type ListViewModel struct {
-	app       *app.App
-	principal cedar.EntityUID
-	styles    tui.ListViewStyles
-	keys      tui.ListViewKeys
+	app    *app.App
+	styles tui.ListViewStyles
+	keys   tui.ListViewKeys
 
 	formStyles   forms.FormStyles
 	formKeys     forms.FormKeys
@@ -57,7 +54,7 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
+func NewListViewModel(app *app.App) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
 	delegate.Styles.SelectedTitle = tuistyles.App.ListView.Selected
@@ -72,7 +69,6 @@ func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 
 	vm := &ListViewModel{
 		app:          app,
-		principal:    principal,
 		styles:       tuistyles.App.ListView,
 		keys:         tuikeys.App.ListView,
 		formStyles:   tuistyles.App.Form,
@@ -295,7 +291,7 @@ func (m *ListViewModel) loadIngredients() tea.Cmd {
 }
 
 func (m *ListViewModel) startCreate() tea.Cmd {
-	m.create = NewCreateIngredientVM(m.app, m.principal)
+	m.create = NewCreateIngredientVM(m.app)
 	m.create.SetWidth(m.detailWidth)
 	return m.create.Init()
 }
@@ -310,7 +306,7 @@ func (m *ListViewModel) startEdit() tea.Cmd {
 	if ingredient == nil {
 		return nil
 	}
-	m.edit = NewEditIngredientVM(m.app, m.principal, ingredient)
+	m.edit = NewEditIngredientVM(m.app, ingredient)
 	m.edit.SetWidth(m.detailWidth)
 	return m.edit.Init()
 }
@@ -369,7 +365,7 @@ func (m *ListViewModel) performDelete() tea.Cmd {
 }
 
 func (m *ListViewModel) context() *middleware.Context {
-	return m.app.Context(context.Background(), m.principal)
+	return m.app.Context()
 }
 
 func (m *ListViewModel) selectedIngredient() *models.Ingredient {

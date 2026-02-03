@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"errors"
 	"strconv"
 	"strings"
@@ -15,7 +14,6 @@ import (
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -23,7 +21,6 @@ import (
 // SetInventoryVM renders an inventory set form.
 type SetInventoryVM struct {
 	app        *app.App
-	principal  cedar.EntityUID
 	form       *forms.Form
 	row        InventoryRow
 	styles     forms.FormStyles
@@ -40,7 +37,7 @@ type SetErrorMsg struct {
 }
 
 // NewSetInventoryVM builds a SetInventoryVM with fields configured.
-func NewSetInventoryVM(app *app.App, principal cedar.EntityUID, row InventoryRow) *SetInventoryVM {
+func NewSetInventoryVM(app *app.App, row InventoryRow) *SetInventoryVM {
 	quantityField := forms.NewNumberField(
 		"Quantity",
 		forms.WithRequired(),
@@ -73,14 +70,13 @@ func NewSetInventoryVM(app *app.App, principal cedar.EntityUID, row InventoryRow
 	)
 
 	return &SetInventoryVM{
-		app:       app,
-		principal: principal,
-		form:      form,
-		row:       row,
-		styles:    formStyles,
-		keys:      formKeys,
-		quantity:  quantityField,
-		cost:      costField,
+		app:      app,
+		form:     form,
+		row:      row,
+		styles:   formStyles,
+		keys:     formKeys,
+		quantity: quantityField,
+		cost:     costField,
 	}
 }
 
@@ -189,7 +185,7 @@ func (m *SetInventoryVM) submit() tea.Cmd {
 }
 
 func (m *SetInventoryVM) context() *middleware.Context {
-	return m.app.Context(context.Background(), m.principal)
+	return m.app.Context()
 }
 
 func (m *SetInventoryVM) parseCost() (money.Price, error) {

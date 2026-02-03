@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -13,27 +12,24 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/lipgloss"
 )
 
 // DetailViewModel renders a menu detail pane.
 type DetailViewModel struct {
-	styles    tui.ListViewStyles
-	width     int
-	height    int
-	menu      optional.Value[models.Menu]
-	app       *app.App
-	principal cedar.EntityUID
-	queries   *drinksqueries.Queries
+	styles  tui.ListViewStyles
+	width   int
+	height  int
+	menu    optional.Value[models.Menu]
+	app     *app.App
+	queries *drinksqueries.Queries
 }
 
-func NewDetailViewModel(styles tui.ListViewStyles, app *app.App, principal cedar.EntityUID) *DetailViewModel {
+func NewDetailViewModel(styles tui.ListViewStyles, app *app.App) *DetailViewModel {
 	return &DetailViewModel{
-		styles:    styles,
-		app:       app,
-		principal: principal,
-		queries:   drinksqueries.New(),
+		styles:  styles,
+		app:     app,
+		queries: drinksqueries.New(),
 	}
 }
 
@@ -141,7 +137,7 @@ func (d *DetailViewModel) itemName(item models.MenuItem) (string, error) {
 }
 
 func (d *DetailViewModel) context() *middleware.Context {
-	return d.app.Context(context.Background(), d.principal)
+	return d.app.Context()
 }
 
 func menuAvailabilityLabel(avail models.Availability) string {

@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
@@ -17,7 +16,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -26,10 +24,9 @@ import (
 
 // ListViewModel renders the menus list and detail panes.
 type ListViewModel struct {
-	app       *app.App
-	principal cedar.EntityUID
-	styles    tui.ListViewStyles
-	keys      tui.ListViewKeys
+	app    *app.App
+	styles tui.ListViewStyles
+	keys   tui.ListViewKeys
 
 	formStyles   forms.FormStyles
 	formKeys     forms.FormKeys
@@ -56,7 +53,7 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
+func NewListViewModel(app *app.App) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
 	delegate.Styles.SelectedTitle = tuistyles.App.ListView.Selected
@@ -71,7 +68,6 @@ func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 
 	vm := &ListViewModel{
 		app:          app,
-		principal:    principal,
 		styles:       tuistyles.App.ListView,
 		keys:         tuikeys.App.ListView,
 		formStyles:   tuistyles.App.Form,
@@ -80,7 +76,7 @@ func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 		dialogKeys:   tuikeys.App.Dialog,
 		queries:      queries.New(),
 		list:         l,
-		detail:       NewDetailViewModel(tuistyles.App.ListView, app, principal),
+		detail:       NewDetailViewModel(tuistyles.App.ListView, app),
 		loading:      true,
 	}
 	vm.spinner = components.NewSpinner("Loading menus...", vm.styles.Subtitle)
@@ -322,7 +318,7 @@ func (m *ListViewModel) loadMenus() tea.Cmd {
 }
 
 func (m *ListViewModel) startCreate() tea.Cmd {
-	m.create = NewCreateMenuVM(m.app, m.principal)
+	m.create = NewCreateMenuVM(m.app)
 	m.create.SetWidth(m.detailWidth)
 	return m.create.Init()
 }
@@ -342,7 +338,7 @@ func (m *ListViewModel) startRename() tea.Cmd {
 	if menu == nil {
 		return nil
 	}
-	m.rename = NewRenameMenuVM(m.app, m.principal, menu)
+	m.rename = NewRenameMenuVM(m.app, menu)
 	m.rename.SetWidth(m.detailWidth)
 	return m.rename.Init()
 }
@@ -490,5 +486,5 @@ func (m *ListViewModel) syncDetail() {
 }
 
 func (m *ListViewModel) context() *middleware.Context {
-	return m.app.Context(context.Background(), m.principal)
+	return m.app.Context()
 }

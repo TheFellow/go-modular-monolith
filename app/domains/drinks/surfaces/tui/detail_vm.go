@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -24,18 +22,16 @@ type DetailViewModel struct {
 	height          int
 	drink           optional.Value[models.Drink]
 	app             *app.App
-	principal       cedar.EntityUID
 	queries         *queries.Queries
 	ingredientNames map[entity.IngredientID]string
 	ingredientErr   error
 }
 
-func NewDetailViewModel(styles tui.ListViewStyles, app *app.App, principal cedar.EntityUID) *DetailViewModel {
+func NewDetailViewModel(styles tui.ListViewStyles, app *app.App) *DetailViewModel {
 	return &DetailViewModel{
-		styles:    styles,
-		app:       app,
-		principal: principal,
-		queries:   queries.New(),
+		styles:  styles,
+		app:     app,
+		queries: queries.New(),
 	}
 }
 
@@ -79,7 +75,7 @@ func (d *DetailViewModel) SetDrink(drink optional.Value[models.Drink]) {
 }
 
 func (d *DetailViewModel) context() *middleware.Context {
-	return d.app.Context(context.Background(), d.principal)
+	return d.app.Context()
 }
 
 func (d *DetailViewModel) View() string {

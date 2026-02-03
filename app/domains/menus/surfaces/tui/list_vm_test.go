@@ -21,7 +21,6 @@ func TestListViewModel_ShowsMenusAfterLoad(t *testing.T) {
 
 	model := tuitest.InitAndLoad(t, menustui.NewListViewModel(
 		f.App,
-		f.OwnerContext().Principal(),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -35,7 +34,6 @@ func TestListViewModel_ShowsLoadingState(t *testing.T) {
 
 	model := menustui.NewListViewModel(
 		f.App,
-		f.OwnerContext().Principal(),
 	)
 	_ = model.Init()
 
@@ -49,7 +47,6 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 
 	model := tuitest.InitAndLoad(t, menustui.NewListViewModel(
 		f.App,
-		f.OwnerContext().Principal(),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -61,7 +58,6 @@ func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
-	principal := ctx.Principal()
 
 	draft, err := f.Menu.Create(ctx, &menumodels.Menu{Name: "Draft Menu"})
 	testutil.Ok(t, err)
@@ -75,7 +71,6 @@ func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 
 	model := tuitest.InitAndLoad(t, menustui.NewListViewModel(
 		f.App,
-		principal,
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -111,7 +106,6 @@ func TestListViewModel_DetailShowsDrinks(t *testing.T) {
 
 	model := tuitest.InitAndLoad(t, menustui.NewListViewModel(
 		f.App,
-		f.OwnerContext().Principal(),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 

@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -16,7 +15,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -24,7 +22,6 @@ import (
 // AdjustInventoryVM renders an inventory adjustment form.
 type AdjustInventoryVM struct {
 	app        *app.App
-	principal  cedar.EntityUID
 	form       *forms.Form
 	row        InventoryRow
 	styles     forms.FormStyles
@@ -41,7 +38,7 @@ type AdjustErrorMsg struct {
 }
 
 // NewAdjustInventoryVM builds an AdjustInventoryVM with fields configured.
-func NewAdjustInventoryVM(app *app.App, principal cedar.EntityUID, row InventoryRow) *AdjustInventoryVM {
+func NewAdjustInventoryVM(app *app.App, row InventoryRow) *AdjustInventoryVM {
 	reasonOptions := []forms.SelectOption{
 		{Label: "Received", Value: models.ReasonReceived},
 		{Label: "Used", Value: models.ReasonUsed},
@@ -73,14 +70,13 @@ func NewAdjustInventoryVM(app *app.App, principal cedar.EntityUID, row Inventory
 	)
 
 	return &AdjustInventoryVM{
-		app:       app,
-		principal: principal,
-		form:      form,
-		row:       row,
-		styles:    formStyles,
-		keys:      formKeys,
-		amount:    amountField,
-		reason:    reasonField,
+		app:    app,
+		form:   form,
+		row:    row,
+		styles: formStyles,
+		keys:   formKeys,
+		amount: amountField,
+		reason: reasonField,
 	}
 }
 
@@ -186,7 +182,7 @@ func (m *AdjustInventoryVM) submit() tea.Cmd {
 }
 
 func (m *AdjustInventoryVM) context() *middleware.Context {
-	return m.app.Context(context.Background(), m.principal)
+	return m.app.Context()
 }
 
 func toAdjustmentReason(value any) models.AdjustmentReason {

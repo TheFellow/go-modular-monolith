@@ -42,7 +42,6 @@ func TestDetailViewModel_ShowsMenuDetails(t *testing.T) {
 	detail := menustui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		f.App,
-		f.OwnerContext().Principal(),
 	)
 	detail.SetSize(80, 40)
 	detail.SetMenu(optional.Some(*menu))
@@ -60,7 +59,6 @@ func TestDetailViewModel_ShowsEmptyState(t *testing.T) {
 	detail := menustui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		f.App,
-		f.OwnerContext().Principal(),
 	)
 	detail.SetMenu(optional.None[menumodels.Menu]())
 
@@ -96,7 +94,6 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 	detail := menustui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
 		f.App,
-		f.OwnerContext().Principal(),
 	)
 	detail.SetMenu(optional.Some(*menu))
 	detail.SetSize(20, 10)

@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
@@ -11,7 +10,6 @@ import (
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -19,7 +17,6 @@ import (
 // CreateIngredientVM renders a create ingredient form.
 type CreateIngredientVM struct {
 	app         *app.App
-	principal   cedar.EntityUID
 	form        *forms.Form
 	styles      forms.FormStyles
 	keys        forms.FormKeys
@@ -42,7 +39,7 @@ type CreateErrorMsg struct {
 }
 
 // NewCreateIngredientVM builds a CreateIngredientVM with fields configured.
-func NewCreateIngredientVM(app *app.App, principal cedar.EntityUID) *CreateIngredientVM {
+func NewCreateIngredientVM(app *app.App) *CreateIngredientVM {
 	categoryOptions := make([]forms.SelectOption, len(models.AllCategories()))
 	for i, c := range models.AllCategories() {
 		categoryOptions[i] = forms.SelectOption{Label: string(c), Value: c}
@@ -88,7 +85,6 @@ func NewCreateIngredientVM(app *app.App, principal cedar.EntityUID) *CreateIngre
 
 	return &CreateIngredientVM{
 		app:         app,
-		principal:   principal,
 		form:        form,
 		styles:      formStyles,
 		keys:        formKeys,
@@ -174,7 +170,7 @@ func (m *CreateIngredientVM) submit() tea.Cmd {
 }
 
 func (m *CreateIngredientVM) context() *middleware.Context {
-	return m.app.Context(context.Background(), m.principal)
+	return m.app.Context()
 }
 
 func toString(value any) string {

@@ -10,6 +10,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
+	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -31,6 +32,7 @@ type App struct {
 	Menu        *menus.Module
 	Orders      *orders.Module
 
+	principal        optional.Value[cedar.EntityUID]
 	metricsCollector *middleware.MetricsCollector
 }
 
@@ -46,6 +48,7 @@ func New(opts ...Option) *App {
 		Inventory:   inventory.NewModule(),
 		Menu:        menus.NewModule(),
 		Orders:      orders.NewModule(),
+		principal:   optional.None[cedar.EntityUID](),
 	}
 
 	for _, opt := range opts {
@@ -76,7 +79,29 @@ func (a *App) Close() error {
 	return s.Close()
 }
 
-func (a *App) Context(parent context.Context, principal cedar.EntityUID) *middleware.Context {
+func (a *App) Context() *middleware.Context {
+	return a.ContextFrom(context.Background())
+}
+
+func (a *App) ContextFrom(parent context.Context) *middleware.Context {
+	return a.contextWithPrincipal(parent, a.principalOrAnonymous())
+}
+
+func (a *App) ContextFor(parent context.Context, principal cedar.EntityUID) *middleware.Context {
+	return a.contextWithPrincipal(parent, principal)
+}
+
+func (a *App) principalOrAnonymous() cedar.EntityUID {
+	if a == nil {
+		return authn.Anonymous()
+	}
+	if principal, ok := a.principal.Unwrap(); ok {
+		return principal
+	}
+	return authn.Anonymous()
+}
+
+func (a *App) contextWithPrincipal(parent context.Context, principal cedar.EntityUID) *middleware.Context {
 	if parent == nil {
 		parent = context.Background()
 	}

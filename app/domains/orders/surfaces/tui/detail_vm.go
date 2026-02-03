@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -17,7 +16,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/govalues/decimal"
 )
@@ -29,16 +27,14 @@ type DetailViewModel struct {
 	height       int
 	order        optional.Value[models.Order]
 	app          *app.App
-	principal    cedar.EntityUID
 	drinkQueries *drinksqueries.Queries
 	menuQueries  *menusqueries.Queries
 }
 
-func NewDetailViewModel(styles tui.ListViewStyles, app *app.App, principal cedar.EntityUID) *DetailViewModel {
+func NewDetailViewModel(styles tui.ListViewStyles, app *app.App) *DetailViewModel {
 	return &DetailViewModel{
 		styles:       styles,
 		app:          app,
-		principal:    principal,
 		drinkQueries: drinksqueries.New(),
 		menuQueries:  menusqueries.New(),
 	}
@@ -199,7 +195,7 @@ func (d *DetailViewModel) menu(id entity.MenuID) (*menusmodels.Menu, error) {
 }
 
 func (d *DetailViewModel) context() *middleware.Context {
-	return d.app.Context(context.Background(), d.principal)
+	return d.app.Context()
 }
 
 func formatTime(t time.Time) string {

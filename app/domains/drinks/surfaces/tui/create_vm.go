@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"errors"
 	"strings"
 
@@ -13,7 +12,6 @@ import (
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -21,7 +19,6 @@ import (
 // CreateDrinkVM renders a create drink form.
 type CreateDrinkVM struct {
 	app         *app.App
-	principal   cedar.EntityUID
 	form        *forms.Form
 	styles      forms.FormStyles
 	keys        forms.FormKeys
@@ -44,7 +41,7 @@ type CreateErrorMsg struct {
 }
 
 // NewCreateDrinkVM builds a CreateDrinkVM with fields configured.
-func NewCreateDrinkVM(app *app.App, principal cedar.EntityUID) *CreateDrinkVM {
+func NewCreateDrinkVM(app *app.App) *CreateDrinkVM {
 	categoryOptions := make([]forms.SelectOption, len(models.AllDrinkCategories()))
 	for i, c := range models.AllDrinkCategories() {
 		categoryOptions[i] = forms.SelectOption{Label: string(c), Value: c}
@@ -88,7 +85,6 @@ func NewCreateDrinkVM(app *app.App, principal cedar.EntityUID) *CreateDrinkVM {
 
 	return &CreateDrinkVM{
 		app:         app,
-		principal:   principal,
 		form:        form,
 		styles:      formStyles,
 		keys:        formKeys,
@@ -201,7 +197,7 @@ func (m *CreateDrinkVM) defaultRecipe() (models.Recipe, error) {
 }
 
 func (m *CreateDrinkVM) context() *middleware.Context {
-	return m.app.Context(context.Background(), m.principal)
+	return m.app.Context()
 }
 
 func toString(value any) string {

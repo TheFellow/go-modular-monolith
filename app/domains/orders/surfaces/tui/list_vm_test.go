@@ -45,7 +45,6 @@ func TestListViewModel_ShowsOrdersAfterLoad(t *testing.T) {
 
 	model := tuitest.InitAndLoad(t, orderstui.NewListViewModel(
 		f.App,
-		f.OwnerContext().Principal(),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -61,7 +60,6 @@ func TestListViewModel_ShowsLoadingState(t *testing.T) {
 
 	model := orderstui.NewListViewModel(
 		f.App,
-		f.OwnerContext().Principal(),
 	)
 	_ = model.Init()
 
@@ -75,7 +73,6 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 
 	model := tuitest.InitAndLoad(t, orderstui.NewListViewModel(
 		f.App,
-		f.OwnerContext().Principal(),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -139,7 +136,6 @@ func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 
 	model := tuitest.InitAndLoad(t, orderstui.NewListViewModel(
 		f.App,
-		f.OwnerContext().Principal(),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
@@ -180,7 +176,6 @@ func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 
 	model := tuitest.InitAndLoad(t, orderstui.NewListViewModel(
 		f.App,
-		f.OwnerContext().Principal(),
 	))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 30, Height: 20})
 

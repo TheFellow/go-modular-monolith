@@ -20,7 +20,7 @@ func TestListViewModel_ShowsInventoryAfterLoad(t *testing.T) {
 	f := testutil.NewFixture(t)
 	f.Bootstrap().WithBasicIngredients().WithStock(5)
 
-	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -31,7 +31,7 @@ func TestListViewModel_ShowsLoadingState(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := inventorytui.NewListViewModel(f.App, f.OwnerContext().Principal())
+	model := inventorytui.NewListViewModel(f.App)
 	_ = model.Init()
 
 	view := model.View()
@@ -42,7 +42,7 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -56,7 +56,7 @@ func TestListViewModel_ShowsErrorOnFailure(t *testing.T) {
 		t.Fatalf("close app: %v", err)
 	}
 
-	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -68,7 +68,7 @@ func TestListViewModel_ShowsStockStatus(t *testing.T) {
 	f := testutil.NewFixture(t)
 	f.Bootstrap().WithBasicIngredients().WithStock(5)
 
-	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -90,7 +90,7 @@ func TestListViewModel_ShowsIngredientName(t *testing.T) {
 		t.Fatalf("set inventory: %v", err)
 	}
 
-	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -102,7 +102,7 @@ func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 	f := testutil.NewFixture(t)
 	f.Bootstrap().WithBasicIngredients().WithStock(5)
 
-	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 30, Height: 20})
 
 	view := model.View()
@@ -113,7 +113,7 @@ func TestListViewModel_SetSize_ZeroWidth(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 0, Height: 0})
 
 	_ = model.View()
@@ -124,7 +124,7 @@ func TestListViewModel_SetSize_WideWidth(t *testing.T) {
 	f := testutil.NewFixture(t)
 	f.Bootstrap().WithBasicIngredients().WithStock(5)
 
-	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
 
 	view := model.View()
@@ -136,7 +136,7 @@ func TestListViewModel_SetSize_ResizeSequence(t *testing.T) {
 	f := testutil.NewFixture(t)
 	f.Bootstrap().WithBasicIngredients().WithStock(5)
 
-	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	sizes := []tea.WindowSizeMsg{
 		{Width: 30, Height: 20},
 		{Width: 120, Height: 40},
@@ -155,7 +155,7 @@ func TestListViewModel_ColumnWidths_FitWithinWidth(t *testing.T) {
 	f := testutil.NewFixture(t)
 	f.Bootstrap().WithBasicIngredients().WithStock(5)
 
-	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	widths := []int{70, 100, 140}
 	for _, width := range widths {
 		model, _ = model.Update(tea.WindowSizeMsg{Width: width, Height: 20})
@@ -182,7 +182,7 @@ func TestListViewModel_ColumnWidths_AccountForPadding(t *testing.T) {
 	f := testutil.NewFixture(t)
 	f.Bootstrap().WithBasicIngredients().WithStock(5)
 
-	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 
 	width := 70
 	model, _ = model.Update(tea.WindowSizeMsg{Width: width, Height: 20})

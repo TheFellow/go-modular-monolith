@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
@@ -20,7 +19,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -34,10 +32,9 @@ const (
 
 // ListViewModel renders the inventory list and detail panes.
 type ListViewModel struct {
-	app       *app.App
-	principal cedar.EntityUID
-	styles    tui.ListViewStyles
-	keys      tui.ListViewKeys
+	app    *app.App
+	styles tui.ListViewStyles
+	keys   tui.ListViewKeys
 
 	formStyles forms.FormStyles
 	formKeys   forms.FormKeys
@@ -58,7 +55,7 @@ type ListViewModel struct {
 	detailWidth       int
 }
 
-func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
+func NewListViewModel(app *app.App) *ListViewModel {
 	columns := inventoryColumns(0)
 	model := table.New(
 		table.WithColumns(columns),
@@ -69,7 +66,6 @@ func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 
 	vm := &ListViewModel{
 		app:               app,
-		principal:         principal,
 		styles:            tuistyles.App.ListView,
 		keys:              tuikeys.App.ListView,
 		formStyles:        tuistyles.App.Form,
@@ -277,7 +273,7 @@ func (m *ListViewModel) startAdjust() tea.Cmd {
 	if !ok {
 		return nil
 	}
-	m.adjust = NewAdjustInventoryVM(m.app, m.principal, row)
+	m.adjust = NewAdjustInventoryVM(m.app, row)
 	m.adjust.SetWidth(m.detailWidth)
 	return m.adjust.Init()
 }
@@ -287,7 +283,7 @@ func (m *ListViewModel) startSet() tea.Cmd {
 	if !ok {
 		return nil
 	}
-	m.set = NewSetInventoryVM(m.app, m.principal, row)
+	m.set = NewSetInventoryVM(m.app, row)
 	m.set.SetWidth(m.detailWidth)
 	return m.set.Init()
 }
@@ -353,7 +349,7 @@ func (m *ListViewModel) syncDetail() {
 }
 
 func (m *ListViewModel) context() *middleware.Context {
-	return m.app.Context(context.Background(), m.principal)
+	return m.app.Context()
 }
 
 func inventoryColumns(width int) []table.Column {

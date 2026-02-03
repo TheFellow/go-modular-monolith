@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"errors"
 	"strings"
 
@@ -12,7 +11,6 @@ import (
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -20,7 +18,6 @@ import (
 // EditIngredientVM renders an edit ingredient form.
 type EditIngredientVM struct {
 	app         *app.App
-	principal   cedar.EntityUID
 	form        *forms.Form
 	ingredient  *models.Ingredient
 	styles      forms.FormStyles
@@ -44,7 +41,7 @@ type UpdateErrorMsg struct {
 }
 
 // NewEditIngredientVM builds an EditIngredientVM with fields configured.
-func NewEditIngredientVM(app *app.App, principal cedar.EntityUID, ingredient *models.Ingredient) *EditIngredientVM {
+func NewEditIngredientVM(app *app.App, ingredient *models.Ingredient) *EditIngredientVM {
 	if ingredient == nil {
 		ingredient = &models.Ingredient{}
 	}
@@ -95,7 +92,6 @@ func NewEditIngredientVM(app *app.App, principal cedar.EntityUID, ingredient *mo
 
 	return &EditIngredientVM{
 		app:         app,
-		principal:   principal,
 		form:        form,
 		styles:      formStyles,
 		keys:        formKeys,
@@ -183,5 +179,5 @@ func (m *EditIngredientVM) submit() tea.Cmd {
 }
 
 func (m *EditIngredientVM) context() *middleware.Context {
-	return m.app.Context(context.Background(), m.principal)
+	return m.app.Context()
 }

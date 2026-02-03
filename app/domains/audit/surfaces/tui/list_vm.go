@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
@@ -15,7 +14,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -26,10 +24,9 @@ const auditDefaultLimit = 50
 
 // ListViewModel renders the audit list and detail panes.
 type ListViewModel struct {
-	app       *app.App
-	principal cedar.EntityUID
-	styles    tui.ListViewStyles
-	keys      tui.ListViewKeys
+	app    *app.App
+	styles tui.ListViewStyles
+	keys   tui.ListViewKeys
 
 	queries *queries.Queries
 
@@ -45,7 +42,7 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
+func NewListViewModel(app *app.App) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
 	delegate.Styles.SelectedTitle = tuistyles.App.ListView.Selected
@@ -59,14 +56,13 @@ func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 	l.SetFilteringEnabled(true)
 
 	vm := &ListViewModel{
-		app:       app,
-		principal: principal,
-		styles:    tuistyles.App.ListView,
-		keys:      tuikeys.App.ListView,
-		queries:   queries.New(),
-		list:      l,
-		detail:    NewDetailViewModel(tuistyles.App.ListView),
-		loading:   true,
+		app:     app,
+		styles:  tuistyles.App.ListView,
+		keys:    tuikeys.App.ListView,
+		queries: queries.New(),
+		list:    l,
+		detail:  NewDetailViewModel(tuistyles.App.ListView),
+		loading: true,
 	}
 	vm.spinner = components.NewSpinner("Loading audit entries...", vm.styles.Subtitle)
 	return vm
@@ -194,5 +190,5 @@ func (m *ListViewModel) syncDetail() {
 }
 
 func (m *ListViewModel) context() *middleware.Context {
-	return m.app.Context(context.Background(), m.principal)
+	return m.app.Context()
 }

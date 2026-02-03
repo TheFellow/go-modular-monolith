@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
@@ -10,7 +9,6 @@ import (
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -18,7 +16,6 @@ import (
 // CreateMenuVM renders a create menu form.
 type CreateMenuVM struct {
 	app         *app.App
-	principal   cedar.EntityUID
 	form        *forms.Form
 	styles      forms.FormStyles
 	keys        forms.FormKeys
@@ -39,7 +36,7 @@ type CreateErrorMsg struct {
 }
 
 // NewCreateMenuVM builds a CreateMenuVM with fields configured.
-func NewCreateMenuVM(app *app.App, principal cedar.EntityUID) *CreateMenuVM {
+func NewCreateMenuVM(app *app.App) *CreateMenuVM {
 	nameField := forms.NewTextField(
 		"Name",
 		forms.WithRequired(),
@@ -63,7 +60,6 @@ func NewCreateMenuVM(app *app.App, principal cedar.EntityUID) *CreateMenuVM {
 
 	return &CreateMenuVM{
 		app:         app,
-		principal:   principal,
 		form:        form,
 		styles:      formStyles,
 		keys:        formKeys,
@@ -145,7 +141,7 @@ func (m *CreateMenuVM) submit() tea.Cmd {
 }
 
 func (m *CreateMenuVM) context() *middleware.Context {
-	return m.app.Context(context.Background(), m.principal)
+	return m.app.Context()
 }
 
 func toString(value any) string {

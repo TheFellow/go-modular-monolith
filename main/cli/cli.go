@@ -133,6 +133,11 @@ func (c *CLI) Command() *cli.Command {
 				go func() { _ = c.metricsServer.ListenAndServe() }()
 			}
 
+			p, err := authn.ParseActor(c.actor)
+			if err != nil {
+				return ctx, err
+			}
+
 			s, err := store.Open(c.dbPath)
 			if err != nil {
 				return ctx, err
@@ -141,14 +146,10 @@ func (c *CLI) Command() *cli.Command {
 				app.WithStore(s),
 				app.WithLogger(logger),
 				app.WithMetrics(metrics),
+				app.WithPrincipal(p),
 			)
 
-			p, err := authn.ParseActor(c.actor)
-			if err != nil {
-				return ctx, err
-			}
-
-			ctx = c.app.Context(ctx, p)
+			ctx = c.app.ContextFrom(ctx)
 			mctx, ok := ctx.(*middleware.Context)
 
 			if cmd != nil && cmd.Bool("tui") {
@@ -168,7 +169,7 @@ func (c *CLI) Command() *cli.Command {
 					return ctx, cli.Exit(fmt.Errorf("too many arguments for --tui"), apperrors.ExitUsage)
 				}
 
-				if err := tui.Run(p, c.app, initialView); err != nil {
+				if err := tui.Run(c.app, initialView); err != nil {
 					return ctx, err
 				}
 				return ctx, cli.Exit("", 0)

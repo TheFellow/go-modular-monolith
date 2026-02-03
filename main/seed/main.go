@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -81,11 +80,14 @@ func run() error {
 	defer s.Close()
 
 	// Create app
-	a := app.New(app.WithStore(s))
+	a := app.New(
+		app.WithStore(s),
+		app.WithPrincipal(authn.Owner()),
+	)
 	defer a.Close()
 
 	// Create context as owner
-	ctx := a.Context(context.Background(), authn.Owner())
+	ctx := a.Context()
 
 	// Parse JSON data
 	var ingredients []seedIngredient

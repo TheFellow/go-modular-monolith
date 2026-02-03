@@ -19,7 +19,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/cedar-policy/cedar-go"
 )
 
 const (
@@ -40,8 +39,7 @@ type App struct {
 	prevViews   []View
 
 	// Application layer
-	app       *app.App
-	principal cedar.EntityUID
+	app *app.App
 
 	// UI State
 	styles    styles.Styles
@@ -57,7 +55,7 @@ type App struct {
 }
 
 // NewApp creates a new App with the given application and initial view.
-func NewApp(principal cedar.EntityUID, application *app.App, initialView View) *App {
+func NewApp(application *app.App, initialView View) *App {
 	if !isValidView(initialView) {
 		initialView = ViewDashboard
 	}
@@ -68,7 +66,6 @@ func NewApp(principal cedar.EntityUID, application *app.App, initialView View) *
 	return &App{
 		currentView: initialView,
 		app:         application,
-		principal:   principal,
 		styles:      styles.App,
 		keys:        keys.App,
 		help:        helpModel,
@@ -161,22 +158,22 @@ func (a *App) currentViewModel() views.ViewModel {
 	var vm views.ViewModel
 	switch a.currentView {
 	case ViewDashboard:
-		vm = views.NewDashboard(a.app, a.principal)
+		vm = views.NewDashboard(a.app)
 	case ViewDrinks:
-		vm = drinksui.NewListViewModel(a.app, a.principal)
+		vm = drinksui.NewListViewModel(a.app)
 	case ViewIngredients:
-		vm = ingredientsui.NewListViewModel(a.app, a.principal)
+		vm = ingredientsui.NewListViewModel(a.app)
 	case ViewInventory:
-		vm = inventoryui.NewListViewModel(a.app, a.principal)
+		vm = inventoryui.NewListViewModel(a.app)
 	case ViewMenus:
-		vm = menusui.NewListViewModel(a.app, a.principal)
+		vm = menusui.NewListViewModel(a.app)
 	case ViewOrders:
-		vm = ordersui.NewListViewModel(a.app, a.principal)
+		vm = ordersui.NewListViewModel(a.app)
 	case ViewAudit:
-		vm = auditui.NewListViewModel(a.app, a.principal)
+		vm = auditui.NewListViewModel(a.app)
 	default:
 		a.currentView = ViewDashboard
-		vm = views.NewDashboard(a.app, a.principal)
+		vm = views.NewDashboard(a.app)
 	}
 
 	a.views[a.currentView] = vm

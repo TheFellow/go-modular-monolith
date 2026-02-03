@@ -23,7 +23,7 @@ func TestListViewModel_ShowsEntriesAfterLoad(t *testing.T) {
 	ingredient := createIngredient(t, f)
 	entry := auditEntryFor(t, f, ingredientsauthz.ActionCreate, ingredient.ID.EntityUID())
 
-	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -34,7 +34,7 @@ func TestListViewModel_ShowsLoadingState(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := audittui.NewListViewModel(f.App, f.OwnerContext().Principal())
+	model := audittui.NewListViewModel(f.App)
 	_ = model.Init()
 
 	view := model.View()
@@ -45,7 +45,7 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -59,7 +59,7 @@ func TestListViewModel_ShowsTimestampAndAction(t *testing.T) {
 	ingredient := createIngredient(t, f)
 	entry := auditEntryFor(t, f, ingredientsauthz.ActionCreate, ingredient.ID.EntityUID())
 
-	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
@@ -73,7 +73,7 @@ func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 
 	_ = createIngredient(t, f)
 
-	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(f.App, f.OwnerContext().Principal()))
+	model := tuitest.InitAndLoad(t, audittui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 30, Height: 20})
 
 	view := model.View()

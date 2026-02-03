@@ -6,6 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
+	"github.com/cedar-policy/cedar-go"
 )
 
 type Option func(*App)
@@ -38,5 +39,14 @@ func WithMetrics(m telemetry.Metrics) Option {
 			return
 		}
 		a.Metrics = m
+	}
+}
+
+func WithPrincipal(principal cedar.EntityUID) Option {
+	return func(a *App) {
+		if a == nil {
+			return
+		}
+		a.principal = optional.Some(principal)
 	}
 }
