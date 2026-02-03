@@ -47,6 +47,7 @@ type ListViewModel struct {
 
 	deleteTarget  *menusmodels.Menu
 	publishTarget *menusmodels.Menu
+	draftTarget   *menusmodels.Menu
 
 	width       int
 	height      int
@@ -126,6 +127,12 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
+	case MenuDraftedMsg:
+		m.dialog = nil
+		m.draftTarget = nil
+		m.loading = true
+		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
 	case DeleteErrorMsg:
 		m.dialog = nil
 		m.deleteTarget = nil
@@ -136,10 +143,16 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.publishTarget = nil
 		m.err = msg.Err
 		return m, nil
+	case DraftErrorMsg:
+		m.dialog = nil
+		m.draftTarget = nil
+		m.err = msg.Err
+		return m, nil
 	case showDeleteDialogMsg:
 		m.dialog = msg.dialog
 		m.deleteTarget = &msg.target
 		m.publishTarget = nil
+		m.draftTarget = nil
 		if m.dialog != nil {
 			m.dialog.SetWidth(m.width)
 		}
@@ -148,6 +161,16 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.dialog = msg.dialog
 		m.publishTarget = &msg.target
 		m.deleteTarget = nil
+		m.draftTarget = nil
+		if m.dialog != nil {
+			m.dialog.SetWidth(m.width)
+		}
+		return m, nil
+	case showDraftDialogMsg:
+		m.dialog = msg.dialog
+		m.draftTarget = &msg.target
+		m.deleteTarget = nil
+		m.publishTarget = nil
 		if m.dialog != nil {
 			m.dialog.SetWidth(m.width)
 		}
@@ -160,11 +183,15 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		if m.publishTarget != nil {
 			return m, m.performPublish()
 		}
+		if m.draftTarget != nil {
+			return m, m.performDraft()
+		}
 		return m, nil
 	case dialog.CancelMsg:
 		m.dialog = nil
 		m.deleteTarget = nil
 		m.publishTarget = nil
+		m.draftTarget = nil
 		return m, nil
 	case tea.KeyMsg:
 		if m.dialog != nil {
@@ -197,6 +224,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.startDelete()
 		case key.Matches(msg, m.keys.Publish):
 			return m, m.startPublish()
+		case key.Matches(msg, m.keys.Draft):
+			return m, m.startDraft()
 		}
 	case MenusLoadedMsg:
 		m.loading = false
@@ -280,7 +309,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	return []key.Binding{
 		m.keys.Up, m.keys.Down,
 		m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
-		m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish,
+		m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Draft,
 		m.keys.Refresh, m.keys.Back,
 	}
 }
@@ -301,7 +330,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{m.keys.Up, m.keys.Down, m.keys.Enter},
 		{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
-		{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish},
+		{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Draft},
 		{m.keys.Refresh, m.keys.Back},
 	}
 }
@@ -337,6 +366,11 @@ type showDeleteDialogMsg struct {
 }
 
 type showPublishDialogMsg struct {
+	dialog *dialog.ConfirmDialog
+	target menusmodels.Menu
+}
+
+type showDraftDialogMsg struct {
 	dialog *dialog.ConfirmDialog
 	target menusmodels.Menu
 }
@@ -448,6 +482,51 @@ func (m *ListViewModel) performPublish() tea.Cmd {
 			return PublishErrorMsg{Err: err}
 		}
 		return MenuPublishedMsg{Menu: published}
+	}
+}
+
+func (m *ListViewModel) startDraft() tea.Cmd {
+	menu := m.selectedMenu()
+	if menu == nil {
+		return nil
+	}
+	return m.showDraftConfirm(menu)
+}
+
+func (m *ListViewModel) showDraftConfirm(menu *menusmodels.Menu) tea.Cmd {
+	if menu == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		if menu.Status != menusmodels.MenuStatusPublished {
+			return DraftErrorMsg{Err: errors.Invalidf("only published menus can be drafted")}
+		}
+		message := fmt.Sprintf(
+			"Return %q to draft?\n\nThis will remove the menu from active service.\nCustomers will not be able to order from this menu.",
+			menu.Name,
+		)
+		confirm := dialog.NewConfirmDialog(
+			"Draft Menu",
+			message,
+			dialog.WithConfirmText("Draft"),
+			dialog.WithStyles(m.dialogStyles),
+			dialog.WithKeys(m.dialogKeys),
+		)
+		return showDraftDialogMsg{dialog: confirm, target: *menu}
+	}
+}
+
+func (m *ListViewModel) performDraft() tea.Cmd {
+	if m.draftTarget == nil {
+		return nil
+	}
+	target := m.draftTarget
+	return func() tea.Msg {
+		drafted, err := m.app.Menu.Draft(m.context(), &menusmodels.Menu{ID: target.ID})
+		if err != nil {
+			return DraftErrorMsg{Err: err}
+		}
+		return MenuDraftedMsg{Menu: drafted}
 	}
 }
 

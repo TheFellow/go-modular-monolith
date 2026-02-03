@@ -201,15 +201,15 @@ In `FullHelp()`, add to the appropriate group:
 
 ## Checklist
 
-- [ ] Add `MenuDraftedMsg` and `DraftErrorMsg` to `messages.go`
-- [ ] Add `draftTarget` field to `ListViewModel`
-- [ ] Add `showDraftDialogMsg` type
-- [ ] Handle `MenuDraftedMsg`, `DraftErrorMsg`, `showDraftDialogMsg` in `Update()`
-- [ ] Update `dialog.ConfirmMsg` to handle draft
-- [ ] Update `dialog.CancelMsg` to clear draft target
-- [ ] Add `Draft` key handling in `tea.KeyMsg` switch
-- [ ] Add `startDraft()`, `showDraftConfirm()`, `performDraft()` methods
-- [ ] Update `ShortHelp()` to include Draft key
-- [ ] Update `FullHelp()` to include Draft key
-- [ ] `go build ./app/domains/menus/...` passes
-- [ ] `go test ./app/domains/menus/...` passes
+- [x] Add `MenuDraftedMsg` and `DraftErrorMsg` to `messages.go`
+- [x] Add `draftTarget` field to `ListViewModel`
+- [x] Add `showDraftDialogMsg` type
+- [x] Handle `MenuDraftedMsg`, `DraftErrorMsg`, `showDraftDialogMsg` in `Update()`
+- [x] Update `dialog.ConfirmMsg` to handle draft
+- [x] Update `dialog.CancelMsg` to clear draft target
+- [x] Add `Draft` key handling in `tea.KeyMsg` switch
+- [x] Add `startDraft()`, `showDraftConfirm()`, `performDraft()` methods
+- [x] Update `ShortHelp()` to include Draft key
+- [x] Update `FullHelp()` to include Draft key
+- [x] `go build ./app/domains/menus/...` passes
+- [x] `go test ./app/domains/menus/...` passes

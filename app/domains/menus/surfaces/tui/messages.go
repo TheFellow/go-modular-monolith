@@ -18,6 +18,11 @@ type MenuPublishedMsg struct {
 	Menu *models.Menu
 }
 
+// MenuDraftedMsg is sent when a menu has been returned to draft.
+type MenuDraftedMsg struct {
+	Menu *models.Menu
+}
+
 // DeleteErrorMsg is sent when a delete operation fails.
 type DeleteErrorMsg struct {
 	Err error
@@ -25,5 +30,10 @@ type DeleteErrorMsg struct {
 
 // PublishErrorMsg is sent when a publish operation fails.
 type PublishErrorMsg struct {
+	Err error
+}
+
+// DraftErrorMsg is sent when a draft operation fails.
+type DraftErrorMsg struct {
 	Err error
 }
