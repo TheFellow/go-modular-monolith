@@ -40,11 +40,6 @@ func RootFromContext(ctx context.Context) *slog.Logger {
 	return FromContext(ctx)
 }
 
-// ResetLogger replaces the current logger with the root logger.
-func ResetLogger(ctx context.Context) context.Context {
-	return ToContext(ctx, RootFromContext(ctx))
-}
-
 // With enriches the context's logger with additional attributes.
 func WithLogAttrs(ctx context.Context, attrs ...any) context.Context {
 	return ToContext(ctx, FromContext(ctx).With(attrs...))

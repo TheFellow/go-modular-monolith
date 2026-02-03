@@ -66,11 +66,11 @@ Either approach is fine - choose based on readability.
 
 ## Checklist
 
-- [ ] Remove `log.ResetLogger(ctx)` call from `pkg/middleware/logging.go`
-- [ ] Remove `ResetLogger()` from `pkg/log/context.go` if unused
-- [ ] Verify logging works correctly (no attribute accumulation)
-- [ ] Clean up or consolidate `viewmodel_types.go` if desired
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
-- [ ] `go tool go-check-sumtype ./...` passes
-- [ ] `go tool exhaustive ./...` passes
+- [x] Remove `log.ResetLogger(ctx)` call from `pkg/middleware/logging.go`
+- [x] Remove `ResetLogger()` from `pkg/log/context.go` if unused
+- [x] Verify logging works correctly (no attribute accumulation)
+- [x] Clean up or consolidate `viewmodel_types.go` if desired
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes
+- [x] `go tool go-check-sumtype ./...` passes
+- [x] `go tool exhaustive ./...` passes
