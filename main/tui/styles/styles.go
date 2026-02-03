@@ -51,18 +51,16 @@ type Styles struct {
 	Card          lipgloss.Style
 	ListPane      lipgloss.Style
 	DetailPane    lipgloss.Style
+
+	// Derived subsets
+	ListView  tui.ListViewStyles
+	Form      forms.FormStyles
+	Dialog    dialog.DialogStyles
+	Dashboard DashboardStyles
 }
 
 // App is the shared application style set.
 var App = newStyles()
-
-// Pre-computed style subsets.
-var (
-	ListView  = listViewStylesFrom(App)
-	Form      = formStylesFrom(App)
-	Dialog    = dialogStylesFrom(App)
-	Dashboard = dashboardStylesFrom(App)
-)
 
 // DashboardStyles contains the lipgloss styles used by the dashboard.
 type DashboardStyles struct {
@@ -144,6 +142,11 @@ func newStyles() Styles {
 		BorderLeft(true).
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(styles.Muted)
+
+	styles.ListView = listViewStylesFrom(styles)
+	styles.Form = formStylesFrom(styles)
+	styles.Dialog = dialogStylesFrom(styles)
+	styles.Dashboard = dashboardStylesFrom(styles)
 
 	return styles
 }

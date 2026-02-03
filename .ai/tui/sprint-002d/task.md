@@ -96,16 +96,19 @@ func NewListViewModel(
 | 001  | [Package-level config](done/task-001-package-config.md) | Done |
 | 002  | [ViewModel architecture](done/task-002-viewmodel-architecture.md) | Done |
 | 003  | [Cleanup](todo/task-003-cleanup.md)                    | Pending |
-| 004  | [Remove initialView](todo/task-004-remove-initial-view.md) | Pending |
+| 004  | [Remove initialView + Title Bar](todo/task-004-remove-initial-view.md) | Pending |
 | 005  | [README](todo/task-005-readme.md)                      | Pending |
+| 006  | [Enable Pagination](todo/task-006-enable-pagination.md) | Pending |
 
 ### Task Dependencies
 
 ```
 001 (package config) ── 002 (viewmodel architecture) ── 003 (cleanup) ── 004 (remove initialView) ── 005 (readme)
+                                                                                                        │
+                                                                                           006 (pagination) ─┘
 ```
 
-Tasks are sequential. Task 002 is the large atomic change that updates App and all ViewModels together. Task 005 documents the final architecture.
+Tasks 001-005 are sequential. Task 006 (pagination) can be done in parallel with tasks 003-005 as it's independent of the architecture changes.
 
 ---
 

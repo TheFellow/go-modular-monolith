@@ -79,8 +79,8 @@ func NewDashboard(app *app.App, principal cedar.EntityUID) *Dashboard {
 	d := &Dashboard{
 		app:       app,
 		principal: principal,
-		styles:    styles.Dashboard,
-		keys:      keys.Dashboard,
+		styles:    styles.App.Dashboard,
+		keys:      keys.App.Dashboard,
 		loading:   true,
 	}
 	d.spinner = components.NewSpinner("Loading dashboard...", d.styles.Subtitle)

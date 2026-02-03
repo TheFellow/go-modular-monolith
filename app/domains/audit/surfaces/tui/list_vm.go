@@ -48,8 +48,8 @@ type ListViewModel struct {
 func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
-	delegate.Styles.SelectedTitle = tuistyles.ListView.Selected
-	delegate.Styles.SelectedDesc = tuistyles.ListView.Selected
+	delegate.Styles.SelectedTitle = tuistyles.App.ListView.Selected
+	delegate.Styles.SelectedDesc = tuistyles.App.ListView.Selected
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.Title = "Audit"
@@ -61,11 +61,11 @@ func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 	vm := &ListViewModel{
 		app:       app,
 		principal: principal,
-		styles:    tuistyles.ListView,
-		keys:      tuikeys.ListView,
+		styles:    tuistyles.App.ListView,
+		keys:      tuikeys.App.ListView,
 		queries:   queries.New(),
 		list:      l,
-		detail:    NewDetailViewModel(tuistyles.ListView),
+		detail:    NewDetailViewModel(tuistyles.App.ListView),
 		loading:   true,
 	}
 	vm.spinner = components.NewSpinner("Loading audit entries...", vm.styles.Subtitle)

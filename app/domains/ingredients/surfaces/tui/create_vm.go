@@ -75,8 +75,8 @@ func NewCreateIngredientVM(app *app.App, principal cedar.EntityUID) *CreateIngre
 		forms.WithPlaceholder("Optional description"),
 	)
 
-	formStyles := tuistyles.Form
-	formKeys := tuikeys.Form
+	formStyles := tuistyles.App.Form
+	formKeys := tuikeys.App.Form
 	form := forms.New(
 		formStyles,
 		formKeys,

@@ -44,18 +44,16 @@ type KeyMap struct {
 	// Dialog keys
 	Confirm   key.Binding
 	SwitchBtn key.Binding
+
+	// Derived subsets
+	ListView  tui.ListViewKeys
+	Form      forms.FormKeys
+	Dialog    dialog.DialogKeys
+	Dashboard DashboardKeys
 }
 
 // App is the shared application key map.
 var App = newKeyMap()
-
-// Pre-computed key subsets.
-var (
-	ListView  = listViewKeysFrom(App)
-	Form      = formKeysFrom(App)
-	Dialog    = dialogKeysFrom(App)
-	Dashboard = dashboardKeysFrom(App)
-)
 
 // DashboardKeys defines the key bindings used by the dashboard.
 type DashboardKeys struct {
@@ -71,7 +69,7 @@ type DashboardKeys struct {
 
 // newKeyMap creates a KeyMap with default bindings.
 func newKeyMap() KeyMap {
-	return KeyMap{
+	keys := KeyMap{
 		Quit: key.NewBinding(
 			key.WithKeys("q", "ctrl+c"),
 			key.WithHelp("q", "quit"),
@@ -177,6 +175,13 @@ func newKeyMap() KeyMap {
 			key.WithHelp("tab/←/→", "switch"),
 		),
 	}
+
+	keys.ListView = listViewKeysFrom(keys)
+	keys.Form = formKeysFrom(keys)
+	keys.Dialog = dialogKeysFrom(keys)
+	keys.Dashboard = dashboardKeysFrom(keys)
+
+	return keys
 }
 
 // ShortHelp returns bindings shown in the mini help view.

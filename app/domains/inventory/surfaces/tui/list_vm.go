@@ -65,19 +65,19 @@ func NewListViewModel(app *app.App, principal cedar.EntityUID) *ListViewModel {
 		table.WithRows(nil),
 		table.WithFocused(true),
 	)
-	model.SetStyles(inventoryTableStyles(tuistyles.ListView))
+	model.SetStyles(inventoryTableStyles(tuistyles.App.ListView))
 
 	vm := &ListViewModel{
 		app:               app,
 		principal:         principal,
-		styles:            tuistyles.ListView,
-		keys:              tuikeys.ListView,
-		formStyles:        tuistyles.Form,
-		formKeys:          tuikeys.Form,
+		styles:            tuistyles.App.ListView,
+		keys:              tuikeys.App.ListView,
+		formStyles:        tuistyles.App.Form,
+		formKeys:          tuikeys.App.Form,
 		inventoryQueries:  inventoryqueries.New(),
 		ingredientQueries: ingredientsqueries.New(),
 		table:             model,
-		detail:            NewDetailViewModel(tuistyles.ListView),
+		detail:            NewDetailViewModel(tuistyles.App.ListView),
 		loading:           true,
 	}
 	vm.spinner = components.NewSpinner("Loading inventory...", vm.styles.Subtitle)

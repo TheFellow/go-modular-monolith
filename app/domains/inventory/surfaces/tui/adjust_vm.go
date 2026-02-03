@@ -63,8 +63,8 @@ func NewAdjustInventoryVM(app *app.App, principal cedar.EntityUID, row Inventory
 		forms.WithRequired(),
 	)
 
-	formStyles := tuistyles.Form
-	formKeys := tuikeys.Form
+	formStyles := tuistyles.App.Form
+	formKeys := tuikeys.App.Form
 	form := forms.New(
 		formStyles,
 		formKeys,

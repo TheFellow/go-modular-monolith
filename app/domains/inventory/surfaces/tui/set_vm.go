@@ -63,8 +63,8 @@ func NewSetInventoryVM(app *app.App, principal cedar.EntityUID, row InventoryRow
 	}
 	costField := forms.NewNumberField("Cost Per Unit", costOpts...)
 
-	formStyles := tuistyles.Form
-	formKeys := tuikeys.Form
+	formStyles := tuistyles.App.Form
+	formKeys := tuikeys.App.Form
 	form := forms.New(
 		formStyles,
 		formKeys,

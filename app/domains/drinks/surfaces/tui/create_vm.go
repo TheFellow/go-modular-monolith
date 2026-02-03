@@ -75,8 +75,8 @@ func NewCreateDrinkVM(app *app.App, principal cedar.EntityUID) *CreateDrinkVM {
 		forms.WithMaxLength(500),
 	)
 
-	formStyles := tuistyles.Form
-	formKeys := tuikeys.Form
+	formStyles := tuistyles.App.Form
+	formKeys := tuikeys.App.Form
 	form := forms.New(
 		formStyles,
 		formKeys,

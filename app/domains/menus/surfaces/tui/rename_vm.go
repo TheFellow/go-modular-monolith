@@ -55,8 +55,8 @@ func NewRenameMenuVM(app *app.App, principal cedar.EntityUID, menu *models.Menu)
 		principal: principal,
 		input:     input,
 		menu:      menu,
-		styles:    tuistyles.Form,
-		keys:      tuikeys.Form,
+		styles:    tuistyles.App.Form,
+		keys:      tuikeys.App.Form,
 	}
 }
 
