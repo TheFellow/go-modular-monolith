@@ -56,7 +56,8 @@ permit(
 
 ## Checklist
 
-- [ ] Add `ActionDraft` to `authz/actions.go`
-- [ ] Add `"draft"` action to Cedar policy
-- [ ] `go build ./app/domains/menus/...` passes
-- [ ] `go test ./app/domains/menus/...` passes
+- [x] Add `ActionDraft` to `authz/actions.go`
+- [x] Add `"draft"` action to Cedar policy
+- [x] `go build ./app/domains/menus/...` passes
+- [x] `go test ./app/domains/menus/...` passes
+ 

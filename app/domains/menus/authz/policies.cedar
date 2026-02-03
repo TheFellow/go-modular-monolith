@@ -18,7 +18,8 @@ permit(
         Mixology::Menu::Action::"delete",
         Mixology::Menu::Action::"add_drink",
         Mixology::Menu::Action::"remove_drink",
-        Mixology::Menu::Action::"publish"
+        Mixology::Menu::Action::"publish",
+        Mixology::Menu::Action::"draft"
     ],
     resource is Mixology::Menu
 );

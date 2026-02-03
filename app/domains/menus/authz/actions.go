@@ -16,4 +16,5 @@ var (
 	ActionAddDrink    = cedar.NewEntityUID(MenuAction, "add_drink")
 	ActionRemoveDrink = cedar.NewEntityUID(MenuAction, "remove_drink")
 	ActionPublish     = cedar.NewEntityUID(MenuAction, "publish")
+	ActionDraft       = cedar.NewEntityUID(MenuAction, "draft")
 )
