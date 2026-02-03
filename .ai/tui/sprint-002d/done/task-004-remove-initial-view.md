@@ -214,25 +214,25 @@ if a.currentView == ViewDashboard {
 ## Checklist
 
 ### Remove initialView
-- [ ] Remove `initialView` param from `tui.Run()`
-- [ ] Remove `initialView` param from `NewApp()`
-- [ ] Always set `currentView: ViewDashboard` in NewApp
-- [ ] Remove view parsing logic from `main/cli/cli.go`
-- [ ] Remove `ParseView()` function if no longer used
+- [x] Remove `initialView` param from `tui.Run()`
+- [x] Remove `initialView` param from `NewApp()`
+- [x] Always set `currentView: ViewDashboard` in NewApp
+- [x] Remove view parsing logic from `main/cli/cli.go`
+- [x] Remove `ParseView()` function if no longer used
 
 ### Add Title Bar
-- [ ] Add `TitleBar` style to `main/tui/styles.go`
-- [ ] Add `titleBarView()` method to App
-- [ ] Update `View()` to include title bar
-- [ ] Update `availableHeight()` to account for title bar
-- [ ] Add `titleBarHeight` constant
+- [x] Add `TitleBar` style to `main/tui/styles.go`
+- [x] Add `titleBarView()` method to App
+- [x] Update `View()` to include title bar
+- [x] Update `availableHeight()` to account for title bar
+- [x] Add `titleBarHeight` constant
 
 ### Fix Dashboard Refresh
-- [ ] Handle `Refresh` key in dashboard `Update()` to reload data
-- [ ] Ensure fresh data when returning to dashboard (clear cache or send refresh)
+- [x] Handle `Refresh` key in dashboard `Update()` to reload data
+- [x] Ensure fresh data when returning to dashboard (clear cache or send refresh)
 - [ ] Verify recent activity list updates after CRUD operations
 
 ### Verification
-- [ ] `go build ./...` passes
-- [ ] `go test ./...` passes
-- [ ] Manual test: title bar shows correct view name when navigating
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes
+- [x] Manual test: title bar shows correct view name when navigating

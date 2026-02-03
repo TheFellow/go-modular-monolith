@@ -6,9 +6,9 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app"
 )
 
-// Run starts the TUI with the given application and optional initial view.
-func Run(application *app.App, initialView View) error {
-	model := NewApp(application, initialView)
+// Run starts the TUI with the given application.
+func Run(application *app.App) error {
+	model := NewApp(application)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 	_, err := p.Run()
 	return err

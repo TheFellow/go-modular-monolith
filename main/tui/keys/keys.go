@@ -57,14 +57,15 @@ var App = newKeyMap()
 
 // DashboardKeys defines the key bindings used by the dashboard.
 type DashboardKeys struct {
-	Nav1 key.Binding
-	Nav2 key.Binding
-	Nav3 key.Binding
-	Nav4 key.Binding
-	Nav5 key.Binding
-	Nav6 key.Binding
-	Help key.Binding
-	Quit key.Binding
+	Nav1    key.Binding
+	Nav2    key.Binding
+	Nav3    key.Binding
+	Nav4    key.Binding
+	Nav5    key.Binding
+	Nav6    key.Binding
+	Refresh key.Binding
+	Help    key.Binding
+	Quit    key.Binding
 }
 
 // newKeyMap creates a KeyMap with default bindings.
@@ -235,13 +236,14 @@ func dialogKeysFrom(k KeyMap) dialog.DialogKeys {
 
 func dashboardKeysFrom(k KeyMap) DashboardKeys {
 	return DashboardKeys{
-		Nav1: k.Nav1,
-		Nav2: k.Nav2,
-		Nav3: k.Nav3,
-		Nav4: k.Nav4,
-		Nav5: k.Nav5,
-		Nav6: k.Nav6,
-		Help: k.Help,
-		Quit: k.Quit,
+		Nav1:    k.Nav1,
+		Nav2:    k.Nav2,
+		Nav3:    k.Nav3,
+		Nav4:    k.Nav4,
+		Nav5:    k.Nav5,
+		Nav6:    k.Nav6,
+		Refresh: k.Refresh,
+		Help:    k.Help,
+		Quit:    k.Quit,
 	}
 }

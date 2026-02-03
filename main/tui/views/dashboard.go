@@ -109,6 +109,10 @@ func (d *Dashboard) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 			return d, navigateTo(ViewOrders)
 		case key.Matches(msg, d.keys.Nav6):
 			return d, navigateTo(ViewAudit)
+		case key.Matches(msg, d.keys.Refresh):
+			d.loading = true
+			d.err = nil
+			return d, tea.Batch(d.spinner.Init(), d.loadData())
 		}
 	case DashboardLoadedMsg:
 		d.loading = false
@@ -162,6 +166,7 @@ func (d *Dashboard) ShortHelp() []key.Binding {
 	return []key.Binding{
 		d.keys.Nav1, d.keys.Nav2, d.keys.Nav3,
 		d.keys.Nav4, d.keys.Nav5, d.keys.Nav6,
+		d.keys.Refresh,
 	}
 }
 
@@ -170,7 +175,7 @@ func (d *Dashboard) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{d.keys.Nav1, d.keys.Nav2, d.keys.Nav3},
 		{d.keys.Nav4, d.keys.Nav5, d.keys.Nav6},
-		{d.keys.Help, d.keys.Quit},
+		{d.keys.Refresh, d.keys.Help, d.keys.Quit},
 	}
 }
 

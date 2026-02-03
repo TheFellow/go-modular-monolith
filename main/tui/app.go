@@ -24,6 +24,7 @@ import (
 const (
 	MinWidth        = 80
 	MinHeight       = 24
+	titleBarHeight  = 2
 	statusBarHeight = 1
 )
 
@@ -54,17 +55,13 @@ type App struct {
 	views map[View]views.ViewModel
 }
 
-// NewApp creates a new App with the given application and initial view.
-func NewApp(application *app.App, initialView View) *App {
-	if !isValidView(initialView) {
-		initialView = ViewDashboard
-	}
-
+// NewApp creates a new App with the given application.
+func NewApp(application *app.App) *App {
 	helpModel := help.New()
 	helpModel.ShowAll = false
 
 	return &App{
-		currentView: initialView,
+		currentView: ViewDashboard,
 		app:         application,
 		styles:      styles.App,
 		keys:        keys.App,
@@ -131,10 +128,11 @@ func (a *App) View() string {
 		return a.renderTooSmallWarning()
 	}
 
+	title := a.titleBarView()
 	content := a.currentViewModel().View()
 	status := a.statusBarView()
 
-	parts := []string{content, status}
+	parts := []string{title, content, status}
 	if a.showHelp {
 		a.help.ShowAll = true
 		parts = append(parts, a.help.View(a.currentViewModel()))
@@ -189,6 +187,10 @@ func (a *App) navigateTo(target View) tea.Cmd {
 	a.prevViews = append(a.prevViews, a.currentView)
 	a.currentView = target
 
+	if a.currentView == ViewDashboard {
+		delete(a.views, ViewDashboard)
+	}
+
 	if _, ok := a.views[target]; ok {
 		return a.syncWindowCmd()
 	}
@@ -202,7 +204,9 @@ func (a *App) navigateBack() tea.Cmd {
 	if len(a.prevViews) == 0 {
 		if a.currentView != ViewDashboard {
 			a.currentView = ViewDashboard
-			return a.syncWindowCmd()
+			delete(a.views, ViewDashboard)
+			initCmd := a.currentViewModel().Init()
+			return tea.Batch(initCmd, a.syncWindowCmd())
 		}
 		return nil
 	}
@@ -210,7 +214,12 @@ func (a *App) navigateBack() tea.Cmd {
 	idx := len(a.prevViews) - 1
 	a.currentView = a.prevViews[idx]
 	a.prevViews = a.prevViews[:idx]
-	return nil
+	if a.currentView == ViewDashboard {
+		delete(a.views, ViewDashboard)
+		initCmd := a.currentViewModel().Init()
+		return tea.Batch(initCmd, a.syncWindowCmd())
+	}
+	return a.syncWindowCmd()
 }
 
 func (a *App) syncWindowCmd() tea.Cmd {
@@ -224,11 +233,20 @@ func (a *App) syncWindowCmd() tea.Cmd {
 }
 
 func (a *App) availableHeight() int {
-	height := a.height - statusBarHeight - a.helpHeight()
+	height := a.height - titleBarHeight - statusBarHeight - a.helpHeight()
 	if height < 0 {
 		return 0
 	}
 	return height
+}
+
+func (a *App) titleBarView() string {
+	title := "Mixology > " + viewTitle(a.currentView)
+	style := a.styles.TitleBar
+	if a.width > 0 {
+		style = style.Width(a.width)
+	}
+	return style.Render(title)
 }
 
 func (a *App) helpHeight() int {

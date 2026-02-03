@@ -28,6 +28,7 @@ type Styles struct {
 	InfoText    lipgloss.Style
 	HelpKey     lipgloss.Style
 	HelpDesc    lipgloss.Style
+	TitleBar    lipgloss.Style
 
 	// Form styles
 	FormLabel         lipgloss.Style
@@ -101,6 +102,12 @@ func newStyles() Styles {
 	styles.InfoText = lipgloss.NewStyle().Foreground(styles.Muted)
 	styles.HelpKey = lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
 	styles.HelpDesc = lipgloss.NewStyle().Foreground(styles.Muted)
+	styles.TitleBar = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(statusForeground).
+		Background(styles.Primary).
+		Padding(0, 1).
+		MarginBottom(1)
 
 	styles.FormLabel = lipgloss.NewStyle().Foreground(styles.Muted)
 	styles.FormLabelRequired = lipgloss.NewStyle().Bold(true).Foreground(styles.Error)

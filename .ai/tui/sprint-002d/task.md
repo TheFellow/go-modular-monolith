@@ -96,7 +96,7 @@ func NewListViewModel(
 | 001  | [Package-level config](done/task-001-package-config.md) | Done |
 | 002  | [ViewModel architecture](done/task-002-viewmodel-architecture.md) | Done |
 | 003  | [Cleanup](done/task-003-cleanup.md)                    | Done |
-| 004  | [Remove initialView + Title Bar](todo/task-004-remove-initial-view.md) | Pending |
+| 004  | [Remove initialView + Title Bar](done/task-004-remove-initial-view.md) | Done |
 | 005  | [README](todo/task-005-readme.md)                      | Pending |
 | 006  | [Enable Pagination](todo/task-006-enable-pagination.md) | Pending |
 

@@ -1,7 +1,5 @@
 package views
 
-import "strings"
-
 // NavigateMsg requests navigation to a different view.
 type NavigateMsg struct {
 	To View
@@ -50,27 +48,5 @@ func (v View) String() string {
 		return "audit"
 	default:
 		return "unknown"
-	}
-}
-
-// ParseView converts a string argument to a View.
-func ParseView(s string) (View, bool) {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "dashboard":
-		return ViewDashboard, true
-	case "drinks":
-		return ViewDrinks, true
-	case "ingredients":
-		return ViewIngredients, true
-	case "inventory":
-		return ViewInventory, true
-	case "menus", "menu":
-		return ViewMenus, true
-	case "orders", "order":
-		return ViewOrders, true
-	case "audit":
-		return ViewAudit, true
-	default:
-		return ViewDashboard, false
 	}
 }

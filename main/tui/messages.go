@@ -26,8 +26,3 @@ const (
 	ViewOrders      = views.ViewOrders
 	ViewAudit       = views.ViewAudit
 )
-
-// ParseView converts a string argument to a View.
-func ParseView(s string) (View, bool) {
-	return views.ParseView(s)
-}

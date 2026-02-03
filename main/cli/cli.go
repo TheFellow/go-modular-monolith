@@ -156,20 +156,12 @@ func (c *CLI) Command() *cli.Command {
 				if !ok {
 					return ctx, cli.Exit(fmt.Errorf("expected middleware context for TUI"), apperrors.ExitGeneral)
 				}
-				initialView := tui.ViewDashboard
 				args := cmd.Args().Slice()
 				if len(args) > 0 {
-					var ok bool
-					initialView, ok = tui.ParseView(args[0])
-					if !ok {
-						return ctx, cli.Exit(fmt.Errorf("unknown view: %s", args[0]), apperrors.ExitUsage)
-					}
-				}
-				if len(args) > 1 {
 					return ctx, cli.Exit(fmt.Errorf("too many arguments for --tui"), apperrors.ExitUsage)
 				}
 
-				if err := tui.Run(c.app, initialView); err != nil {
+				if err := tui.Run(c.app); err != nil {
 					return ctx, err
 				}
 				return ctx, cli.Exit("", 0)
