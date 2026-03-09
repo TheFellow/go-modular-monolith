@@ -138,6 +138,39 @@ func IsConflict(err error) bool {
 	return stderrors.As(err, &target)
 }
 
+type FailedPreconditionError struct {
+	msg   string
+	cause error
+}
+
+func (e *FailedPreconditionError) Error() string {
+	if e == nil {
+		return ErrFailedPrecondition.Message
+	}
+	if e.msg != "" {
+		return e.msg
+	}
+	return ErrFailedPrecondition.Message
+}
+
+func (e *FailedPreconditionError) Unwrap() error        { return e.cause }
+func (e *FailedPreconditionError) Kind() ErrorKind      { return ErrFailedPrecondition }
+func (e *FailedPreconditionError) HTTPCode() httpCode   { return ErrFailedPrecondition.HTTPCode }
+func (e *FailedPreconditionError) GRPCCode() codes.Code { return ErrFailedPrecondition.GRPCCode }
+func (e *FailedPreconditionError) CLICode() int         { return ErrFailedPrecondition.CLICode }
+func (e *FailedPreconditionError) TUIStyle() TUIStyle   { return ErrFailedPrecondition.TUIStyle }
+func (e *FailedPreconditionError) ExitCode() int        { return ErrFailedPrecondition.CLICode }
+
+func FailedPreconditionf(format string, args ...any) error {
+	msg, cause := formatf(format, args...)
+	return &FailedPreconditionError{msg: msg, cause: cause}
+}
+
+func IsFailedPrecondition(err error) bool {
+	var target *FailedPreconditionError
+	return stderrors.As(err, &target)
+}
+
 type InternalError struct {
 	msg   string
 	cause error

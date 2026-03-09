@@ -20,6 +20,9 @@ func (c *Commands) Update(ctx *middleware.Context, menu *models.Menu) (*models.M
 	if err != nil {
 		return nil, err
 	}
+	if err := ensureDraftMenu(existing); err != nil {
+		return nil, err
+	}
 
 	updated := *existing
 	name := strings.TrimSpace(menu.Name)

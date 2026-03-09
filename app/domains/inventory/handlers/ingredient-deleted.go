@@ -15,7 +15,7 @@ func NewIngredientDeleted() *IngredientDeleted {
 	return &IngredientDeleted{dao: dao.New()}
 }
 
-func (h *IngredientDeleted) Handle(ctx *middleware.Context, e ingredientsevents.IngredientDeleted) error {
+func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, e ingredientsevents.IngredientDeleted) error {
 	stock, err := h.dao.Get(ctx, e.Ingredient.ID)
 	if err != nil && !errors.IsNotFound(err) {
 		return err

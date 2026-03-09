@@ -34,6 +34,10 @@ func TestListViewModel_ShowsOrdersAfterLoad(t *testing.T) {
 
 	menu, err := f.Menu.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
 	testutil.Ok(t, err)
+	menu, err = f.Menu.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+	testutil.Ok(t, err)
+	menu, err = f.Menu.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
+	testutil.Ok(t, err)
 	order, err := f.Orders.Place(f.OwnerContext(), &ordersmodels.Order{
 		MenuID: menu.ID,
 		Items: []ordersmodels.OrderItem{{
@@ -100,6 +104,10 @@ func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 
 	menu, err := f.Menu.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
 	testutil.Ok(t, err)
+	menu, err = f.Menu.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+	testutil.Ok(t, err)
+	menu, err = f.Menu.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
+	testutil.Ok(t, err)
 
 	pending, err := f.Orders.Place(f.OwnerContext(), &ordersmodels.Order{
 		MenuID: menu.ID,
@@ -164,6 +172,10 @@ func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 	})
 
 	menu, err := f.Menu.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
+	testutil.Ok(t, err)
+	menu, err = f.Menu.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+	testutil.Ok(t, err)
+	menu, err = f.Menu.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
 	testutil.Ok(t, err)
 	_, err = f.Orders.Place(f.OwnerContext(), &ordersmodels.Order{
 		MenuID: menu.ID,

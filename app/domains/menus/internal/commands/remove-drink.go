@@ -19,6 +19,9 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, patch *models.MenuPatch)
 	if err != nil {
 		return nil, err
 	}
+	if err := ensureDraftMenu(menu); err != nil {
+		return nil, err
+	}
 
 	var out []models.MenuItem
 	var removedItem models.MenuItem

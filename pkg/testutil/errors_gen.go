@@ -39,6 +39,14 @@ func ErrorIsConflict(t testing.TB, err error) {
 	}
 }
 
+// ErrorIsFailedPrecondition fails the test if err is not a FailedPrecondition error.
+func ErrorIsFailedPrecondition(t testing.TB, err error) {
+	t.Helper()
+	if err == nil || !errors.IsFailedPrecondition(err) {
+		t.Fatalf("expected FailedPrecondition error, got %v", err)
+	}
+}
+
 // ErrorIsInternal fails the test if err is not a Internal error.
 func ErrorIsInternal(t testing.TB, err error) {
 	t.Helper()

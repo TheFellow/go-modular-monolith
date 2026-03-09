@@ -25,7 +25,7 @@ func NewIngredientDeleted() *IngredientDeleted {
 	}
 }
 
-func (h *IngredientDeleted) Handling(ctx *middleware.Context, e ingredientsevents.IngredientDeleted) error {
+func (h *IngredientDeleted) Handling(ctx *middleware.HandlerContext, e ingredientsevents.IngredientDeleted) error {
 	drinks, err := h.drinks.ListByIngredient(ctx, e.Ingredient.ID)
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func (h *IngredientDeleted) Handling(ctx *middleware.Context, e ingredientsevent
 	return nil
 }
 
-func (h *IngredientDeleted) Handle(ctx *middleware.Context, _ ingredientsevents.IngredientDeleted) error {
+func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, _ ingredientsevents.IngredientDeleted) error {
 	if len(h.affectedMenus) == 0 || len(h.removeDrinkID) == 0 {
 		return nil
 	}

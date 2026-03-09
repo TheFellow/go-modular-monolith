@@ -23,6 +23,9 @@ func (c *Commands) AddDrink(ctx *middleware.Context, patch *models.MenuPatch) (*
 	if err != nil {
 		return nil, err
 	}
+	if err := ensureDraftMenu(menu); err != nil {
+		return nil, err
+	}
 
 	updated := *menu
 	for _, item := range menu.Items {

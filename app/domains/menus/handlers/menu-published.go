@@ -19,7 +19,7 @@ func NewMenuPublished() *MenuPublished {
 	}
 }
 
-func (h *MenuPublished) Handle(ctx *middleware.Context, e events.MenuPublished) error {
+func (h *MenuPublished) Handle(ctx *middleware.HandlerContext, e events.MenuPublished) error {
 	menu := e.Menu
 
 	changed := false

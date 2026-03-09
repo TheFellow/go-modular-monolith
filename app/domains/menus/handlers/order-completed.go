@@ -21,7 +21,7 @@ func NewOrderCompleted() *OrderCompleted {
 	}
 }
 
-func (h *OrderCompleted) Handle(ctx *middleware.Context, e ordersevents.OrderCompleted) error {
+func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.OrderCompleted) error {
 	if len(e.DepletedIngredients) == 0 {
 		return nil
 	}
@@ -65,7 +65,7 @@ func (h *OrderCompleted) Handle(ctx *middleware.Context, e ordersevents.OrderCom
 	return nil
 }
 
-func (h *OrderCompleted) drinkUsesAnyIngredient(ctx *middleware.Context, drinkID entity.DrinkID, ingredientIDs map[string]struct{}) bool {
+func (h *OrderCompleted) drinkUsesAnyIngredient(ctx *middleware.HandlerContext, drinkID entity.DrinkID, ingredientIDs map[string]struct{}) bool {
 	drink, err := h.drinks.Get(ctx, drinkID)
 	if err != nil {
 		return false

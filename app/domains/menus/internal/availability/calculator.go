@@ -12,7 +12,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
@@ -30,7 +29,7 @@ func New() *AvailabilityCalculator {
 	}
 }
 
-func (c *AvailabilityCalculator) Calculate(ctx *middleware.Context, drinkID entity.DrinkID) models.Availability {
+func (c *AvailabilityCalculator) Calculate(ctx store.Context, drinkID entity.DrinkID) models.Availability {
 	detail, err := c.CalculateDetail(ctx, drinkID)
 	if err != nil {
 		return models.AvailabilityUnavailable
@@ -58,7 +57,7 @@ type AppliedSubstitution struct {
 	QualityImpact ingredientsmodels.Quality
 }
 
-func (c *AvailabilityCalculator) CalculateDetail(ctx *middleware.Context, drinkID entity.DrinkID) (Detail, error) {
+func (c *AvailabilityCalculator) CalculateDetail(ctx store.Context, drinkID entity.DrinkID) (Detail, error) {
 	drink, err := c.drinks.Get(ctx, drinkID)
 	if err != nil {
 		return Detail{}, err

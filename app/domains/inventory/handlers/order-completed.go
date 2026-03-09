@@ -18,7 +18,7 @@ func NewOrderCompleted() *OrderCompleted {
 	return &OrderCompleted{dao: dao.New()}
 }
 
-func (h *OrderCompleted) Handle(ctx *middleware.Context, e ordersevents.OrderCompleted) error {
+func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.OrderCompleted) error {
 	if len(e.IngredientUsage) == 0 {
 		return nil
 	}

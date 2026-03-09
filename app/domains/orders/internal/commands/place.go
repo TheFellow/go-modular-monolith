@@ -3,6 +3,7 @@ package commands
 import (
 	"time"
 
+	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
@@ -25,13 +26,25 @@ func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.
 		return nil, errors.Invalidf("order must have at least 1 item")
 	}
 
-	if _, err := c.menus.Get(ctx, order.MenuID); err != nil {
+	menu, err := c.menus.Get(ctx, order.MenuID)
+	if err != nil {
 		return nil, err
+	}
+	if menu.Status != menumodels.MenuStatusPublished {
+		return nil, errors.FailedPreconditionf("menu %q must be published, got %q", menu.ID.String(), menu.Status)
+	}
+
+	menuDrinkIDs := make(map[string]struct{}, len(menu.Items))
+	for _, item := range menu.Items {
+		menuDrinkIDs[item.DrinkID.String()] = struct{}{}
 	}
 
 	for i := range order.Items {
 		if err := order.Items[i].Validate(); err != nil {
 			return nil, errors.Invalidf("item %d: %w", i, err)
+		}
+		if _, ok := menuDrinkIDs[order.Items[i].DrinkID.String()]; !ok {
+			return nil, errors.NotFoundf("drink %q not found on menu %q", order.Items[i].DrinkID.String(), menu.ID.String())
 		}
 		if _, err := c.drinks.Get(ctx, order.Items[i].DrinkID); err != nil {
 			return nil, err

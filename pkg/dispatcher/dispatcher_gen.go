@@ -17,17 +17,19 @@ import (
 )
 
 func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
+	hctx := middleware.NewHandlerContext(ctx)
+
 	switch e := event.(type) {
 	case drinks_events.DrinkDeleted:
 		menusHandler := menus_handlers.NewDrinkDeleted()
-		if err := menusHandler.Handle(ctx, e); err != nil {
+		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case drinks_events.DrinkUpdated:
 		menusHandler := menus_handlers.NewDrinkUpdated()
-		if err := menusHandler.Handle(ctx, e); err != nil {
+		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
@@ -36,27 +38,27 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 		drinksHandler := drinks_handlers.NewIngredientDeleted()
 		inventoryHandler := inventory_handlers.NewIngredientDeleted()
 		menusHandler := menus_handlers.NewIngredientDeleted()
-		if err := drinksHandler.Handling(ctx, e); err != nil {
+		if err := drinksHandler.Handling(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-		if err := menusHandler.Handling(ctx, e); err != nil {
+		if err := menusHandler.Handling(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-		if err := drinksHandler.Handle(ctx, e); err != nil {
+		if err := drinksHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-		if err := inventoryHandler.Handle(ctx, e); err != nil {
+		if err := inventoryHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-		if err := menusHandler.Handle(ctx, e); err != nil {
+		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
@@ -64,26 +66,26 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	case ingredients_events.IngredientUpdated:
 		drinksHandler := drinks_handlers.NewIngredientUpdated()
 		menusHandler := menus_handlers.NewIngredientUpdated()
-		if err := drinksHandler.Handle(ctx, e); err != nil {
+		if err := drinksHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-		if err := menusHandler.Handle(ctx, e); err != nil {
+		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case inventory_events.StockAdjusted:
 		menusHandler := menus_handlers.NewStockAdjusted()
-		if err := menusHandler.Handle(ctx, e); err != nil {
+		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case menus_events.MenuPublished:
 		menusHandler := menus_handlers.NewMenuPublished()
-		if err := menusHandler.Handle(ctx, e); err != nil {
+		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
@@ -91,19 +93,19 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	case orders_events.OrderCompleted:
 		inventoryHandler := inventory_handlers.NewOrderCompleted()
 		menusHandler := menus_handlers.NewOrderCompleted()
-		if err := inventoryHandler.Handle(ctx, e); err != nil {
+		if err := inventoryHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
-		if err := menusHandler.Handle(ctx, e); err != nil {
+		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case pkg_events.ActivityCompleted:
 		auditHandler := audit_handlers.NewActivityCompleted()
-		if err := auditHandler.Handle(ctx, e); err != nil {
+		if err := auditHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}

@@ -24,7 +24,7 @@ func NewStockAdjusted() *StockAdjusted {
 	}
 }
 
-func (h *StockAdjusted) Handle(ctx *middleware.Context, e inventoryevents.StockAdjusted) error {
+func (h *StockAdjusted) Handle(ctx *middleware.HandlerContext, e inventoryevents.StockAdjusted) error {
 	menus, err := h.dao.List(ctx, dao.ListFilter{Status: models.MenuStatusPublished})
 	if err != nil {
 		return err
@@ -58,7 +58,7 @@ func (h *StockAdjusted) Handle(ctx *middleware.Context, e inventoryevents.StockA
 	return nil
 }
 
-func (h *StockAdjusted) drinkUsesIngredient(ctx *middleware.Context, drinkID entity.DrinkID, ingredientID entity.IngredientID) bool {
+func (h *StockAdjusted) drinkUsesIngredient(ctx *middleware.HandlerContext, drinkID entity.DrinkID, ingredientID entity.IngredientID) bool {
 	drink, err := h.drinks.Get(ctx, drinkID)
 	if err != nil {
 		return false

@@ -3,6 +3,64 @@
 A modular monolith sample that models a cocktail bar domain with explicit bounded contexts,
 middleware pipelines, and event-driven coordination.
 
+## Development
+
+### Prerequisites
+
+- Go `1.25.5` or newer (see `go.mod`)
+- No root `Makefile` or wrapper scripts are required; the repo uses plain `go` commands, and the lint tools are pinned in `go.mod` and run via `go tool`
+
+### Common Local Workflow
+
+```bash
+# Regenerate generated code
+go generate ./...
+
+# Build
+go build ./...
+
+# Architecture boundaries
+go tool arch-lint -config=.arch-lint.yaml
+
+# Tests
+go test ./...
+```
+
+### Run the App
+
+The CLI binary is `mixology` (`main/cli`), and the TUI is launched through the same binary with
+`--tui`. Both use `data/mixology.db` by default.
+
+```bash
+# Seed a local database with sample ingredients, drinks, inventory, and a published menu
+go run ./main/seed
+
+# CLI examples
+go run ./main/cli ingredients list
+go run ./main/cli menu list
+go run ./main/cli audit list --limit 20
+
+# Test authorization boundaries with different roles
+go run ./main/cli --actor bartender menu list
+go run ./main/cli --as anonymous drinks list
+
+# Launch the TUI
+go run ./main/cli --tui
+```
+
+Set `MIXOLOGY_DB=path/to/other.db` to override the seed database path.
+
+### Run CI Checks Locally
+
+```bash
+go generate ./...
+go build ./...
+go tool arch-lint -config=.arch-lint.yaml
+go tool go-check-sumtype ./...
+go tool exhaustive ./...
+go test ./...
+```
+
 ## Bounded Contexts Overview
 
 ```mermaid

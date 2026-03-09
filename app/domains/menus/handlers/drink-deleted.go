@@ -17,7 +17,7 @@ func NewDrinkDeleted() *DrinkDeleted {
 	}
 }
 
-func (h *DrinkDeleted) Handle(ctx *middleware.Context, e drinksevents.DrinkDeleted) error {
+func (h *DrinkDeleted) Handle(ctx *middleware.HandlerContext, e drinksevents.DrinkDeleted) error {
 	menus, err := h.dao.ListByDrink(ctx, e.Drink.ID)
 	if err != nil {
 		return err

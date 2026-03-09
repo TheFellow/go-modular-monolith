@@ -121,3 +121,27 @@ func (c *Context) Principal() cedar.EntityUID {
 func (c *Context) Transaction() (*bstore.Tx, bool) {
 	return store.TxFromContext(c.Context)
 }
+
+// HandlerContext is a restricted context passed to event handlers.
+// Handlers are leaf nodes — they can read data and touch entities,
+// but they cannot emit new events. This is enforced at compile time.
+type HandlerContext struct {
+	context.Context
+	ctx *Context
+}
+
+func NewHandlerContext(ctx *Context) *HandlerContext {
+	return &HandlerContext{Context: ctx.Context, ctx: ctx}
+}
+
+func (h *HandlerContext) Transaction() (*bstore.Tx, bool) {
+	return h.ctx.Transaction()
+}
+
+func (h *HandlerContext) TouchEntity(uid cedar.EntityUID) {
+	h.ctx.TouchEntity(uid)
+}
+
+func (h *HandlerContext) Principal() cedar.EntityUID {
+	return h.ctx.Principal()
+}

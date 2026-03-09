@@ -21,8 +21,8 @@ func (c *Commands) Delete(ctx *middleware.Context, menu *models.Menu) (*models.M
 	if err != nil {
 		return nil, err
 	}
-	if existing.Status != models.MenuStatusDraft {
-		return nil, errors.Invalidf("only draft menus can be deleted")
+	if err := ensureDraftMenu(existing); err != nil {
+		return nil, err
 	}
 
 	now := time.Now().UTC()

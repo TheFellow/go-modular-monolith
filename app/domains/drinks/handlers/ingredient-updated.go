@@ -16,7 +16,7 @@ func NewIngredientUpdated() *IngredientUpdated {
 	}
 }
 
-func (h *IngredientUpdated) Handle(ctx *middleware.Context, e ingredientsevents.IngredientUpdated) error {
+func (h *IngredientUpdated) Handle(ctx *middleware.HandlerContext, e ingredientsevents.IngredientUpdated) error {
 	drinks, err := h.drinkQueries.ListByIngredient(ctx, e.Ingredient.ID)
 	if err != nil {
 		return err
