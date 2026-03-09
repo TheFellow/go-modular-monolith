@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
-	"github.com/TheFellow/go-modular-monolith/app/domains/audit/queries"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
@@ -28,8 +28,6 @@ type ListViewModel struct {
 	app    *app.App
 	styles tui.ListViewStyles
 	keys   tui.ListViewKeys
-
-	queries *queries.Queries
 
 	list    list.Model
 	detail  *DetailViewModel
@@ -61,7 +59,6 @@ func NewListViewModel(app *app.App) *ListViewModel {
 		app:     app,
 		styles:  tuistyles.App.ListView,
 		keys:    tuikeys.App.ListView,
-		queries: queries.New(),
 		list:    l,
 		detail:  NewDetailViewModel(tuistyles.App.ListView),
 		loading: true,
@@ -146,7 +143,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadEntries() tea.Cmd {
 	return func() tea.Msg {
-		entries, err := m.queries.List(m.context(), queries.ListFilter{Limit: auditDefaultLimit})
+		entries, err := m.app.Audit.List(m.context(), audit.ListRequest{Limit: auditDefaultLimit})
 		if err != nil {
 			return AuditLoadedMsg{Err: err}
 		}

@@ -5,9 +5,8 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
-	menusqueries "github.com/TheFellow/go-modular-monolith/app/domains/menus/queries"
+	orders "github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
-	"github.com/TheFellow/go-modular-monolith/app/domains/orders/queries"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
@@ -33,9 +32,6 @@ type ListViewModel struct {
 
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
-
-	ordersQueries *queries.Queries
-	menuQueries   *menusqueries.Queries
 
 	list    list.Model
 	detail  *DetailViewModel
@@ -68,16 +64,14 @@ func NewListViewModel(app *app.App) *ListViewModel {
 	l.SetFilteringEnabled(true)
 
 	vm := &ListViewModel{
-		app:           app,
-		styles:        tuistyles.App.ListView,
-		keys:          tuikeys.App.ListView,
-		dialogStyles:  tuistyles.App.Dialog,
-		dialogKeys:    tuikeys.App.Dialog,
-		ordersQueries: queries.New(),
-		menuQueries:   menusqueries.New(),
-		list:          l,
-		detail:        NewDetailViewModel(tuistyles.App.ListView, app),
-		loading:       true,
+		app:          app,
+		styles:       tuistyles.App.ListView,
+		keys:         tuikeys.App.ListView,
+		dialogStyles: tuistyles.App.Dialog,
+		dialogKeys:   tuikeys.App.Dialog,
+		list:         l,
+		detail:       NewDetailViewModel(tuistyles.App.ListView, app),
+		loading:      true,
 	}
 	vm.spinner = components.NewSpinner("Loading orders...", vm.styles.Subtitle)
 	return vm
@@ -251,7 +245,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadOrders() tea.Cmd {
 	return func() tea.Msg {
-		ordersList, err := m.ordersQueries.List(m.context(), queries.ListFilter{})
+		ordersList, err := m.app.Orders.List(m.context(), orders.ListRequest{})
 		if err != nil {
 			return OrdersLoadedMsg{Err: err}
 		}
@@ -426,7 +420,7 @@ func (m *ListViewModel) menuName(menuID entity.MenuID) (string, error) {
 	if menuID.IsZero() {
 		return "", errors.Internalf("order missing menu id")
 	}
-	menu, err := m.menuQueries.Get(m.context(), menuID)
+	menu, err := m.app.Menu.Get(m.context(), menuID)
 	if err != nil {
 		return "", errors.Internalf("load menu %s: %w", menuID.String(), err)
 	}

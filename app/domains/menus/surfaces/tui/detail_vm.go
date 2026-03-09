@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
-	drinksqueries "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -17,19 +16,17 @@ import (
 
 // DetailViewModel renders a menu detail pane.
 type DetailViewModel struct {
-	styles  tui.ListViewStyles
-	width   int
-	height  int
-	menu    optional.Value[models.Menu]
-	app     *app.App
-	queries *drinksqueries.Queries
+	styles tui.ListViewStyles
+	width  int
+	height int
+	menu   optional.Value[models.Menu]
+	app    *app.App
 }
 
 func NewDetailViewModel(styles tui.ListViewStyles, app *app.App) *DetailViewModel {
 	return &DetailViewModel{
-		styles:  styles,
-		app:     app,
-		queries: drinksqueries.New(),
+		styles: styles,
+		app:    app,
 	}
 }
 
@@ -122,7 +119,7 @@ func (d *DetailViewModel) itemName(item models.MenuItem) (string, error) {
 		}
 	}
 
-	drink, err := d.queries.Get(d.context(), item.DrinkID)
+	drink, err := d.app.Drinks.Get(d.context(), item.DrinkID)
 	if err != nil {
 		return "", errors.Internalf("load drink %s: %w", item.DrinkID.String(), err)
 	}

@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
+	drinks "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	menus "github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
@@ -35,8 +35,6 @@ type ListViewModel struct {
 	formKeys     forms.FormKeys
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
-
-	drinksQueries *queries.Queries
 
 	list    list.Model
 	detail  *DetailViewModel
@@ -70,17 +68,16 @@ func NewListViewModel(app *app.App) *ListViewModel {
 	l.SetFilteringEnabled(true)
 
 	vm := &ListViewModel{
-		app:           app,
-		styles:        tuistyles.App.ListView,
-		keys:          tuikeys.App.ListView,
-		formStyles:    tuistyles.App.Form,
-		formKeys:      tuikeys.App.Form,
-		dialogStyles:  tuistyles.App.Dialog,
-		dialogKeys:    tuikeys.App.Dialog,
-		drinksQueries: queries.New(),
-		list:          l,
-		detail:        NewDetailViewModel(tuistyles.App.ListView, app),
-		loading:       true,
+		app:          app,
+		styles:       tuistyles.App.ListView,
+		keys:         tuikeys.App.ListView,
+		formStyles:   tuistyles.App.Form,
+		formKeys:     tuikeys.App.Form,
+		dialogStyles: tuistyles.App.Dialog,
+		dialogKeys:   tuikeys.App.Dialog,
+		list:         l,
+		detail:       NewDetailViewModel(tuistyles.App.ListView, app),
+		loading:      true,
 	}
 	vm.spinner = components.NewSpinner("Loading drinks...", vm.styles.Subtitle)
 	return vm
@@ -280,13 +277,16 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadDrinks() tea.Cmd {
 	return func() tea.Msg {
-		drinksList, err := m.drinksQueries.List(m.context(), queries.ListFilter{})
+		drinksList, err := m.app.Drinks.List(m.context(), drinks.ListRequest{})
 		if err != nil {
 			return DrinksLoadedMsg{Err: err}
 		}
 
 		var items []models.Drink
-		for _, drink := range drinksList {
+		for i, drink := range drinksList {
+			if drink == nil {
+				return DrinksLoadedMsg{Err: fmt.Errorf("drink %d missing", i)}
+			}
 			items = append(items, *drink)
 		}
 

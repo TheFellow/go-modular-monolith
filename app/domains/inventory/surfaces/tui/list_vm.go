@@ -5,8 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
-	inventoryqueries "github.com/TheFellow/go-modular-monolith/app/domains/inventory/queries"
+	inventory "github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
@@ -39,20 +38,18 @@ type ListViewModel struct {
 	formStyles forms.FormStyles
 	formKeys   forms.FormKeys
 
-	inventoryQueries  *inventoryqueries.Queries
-	ingredientQueries *ingredientsqueries.Queries
-	rows              []InventoryRow
-	table             table.Model
-	detail            *DetailViewModel
-	adjust            *AdjustInventoryVM
-	set               *SetInventoryVM
-	spinner           components.Spinner
-	loading           bool
-	err               error
-	width             int
-	height            int
-	listWidth         int
-	detailWidth       int
+	rows        []InventoryRow
+	table       table.Model
+	detail      *DetailViewModel
+	adjust      *AdjustInventoryVM
+	set         *SetInventoryVM
+	spinner     components.Spinner
+	loading     bool
+	err         error
+	width       int
+	height      int
+	listWidth   int
+	detailWidth int
 }
 
 func NewListViewModel(app *app.App) *ListViewModel {
@@ -65,16 +62,14 @@ func NewListViewModel(app *app.App) *ListViewModel {
 	model.SetStyles(inventoryTableStyles(tuistyles.App.ListView))
 
 	vm := &ListViewModel{
-		app:               app,
-		styles:            tuistyles.App.ListView,
-		keys:              tuikeys.App.ListView,
-		formStyles:        tuistyles.App.Form,
-		formKeys:          tuikeys.App.Form,
-		inventoryQueries:  inventoryqueries.New(),
-		ingredientQueries: ingredientsqueries.New(),
-		table:             model,
-		detail:            NewDetailViewModel(tuistyles.App.ListView),
-		loading:           true,
+		app:        app,
+		styles:     tuistyles.App.ListView,
+		keys:       tuikeys.App.ListView,
+		formStyles: tuistyles.App.Form,
+		formKeys:   tuikeys.App.Form,
+		table:      model,
+		detail:     NewDetailViewModel(tuistyles.App.ListView),
+		loading:    true,
 	}
 	vm.spinner = components.NewSpinner("Loading inventory...", vm.styles.Subtitle)
 	return vm
@@ -210,7 +205,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadInventory() tea.Cmd {
 	return func() tea.Msg {
-		inventoryList, err := m.inventoryQueries.List(m.context(), inventoryqueries.ListFilter{})
+		inventoryList, err := m.app.Inventory.List(m.context(), inventory.ListRequest{})
 		if err != nil {
 			return InventoryLoadedMsg{Err: err}
 		}
@@ -228,17 +223,9 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 			ids = append(ids, id)
 		}
 
-		ingredientList, err := m.ingredientQueries.List(m.context(), ingredientsqueries.ListFilter{IDs: ids})
+		ingredientByID, err := m.loadIngredients(ids)
 		if err != nil {
 			return InventoryLoadedMsg{Err: errors.Internalf("load ingredients: %w", err)}
-		}
-
-		ingredientByID := make(map[entity.IngredientID]*ingredientsmodels.Ingredient, len(ingredientList))
-		for _, ingredient := range ingredientList {
-			if ingredient == nil {
-				continue
-			}
-			ingredientByID[ingredient.ID] = ingredient
 		}
 
 		rows := make([]InventoryRow, 0, len(inventoryList))
@@ -266,6 +253,21 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 
 		return InventoryLoadedMsg{Rows: rows}
 	}
+}
+
+func (m *ListViewModel) loadIngredients(ids []entity.IngredientID) (map[entity.IngredientID]*ingredientsmodels.Ingredient, error) {
+	ingredientByID := make(map[entity.IngredientID]*ingredientsmodels.Ingredient, len(ids))
+	for _, id := range ids {
+		ingredient, err := m.app.Ingredients.Get(m.context(), id)
+		if err != nil {
+			return nil, err
+		}
+		if ingredient == nil {
+			continue
+		}
+		ingredientByID[ingredient.ID] = ingredient
+	}
+	return ingredientByID, nil
 }
 
 func (m *ListViewModel) startAdjust() tea.Cmd {

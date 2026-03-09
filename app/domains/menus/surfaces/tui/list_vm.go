@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
+	menus "github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/queries"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
@@ -33,8 +33,6 @@ type ListViewModel struct {
 	formKeys     forms.FormKeys
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
-
-	queries *queries.Queries
 
 	list    list.Model
 	detail  *DetailViewModel
@@ -77,7 +75,6 @@ func NewListViewModel(app *app.App) *ListViewModel {
 		formKeys:     tuikeys.App.Form,
 		dialogStyles: tuistyles.App.Dialog,
 		dialogKeys:   tuikeys.App.Dialog,
-		queries:      queries.New(),
 		list:         l,
 		detail:       NewDetailViewModel(tuistyles.App.ListView, app),
 		loading:      true,
@@ -337,7 +334,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadMenus() tea.Cmd {
 	return func() tea.Msg {
-		menusList, err := m.queries.List(m.context(), queries.ListFilter{})
+		menusList, err := m.app.Menu.List(m.context(), menus.ListRequest{})
 		if err != nil {
 			return MenusLoadedMsg{Err: err}
 		}

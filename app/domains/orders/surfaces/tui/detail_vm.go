@@ -7,9 +7,7 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app"
-	drinksqueries "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	menusqueries "github.com/TheFellow/go-modular-monolith/app/domains/menus/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -22,21 +20,17 @@ import (
 
 // DetailViewModel renders an order detail pane.
 type DetailViewModel struct {
-	styles       tui.ListViewStyles
-	width        int
-	height       int
-	order        optional.Value[models.Order]
-	app          *app.App
-	drinkQueries *drinksqueries.Queries
-	menuQueries  *menusqueries.Queries
+	styles tui.ListViewStyles
+	width  int
+	height int
+	order  optional.Value[models.Order]
+	app    *app.App
 }
 
 func NewDetailViewModel(styles tui.ListViewStyles, app *app.App) *DetailViewModel {
 	return &DetailViewModel{
-		styles:       styles,
-		app:          app,
-		drinkQueries: drinksqueries.New(),
-		menuQueries:  menusqueries.New(),
+		styles: styles,
+		app:    app,
 	}
 }
 
@@ -163,7 +157,7 @@ func (d *DetailViewModel) drinkName(id entity.DrinkID) (string, error) {
 	if id.IsZero() {
 		return "", errors.Internalf("order item missing drink id")
 	}
-	item, err := d.drinkQueries.Get(d.context(), id)
+	item, err := d.app.Drinks.Get(d.context(), id)
 	if err != nil {
 		return "", errors.Internalf("load drink %s: %w", id.String(), err)
 	}
@@ -181,7 +175,7 @@ func (d *DetailViewModel) menu(id entity.MenuID) (*menusmodels.Menu, error) {
 	if id.IsZero() {
 		return nil, errors.Internalf("order missing menu id")
 	}
-	menu, err := d.menuQueries.Get(d.context(), id)
+	menu, err := d.app.Menu.Get(d.context(), id)
 	if err != nil {
 		return nil, errors.Internalf("load menu %s: %w", id.String(), err)
 	}

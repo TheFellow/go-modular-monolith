@@ -6,7 +6,6 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -22,16 +21,14 @@ type DetailViewModel struct {
 	height          int
 	drink           optional.Value[models.Drink]
 	app             *app.App
-	queries         *queries.Queries
 	ingredientNames map[entity.IngredientID]string
 	ingredientErr   error
 }
 
 func NewDetailViewModel(styles tui.ListViewStyles, app *app.App) *DetailViewModel {
 	return &DetailViewModel{
-		styles:  styles,
-		app:     app,
-		queries: queries.New(),
+		styles: styles,
+		app:    app,
 	}
 }
 
@@ -55,21 +52,10 @@ func (d *DetailViewModel) SetDrink(drink optional.Value[models.Drink]) {
 		return
 	}
 
-	ingredients, err := d.queries.List(d.context(), queries.ListFilter{IDs: ids})
+	cache, err := d.loadIngredientNames(ids)
 	if err != nil {
 		d.ingredientErr = err
 		return
-	}
-
-	cache := make(map[entity.IngredientID]string, len(ingredients))
-	for _, ingredient := range ingredients {
-		if ingredient == nil {
-			continue
-		}
-		name := strings.TrimSpace(ingredient.Name)
-		if name != "" {
-			cache[ingredient.ID] = name
-		}
 	}
 	d.ingredientNames = cache
 }
@@ -173,6 +159,25 @@ func (d *DetailViewModel) ingredientName(id entity.IngredientID) (string, error)
 		return "", errors.Internalf("ingredient %s missing name", id.String())
 	}
 	return name, nil
+}
+
+func (d *DetailViewModel) loadIngredientNames(ids []entity.IngredientID) (map[entity.IngredientID]string, error) {
+	cache := make(map[entity.IngredientID]string, len(ids))
+	for _, id := range ids {
+		ingredient, err := d.app.Ingredients.Get(d.context(), id)
+		if err != nil {
+			return nil, errors.Internalf("load ingredient %s: %w", id.String(), err)
+		}
+		if ingredient == nil {
+			continue
+		}
+		name := strings.TrimSpace(ingredient.Name)
+		if name == "" {
+			continue
+		}
+		cache[ingredient.ID] = name
+	}
+	return cache, nil
 }
 
 func collectIngredientIDs(items []models.RecipeIngredient) []entity.IngredientID {

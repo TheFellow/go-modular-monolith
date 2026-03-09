@@ -4,9 +4,11 @@ import (
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app"
-	drinksqueries "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
+	drinks "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
+	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ingredients "github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
@@ -34,9 +36,6 @@ type ListViewModel struct {
 	formKeys     forms.FormKeys
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
-
-	queries      *queries.Queries
-	drinkQueries *drinksqueries.Queries
 
 	list    list.Model
 	detail  *DetailViewModel
@@ -77,8 +76,6 @@ func NewListViewModel(app *app.App) *ListViewModel {
 		formKeys:     tuikeys.App.Form,
 		dialogStyles: tuistyles.App.Dialog,
 		dialogKeys:   tuikeys.App.Dialog,
-		queries:      queries.New(),
-		drinkQueries: drinksqueries.New(),
 		list:         l,
 		detail:       NewDetailViewModel(tuistyles.App.ListView),
 		loading:      true,
@@ -281,7 +278,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadIngredients() tea.Cmd {
 	return func() tea.Msg {
-		ingredientsList, err := m.queries.List(m.context(), queries.ListFilter{})
+		ingredientsList, err := m.app.Ingredients.List(m.context(), ingredients.ListRequest{})
 		if err != nil {
 			return IngredientsLoadedMsg{Err: err}
 		}
@@ -332,11 +329,11 @@ func (m *ListViewModel) showDeleteConfirm(ingredient *models.Ingredient) tea.Cmd
 		return nil
 	}
 	return func() tea.Msg {
-		drinks, err := m.drinkQueries.ListByIngredient(m.context(), ingredient.ID)
+		drinks, err := m.app.Drinks.List(m.context(), drinks.ListRequest{})
 		if err != nil {
 			return DeleteErrorMsg{Err: err}
 		}
-		drinkCount := len(drinks)
+		drinkCount := countDrinksUsingIngredient(drinks, ingredient.ID)
 		message := fmt.Sprintf("Delete %q?", ingredient.Name)
 		if drinkCount > 0 {
 			message = fmt.Sprintf(
@@ -416,4 +413,31 @@ func (m *ListViewModel) syncDetail() {
 		return
 	}
 	m.detail.SetIngredient(optional.Some(item.ingredient))
+}
+
+func countDrinksUsingIngredient(drinks []*drinksmodels.Drink, ingredientID entity.IngredientID) int {
+	count := 0
+	for _, drink := range drinks {
+		if drink == nil {
+			continue
+		}
+		if drinkUsesIngredient(drink, ingredientID) {
+			count++
+		}
+	}
+	return count
+}
+
+func drinkUsesIngredient(drink *drinksmodels.Drink, ingredientID entity.IngredientID) bool {
+	for _, recipeIngredient := range drink.Recipe.Ingredients {
+		if recipeIngredient.IngredientID == ingredientID {
+			return true
+		}
+		for _, substitute := range recipeIngredient.Substitutes {
+			if substitute == ingredientID {
+				return true
+			}
+		}
+	}
+	return false
 }
