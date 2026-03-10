@@ -7,7 +7,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"

@@ -16,7 +16,7 @@ func NewActivityCompleted() *ActivityCompleted {
 	return &ActivityCompleted{dao: dao.New()}
 }
 
-func (h *ActivityCompleted) Handle(ctx *middleware.Context, e middlewareevents.ActivityCompleted) error {
+func (h *ActivityCompleted) Handle(ctx *middleware.HandlerContext, e middlewareevents.ActivityCompleted) error {
 	entry := models.AuditEntry{
 		ID:          entity.NewAuditEntryID(),
 		Action:      e.Activity.Action.String(),

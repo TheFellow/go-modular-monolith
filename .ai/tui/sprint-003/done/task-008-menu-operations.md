@@ -1,0 +1,357 @@
+# Task 008: Menu Operations
+
+## Goal
+
+Implement menu create, rename, delete, and publish operations. Menus have lifecycle states (draft → published → archived) and items can only be modified when in draft status.
+
+## Files to Create/Modify
+
+```
+main/tui/keys.go                    # Add Publish key binding (modify)
+main/tui/viewmodel_types.go         # Add Publish to ListViewKeysFrom (modify)
+pkg/tui/types.go                    # Add Publish to ListViewKeys (modify)
+main/tui/app.go                     # Update ViewMenus to pass form/dialog deps (modify)
+app/domains/menus/surfaces/tui/
+├── create_vm.go    # CreateMenuVM (new)
+├── rename_vm.go    # Inline rename functionality (new)
+└── list_vm.go      # Add CRUD/lifecycle key handlers, update help (modify)
+```
+
+## Implementation
+
+### Key Infrastructure
+
+**Note on key bindings:**
+- `c` (Create), `e` (Edit), `d` (Delete) are already in common ListViewKeys
+- Use `e` for rename/edit (not `r` which is used for refresh)
+- Add `Publish` key (`p`) for menu-specific publish operation
+
+**In `main/tui/keys.go`:**
+
+```go
+type KeyMap struct {
+    // ... existing keys ...
+    Publish key.Binding  // NEW - menu-specific
+}
+
+func NewKeyMap() KeyMap {
+    return KeyMap{
+        // ... existing bindings ...
+        Publish: key.NewBinding(
+            key.WithKeys("p"),
+            key.WithHelp("p", "publish"),
+        ),
+    }
+}
+```
+
+**In `pkg/tui/types.go`:**
+
+```go
+type ListViewKeys struct {
+    // ... existing keys ...
+    Publish key.Binding  // NEW
+}
+```
+
+**In `main/tui/viewmodel_types.go`:**
+
+```go
+func ListViewKeysFrom(k KeyMap) tui.ListViewKeys {
+    return tui.ListViewKeys{
+        // ... existing mappings ...
+        Publish: k.Publish,  // NEW
+    }
+}
+```
+
+### App Initialization
+
+Update `main/tui/app.go` ViewMenus case to pass FormStyles, FormKeys, DialogStyles, DialogKeys (follow drinks pattern):
+
+```go
+case ViewMenus:
+    vm = menusui.NewListViewModel(
+        a.app,
+        a.ctx,
+        ListViewStylesFrom(a.styles),
+        ListViewKeysFrom(a.keys),
+        FormStylesFrom(a.styles),      // NEW
+        FormKeysFrom(a.keys),          // NEW
+        DialogStylesFrom(a.styles),    // NEW
+        DialogKeysFrom(a.keys),        // NEW
+    )
+```
+
+### Menu Model
+
+From `app/domains/menus/models/menu.go`:
+- `Name` - string, required
+- `Description` - string, optional
+- `Status` - MenuStatus (draft/published/archived)
+- `Items` - []MenuItem (managed in Sprint 004)
+
+### CreateMenuVM
+
+Simple form - just name and description:
+
+```go
+// app/domains/menus/surfaces/tui/create_vm.go
+package tui
+
+type CreateMenuVM struct {
+    form       *forms.Form
+    deps       CreateDeps
+    err        error
+    submitting bool
+}
+
+type MenuCreatedMsg struct {
+    Menu *models.Menu
+}
+
+func NewCreateMenuVM(deps CreateDeps) *CreateMenuVM {
+    form := forms.New(
+        FormStylesFrom(deps.Styles),
+        FormKeysFrom(deps.Keys),
+        forms.NewTextField("Name",
+            forms.WithRequired(),
+            forms.WithPlaceholder("e.g., Summer Cocktails"),
+        ),
+        forms.NewTextField("Description",
+            forms.WithPlaceholder("Optional description"),
+        ),
+    )
+
+    return &CreateMenuVM{form: form, deps: deps}
+}
+```
+
+### Inline Rename
+
+Menu rename is a single-field edit, done inline:
+
+```go
+// app/domains/menus/surfaces/tui/rename_vm.go
+package tui
+
+type RenameMenuVM struct {
+    input      textinput.Model
+    menu       *models.Menu
+    deps       RenameDeps
+    err        error
+    submitting bool
+}
+
+type MenuRenamedMsg struct {
+    Menu *models.Menu
+}
+
+func NewRenameMenuVM(menu *models.Menu, deps RenameDeps) *RenameMenuVM {
+    ti := textinput.New()
+    ti.SetValue(menu.Name)
+    ti.Focus()
+    ti.CharLimit = 100
+
+    return &RenameMenuVM{
+        input: ti,
+        menu:  menu,
+        deps:  deps,
+    }
+}
+
+func (m *RenameMenuVM) View() string {
+    return fmt.Sprintf("Rename Menu:\n\n%s", m.input.View())
+}
+```
+
+### Delete Flow
+
+Only draft menus can be deleted:
+
+```go
+func (m *ListMenuVM) showDeleteConfirm() tea.Cmd {
+    return func() tea.Msg {
+        // Check if menu can be deleted
+        if m.selected.Status != models.MenuStatusDraft {
+            return errorMsg{
+                Err: fmt.Errorf("only draft menus can be deleted"),
+            }
+        }
+
+        itemCount := len(m.selected.Items)
+        var message string
+        if itemCount > 0 {
+            message = fmt.Sprintf(
+                "Delete menu \"%s\"?\n\nThis menu contains %d item(s).",
+                m.selected.Name, itemCount,
+            )
+        } else {
+            message = fmt.Sprintf("Delete menu \"%s\"?", m.selected.Name)
+        }
+
+        return showDialogMsg{
+            dialog: dialog.NewConfirmDialog(
+                "Delete Menu",
+                message,
+                dialog.WithDangerous(),
+                dialog.WithFocusCancel(),
+                dialog.WithConfirmText("Delete"),
+            ),
+        }
+    }
+}
+```
+
+### Publish Flow
+
+Publish changes status from draft to published:
+
+```go
+func (m *ListMenuVM) showPublishConfirm() tea.Cmd {
+    return func() tea.Msg {
+        if m.selected.Status != models.MenuStatusDraft {
+            return errorMsg{
+                Err: fmt.Errorf("only draft menus can be published"),
+            }
+        }
+
+        if len(m.selected.Items) == 0 {
+            return errorMsg{
+                Err: fmt.Errorf("cannot publish empty menu"),
+            }
+        }
+
+        message := fmt.Sprintf(
+            "Publish menu \"%s\"?\n\nThis will make the menu available for orders.\nPublished menus cannot be modified.",
+            m.selected.Name,
+        )
+
+        return showDialogMsg{
+            dialog: dialog.NewConfirmDialog(
+                "Publish Menu",
+                message,
+                dialog.WithConfirmText("Publish"),
+            ),
+        }
+    }
+}
+```
+
+### List ViewModel Updates
+
+Following the pattern from drinks/ingredients list_vm.go:
+
+**Add state fields:**
+
+```go
+type ListViewModel struct {
+    // ... existing fields ...
+    create     *CreateMenuVM       // NEW: active create form
+    rename     *RenameMenuVM       // NEW: active rename form
+    dialog     *dialog.ConfirmDialog  // NEW: active confirmation dialog
+    formKeys   tui.FormKeys        // NEW
+    dialogKeys tui.DialogKeys      // NEW
+}
+```
+
+**Update ShortHelp/FullHelp:**
+
+```go
+func (m *ListViewModel) ShortHelp() []key.Binding {
+    if m.dialog != nil {
+        return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
+    }
+    if m.create != nil || m.rename != nil {
+        return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
+    }
+    return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Refresh, m.keys.Back}
+}
+
+func (m *ListViewModel) FullHelp() [][]key.Binding {
+    if m.dialog != nil {
+        return [][]key.Binding{
+            {m.dialogKeys.Confirm, m.keys.Back},
+            {m.dialogKeys.Switch},
+        }
+    }
+    if m.create != nil || m.rename != nil {
+        return [][]key.Binding{
+            {m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
+            {m.keys.Back},
+        }
+    }
+    return [][]key.Binding{
+        {m.keys.Up, m.keys.Down, m.keys.Enter},
+        {m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish},
+        {m.keys.Refresh, m.keys.Back},
+    }
+}
+```
+
+### Key Bindings
+
+| Key | Action                    | Condition             |
+|-----|---------------------------|-----------------------|
+| `c` | Create new menu           | Always                |
+| `e` | Edit/rename selected menu | Any status (uses Edit key, not `r`) |
+| `d` | Delete selected menu      | Draft only            |
+| `p` | Publish selected menu     | Draft only, non-empty |
+
+### Form Fields
+
+#### Create Form
+
+| Field       | Type      | Validation | Notes              |
+|-------------|-----------|------------|--------------------|
+| Name        | TextField | Required   | Max 100 chars      |
+| Description | TextField | Optional   | Max 500 chars      |
+
+#### Rename (Inline)
+
+| Field | Type      | Validation | Notes                      |
+|-------|-----------|------------|----------------------------|
+| Name  | TextInput | Required   | Pre-filled with current name |
+
+## Notes
+
+- Menu items (add/remove drinks) are handled in Sprint 004 Workflows
+- Only draft menus can be deleted or modified
+- Publish requires at least one item
+- Rename works on any status (name is metadata)
+- After publish, menu becomes read-only (can archive later)
+
+## Checklist
+
+### Key Infrastructure
+- [x] Add `Publish` binding to `main/tui/keys.go` KeyMap
+- [x] Add `Publish` to `pkg/tui/types.go` ListViewKeys
+- [x] Add `Publish` mapping to `main/tui/viewmodel_types.go` ListViewKeysFrom()
+
+### App Initialization
+- [x] Update `main/tui/app.go` ViewMenus case to pass FormStyles, FormKeys, DialogStyles, DialogKeys
+
+### ViewModels
+- [x] Create `create_vm.go` with CreateMenuVM
+- [x] Create `rename_vm.go` with RenameMenuVM (inline edit)
+- [x] Add `MenuCreatedMsg`, `MenuRenamedMsg`, `MenuDeletedMsg`, `MenuPublishedMsg` messages
+
+### List ViewModel Updates
+- [x] Add `create`, `rename`, `dialog` state fields to ListViewModel
+- [x] Add `formKeys`, `dialogKeys` fields to ListViewModel
+- [x] Update constructor signature to accept FormKeys/FormStyles/DialogKeys/DialogStyles
+- [x] Add `c` → create handler
+- [x] Add `e` → edit/rename handler (uses Edit key, not `r`)
+- [x] Add `d` → delete handler with draft-only check
+- [x] Add `p` → publish handler with draft-only, non-empty checks
+- [x] Handle form/dialog escape with Back key
+- [x] Delegate updates to active form/dialog
+- [x] Render active form in detail pane, center dialog
+- [x] Update ShortHelp() for dialog/form/list modes
+- [x] Update FullHelp() for dialog/form/list modes
+- [x] Show appropriate error messages for invalid operations
+
+### Verification
+- [x] `go build ./...` passes
+- [x] `go test ./...` passes
+- [ ] Manual testing: create/rename/delete/publish menu

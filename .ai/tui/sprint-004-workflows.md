@@ -3,58 +3,220 @@
 ## Goal
 
 Implement complex multi-step workflows powered by the saga infrastructure from Sprint 003b. Users build up changes in a
-saga, preview pending actions, and commit atomically—or discard without side effects. This showcases both the TUI's
+saga, preview pending operations, and commit atomically—or cancel without side effects. This showcases both the TUI's
 usability advantage and the saga pattern's power for managing in-progress work.
 
 ## Problem
 
 After Sprint 003, CRUD operations work but still feel like individual operations. The key TUI value proposition—seamless
-multi-entity workflows—isn't realized. Additionally, changes persist immediately with no ability to preview, undo, or
+multi-entity workflows—isn't realized. Additionally, changes persist immediately with no ability to preview or
 abandon work-in-progress.
 
 ## Solution
 
 Create specialized workflow views backed by sagas:
 
-1. **Drink Builder** - Build a drink with ingredients in a saga; commit creates drink atomically
-2. **Menu Builder** - Curate drinks on a menu; changes accumulate in saga until committed
+1. **Drink Creation** - Build a drink with ingredients in a saga; commit creates drink atomically
+2. **Menu Creation** - Curate drinks on a menu; changes accumulate in saga until committed
 3. **Order Placement** - Build cart in saga; commit places order atomically
 4. **Advanced: Menu Creator** - Define new ingredients, new drinks, and menu in one atomic saga
 
-Each workflow holds a `saga.Saga[T]` that accumulates actions. The user can:
+Each workflow holds a `saga.Saga[T]` that accumulates data. The user can:
 - **Preview**: See what will happen on commit
-- **Commit**: Execute all actions atomically
-- **Discard**: Abandon without any persistence
-- **Undo**: Remove the last action from the saga (while in draft)
+- **Commit**: Execute all operations atomically
+- **Cancel**: Navigate away (saga is garbage collected, no persistence)
+- **Edit/Delete**: Modify or remove items from the saga before committing
 
 ## Tasks
 
-### Phase 1: Saga-Aware Workflow Base
+### Phase 1: Composable ViewModel Architecture
 
-- [ ] Create `main/tui/workflow/workflow.go`:
+The key insight: **ViewModels should be decoupled from concrete saga types**. This allows:
+- `ingredients.CreateViewModel` to work standalone OR nested in `drinks.CreateViewModel`
+- `drinks.CreateViewModel` to work standalone OR nested in `menus.CreateViewModel`
+- The same UI logic to contribute to different sagas
+
+#### Capability Interfaces
+
+- [ ] Create `pkg/saga/capabilities.go`:
     ```go
-    // Workflow wraps a saga with TUI-specific state
-    type Workflow[T any] struct {
-        Saga      *saga.Saga[T]
-        Preview   []string     // Cached action descriptions
-        IsDirty   bool         // Has uncommitted changes
-        LastError error
+    // Capability interfaces - sagas implement these to accept ViewModel contributions
+    // These live in pkg/saga because they define the contract between sagas and TUI ViewModels
+
+    // IngredientDefiner is implemented by sagas that can create ingredients
+    type IngredientDefiner interface {
+        DefineIngredient(key string, def IngredientDef)
+        Preview() []string
+    }
+
+    // DrinkDefiner is implemented by sagas that can create drinks
+    type DrinkDefiner interface {
+        IngredientDefiner  // Drinks may need new ingredients
+        DefineDrink(key string, def DrinkDef)
+        AddExistingIngredient(drinkKey string, ingredientID entity.IngredientID, qty string)
+        AddIngredientByKey(drinkKey string, ingredientKey string, qty string)
+    }
+
+    // MenuDrinkAdder is implemented by sagas that can add drinks to menus
+    type MenuDrinkAdder interface {
+        DrinkDefiner  // Menus may need new drinks (which may need new ingredients)
+        AddDrinkByKey(drinkKey string, price *float64)
+        AddExistingDrink(drinkID entity.DrinkID, price *float64)
     }
     ```
+
+- [ ] Verify saga types implement capabilities:
+    ```go
+    // These compile-time checks ensure sagas implement the right interfaces
+    var _ saga.IngredientDefiner = (*IngredientSaga)(nil)  // in ingredients/saga.go
+    var _ saga.DrinkDefiner = (*DrinkSaga)(nil)            // in drinks/saga.go
+    var _ saga.MenuDrinkAdder = (*MenuSaga)(nil)           // in menus/saga.go
+    ```
+
+#### Domain TUI Surfaces
+
+Each domain owns its TUI ViewModels under `surfaces/tui/`:
+
+- [ ] Create `app/domains/ingredients/surfaces/tui/create_vm.go`:
+    ```go
+    // CreateViewModel is a reusable ViewModel for defining an ingredient
+    // It works with ANY saga that implements saga.IngredientDefiner
+    type CreateViewModel struct {
+        definer saga.IngredientDefiner  // The backing saga (any type)
+
+        // Form fields
+        name     textinput.Model
+        category SelectField
+        unit     SelectField
+
+        // State
+        key    string  // Local key for this ingredient definition
+        styles Styles
+    }
+
+    // NewCreateViewModel creates a ViewModel that contributes to any IngredientDefiner
+    func NewCreateViewModel(definer saga.IngredientDefiner, key string) *CreateViewModel {
+        return &CreateViewModel{
+            definer: definer,
+            key:     key,
+            // ... init form fields
+        }
+    }
+
+    // Submit adds the ingredient definition to the backing saga
+    func (vm *CreateViewModel) Submit() tea.Cmd {
+        vm.definer.DefineIngredient(vm.key, saga.IngredientDef{
+            Name:     vm.name.Value(),
+            Category: vm.category.Value(),
+            Unit:     vm.unit.Value(),
+        })
+        return func() tea.Msg { return IngredientDefinedMsg{Key: vm.key} }
+    }
+    ```
+
+- [ ] Create `app/domains/drinks/surfaces/tui/create_vm.go`:
+    ```go
+    // CreateViewModel is a reusable ViewModel for defining a drink
+    // It works with ANY saga that implements saga.DrinkDefiner
+    type CreateViewModel struct {
+        definer saga.DrinkDefiner  // The backing saga (any type)
+
+        // Form fields
+        name     textinput.Model
+        category SelectField
+        glass    SelectField
+        price    NumberField
+
+        // Nested ViewModel for inline ingredient creation
+        ingredientVM *ingredients.CreateViewModel
+
+        // Ingredients added to this drink
+        ingredients []IngredientSelection
+
+        // State
+        key  string
+        mode CreateMode  // Editing, AddingIngredient
+    }
+
+    // When user needs a new ingredient, we create a nested ViewModel
+    // that contributes to the SAME backing saga
+    func (vm *CreateViewModel) startAddIngredient() {
+        key := fmt.Sprintf("ing_%d", len(vm.ingredients))
+        vm.ingredientVM = ingredients.NewCreateViewModel(vm.definer, key)
+        vm.mode = AddingIngredient
+    }
+    ```
+
+#### Workflow Messages
+
 - [ ] Create `main/tui/workflow/messages.go`:
-    - `SagaActionAddedMsg` - action added to saga
     - `SagaCommitRequestedMsg` - user wants to commit
-    - `SagaCommittedMsg` - commit succeeded
-    - `SagaCommitFailedMsg` - commit failed (saga rolled back)
-    - `SagaDiscardRequestedMsg` - user wants to discard
-    - `SagaDiscardedMsg` - discard completed
-    - `SagaUndoMsg` - remove last action
+    - `SagaCommittedMsg[T]` - commit succeeded, contains result
+    - `SagaCommitFailedMsg` - commit failed (transaction rolled back)
+    - `IngredientDefinedMsg` - ingredient added to saga
+    - `DrinkDefinedMsg` - drink added to saga
+    - `ViewModelPushedMsg` - nested ViewModel activated
+    - `ViewModelPoppedMsg` - nested ViewModel completed/cancelled
+
+#### Preview & Commit Helpers
+
 - [ ] Create `main/tui/workflow/preview.go`:
     - `PreviewPanel` component showing pending actions
-    - Updates automatically when saga changes
+    - Takes `[]string` from any saga's `Preview()` method
     - Indicates which action is currently executing during commit
 
-### Phase 2: Drink Builder (Saga-Powered)
+- [ ] Create `main/tui/workflow/commit.go`:
+    ```go
+    // CommitSaga executes a saga through the middleware chain
+    func CommitSaga[T any](ctx *middleware.Context, s saga.Saga[T]) tea.Cmd {
+        return func() tea.Msg {
+            result, err := middleware.Saga.Execute(ctx, s)
+            if err != nil {
+                return SagaCommitFailedMsg{Err: err}
+            }
+            return SagaCommittedMsg[T]{Result: result}
+        }
+    }
+    ```
+
+### Phase 2: Ingredient CreateViewModel (Standalone & Composable)
+
+The `CreateViewModel` works in two contexts:
+1. **Standalone**: Backed by `IngredientSaga`, commits to create one ingredient
+2. **Nested**: Backed by a parent saga (DrinkSaga, MenuSaga), contributes to parent's transaction
+
+#### Standalone Usage
+
+When used standalone, the view owns the saga:
+
+- [ ] In `app/domains/ingredients/surfaces/tui/create_vm.go`, add standalone factory:
+    ```go
+    // NewStandaloneCreateViewModel creates a ViewModel with its own IngredientSaga
+    // Use this for standalone ingredient creation (not nested in another workflow)
+    func NewStandaloneCreateViewModel(ctx *middleware.Context, app *app.Application) *CreateViewModel {
+        saga := NewIngredientSaga(app)
+        return &CreateViewModel{
+            definer: saga,
+            saga:    saga,  // We own this saga
+            ctx:     ctx,
+            key:     "_primary",
+        }
+    }
+
+    func (vm *CreateViewModel) Commit() tea.Cmd {
+        vm.Submit()
+        return workflow.CommitSaga(vm.ctx, vm.saga)
+    }
+    ```
+
+- [ ] Wire `c` key in Ingredients list to open `CreateViewModel`
+- [ ] On commit success, navigate to new ingredient in list
+
+### Phase 3: Drink CreateViewModel (Saga-Powered)
+
+The `CreateViewModel` works in two contexts:
+1. **Standalone**: Backed by `DrinkSaga`, commits to create one drink (with optional new ingredients)
+2. **Nested**: Backed by a parent `MenuSaga`, contributes drinks to the menu's transaction
 
 #### Ingredient Picker Component
 
@@ -66,26 +228,53 @@ Each workflow holds a `saga.Saga[T]` that accumulates actions. The user can:
 - [ ] Implement `IngredientWithQuantity` struct for local state
 - [ ] Create quantity input inline after selecting ingredient
 
-#### Drink Builder View
+#### Drink CreateViewModel (Reusable Component)
 
-- [ ] Create `DrinkBuilderModel` backed by `saga.Saga[entity.DrinkID]`:
+Already defined in Phase 1 under `app/domains/drinks/surfaces/tui/create_vm.go`.
+
+Key methods:
+```go
+// When user needs a new ingredient, spawn nested ViewModel
+// The nested ViewModel contributes to the SAME backing saga
+func (vm *CreateViewModel) startAddIngredient() tea.Cmd {
+    key := fmt.Sprintf("%s_ing_%d", vm.key, len(vm.ingredients))
+    vm.ingredientVM = ingredients.NewCreateViewModel(vm.definer, key)
+    vm.mode = AddingIngredient
+    return func() tea.Msg { return ViewModelPushedMsg{Type: "ingredient"} }
+}
+
+// After ingredient ViewModel completes, add it to this drink
+func (vm *CreateViewModel) handleIngredientDefined(msg IngredientDefinedMsg) {
+    vm.ingredients = append(vm.ingredients, IngredientSelection{
+        Key:      msg.Key,
+        Quantity: vm.ingredientVM.LastQuantity(),
+    })
+    vm.ingredientVM = nil
+    vm.mode = Editing
+}
+```
+
+#### Standalone Usage
+
+- [ ] In `app/domains/drinks/surfaces/tui/create_vm.go`, add standalone factory:
     ```go
-    type DrinkBuilderModel struct {
-        workflow    *workflow.Workflow[entity.DrinkID]
-        builder     *builders.DrinkBuilder
+    // NewStandaloneCreateViewModel creates a ViewModel with its own DrinkSaga
+    func NewStandaloneCreateViewModel(ctx *middleware.Context, app *app.Application) *CreateViewModel {
+        saga := NewDrinkSaga(app)
+        return &CreateViewModel{
+            definer: saga,
+            saga:    saga,  // We own this saga
+            ctx:     ctx,
+            key:     "_primary",
+        }
+    }
 
-        // UI components
-        nameInput   textinput.Model
-        category    SelectField
-        glass       SelectField
-        price       NumberField
-        ingredients IngredientPicker
-        preview     PreviewPanel
-
-        // State
-        mode        DrinkBuilderMode  // Editing, AddingIngredient, Previewing
+    func (vm *CreateViewModel) Commit() tea.Cmd {
+        vm.Submit()
+        return workflow.CommitSaga(vm.ctx, vm.saga)
     }
     ```
+
 - [ ] Support defining new ingredients during drink creation:
     ```
     ┌─ New Ingredient ──────────────────────────────────────────┐
@@ -102,22 +291,21 @@ Each workflow holds a `saga.Saga[T]` that accumulates actions. The user can:
     1. Create ingredient: Blue Curaçao
     2. Create drink: Blue Lagoon
     ─────────────────────────────────────────
-    [ctrl+s] Commit  [ctrl+d] Discard
+    [ctrl+s] Commit  [esc] Cancel
     ```
 
-#### Commit/Discard Flow
+#### Commit/Cancel Flow
 
 - [ ] `ctrl+s` or "Save" commits saga:
     - Show confirmation with preview
-    - Execute saga
+    - Execute saga via `workflow.CommitSaga(ctx, saga)`
     - On success: Navigate to new drink detail
-    - On failure: Show error, saga auto-rolled back, stay in builder
-- [ ] `ctrl+d` or "Discard" abandons saga:
-    - Confirm if saga has actions: "Discard 2 pending actions?"
-    - Clear saga and navigate back
-- [ ] `ctrl+z` removes last action from saga (while in draft)
+    - On failure: Show error, transaction rolled back, stay in CreateViewModel
+- [ ] `esc` cancels and navigates back:
+    - Confirm if saga has pending operations: "Cancel? 2 pending operations will be lost."
+    - Navigate back (saga is garbage collected)
 
-### Phase 3: Menu Builder (Saga-Powered)
+### Phase 4: Menu CreateViewModel (Saga-Powered)
 
 #### Two Modes: Live Edit vs. Saga Edit
 
@@ -125,95 +313,146 @@ Menus support two editing modes:
 
 **Live Edit Mode** (existing menu):
 - Changes apply immediately (for quick single-drink add/remove)
-- Each add/remove is its own mini-saga that auto-commits
+- Each add/remove uses the command chain directly
 
 **Saga Edit Mode** (new menu or batch edit):
 - Changes accumulate in saga
 - Preview shows all pending changes
-- Explicit commit/discard
+- Explicit commit/cancel
 
 - [ ] Add mode toggle: `ctrl+m` switches between Live/Saga mode
 - [ ] Visual indicator shows current mode
 
-#### Menu Builder View (Saga Mode)
+#### Menu CreateViewModel (Saga Mode)
 
-- [ ] Create `MenuBuilderModel` with saga support:
+- [ ] Create `app/domains/menus/surfaces/tui/create_vm.go`:
     ```go
-    type MenuBuilderModel struct {
-        workflow    *workflow.Workflow[entity.MenuID]
-        builder     *builders.MenuBuilder
+    // CreateViewModel owns the saga and orchestrates nested ViewModels from other domains
+    type CreateViewModel struct {
+        ctx   *middleware.Context
+        app   *app.Application
+        menu  *domain.Menu   // nil if creating new
+        saga  *MenuSaga      // MenuSaga implements saga.MenuDrinkAdder
 
-        // Dual panes
-        available   list.Model  // Drinks not on menu (in saga state)
-        onMenu      list.Model  // Drinks on menu (in saga state)
+        // Nested ViewModels from other domains (contribute to same saga)
+        drinkVM      *drinks.CreateViewModel
+        ingredientVM *ingredients.CreateViewModel
 
-        // State derived from saga
-        pendingAdds    map[string]bool  // Drinks to be added
-        pendingRemoves map[string]bool  // Drinks to be removed
+        // UI components
+        nameInput   textinput.Model  // For new menus
+        available   list.Model       // Drinks not on menu
+        onMenu      list.Model       // Drinks on menu
 
-        mode        MenuBuilderMode  // Live or Saga
+        // State derived from saga (for UI rendering)
+        pendingAdds    map[string]bool
+        pendingRemoves map[string]bool
+
+        mode  CreateMode  // Live or Saga
+        focus FocusState  // Main, DrinkVM, IngredientVM
+    }
+
+    // "Create Drink" opens nested drink ViewModel backed by SAME saga
+    func (vm *CreateViewModel) startCreateDrink() tea.Cmd {
+        key := fmt.Sprintf("drink_%d", vm.drinkCount)
+        vm.drinkVM = drinks.NewCreateViewModel(vm.saga, key)
+        vm.focus = DrinkVMFocus
+        return func() tea.Msg { return ViewModelPushedMsg{Type: "drink"} }
+    }
+
+    // When drink ViewModel completes, add it to menu
+    func (vm *CreateViewModel) handleDrinkDefined(msg DrinkDefinedMsg) {
+        vm.saga.AddDrinkByKey(msg.Key, nil)  // Add to menu at default price
+        vm.pendingAdds[msg.Key] = true
+        vm.drinkVM = nil
+        vm.focus = MainFocus
     }
     ```
-- [ ] In saga mode, add/remove updates local state + saga, not server
+
+- [ ] In saga mode, add/remove updates saga, not server
 - [ ] Visual indicators for pending changes:
     - Green `+` badge on drinks pending add
     - Red `-` badge on drinks pending remove
 - [ ] Show saga preview panel
 
-#### Define New Drinks While Building Menu
+#### Nested ViewModel Flow
 
-- [ ] "Create Drink" action from within menu builder (`n` key):
-    - Opens drink builder as sub-workflow
-    - New drink's saga actions merge into menu saga
+- [ ] "Create Drink" action (`n` key):
+    - Spawns `drinks.CreateViewModel` backed by the **same MenuSaga**
+    - Drink ViewModel can spawn `ingredients.CreateViewModel` (also same saga)
+    - All definitions accumulate in one saga
     - On completion, drink appears in "Available" with green badge
-- [ ] Seamless flow: Create ingredient → Create drink → Add to menu (all one saga)
 
-### Phase 4: Order Placement (Saga-Powered)
+- [ ] ViewModel stack navigation:
+    - `esc` pops current ViewModel (with confirmation if pending operations)
+    - Completion auto-pops and notifies parent
+    - Preview always shows full saga state across all nested ViewModels
 
-#### Order Builder View
+- [ ] Seamless flow example:
+    ```
+    menus.CreateVM → [n] → drinks.CreateVM → [i] → ingredients.CreateVM
+                                                     ↓ submit
+                                              drinks.CreateVM (ingredient added)
+                                                     ↓ submit
+                                              menus.CreateVM (drink added)
+                                                     ↓ commit
+                                              All created atomically!
+    ```
 
-- [ ] Create `OrderBuilderModel` backed by saga:
+### Phase 5: Order Placement (Saga-Powered)
+
+#### Order CreateViewModel
+
+- [ ] Create `OrderCreateViewModel` backed by saga:
     ```go
-    type OrderBuilderModel struct {
-        workflow    *workflow.Workflow[entity.OrderID]
+    type OrderCreateViewModel struct {
+        ctx         *middleware.Context
+        app         *app.Application
+        saga        *orders.OrderSaga
 
         menu        *domain.Menu
-        cart        OrderCart  // Local state
+        cart        OrderCart  // Local state for UI
 
         // UI
         menuItems   list.Model
         cartList    list.Model
-        preview     PreviewPanel
     }
     ```
-- [ ] Cart operations update local state only (no saga actions yet)
-- [ ] "Place Order" builds saga with single `PlaceOrderAction`:
+- [ ] Cart operations update local state (for UI) and saga simultaneously:
     ```go
-    saga.Add(&orders.PlaceAction{
-        MenuID: menu.ID,
-        Items:  cart.ToOrderItems(),
-        Result: orderRef,
-    })
+    func (vm *OrderCreateViewModel) addToCart(drink domain.Drink, qty int) {
+        vm.cart.Add(drink, qty)
+        vm.saga.AddItem(orders.OrderItem{DrinkID: drink.ID, Quantity: qty})
+    }
+    ```
+- [ ] "Place Order" commits through middleware:
+    ```go
+    func (vm *OrderCreateViewModel) placeOrder() tea.Cmd {
+        return workflow.CommitSaga(vm.ctx, vm.saga)
+    }
     ```
 - [ ] Confirm and commit flow
 
-### Phase 5: Advanced Workflow - Full Menu Creator
+### Phase 6: Advanced Workflow - Full Menu Creator
 
 Showcase saga power: Create a complete menu from scratch in one atomic operation.
 
 - [ ] Create `FullMenuCreatorModel`:
     ```go
     type FullMenuCreatorModel struct {
-        workflow *workflow.Workflow[entity.MenuID]
-        builder  *builders.MenuBuilder
+        ctx   *middleware.Context
+        app   *app.Application
+        saga  *menus.MenuSaga
 
         // Wizard steps
-        step     int  // 0: Name, 1: Ingredients, 2: Drinks, 3: Review
+        step  int  // 0: Name, 1: Ingredients, 2: Drinks, 3: Review
+    }
 
-        // Defined entities (not yet created)
-        ingredients map[string]IngredientDraft
-        drinks      map[string]DrinkDraft
-        menuDrinks  []string  // Keys into drinks map
+    func NewFullMenuCreator(ctx *middleware.Context, app *app.Application) *FullMenuCreatorModel {
+        return &FullMenuCreatorModel{
+            ctx:  ctx,
+            app:  app,
+            saga: menus.NewMenuSaga(app),
+        }
     }
     ```
 - [ ] Step 1: Name menu
@@ -233,12 +472,12 @@ Showcase saga power: Create a complete menu from scratch in one atomic operation
     ─────────────────────────────────────────
     Total: 7 actions
 
-    [Create Menu]  [Edit]  [Discard]
+    [Create Menu]  [Edit]  [Cancel]
     ```
 - [ ] Commit creates everything atomically
 - [ ] Failure rolls back all (no orphan ingredients/drinks)
 
-### Phase 6: Workflow State Persistence
+### Phase 7: Workflow State Persistence
 
 - [ ] Persist in-progress sagas to file system:
     - On TUI exit with uncommitted saga: prompt to save draft
@@ -246,10 +485,10 @@ Showcase saga power: Create a complete menu from scratch in one atomic operation
     - Storage: `~/.local/state/mixology/drafts/`
 - [ ] Draft management:
     - List saved drafts on dashboard
-    - Resume draft → loads saga and opens appropriate builder
-    - Delete draft → discards without executing
+    - Resume draft → loads saga and opens appropriate CreateViewModel
+    - Delete draft → removes without executing
 
-### Phase 7: Saga Execution UI
+### Phase 8: Saga Execution UI
 
 - [ ] Create `CommitProgressModel` for showing saga execution:
     ```
@@ -266,30 +505,22 @@ Showcase saga power: Create a complete menu from scratch in one atomic operation
 - [ ] On success: Show summary with created IDs
 - [ ] On failure: Show which action failed, what was rolled back
 
-### Phase 8: Quick Actions & Cross-View
+### Phase 9: Quick Actions & Cross-View
 
 - [ ] Dashboard quick actions:
-    - `n` - New drink (opens drink builder with fresh saga)
+    - `n` - New drink (opens drink CreateViewModel with fresh saga)
     - `i` - New ingredient (simple saga with one action)
-    - `m` - New menu (opens menu builder with fresh saga)
-    - `o` - New order (opens order builder)
+    - `m` - New menu (opens menu CreateViewModel with fresh saga)
+    - `o` - New order (opens order CreateViewModel)
 - [ ] Cross-view actions with saga awareness:
     - From Drinks: `m` adds drink to menu (live mode or prompts for saga)
     - From Menus: `o` starts order from menu
     - From Ingredients: Quick adjust stock (mini-saga)
 
-### Phase 9: Undo Within Workflows
-
-- [ ] Implement undo stack per workflow:
-    - Each action added to saga also pushed to undo stack
-    - `ctrl+z` pops last action from both saga and undo stack
-    - Undo stack cleared on commit or discard
-- [ ] Visual feedback: "Undid: Add ingredient Blue Curaçao"
-
 ### Phase 10: Workflow Help & Guidance
 
 - [ ] Saga-aware help text:
-    - "You have 3 pending actions. Press Ctrl+S to commit or Ctrl+D to discard."
+    - "You have 3 pending operations. Press Ctrl+S to commit or Esc to cancel."
     - "Creating new ingredient will add it to your current saga."
 - [ ] First-time tutorial for saga concept:
     - Brief explanation on first workflow entry
@@ -297,22 +528,21 @@ Showcase saga power: Create a complete menu from scratch in one atomic operation
 
 ## Acceptance Criteria
 
-### Drink Builder
+### Drink CreateViewModel
 
 - [ ] New drink created via saga (not immediate API call)
 - [ ] Can define new ingredients inline (added to same saga)
 - [ ] Preview shows all pending actions
 - [ ] Commit creates everything atomically
 - [ ] Failure rolls back cleanly (no orphan ingredients)
-- [ ] Discard abandons without persistence
-- [ ] Undo removes last action from saga
+- [ ] Cancel abandons without persistence (saga is garbage collected)
 
-### Menu Builder
+### Menu CreateViewModel
 
 - [ ] Live mode: Changes apply immediately (existing behavior)
 - [ ] Saga mode: Changes accumulate, require explicit commit
 - [ ] Visual badges show pending adds/removes
-- [ ] Can create new drinks within menu builder (merged into saga)
+- [ ] Can create new drinks within menu CreateViewModel (merged into saga)
 - [ ] Full atomic commit of complex menu creation
 
 ### Order Placement
@@ -337,142 +567,171 @@ Showcase saga power: Create a complete menu from scratch in one atomic operation
 
 ## Implementation Details
 
-### Drink Builder with Saga
+### Composable CreateViewModel Pattern
 
 ```go
-type DrinkBuilderModel struct {
-    workflow *workflow.Workflow[entity.DrinkID]
-    builder  *builders.DrinkBuilder
+// drinks/surfaces/tui/create_vm.go
+
+// CreateViewModel is a REUSABLE ViewModel
+// It works with ANY saga implementing DrinkDefiner
+type CreateViewModel struct {
+    definer saga.DrinkDefiner  // Could be DrinkSaga or MenuSaga
+    key     string             // Local key for this drink
 
     // Form fields
     name        textinput.Model
     category    string
     glass       string
     price       *float64
+
+    // Nested ingredient ViewModel (same backing saga)
+    ingredientVM *ingredients.CreateViewModel
+
+    // Ingredients for this drink
     ingredients []IngredientSelection
 
-    // UI state
-    previewOpen bool
-    styles      DrinkBuilderStyles
+    // For standalone use only (nil when nested)
+    saga *DrinkSaga
+    ctx  *middleware.Context
+
+    mode CreateMode
 }
 
-type IngredientSelection struct {
-    // Either existing or to-be-created
-    ExistingID *entity.IngredientID
-    NewDef     *IngredientDraft
-    Quantity   string
-}
-
-type IngredientDraft struct {
-    Key      string  // Local reference key
-    Name     string
-    Category string
-    Unit     string
-}
-
-func (m *DrinkBuilderModel) Init() tea.Cmd {
-    // Initialize fresh saga
-    m.builder = builders.NewDrinkBuilder(m.name.Value(), m.category, m.glass)
-    m.workflow = workflow.New(m.builder.Saga())
-    return nil
-}
-
-func (m *DrinkBuilderModel) addIngredient(sel IngredientSelection) {
-    if sel.ExistingID != nil {
-        m.builder.AddExistingIngredient(*sel.ExistingID, sel.Quantity)
-    } else {
-        // Define new ingredient in saga, then reference it
-        m.builder.DefineIngredient(sel.NewDef.Key, commands.CreateIngredient{
-            Name:     sel.NewDef.Name,
-            Category: sel.NewDef.Category,
-            Unit:     sel.NewDef.Unit,
-        })
-        m.builder.AddIngredient(sel.NewDef.Key, sel.Quantity)
+// NewCreateViewModel creates a ViewModel that contributes to any DrinkDefiner
+func NewCreateViewModel(definer saga.DrinkDefiner, key string) *CreateViewModel {
+    return &CreateViewModel{
+        definer: definer,
+        key:     key,
+        // ... init form fields
     }
-    m.workflow.Refresh()  // Update preview
 }
 
-func (m *DrinkBuilderModel) commit() tea.Cmd {
-    return func() tea.Msg {
-        if err := m.workflow.Saga.Commit(ctx); err != nil {
-            return SagaCommitFailedMsg{Err: err}
+// NewStandaloneCreateViewModel creates a ViewModel with its own saga
+func NewStandaloneCreateViewModel(ctx *middleware.Context, app *app.Application) *CreateViewModel {
+    saga := NewDrinkSaga(app)
+    return &CreateViewModel{
+        definer: saga,
+        saga:    saga,
+        ctx:     ctx,
+        key:     "_primary",
+    }
+}
+
+// Start nested ingredient creation (contributes to SAME saga)
+func (vm *CreateViewModel) startAddIngredient() {
+    ingKey := fmt.Sprintf("%s_ing_%d", vm.key, len(vm.ingredients))
+    vm.ingredientVM = ingredients.NewCreateViewModel(vm.definer, ingKey)
+    vm.mode = AddingIngredient
+}
+
+// Submit defines the drink in the backing saga
+func (vm *CreateViewModel) Submit() tea.Cmd {
+    vm.definer.DefineDrink(vm.key, saga.DrinkDef{
+        Name:     vm.name.Value(),
+        Category: vm.category,
+        Glass:    vm.glass,
+        Price:    vm.price,
+    })
+    // Add ingredient references
+    for _, ing := range vm.ingredients {
+        if ing.Key != "" {
+            vm.definer.AddIngredientByKey(vm.key, ing.Key, ing.Quantity)
+        } else {
+            vm.definer.AddExistingIngredient(vm.key, ing.ExistingID, ing.Quantity)
         }
-        return SagaCommittedMsg{Result: m.workflow.Saga.Result}
     }
+    return func() tea.Msg { return DrinkDefinedMsg{Key: vm.key} }
+}
+
+// Commit is only valid for standalone ViewModels
+func (vm *CreateViewModel) Commit() tea.Cmd {
+    vm.Submit()
+    return workflow.CommitSaga(vm.ctx, vm.saga)
 }
 ```
 
-### Menu Builder with Dual Mode
+### Menu CreateViewModel with Nested ViewModels
 
 ```go
-type MenuBuilderModel struct {
-    menu      *domain.Menu        // nil if creating new
-    workflow  *workflow.Workflow[entity.MenuID]
-    liveMode  bool                // true = immediate, false = saga
+// menus/surfaces/tui/create_vm.go
 
-    // Panes
-    available list.Model
-    onMenu    list.Model
+// CreateViewModel owns the saga and orchestrates nested ViewModels
+type CreateViewModel struct {
+    ctx   *middleware.Context
+    app   *app.Application
+    menu  *domain.Menu      // nil if creating new
+    saga  *MenuSaga         // Implements MenuDrinkAdder (which extends DrinkDefiner)
 
-    // Saga state tracking
+    // Nested ViewModels (contribute to SAME saga)
+    drinkVM      *drinks.CreateViewModel
+    ingredientVM *ingredients.CreateViewModel
+
+    // UI components
+    nameInput  textinput.Model
+    available  list.Model
+    onMenu     list.Model
+
+    // State derived from saga
     pendingAdds    map[string]bool
     pendingRemoves map[string]bool
+
+    focus FocusState  // Main, DrinkVM, IngredientVM
 }
 
-func (m *MenuBuilderModel) addDrink(drink domain.Drink) tea.Cmd {
-    if m.liveMode {
-        // Immediate - create mini-saga and auto-commit
-        s := saga.Of[struct{}]()
-        s.Add(&menu.AddDrinkAction{
-            MenuID:  m.menu.ID,
-            DrinkID: drink.ID,
-        })
-        return func() tea.Msg {
-            if err := s.Commit(ctx); err != nil {
-                return ErrorMsg{Err: err}
-            }
-            return DrinkAddedMsg{DrinkID: drink.ID}
-        }
+// Start nested drink ViewModel (contributes to same saga)
+func (vm *CreateViewModel) startCreateDrink() tea.Cmd {
+    key := fmt.Sprintf("drink_%d", vm.drinkCount)
+    // drinks.CreateViewModel works with MenuSaga because MenuSaga implements DrinkDefiner
+    vm.drinkVM = drinks.NewCreateViewModel(vm.saga, key)
+    vm.focus = DrinkVMFocus
+    return func() tea.Msg { return ViewModelPushedMsg{Type: "drink"} }
+}
+
+// Handle completion of nested drink ViewModel
+func (vm *CreateViewModel) handleDrinkDefined(msg DrinkDefinedMsg) {
+    // Drink is now defined in saga, add it to menu
+    vm.saga.AddDrinkByKey(msg.Key, nil)
+    vm.pendingAdds[msg.Key] = true
+    vm.drinkVM = nil
+    vm.focus = MainFocus
+}
+
+// Add existing drink directly
+func (vm *CreateViewModel) addExistingDrink(drink domain.Drink, price *float64) {
+    vm.saga.AddExistingDrink(drink.ID, price)
+    vm.pendingAdds[drink.ID.String()] = true
+}
+
+func (vm *CreateViewModel) Commit() tea.Cmd {
+    return workflow.CommitSaga(vm.ctx, vm.saga)
+}
+
+func (vm *CreateViewModel) View() string {
+    // If nested ViewModel is active, delegate to it
+    switch vm.focus {
+    case DrinkVMFocus:
+        return vm.drinkVM.View()
+    case IngredientVMFocus:
+        return vm.ingredientVM.View()
     }
 
-    // Saga mode - accumulate
-    m.workflow.Saga.Add(&menu.AddDrinkAction{
-        MenuID:  m.menu.ID,
-        DrinkID: drink.ID,
-    })
-    m.pendingAdds[drink.ID.String()] = true
-    m.workflow.Refresh()
-    return nil
-}
-
-func (m *MenuBuilderModel) View() string {
-    // Render with pending change indicators
-    availableView := m.renderAvailablePane()
-    onMenuView := m.renderOnMenuPane()
-
+    // Main view with pending change indicators
+    availableView := vm.renderAvailablePane()
+    onMenuView := vm.renderOnMenuPane()
     panes := lipgloss.JoinHorizontal(lipgloss.Top, availableView, onMenuView)
 
-    if !m.liveMode && len(m.workflow.Preview) > 0 {
-        preview := m.renderPreviewPanel()
+    // Show preview panel if there are pending operations
+    if steps := vm.saga.Preview(); len(steps) > 0 {
+        preview := vm.renderPreviewPanel(steps)
         return lipgloss.JoinVertical(lipgloss.Left, panes, preview)
     }
 
     return panes
 }
 
-func (m *MenuBuilderModel) renderDrinkItem(d domain.Drink) string {
-    name := d.Name
-    id := d.ID.String()
-
-    // Add badges for pending changes
-    if m.pendingAdds[id] {
-        name = m.styles.PendingAdd.Render("+ ") + name
-    }
-    if m.pendingRemoves[id] {
-        name = m.styles.PendingRemove.Render("- ") + name
-    }
-
-    return name
+func (vm *CreateViewModel) renderPreviewPanel(steps []string) string {
+    // Preview shows ALL pending operations across nested ViewModels
+    // ... render steps
 }
 ```
 
@@ -524,30 +783,128 @@ func (m *CommitProgressModel) View() string {
 
 ## Notes
 
+### MVVM-Aligned Architecture
+
+The pattern follows MVVM (Model-View-ViewModel), adapted for Bubble Tea:
+
+| MVVM          | Our Pattern     | Responsibility                                                       |
+|---------------|-----------------|----------------------------------------------------------------------|
+| **Model**     | Saga            | Domain data, validation, execution logic                             |
+| **ViewModel** | CreateViewModel | UI state, adapts Model for View, works against capability interfaces |
+| **View**      | `View()` output | Bubble Tea rendering                                                 |
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Model Layer (pkg/saga/)                                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Capability Interfaces:                                                 │
+│  IngredientDefiner ──► DrinkDefiner ──► MenuDrinkAdder                  │
+│        ▲                    ▲                 ▲                         │
+│        │                    │                 │                         │
+│  IngredientSaga        DrinkSaga         MenuSaga                       │
+├─────────────────────────────────────────────────────────────────────────┤
+│  ViewModel Layer (surfaces/tui/)                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│  ingredients/         drinks/            menus/                         │
+│  CreateViewModel      CreateViewModel    CreateViewModel                │
+│  ListViewModel        ListViewModel      ListViewModel                  │
+│  DetailViewModel      DetailViewModel    DetailViewModel                │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why this enables reuse:**
+- `CreateViewModel`s work against **capability interfaces**, not concrete types
+- `ingredients.CreateViewModel` works with any `IngredientDefiner` (IngredientSaga, DrinkSaga, or MenuSaga)
+- `drinks.CreateViewModel` works with any `DrinkDefiner` (DrinkSaga or MenuSaga)
+- All nested ViewModels contribute to the **same Model (saga)** for atomic commits
+- Parent ViewModel owns the saga; child ViewModels just hold a reference to the interface
+
+### Directory Structure
+
+Each domain owns its TUI surface components with consistent ViewModel naming:
+
+```
+pkg/saga/
+├── saga.go           # Saga[T] interface
+├── permission.go     # Permission type
+├── resolution.go     # Resolution for tracking created IDs
+├── authorize.go      # AuthorizeAll, DeduplicatePermissions
+└── capabilities.go   # IngredientDefiner, DrinkDefiner, MenuDrinkAdder
+
+app/domains/ingredients/
+├── saga.go                    # IngredientSaga (Model)
+└── surfaces/tui/
+    ├── list_vm.go             # ListViewModel - read-only list display
+    ├── detail_vm.go           # DetailViewModel - read-only detail display
+    └── create_vm.go           # CreateViewModel - saga-backed, reusable
+
+app/domains/drinks/
+├── saga.go                    # DrinkSaga (Model)
+└── surfaces/tui/
+    ├── list_vm.go             # ListViewModel
+    ├── detail_vm.go           # DetailViewModel
+    └── create_vm.go           # CreateViewModel - can nest ingredients.CreateViewModel
+
+app/domains/menus/
+├── saga.go                    # MenuSaga (Model)
+└── surfaces/tui/
+    ├── list_vm.go             # ListViewModel
+    ├── detail_vm.go           # DetailViewModel
+    └── create_vm.go           # CreateViewModel - orchestrates nested ViewModels
+
+main/tui/
+├── main.go                    # Entry point
+├── app.go                     # Root model, navigation
+├── styles.go                  # Lip Gloss styles
+├── keys.go                    # Key bindings
+├── messages.go                # Shared navigation messages
+└── workflow/
+    ├── messages.go            # SagaCommittedMsg, etc.
+    ├── preview.go             # PreviewPanel component
+    └── commit.go              # CommitSaga helper
+```
+
+**ViewModel types:**
+
+| ViewModel | Saga-backed? | Purpose |
+|-----------|--------------|---------|
+| `ListViewModel` | No | Query and display list, handle filtering/selection |
+| `DetailViewModel` | No | Query and display single entity |
+| `CreateViewModel` | Yes | Saga-backed creation workflow, reusable via capability interfaces |
+| `EditViewModel` | Yes | Saga-backed editing (often reuses CreateViewModel with existing data) |
+
 ### When to Use Sagas vs. Immediate
 
-| Operation | Mode | Rationale |
-|-----------|------|-----------|
-| Quick single add/remove | Immediate (auto-commit mini-saga) | Fast feedback for simple ops |
-| New drink with ingredients | Full saga | May need to define ingredients |
-| New menu from scratch | Full saga | Complex multi-entity operation |
-| Inventory adjustment | Immediate (single action) | Simple, reversible |
-| Order placement | Full saga | Should preview before committing |
+| Operation                  | Mode                      | Rationale                        |
+|----------------------------|---------------------------|----------------------------------|
+| Quick single add/remove    | Immediate (command chain) | Fast feedback for simple ops     |
+| New drink with ingredients | Full saga                 | May need to define ingredients   |
+| New menu from scratch      | Full saga                 | Complex multi-entity operation   |
+| Inventory adjustment       | Immediate (command chain) | Simple, reversible               |
+| Order placement            | Full saga                 | Should preview before committing |
 
 ### Saga as Source of Truth
 
 During saga-mode workflows, the saga (not the server) is the source of truth for the UI. The "On Menu" pane shows the
-server state + pending adds - pending removes.
+server state + pending adds - pending removes. Use `saga.Preview()` to show what will happen on commit.
+
+### Middleware Execution
+
+All saga commits go through `middleware.Saga.Execute(ctx, saga)`, which:
+1. Validates the saga data
+2. Pre-checks all required permissions (fails fast before transaction)
+3. Wraps execution in a database transaction
+4. Commits on success, rolls back on any failure
 
 ### Error Recovery
 
 If saga commit fails:
-1. Saga automatically rolls back
-2. User stays in builder with all their work intact
-3. Error message explains what failed
+1. Transaction automatically rolls back (no partial state)
+2. User stays in CreateViewModel with all their work intact
+3. Error message explains what failed (validation, permission, or execution error)
 4. User can edit and retry
 
 ### Performance
 
-Sagas accumulate actions in memory. For very large sagas (100+ actions), consider pagination or warnings. In practice,
-typical workflows have <20 actions.
+Sagas accumulate data in memory. For very large sagas (100+ operations), consider pagination or warnings. In practice,
+typical workflows have <20 operations.

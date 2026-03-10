@@ -525,7 +525,10 @@ func isMiddlewareContext(expr ast.Expr, imports map[string]string, middlewareImp
 		return false
 	}
 	pkg, name, ok := selectorType(star.X)
-	if !ok || name != "Context" {
+	if !ok {
+		return false
+	}
+	if name != "HandlerContext" {
 		return false
 	}
 	return imports[pkg] == middlewareImportPath

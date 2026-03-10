@@ -9,3 +9,7 @@ import (
 func (q *Queries) List(ctx store.Context, filter drinksdao.ListFilter) ([]*models.Drink, error) {
 	return q.dao.List(ctx, filter)
 }
+
+func (q *Queries) Count(ctx store.Context, filter drinksdao.ListFilter) (int, error) {
+	return q.dao.Count(ctx, filter)
+}

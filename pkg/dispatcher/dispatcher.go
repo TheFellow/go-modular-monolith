@@ -23,9 +23,11 @@ func (d *Dispatcher) handlerError(ctx *middleware.Context, event any, err error)
 }
 
 // unhandledEvent is called when an event is emitted but no handler exists for it.
+// This is normal in a modular monolith — events exist for future extensibility.
+// The activity middleware already handles audit for every command.
 func (d *Dispatcher) unhandledEvent(ctx *middleware.Context, event any) error {
 	if ctx != nil {
-		log.FromContext(ctx).Warn(
+		log.FromContext(ctx).Debug(
 			"unhandled event",
 			log.EventType(eventTypeLabel(event)),
 		)

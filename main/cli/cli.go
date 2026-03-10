@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/TheFellow/go-modular-monolith/app"
+	"github.com/TheFellow/go-modular-monolith/main/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
@@ -22,6 +25,8 @@ type CLI struct {
 	actor           string
 	logLevel        string
 	logFormat       string
+	logFile         string
+	logFileHandle   *os.File
 	enableMetrics   bool
 	metricsServer   *http.Server
 	metricsShutdown func(context.Context) error
@@ -51,6 +56,10 @@ func (c *CLI) Command() *cli.Command {
 		Name:  "mixology",
 		Usage: "Mixology as a Service",
 		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "tui",
+				Usage: "Launch interactive terminal UI",
+			},
 			&cli.StringFlag{
 				Name:        "log-level",
 				Value:       c.logLevel,
@@ -66,6 +75,12 @@ func (c *CLI) Command() *cli.Command {
 				Sources:     cli.EnvVars("MIXOLOGY_LOG_FORMAT"),
 			},
 			&cli.StringFlag{
+				Name:        "log-file",
+				Usage:       "Write logs to file instead of stderr",
+				Destination: &c.logFile,
+				Sources:     cli.EnvVars("MIXOLOGY_LOG_FILE"),
+			},
+			&cli.StringFlag{
 				Name:        "actor",
 				Aliases:     []string{"as"},
 				Usage:       "Actor to run as (owner|manager|sommelier|bartender|anonymous)",
@@ -79,8 +94,29 @@ func (c *CLI) Command() *cli.Command {
 				Sources:     cli.EnvVars("MIXOLOGY_METRICS"),
 			},
 		},
-		Before: func(ctx context.Context, _ *cli.Command) (context.Context, error) {
-			logger := pkglog.Setup(c.logLevel, c.logFormat, os.Stderr)
+		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+			if cmd != nil && cmd.Bool("tui") && c.logFile == "" {
+				logDir := filepath.Dir(c.dbPath)
+				if logDir != "" && logDir != "." {
+					if err := os.MkdirAll(logDir, 0o755); err != nil {
+						return ctx, fmt.Errorf("create log dir: %w", err)
+					}
+					c.logFile = filepath.Join(logDir, "mixology-tui.log")
+				} else {
+					c.logFile = "mixology-tui.log"
+				}
+			}
+
+			var logOutput io.Writer = os.Stderr
+			if c.logFile != "" {
+				f, err := os.OpenFile(c.logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
+				if err != nil {
+					return ctx, fmt.Errorf("open log file: %w", err)
+				}
+				logOutput = f
+				c.logFileHandle = f
+			}
+			logger := pkglog.Setup(c.logLevel, c.logFormat, logOutput)
 
 			var metrics telemetry.Metrics = telemetry.Nop()
 			if c.enableMetrics {
@@ -97,6 +133,11 @@ func (c *CLI) Command() *cli.Command {
 				go func() { _ = c.metricsServer.ListenAndServe() }()
 			}
 
+			p, err := authn.ParseActor(c.actor)
+			if err != nil {
+				return ctx, err
+			}
+
 			s, err := store.Open(c.dbPath)
 			if err != nil {
 				return ctx, err
@@ -105,13 +146,31 @@ func (c *CLI) Command() *cli.Command {
 				app.WithStore(s),
 				app.WithLogger(logger),
 				app.WithMetrics(metrics),
+				app.WithPrincipal(p),
 			)
 
-			p, err := authn.ParseActor(c.actor)
-			if err != nil {
-				return ctx, err
+			ctx = c.app.ContextFrom(ctx)
+			mctx, ok := ctx.(*middleware.Context)
+
+			if cmd != nil && cmd.Bool("tui") {
+				if !ok {
+					return ctx, cli.Exit(fmt.Errorf("expected middleware context for TUI"), apperrors.ExitGeneral)
+				}
+				args := cmd.Args().Slice()
+				if len(args) > 0 {
+					return ctx, cli.Exit(fmt.Errorf("too many arguments for --tui"), apperrors.ExitUsage)
+				}
+
+				if err := tui.Run(c.app); err != nil {
+					return ctx, err
+				}
+				return ctx, cli.Exit("", 0)
 			}
-			return c.app.Context(ctx, p), nil
+
+			if ok {
+				return mctx, nil
+			}
+			return ctx, nil
 		},
 		After: func(ctx context.Context, _ *cli.Command) error {
 			if c.app != nil {
@@ -122,6 +181,9 @@ func (c *CLI) Command() *cli.Command {
 			}
 			if c.metricsShutdown != nil {
 				_ = c.metricsShutdown(ctx)
+			}
+			if c.logFileHandle != nil {
+				_ = c.logFileHandle.Close()
 			}
 			return nil
 		},

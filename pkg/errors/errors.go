@@ -12,6 +12,13 @@ import (
 )
 
 type httpCode int
+type TUIStyle int
+
+const (
+	TUIStyleError TUIStyle = iota
+	TUIStyleWarning
+	TUIStyleInfo
+)
 
 type ErrorKind struct {
 	Name     string
@@ -19,6 +26,7 @@ type ErrorKind struct {
 	HTTPCode httpCode
 	GRPCCode codes.Code
 	CLICode  int
+	TUIStyle TUIStyle
 }
 
 // Exit codes.
@@ -34,16 +42,18 @@ type ErrorKind struct {
 //	10 - Validation/invalid input error
 //	20 - Not found error
 //	40 - Conflict error
+//	45 - Failed precondition error
 //	50 - Internal error
 const (
-	ExitSuccess    = 0
-	ExitGeneral    = 1
-	ExitUsage      = 2
-	ExitInvalid    = 10
-	ExitNotFound   = 20
-	ExitPermission = 30
-	ExitConflict   = 40
-	ExitInternal   = 50
+	ExitSuccess            = 0
+	ExitGeneral            = 1
+	ExitUsage              = 2
+	ExitInvalid            = 10
+	ExitNotFound           = 20
+	ExitPermission         = 30
+	ExitConflict           = 40
+	ExitFailedPrecondition = 45
+	ExitInternal           = 50
 )
 
 var (
@@ -53,6 +63,7 @@ var (
 		HTTPCode: http.StatusBadRequest,
 		GRPCCode: codes.InvalidArgument,
 		CLICode:  ExitInvalid,
+		TUIStyle: TUIStyleError,
 	}
 	ErrNotFound = ErrorKind{
 		Name:     "NotFound",
@@ -60,6 +71,7 @@ var (
 		HTTPCode: http.StatusNotFound,
 		GRPCCode: codes.NotFound,
 		CLICode:  ExitNotFound,
+		TUIStyle: TUIStyleWarning,
 	}
 	ErrPermission = ErrorKind{
 		Name:     "Permission",
@@ -67,6 +79,7 @@ var (
 		HTTPCode: http.StatusForbidden,
 		GRPCCode: codes.PermissionDenied,
 		CLICode:  ExitPermission,
+		TUIStyle: TUIStyleError,
 	}
 	ErrConflict = ErrorKind{
 		Name:     "Conflict",
@@ -74,6 +87,15 @@ var (
 		HTTPCode: http.StatusConflict,
 		GRPCCode: codes.AlreadyExists,
 		CLICode:  ExitConflict,
+		TUIStyle: TUIStyleWarning,
+	}
+	ErrFailedPrecondition = ErrorKind{
+		Name:     "FailedPrecondition",
+		Message:  "failed precondition",
+		HTTPCode: http.StatusPreconditionFailed,
+		GRPCCode: codes.FailedPrecondition,
+		CLICode:  ExitFailedPrecondition,
+		TUIStyle: TUIStyleWarning,
 	}
 	ErrInternal = ErrorKind{
 		Name:     "Internal",
@@ -81,9 +103,10 @@ var (
 		HTTPCode: http.StatusInternalServerError,
 		GRPCCode: codes.Internal,
 		CLICode:  ExitInternal,
+		TUIStyle: TUIStyleError,
 	}
 
-	ErrorKinds = []ErrorKind{ErrInvalid, ErrNotFound, ErrPermission, ErrConflict, ErrInternal}
+	ErrorKinds = []ErrorKind{ErrInvalid, ErrNotFound, ErrPermission, ErrConflict, ErrFailedPrecondition, ErrInternal}
 )
 
 func formatf(format string, args ...any) (msg string, cause error) {

@@ -81,6 +81,19 @@ func (c DrinkCategory) Validate() error {
 	}
 }
 
+func AllDrinkCategories() []DrinkCategory {
+	return []DrinkCategory{
+		DrinkCategoryCocktail,
+		DrinkCategoryMocktail,
+		DrinkCategoryWine,
+		DrinkCategoryShot,
+		DrinkCategoryHighball,
+		DrinkCategoryMartini,
+		DrinkCategorySour,
+		DrinkCategoryTiki,
+	}
+}
+
 type GlassType string
 
 const (
@@ -98,5 +111,14 @@ func (g GlassType) Validate() error {
 		return nil
 	default:
 		return errors.Invalidf("invalid glass %q", string(g))
+	}
+}
+
+func AllGlassTypes() []GlassType {
+	return []GlassType{
+		GlassTypeRocks,
+		GlassTypeHighball,
+		GlassTypeCoupe,
+		GlassTypeMartini,
 	}
 }

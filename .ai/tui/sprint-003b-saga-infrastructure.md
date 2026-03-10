@@ -129,18 +129,13 @@ type Saga[Result any] interface {
     RequiredPermissions() []Permission
 
     // Preview returns human-readable descriptions of planned operations
+    // Empty slice means no pending operations
     Preview() []string
 
     // Execute performs all operations against domains
     // Middleware guarantees: ctx has transaction, permissions pre-authorized
     // The saga just does its work - no transaction management needed
     Execute(ctx *middleware.Context) (Result, error)
-
-    // Discard abandons the saga, clearing all data
-    Discard()
-
-    // IsDirty returns true if saga has uncommitted changes
-    IsDirty() bool
 }
 ```
 
@@ -430,13 +425,12 @@ func DeduplicatePermissions(perms []Permission) []Permission {
 ## Concrete Saga: MenuSaga
 
 ```go
-// pkg/saga/menus/menu_saga.go
+// app/domains/menus/saga.go
 
 type MenuSaga struct {
     data       MenuData
-    app        *app.Application
+    app        *app.App
     resolution *saga.Resolution  // Tracks created IDs during execution
-    dirty      bool
 }
 
 type MenuData struct {
@@ -448,22 +442,22 @@ type MenuData struct {
 
 type IngredientDef struct {
     Name     string
-    Category string
-    Unit     string
+    Category ingredientmodels.Category  // e.g., "spirit", "mixer", "garnish"
+    Unit     measurement.Unit           // e.g., "oz", "ml", "dash"
 }
 
 type DrinkDef struct {
     Name        string
-    Category    string
-    Glass       string
-    Price       *float64
+    Category    drinkmodels.DrinkCategory
+    Glass       drinkmodels.GlassType
     Ingredients []DrinkIngredient  // Can reference keys or existing IDs
+    Steps       []string           // Recipe steps
 }
 
 type DrinkIngredient struct {
-    Key      string            // Reference to defined ingredient
-    ID       entity.IngredientID  // Or existing ingredient
-    Quantity string
+    Key    string                // Reference to defined ingredient
+    ID     entity.IngredientID   // Or existing ingredient
+    Amount measurement.Amount    // Quantity with unit
 }
 
 type DrinkRef struct {
@@ -472,7 +466,7 @@ type DrinkRef struct {
     Price *float64        // Optional price override
 }
 
-func NewMenuSaga(app *app.Application) *MenuSaga {
+func NewMenuSaga(app *app.App) *MenuSaga {
     return &MenuSaga{
         data: MenuData{
             Ingredients: make(map[string]IngredientDef),
@@ -484,12 +478,11 @@ func NewMenuSaga(app *app.Application) *MenuSaga {
 }
 
 // Builder methods - can be called in any order
-func (s *MenuSaga) SetName(name string) { s.data.Name = name; s.dirty = true }
-func (s *MenuSaga) DefineIngredient(key string, def IngredientDef) { s.data.Ingredients[key] = def; s.dirty = true }
-func (s *MenuSaga) DefineDrink(key string, def DrinkDef) { s.data.Drinks[key] = def; s.dirty = true }
-func (s *MenuSaga) AddDrink(ref DrinkRef) { s.data.MenuDrinks = append(s.data.MenuDrinks, ref); s.dirty = true }
-func (s *MenuSaga) IsDirty() bool { return s.dirty }
-func (s *MenuSaga) Discard() { s.data = MenuData{Ingredients: make(map[string]IngredientDef), Drinks: make(map[string]DrinkDef)}; s.dirty = false }
+// Builder methods - can be called in any order
+func (s *MenuSaga) SetName(name string)                              { s.data.Name = name }
+func (s *MenuSaga) DefineIngredient(key string, def IngredientDef)   { s.data.Ingredients[key] = def }
+func (s *MenuSaga) DefineDrink(key string, def DrinkDef)             { s.data.Drinks[key] = def }
+func (s *MenuSaga) AddDrink(ref DrinkRef)                            { s.data.MenuDrinks = append(s.data.MenuDrinks, ref) }
 ```
 
 ### MenuSaga.Validate()
@@ -604,22 +597,23 @@ It simply performs the domain operations in the correct order.
 ```go
 func (s *MenuSaga) Execute(ctx *middleware.Context) (entity.MenuID, error) {
     // Phase 1: Create all ingredients
+    // Note: Module APIs accept model structs, not separate command structs
     for key, def := range s.data.Ingredients {
-        id, err := s.app.Ingredients.Create(ctx, commands.CreateIngredientCommand{
+        ingredient, err := s.app.Ingredients.Create(ctx, &ingredientmodels.Ingredient{
             Name:     def.Name,
-            Category: def.Category,
-            Unit:     def.Unit,
+            Category: def.Category,  // ingredientmodels.Category
+            Unit:     def.Unit,      // measurement.Unit
         })
         if err != nil {
             return entity.MenuID{}, fmt.Errorf("create ingredient %q: %w", def.Name, err)
         }
-        s.resolution.SetIngredient(key, id)
+        s.resolution.SetIngredient(key, ingredient.ID)
     }
 
     // Phase 2: Create all drinks
     for key, def := range s.data.Drinks {
-        // Resolve ingredient references
-        ingredients := make([]commands.DrinkIngredient, len(def.Ingredients))
+        // Resolve ingredient references and build recipe
+        recipeIngredients := make([]drinkmodels.RecipeIngredient, len(def.Ingredients))
         for i, ing := range def.Ingredients {
             var ingID entity.IngredientID
             if ing.Key != "" {
@@ -631,24 +625,29 @@ func (s *MenuSaga) Execute(ctx *middleware.Context) (entity.MenuID, error) {
             } else {
                 ingID = ing.ID
             }
-            ingredients[i] = commands.DrinkIngredient{ID: ingID, Quantity: ing.Quantity}
+            recipeIngredients[i] = drinkmodels.RecipeIngredient{
+                IngredientID: ingID,
+                Amount:       ing.Amount,  // measurement.Amount
+            }
         }
 
-        id, err := s.app.Drinks.Create(ctx, commands.CreateDrinkCommand{
-            Name:        def.Name,
-            Category:    def.Category,
-            Glass:       def.Glass,
-            Price:       def.Price,
-            Ingredients: ingredients,
+        drink, err := s.app.Drinks.Create(ctx, &drinkmodels.Drink{
+            Name:     def.Name,
+            Category: def.Category,
+            Glass:    def.Glass,
+            Recipe: drinkmodels.Recipe{
+                Ingredients: recipeIngredients,
+                Steps:       def.Steps,
+            },
         })
         if err != nil {
             return entity.MenuID{}, fmt.Errorf("create drink %q: %w", def.Name, err)
         }
-        s.resolution.SetDrink(key, id)
+        s.resolution.SetDrink(key, drink.ID)
     }
 
     // Phase 3: Create menu
-    menuID, err := s.app.Menu.Create(ctx, commands.CreateMenuCommand{
+    menu, err := s.app.Menu.Create(ctx, &menumodels.Menu{
         Name: s.data.Name,
     })
     if err != nil {
@@ -668,18 +667,17 @@ func (s *MenuSaga) Execute(ctx *middleware.Context) (entity.MenuID, error) {
             drinkID = ref.ID
         }
 
-        err := s.app.Menu.AddDrink(ctx, commands.AddDrinkToMenuCommand{
-            MenuID:  menuID,
+        // AddDrink uses a MenuPatch model
+        _, err := s.app.Menu.AddDrink(ctx, &menumodels.MenuPatch{
+            MenuID:  menu.ID,
             DrinkID: drinkID,
-            Price:   ref.Price,
         })
         if err != nil {
             return entity.MenuID{}, fmt.Errorf("add drink to menu: %w", err)
         }
     }
 
-    s.dirty = false
-    return menuID, nil
+    return menu.ID, nil
 }
 ```
 
@@ -726,36 +724,43 @@ Note: The saga's `Execute()` method:
 
 ### Phase 3: MenuSaga Implementation
 
-- [ ] Create `pkg/saga/menus/menu_saga.go`:
+Concrete sagas live in their domain directories (not `pkg/saga/`):
+
+- [ ] Create `app/domains/menus/saga.go`:
     - `MenuSaga` struct and `MenuData`
     - Builder methods (SetName, DefineIngredient, DefineDrink, AddDrink)
-- [ ] Create `pkg/saga/menus/validation.go`:
-    - Reference resolution validation
-    - Required field validation
-- [ ] Create `pkg/saga/menus/actions.go`:
-    - `CreateIngredientAction`
-    - `CreateDrinkAction`
-    - `CreateMenuAction`
-    - `AddDrinkToMenuAction`
+    - Validation: reference resolution, required fields
+    - Implements `saga.Saga[entity.MenuID]` and `saga.MenuDrinkAdder`
 - [ ] Test order independence (same result regardless of builder call order)
 
 ### Phase 4: DrinkSaga Implementation
 
-- [ ] Create `pkg/saga/drinks/drink_saga.go`
-- [ ] Builder methods: SetName, SetCategory, SetGlass, DefineIngredient, AddIngredient
+- [ ] Create `app/domains/drinks/saga.go`:
+    - `DrinkSaga` struct
+    - Builder methods: SetName, SetCategory, SetGlass, DefineIngredient, AddIngredient
+    - Implements `saga.Saga[entity.DrinkID]` and `saga.DrinkDefiner`
 - [ ] Support existing ingredients and new ingredients in same saga
 
-### Phase 5: InventorySaga Implementation
+### Phase 5: IngredientSaga Implementation
 
-- [ ] Create `pkg/saga/inventory/inventory_saga.go`
-- [ ] Support batch adjustments in single transaction
+- [ ] Create `app/domains/ingredients/saga.go`:
+    - `IngredientSaga` struct
+    - Builder methods: SetName, SetCategory, SetUnit
+    - Implements `saga.Saga[entity.IngredientID]` and `saga.IngredientDefiner`
 
-### Phase 6: OrderSaga Implementation
+### Phase 6: InventorySaga Implementation
 
-- [ ] Create `pkg/saga/orders/order_saga.go`
-- [ ] Validation: menu must be published, drinks on menu
+- [ ] Create `app/domains/inventory/saga.go`:
+    - `InventorySaga` struct
+    - Support batch adjustments in single transaction
 
-### Phase 7: Saga Persistence (Optional)
+### Phase 7: OrderSaga Implementation
+
+- [ ] Create `app/domains/orders/saga.go`:
+    - `OrderSaga` struct
+    - Validation: menu must be published, drinks on menu
+
+### Phase 8: Saga Persistence (Optional)
 
 - [ ] Create `pkg/saga/store/store.go` for draft persistence
 - [ ] JSON serialization of saga data
@@ -775,13 +780,14 @@ Note: The saga's `Execute()` method:
 
 - [ ] Saga data can be modified in any order
 - [ ] `Validate()` catches incomplete/inconsistent data
-- [ ] `Plan()` returns actions AND required permissions
-- [ ] `Authorize()` checks all permissions before execution
+- [ ] `RequiredPermissions()` returns all Cedar permissions needed
+- [ ] `Preview()` returns human-readable operation descriptions
+- [ ] `SagaAuthorize` middleware checks all permissions before execution
 - [ ] Permission failure provides clear, actionable error message
-- [ ] `Commit()` runs all actions in single database transaction
+- [ ] `SagaTransaction` middleware wraps execution in single database transaction
 - [ ] Any failure automatically rolls back (no orphan data)
 - [ ] **No compensating actions / Rollback() needed**
-- [ ] Hooks enable TUI progress display
+- [ ] `Preview()` enables TUI confirmation display before commit
 
 ## Usage Examples
 
@@ -865,18 +871,18 @@ menuID, err := middleware.Saga.Execute(ctx, menu)
 
 ```go
 // In a Bubble Tea model's Update method
-func (m *MenuBuilderModel) handleSubmit() tea.Cmd {
+func (vm *MenuCreateViewModel) handleSubmit() tea.Cmd {
     return func() tea.Msg {
         // Build saga from TUI state
-        saga := menus.NewMenuSaga(m.app)
-        saga.SetName(m.nameInput.Value())
-        for key, def := range m.ingredients {
+        saga := menus.NewMenuSaga(vm.app)
+        saga.SetName(vm.nameInput.Value())
+        for key, def := range vm.ingredients {
             saga.DefineIngredient(key, def)
         }
-        for key, def := range m.drinks {
+        for key, def := range vm.drinks {
             saga.DefineDrink(key, def)
         }
-        for _, ref := range m.menuDrinks {
+        for _, ref := range vm.menuDrinks {
             saga.AddDrink(ref)
         }
 
@@ -884,7 +890,7 @@ func (m *MenuBuilderModel) handleSubmit() tea.Cmd {
         // steps := saga.Preview()
 
         // Execute through middleware
-        menuID, err := middleware.Saga.Execute(m.ctx, saga)
+        menuID, err := middleware.Saga.Execute(vm.ctx, saga)
         if err != nil {
             return ErrorMsg{Err: err}
         }
@@ -963,3 +969,27 @@ SagaTransaction → Start transaction, call Execute(), commit/rollback
 ```
 
 Authorization runs **before** the transaction starts, ensuring no database work is done if permissions are insufficient.
+
+### Directory Structure
+
+Saga infrastructure vs. concrete sagas:
+
+```
+pkg/saga/                    # Shared infrastructure
+├── saga.go                  # Saga[T] interface
+├── permission.go            # Permission type
+├── resolution.go            # Resolution for tracking created IDs
+├── authorize.go             # AuthorizeAll, DeduplicatePermissions
+└── capabilities.go          # IngredientDefiner, DrinkDefiner, MenuDrinkAdder
+
+app/domains/menus/saga.go    # MenuSaga (concrete implementation)
+app/domains/drinks/saga.go   # DrinkSaga
+app/domains/ingredients/saga.go  # IngredientSaga
+app/domains/inventory/saga.go    # InventorySaga
+app/domains/orders/saga.go       # OrderSaga
+```
+
+Concrete sagas live in their domain directories because:
+1. **Domain cohesion**: Saga knows domain business rules
+2. **Capability implementation**: Each saga implements capability interfaces from `pkg/saga/capabilities.go`
+3. **Testability**: Can test with domain-specific mocks

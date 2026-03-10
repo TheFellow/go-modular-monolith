@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	drinksM "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersM "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
@@ -54,6 +54,11 @@ func TestPermissions_Orders(t *testing.T) {
 				},
 			})
 			menu := b.WithMenu("Orders Menu")
+			menu, err := a.Menu.AddDrink(f.OwnerContext(), &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+			testutil.Ok(t, err)
+			menu, err = a.Menu.Publish(f.OwnerContext(), &menuM.Menu{ID: menu.ID})
+			testutil.Ok(t, err)
+
 			order, err := a.Orders.Place(f.OwnerContext(), &ordersM.Order{
 				MenuID: menu.ID,
 				Items: []ordersM.OrderItem{

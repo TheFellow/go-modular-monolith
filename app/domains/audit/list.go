@@ -36,6 +36,22 @@ func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.AuditEntry,
 	return m.queries.List(ctx, filter)
 }
 
+func (m *Module) Count(ctx *middleware.Context, req ListRequest) (int, error) {
+	return middleware.RunQuery(ctx, authz.ActionList, m.count, req)
+}
+
+func (m *Module) count(ctx store.Context, req ListRequest) (int, error) {
+	filter := dao.ListFilter{
+		Action:        req.Action,
+		Principal:     req.Principal,
+		Entity:        req.Entity,
+		StartedAfter:  req.From,
+		StartedBefore: req.To,
+		Limit:         req.Limit,
+	}
+	return m.queries.Count(ctx, filter)
+}
+
 func (m *Module) GetEntityHistory(ctx *middleware.Context, uid cedar.EntityUID) ([]*models.AuditEntry, error) {
 	return m.List(ctx, ListRequest{Entity: uid})
 }

@@ -9,7 +9,7 @@ import (
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"

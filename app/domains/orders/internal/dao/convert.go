@@ -3,7 +3,7 @@ package dao
 import (
 	"time"
 
-	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menu/models"
+	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"

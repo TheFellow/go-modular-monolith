@@ -42,3 +42,15 @@ func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.Inventory, 
 	}
 	return stock, nil
 }
+
+func (m *Module) Count(ctx *middleware.Context, req ListRequest) (int, error) {
+	return middleware.RunQueryWithResource(ctx, authz.ActionList, m.count, req)
+}
+
+func (m *Module) count(ctx store.Context, req ListRequest) (int, error) {
+	filter := inventorydao.ListFilter{
+		IngredientID: req.IngredientID,
+		MaxQuantity:  req.LowStock,
+	}
+	return m.queries.Count(ctx, filter)
+}

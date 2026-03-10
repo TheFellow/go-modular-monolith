@@ -12,7 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menu"
+	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -30,7 +30,7 @@ type Fixture struct {
 	Drinks      *drinks.Module
 	Ingredients *ingredients.Module
 	Inventory   *inventory.Module
-	Menu        *menu.Module
+	Menu        *menus.Module
 	Orders      *orders.Module
 
 	ownerCtx *middleware.Context
@@ -45,16 +45,17 @@ func NewFixture(t testing.TB) *Fixture {
 
 	metrics := telemetry.Memory()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	p, err := authn.ParseActor("owner")
+	Ok(t, err)
 	a := app.New(
 		app.WithStore(s),
 		app.WithLogger(logger),
 		app.WithMetrics(metrics),
+		app.WithPrincipal(p),
 	)
 	t.Cleanup(func() { _ = a.Close() })
 
-	p, err := authn.ParseActor("owner")
-	Ok(t, err)
-	ownerCtx := a.Context(context.Background(), p)
+	ownerCtx := a.Context()
 
 	return &Fixture{
 		T:       t,
@@ -82,7 +83,7 @@ func (f *Fixture) ActorContext(actor string) *middleware.Context {
 	f.T.Helper()
 	p, err := authn.ParseActor(actor)
 	Ok(f.T, err)
-	return f.App.Context(context.Background(), p)
+	return f.App.ContextFor(context.Background(), p)
 }
 
 func (f *Fixture) Bootstrap() *Bootstrap {

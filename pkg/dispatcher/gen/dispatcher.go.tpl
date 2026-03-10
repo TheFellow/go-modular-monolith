@@ -9,6 +9,8 @@ import (
 )
 
 func (d *Dispatcher) Dispatch(ctx *{{ .MiddlewareAlias }}.Context, event any) error {
+	hctx := {{ .MiddlewareAlias }}.NewHandlerContext(ctx)
+
 	switch e := event.(type) {
 {{- range .Groups }}
 	case {{ index $.ImportAlias .Event.PkgPath }}.{{ .Event.Name }}:
@@ -18,7 +20,7 @@ func (d *Dispatcher) Dispatch(ctx *{{ .MiddlewareAlias }}.Context, event any) er
 
 {{- range .Handlers }}
 {{- if .HasHandling }}
-		if err := {{ .VarName }}.Handling(ctx, e); err != nil {
+		if err := {{ .VarName }}.Handling(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
@@ -27,7 +29,7 @@ func (d *Dispatcher) Dispatch(ctx *{{ .MiddlewareAlias }}.Context, event any) er
 {{- end }}
 
 {{- range .Handlers }}
-		if err := {{ .VarName }}.Handle(ctx, e); err != nil {
+		if err := {{ .VarName }}.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
