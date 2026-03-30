@@ -30,6 +30,9 @@ func New() *AvailabilityCalculator {
 }
 
 func (c *AvailabilityCalculator) Calculate(ctx store.Context, drinkID entity.DrinkID) models.Availability {
+	// Availability is a user-facing readiness signal, so dependency failures
+	// degrade to "unavailable" instead of surfacing infrastructure errors in
+	// menu rendering.
 	detail, err := c.CalculateDetail(ctx, drinkID)
 	if err != nil {
 		return models.AvailabilityUnavailable
@@ -165,6 +168,9 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 	}
 
 	if c.ingredients != nil {
+		// Ingredient substitution lookup is advisory. If that lookup fails we keep
+		// evaluating the explicitly declared recipe substitutes instead of turning
+		// a transient dependency issue into a hard availability error.
 		rules, err := c.ingredients.SubstitutionsFor(ctx, req.IngredientID)
 		if err == nil {
 			sort.Slice(rules, func(i, j int) bool {
@@ -181,6 +187,9 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 
 	var picks []PickResult
 	for _, cand := range candidates {
+		// Any stock lookup or unit conversion failure degrades this candidate to
+		// unavailable. From the menu's perspective "could not confirm stock" is
+		// equivalent to "cannot serve this ingredient right now."
 		stock, err := c.inventory.Get(ctx, cand.id)
 		if err != nil {
 			if errors.IsNotFound(err) {

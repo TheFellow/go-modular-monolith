@@ -50,11 +50,11 @@ func TestDrinkUpdatedMenuUpdater_MarksUnavailableWhenNewIngredientOutOfStock(t *
 	})
 	testutil.Ok(t, err)
 
-	menu, err := f.Menu.Create(ctx, &menuM.Menu{Name: "Test Menu"})
+	menu, err := f.Menus.Create(ctx, &menuM.Menu{Name: "Test Menu"})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.AddDrink(ctx, &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+	menu, err = f.Menus.AddDrink(ctx, &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.Publish(ctx, &menuM.Menu{ID: menu.ID})
+	menu, err = f.Menus.Publish(ctx, &menuM.Menu{ID: menu.ID})
 	testutil.Ok(t, err)
 
 	rare, err := f.Ingredients.Create(ctx, &ingredientsM.Ingredient{
@@ -73,7 +73,7 @@ func TestDrinkUpdatedMenuUpdater_MarksUnavailableWhenNewIngredientOutOfStock(t *
 	_, err = f.Drinks.Update(ctx, &updated)
 	testutil.Ok(t, err)
 
-	gotMenu, err := f.Menu.Get(ctx, menu.ID)
+	gotMenu, err := f.Menus.Get(ctx, menu.ID)
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(gotMenu.Items) != 1, "expected 1 menu item, got %d", len(gotMenu.Items))
 	testutil.ErrorIf(t, gotMenu.Items[0].Availability != menuM.AvailabilityUnavailable, "expected unavailable, got %s", gotMenu.Items[0].Availability)
@@ -104,9 +104,9 @@ func TestMenuPublishedValidator_SetsAvailabilityFromInventory(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	menu, err := f.Menu.Create(ctx, &menuM.Menu{Name: "Test Menu"})
+	menu, err := f.Menus.Create(ctx, &menuM.Menu{Name: "Test Menu"})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.AddDrink(ctx, &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+	menu, err = f.Menus.AddDrink(ctx, &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
 
 	d := dispatcher.New()
@@ -126,7 +126,7 @@ func TestMenuPublishedValidator_SetsAvailabilityFromInventory(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	got, err := f.Menu.Get(ctx, menu.ID)
+	got, err := f.Menus.Get(ctx, menu.ID)
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(got.Items) != 1, "expected 1 menu item, got %d", len(got.Items))
 	testutil.ErrorIf(t, got.Items[0].Availability != menuM.AvailabilityUnavailable, "expected unavailable, got %s", got.Items[0].Availability)

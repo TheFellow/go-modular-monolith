@@ -108,7 +108,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 					JSONFlag,
 					&cli.StringFlag{
 						Name:  "status",
-						Usage: "Filter by status (pending|preparing|completed|cancelled)",
+						Usage: "Filter by status (pending|completed|cancelled)",
 						Validator: func(s string) error {
 							s = strings.TrimSpace(s)
 							if s == "" {

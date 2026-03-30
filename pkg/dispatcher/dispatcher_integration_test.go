@@ -59,15 +59,15 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("create drink: %v", err)
 	}
 
-	m0, err := a.Menu.Create(ctx, &menuM.Menu{Name: "Happy Hour"})
+	m0, err := a.Menus.Create(ctx, &menuM.Menu{Name: "Happy Hour"})
 	if err != nil {
 		t.Fatalf("create menu: %v", err)
 	}
-	m1, err := a.Menu.AddDrink(ctx, &menuM.MenuPatch{MenuID: m0.ID, DrinkID: drink.ID})
+	m1, err := a.Menus.AddDrink(ctx, &menuM.MenuPatch{MenuID: m0.ID, DrinkID: drink.ID})
 	if err != nil {
 		t.Fatalf("add drink: %v", err)
 	}
-	m2, err := a.Menu.Publish(ctx, &menuM.Menu{ID: m1.ID})
+	m2, err := a.Menus.Publish(ctx, &menuM.Menu{ID: m1.ID})
 	if err != nil {
 		t.Fatalf("publish menu: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("dispatch: %v", err)
 	}
 
-	got, err := a.Menu.Get(ctx, m2.ID)
+	got, err := a.Menus.Get(ctx, m2.ID)
 	if err != nil {
 		t.Fatalf("get menu: %v", err)
 	}
@@ -161,17 +161,17 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	}
 
 	// Create a menu with both drinks
-	m0, err := a.Menu.Create(ctx, &menuM.Menu{Name: "Cocktail Menu"})
+	m0, err := a.Menus.Create(ctx, &menuM.Menu{Name: "Cocktail Menu"})
 	if err != nil {
 		t.Fatalf("create menu: %v", err)
 	}
 
-	m1, err := a.Menu.AddDrink(ctx, &menuM.MenuPatch{MenuID: m0.ID, DrinkID: drink1.ID})
+	m1, err := a.Menus.AddDrink(ctx, &menuM.MenuPatch{MenuID: m0.ID, DrinkID: drink1.ID})
 	if err != nil {
 		t.Fatalf("add drink1: %v", err)
 	}
 
-	m2, err := a.Menu.AddDrink(ctx, &menuM.MenuPatch{MenuID: m1.ID, DrinkID: drink2.ID})
+	m2, err := a.Menus.AddDrink(ctx, &menuM.MenuPatch{MenuID: m1.ID, DrinkID: drink2.ID})
 	if err != nil {
 		t.Fatalf("add drink2: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	}
 
 	// Verify menu now has only drink2
-	got, err := a.Menu.Get(ctx, m2.ID)
+	got, err := a.Menus.Get(ctx, m2.ID)
 	if err != nil {
 		t.Fatalf("get menu: %v", err)
 	}

@@ -132,7 +132,7 @@ func (m *CreateMenuVM) submit() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		created, err := m.app.Menu.Create(m.context(), menu)
+		created, err := m.app.Menus.Create(m.context(), menu)
 		if err != nil {
 			return CreateErrorMsg{Err: err}
 		}

@@ -40,7 +40,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
-					res, err := c.app.Menu.List(ctx, menus.ListRequest{
+					res, err := c.app.Menus.List(ctx, menus.ListRequest{
 						Status: menumodels.MenuStatus(cmd.String("status")),
 					})
 					if err != nil {
@@ -92,7 +92,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					res, err := c.app.Menu.Get(ctx, menuID)
+					res, err := c.app.Menus.Get(ctx, menuID)
 					if err != nil {
 						return err
 					}
@@ -207,7 +207,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						input = &menumodels.Menu{Name: args[0]}
 					}
 
-					created, err := c.app.Menu.Create(ctx, input)
+					created, err := c.app.Menus.Create(ctx, input)
 					if err != nil {
 						return err
 					}
@@ -237,7 +237,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					updated, err := c.app.Menu.AddDrink(ctx, &menumodels.MenuPatch{
+					updated, err := c.app.Menus.AddDrink(ctx, &menumodels.MenuPatch{
 						MenuID:  menuID,
 						DrinkID: drinkID,
 					})
@@ -270,7 +270,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					updated, err := c.app.Menu.RemoveDrink(ctx, &menumodels.MenuPatch{
+					updated, err := c.app.Menus.RemoveDrink(ctx, &menumodels.MenuPatch{
 						MenuID:  menuID,
 						DrinkID: drinkID,
 					})
@@ -298,7 +298,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					published, err := c.app.Menu.Publish(ctx, &menumodels.Menu{ID: menuID})
+					published, err := c.app.Menus.Publish(ctx, &menumodels.Menu{ID: menuID})
 					if err != nil {
 						return err
 					}
@@ -323,7 +323,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					drafted, err := c.app.Menu.Draft(ctx, &menumodels.Menu{ID: menuID})
+					drafted, err := c.app.Menus.Draft(ctx, &menumodels.Menu{ID: menuID})
 					if err != nil {
 						return err
 					}

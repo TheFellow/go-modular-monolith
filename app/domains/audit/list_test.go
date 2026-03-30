@@ -65,10 +65,10 @@ func TestAudit_TouchesIncludeHandlerUpdates(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	menu, err := f.Menu.Create(ctx, &menumodels.Menu{Name: "Happy Hour"})
+	menu, err := f.Menus.Create(ctx, &menumodels.Menu{Name: "Happy Hour"})
 	testutil.Ok(t, err)
 
-	_, err = f.Menu.AddDrink(ctx, &menumodels.MenuPatch{
+	_, err = f.Menus.AddDrink(ctx, &menumodels.MenuPatch{
 		MenuID:  menu.ID,
 		DrinkID: drink.ID,
 	})
@@ -155,9 +155,9 @@ func TestAudit_TouchesIncludeIngredientUpdateMenus(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	menu, err := f.Menu.Create(ctx, &menumodels.Menu{Name: "Citrus Menu"})
+	menu, err := f.Menus.Create(ctx, &menumodels.Menu{Name: "Citrus Menu"})
 	testutil.Ok(t, err)
-	_, err = f.Menu.AddDrink(ctx, &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+	_, err = f.Menus.AddDrink(ctx, &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
 
 	_, err = f.Ingredients.Update(ctx, &ingredientsmodels.Ingredient{

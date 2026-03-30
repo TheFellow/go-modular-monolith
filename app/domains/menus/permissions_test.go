@@ -53,20 +53,20 @@ func TestPermissions_Menu(t *testing.T) {
 			})
 			menuRecord := b.WithMenu("Permissions Menu")
 
-			_, err := a.Menu.List(ctx, menus.ListRequest{})
+			_, err := a.Menus.List(ctx, menus.ListRequest{})
 			testutil.PermissionTestPass(t, err)
 
-			_, err = a.Menu.Get(ctx, menuM.NewMenuID("does-not-exist"))
+			_, err = a.Menus.Get(ctx, menuM.NewMenuID("does-not-exist"))
 			testutil.PermissionTestPass(t, err)
 
-			_, err = a.Menu.Create(ctx, &menuM.Menu{})
+			_, err = a.Menus.Create(ctx, &menuM.Menu{})
 			if tc.canWrite {
 				testutil.PermissionTestPass(t, err)
 			} else {
 				testutil.PermissionTestFail(t, err)
 			}
 
-			_, err = a.Menu.AddDrink(ctx, &menuM.MenuPatch{
+			_, err = a.Menus.AddDrink(ctx, &menuM.MenuPatch{
 				MenuID:  menuRecord.ID,
 				DrinkID: drink.ID,
 			})
@@ -76,7 +76,7 @@ func TestPermissions_Menu(t *testing.T) {
 				testutil.PermissionTestFail(t, err)
 			}
 
-			_, err = a.Menu.RemoveDrink(ctx, &menuM.MenuPatch{
+			_, err = a.Menus.RemoveDrink(ctx, &menuM.MenuPatch{
 				MenuID:  menuRecord.ID,
 				DrinkID: drink.ID,
 			})
@@ -86,14 +86,14 @@ func TestPermissions_Menu(t *testing.T) {
 				testutil.PermissionTestFail(t, err)
 			}
 
-			_, err = a.Menu.Publish(ctx, &menuM.Menu{ID: menuRecord.ID})
+			_, err = a.Menus.Publish(ctx, &menuM.Menu{ID: menuRecord.ID})
 			if tc.canWrite {
 				testutil.PermissionTestPass(t, err)
 			} else {
 				testutil.PermissionTestFail(t, err)
 			}
 
-			_, err = a.Menu.Draft(ctx, &menuM.Menu{ID: menuRecord.ID})
+			_, err = a.Menus.Draft(ctx, &menuM.Menu{ID: menuRecord.ID})
 			if tc.canWrite {
 				testutil.PermissionTestPass(t, err)
 			} else {

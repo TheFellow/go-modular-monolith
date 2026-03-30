@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"strings"
 	"time"
 
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
@@ -40,6 +41,7 @@ func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.
 	}
 
 	for i := range order.Items {
+		order.Items[i].Notes = strings.TrimSpace(order.Items[i].Notes)
 		if err := order.Items[i].Validate(); err != nil {
 			return nil, errors.Invalidf("item %d: %w", i, err)
 		}
@@ -50,6 +52,8 @@ func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.
 			return nil, err
 		}
 	}
+
+	order.Notes = strings.TrimSpace(order.Notes)
 
 	now := time.Now().UTC()
 	created := *order

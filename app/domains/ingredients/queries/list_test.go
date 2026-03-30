@@ -3,6 +3,7 @@ package queries_test
 import (
 	"testing"
 
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
@@ -33,7 +34,7 @@ func TestListFilter_IDs(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	list, err := queries.New().List(f.OwnerContext(), queries.ListFilter{
+	list, err := queries.New().List(f.OwnerContext(), dao.ListFilter{
 		IDs: []entity.IngredientID{ing1.ID, ing3.ID},
 	})
 	testutil.Ok(t, err)

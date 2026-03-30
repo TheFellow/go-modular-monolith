@@ -1,7 +1,6 @@
 package models
 
 import (
-	"strings"
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
@@ -62,7 +61,6 @@ func (o Order) Validate() error {
 			return errors.Invalidf("item %d: %w", i, err)
 		}
 	}
-	o.Notes = strings.TrimSpace(o.Notes)
 	return nil
 }
 
@@ -79,7 +77,6 @@ func (i OrderItem) Validate() error {
 	if i.Quantity <= 0 {
 		return errors.Invalidf("quantity must be > 0")
 	}
-	i.Notes = strings.TrimSpace(i.Notes)
 	return nil
 }
 
@@ -87,14 +84,13 @@ type OrderStatus string
 
 const (
 	OrderStatusPending   OrderStatus = "pending"
-	OrderStatusPreparing OrderStatus = "preparing"
 	OrderStatusCompleted OrderStatus = "completed"
 	OrderStatusCancelled OrderStatus = "cancelled"
 )
 
 func (s OrderStatus) Validate() error {
 	switch s {
-	case OrderStatusPending, OrderStatusPreparing, OrderStatusCompleted, OrderStatusCancelled:
+	case OrderStatusPending, OrderStatusCompleted, OrderStatusCancelled:
 		return nil
 	default:
 		return errors.Invalidf("invalid status %q", string(s))

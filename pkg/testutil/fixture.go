@@ -30,7 +30,7 @@ type Fixture struct {
 	Drinks      *drinks.Module
 	Ingredients *ingredients.Module
 	Inventory   *inventory.Module
-	Menu        *menus.Module
+	Menus       *menus.Module
 	Orders      *orders.Module
 
 	ownerCtx *middleware.Context
@@ -67,7 +67,7 @@ func NewFixture(t testing.TB) *Fixture {
 		Drinks:      a.Drinks,
 		Ingredients: a.Ingredients,
 		Inventory:   a.Inventory,
-		Menu:        a.Menu,
+		Menus:       a.Menus,
 		Orders:      a.Orders,
 
 		ownerCtx: ownerCtx,

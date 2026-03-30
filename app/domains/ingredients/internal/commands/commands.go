@@ -9,7 +9,3 @@ type Commands struct {
 func New() *Commands {
 	return &Commands{dao: dao.New()}
 }
-
-func NewWithDAO(d *dao.DAO) *Commands {
-	return &Commands{dao: d}
-}

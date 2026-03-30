@@ -31,9 +31,9 @@ func TestDetailViewModel_ShowsMenuDetails(t *testing.T) {
 		},
 	})
 
-	menu, err := f.Menu.Create(f.OwnerContext(), &menumodels.Menu{Name: "Summer Menu"})
+	menu, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Summer Menu"})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{
+	menu, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{
 		MenuID:  menu.ID,
 		DrinkID: drink.ID,
 	})
@@ -83,9 +83,9 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 		},
 	})
 
-	menu, err := f.Menu.Create(f.OwnerContext(), &menumodels.Menu{Name: "Summer Menu"})
+	menu, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Summer Menu"})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{
+	menu, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{
 		MenuID:  menu.ID,
 		DrinkID: drink.ID,
 	})

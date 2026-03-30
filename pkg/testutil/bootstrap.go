@@ -91,7 +91,7 @@ func (b *Bootstrap) WithDrink(drink models.Drink) *models.Drink {
 func (b *Bootstrap) WithMenu(name string) *menumodels.Menu {
 	b.fix.T.Helper()
 
-	created, err := b.fix.Menu.Create(b.fix.OwnerContext(), &menumodels.Menu{Name: name})
+	created, err := b.fix.Menus.Create(b.fix.OwnerContext(), &menumodels.Menu{Name: name})
 	Ok(b.fix.T, err)
 	return created
 }

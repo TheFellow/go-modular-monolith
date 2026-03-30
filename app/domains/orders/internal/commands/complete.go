@@ -22,7 +22,7 @@ func (c *Commands) Complete(ctx *middleware.Context, order *models.Order) (*mode
 		return order, nil
 	case models.OrderStatusCancelled:
 		return nil, errors.Invalidf("order %q is cancelled", order.ID.String())
-	case models.OrderStatusPending, models.OrderStatusPreparing:
+	case models.OrderStatusPending:
 	default:
 		return nil, errors.Invalidf("unexpected status %q", order.Status)
 	}
