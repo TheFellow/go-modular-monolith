@@ -1,5 +1,7 @@
 # Mixology Modular Monolith
 
+[![CI](https://github.com/TheFellow/go-modular-monolith/actions/workflows/ci.yml/badge.svg)](https://github.com/TheFellow/go-modular-monolith/actions/workflows/ci.yml)
+
 A modular monolith sample that models a cocktail bar domain with explicit bounded contexts,
 middleware pipelines, Cedar-based authorization, and event-driven coordination. It ships with
 a CLI and a Bubble Tea TUI, both backed by an embedded bstore (bbolt) database.
