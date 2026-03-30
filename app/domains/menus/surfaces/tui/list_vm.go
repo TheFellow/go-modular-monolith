@@ -334,7 +334,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 
 func (m *ListViewModel) loadMenus() tea.Cmd {
 	return func() tea.Msg {
-		menusList, err := m.app.Menu.List(m.context(), menus.ListRequest{})
+		menusList, err := m.app.Menus.List(m.context(), menus.ListRequest{})
 		if err != nil {
 			return MenusLoadedMsg{Err: err}
 		}
@@ -426,7 +426,7 @@ func (m *ListViewModel) performDelete() tea.Cmd {
 	}
 	target := m.deleteTarget
 	return func() tea.Msg {
-		deleted, err := m.app.Menu.Delete(m.context(), target.ID)
+		deleted, err := m.app.Menus.Delete(m.context(), target.ID)
 		if err != nil {
 			return DeleteErrorMsg{Err: err}
 		}
@@ -474,7 +474,7 @@ func (m *ListViewModel) performPublish() tea.Cmd {
 	}
 	target := m.publishTarget
 	return func() tea.Msg {
-		published, err := m.app.Menu.Publish(m.context(), &menusmodels.Menu{ID: target.ID})
+		published, err := m.app.Menus.Publish(m.context(), &menusmodels.Menu{ID: target.ID})
 		if err != nil {
 			return PublishErrorMsg{Err: err}
 		}
@@ -520,7 +520,7 @@ func (m *ListViewModel) performDraft() tea.Cmd {
 	}
 	target := m.draftTarget
 	return func() tea.Msg {
-		drafted, err := m.app.Menu.Draft(m.context(), &menusmodels.Menu{ID: target.ID})
+		drafted, err := m.app.Menus.Draft(m.context(), &menusmodels.Menu{ID: target.ID})
 		if err != nil {
 			return DraftErrorMsg{Err: err}
 		}

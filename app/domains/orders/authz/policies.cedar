@@ -7,7 +7,7 @@ permit(
         Mixology::Order::Action::"list",
         Mixology::Order::Action::"get"
     ],
-    resource is Mixology::Order
+    resource
 );
 
 permit(
@@ -16,7 +16,7 @@ permit(
         Mixology::Order::Action::"list",
         Mixology::Order::Action::"get"
     ],
-    resource is Mixology::Order
+    resource
 );
 
 permit(
@@ -25,7 +25,7 @@ permit(
         Mixology::Order::Action::"list",
         Mixology::Order::Action::"get"
     ],
-    resource is Mixology::Order
+    resource
 );
 
 // Bartenders and managers can manage orders.

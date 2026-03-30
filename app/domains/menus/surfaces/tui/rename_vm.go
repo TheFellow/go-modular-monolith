@@ -135,7 +135,7 @@ func (m *RenameMenuVM) submit() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		menu, err := m.app.Menu.Update(m.context(), updated)
+		menu, err := m.app.Menus.Update(m.context(), updated)
 		if err != nil {
 			return RenameErrorMsg{Err: err}
 		}

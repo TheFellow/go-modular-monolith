@@ -203,7 +203,7 @@ func run() error {
 		Name: "Classic Cocktails",
 	}
 
-	createdMenu, err := a.Menu.Create(ctx, menu)
+	createdMenu, err := a.Menus.Create(ctx, menu)
 	if err != nil {
 		return fmt.Errorf("create menu: %w", err)
 	}
@@ -215,13 +215,13 @@ func run() error {
 			MenuID:  createdMenu.ID,
 			DrinkID: drinkID,
 		}
-		if _, err := a.Menu.AddDrink(ctx, patch); err != nil {
+		if _, err := a.Menus.AddDrink(ctx, patch); err != nil {
 			return fmt.Errorf("add drink to menu: %w", err)
 		}
 	}
 
 	// Publish menu
-	if _, err := a.Menu.Publish(ctx, createdMenu); err != nil {
+	if _, err := a.Menus.Publish(ctx, createdMenu); err != nil {
 		return fmt.Errorf("publish menu: %w", err)
 	}
 	fmt.Printf("  Menu published with %d drinks\n", len(drinkIDs))

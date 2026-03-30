@@ -122,7 +122,9 @@ graph LR
 
 Handlers receive `*middleware.HandlerContext` instead of the full `*middleware.Context`.
 `HandlerContext` deliberately omits `AddEvent()`, so handlers **cannot emit new events at
-compile time** — this is how the no-cascading invariant is enforced.
+compile time** — this is how the no-cascading invariant is enforced. Handlers can still
+read and mutate state within their own domain; the restriction is on event emission, not
+all writes.
 
 ```mermaid
 flowchart TD

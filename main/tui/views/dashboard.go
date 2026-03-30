@@ -232,19 +232,19 @@ func (d *Dashboard) loadData() tea.Cmd {
 			data.LowStockCount = count
 		}
 
-		if count, err := d.app.Menu.Count(ctx, menus.ListRequest{}); err != nil {
+		if count, err := d.app.Menus.Count(ctx, menus.ListRequest{}); err != nil {
 			loadErr = firstErr(loadErr, err)
 		} else {
 			data.MenuCount = count
 		}
 
-		if count, err := d.app.Menu.Count(ctx, menus.ListRequest{Status: menumodels.MenuStatusDraft}); err != nil {
+		if count, err := d.app.Menus.Count(ctx, menus.ListRequest{Status: menumodels.MenuStatusDraft}); err != nil {
 			loadErr = firstErr(loadErr, err)
 		} else {
 			data.DraftMenus = count
 		}
 
-		if count, err := d.app.Menu.Count(ctx, menus.ListRequest{Status: menumodels.MenuStatusPublished}); err != nil {
+		if count, err := d.app.Menus.Count(ctx, menus.ListRequest{Status: menumodels.MenuStatusPublished}); err != nil {
 			loadErr = firstErr(loadErr, err)
 		} else {
 			data.PublishedMenus = count
@@ -256,23 +256,10 @@ func (d *Dashboard) loadData() tea.Cmd {
 			data.OrderCount = count
 		}
 
-		pendingCount := 0
 		if count, err := d.app.Orders.Count(ctx, orders.ListRequest{Status: ordersmodels.OrderStatusPending}); err != nil {
 			loadErr = firstErr(loadErr, err)
-			pendingCount = dashboardUnknown
 		} else {
-			pendingCount = count
-		}
-		if count, err := d.app.Orders.Count(ctx, orders.ListRequest{Status: ordersmodels.OrderStatusPreparing}); err != nil {
-			loadErr = firstErr(loadErr, err)
-			if pendingCount >= 0 {
-				pendingCount = dashboardUnknown
-			}
-		} else if pendingCount >= 0 {
-			pendingCount += count
-		}
-		if pendingCount >= 0 {
-			data.PendingOrders = pendingCount
+			data.PendingOrders = count
 		}
 
 		if count, err := d.app.Audit.Count(ctx, audit.ListRequest{}); err != nil {

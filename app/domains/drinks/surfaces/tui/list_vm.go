@@ -328,7 +328,7 @@ func (m *ListViewModel) showDeleteConfirm(drink *models.Drink) tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		menusList, err := m.app.Menu.List(m.context(), menus.ListRequest{})
+		menusList, err := m.app.Menus.List(m.context(), menus.ListRequest{})
 		if err != nil {
 			return DeleteErrorMsg{Err: err}
 		}

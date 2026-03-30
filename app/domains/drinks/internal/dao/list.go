@@ -2,6 +2,7 @@ package dao
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/mjl-/bstore"
 )
@@ -50,6 +51,40 @@ func (d *DAO) Count(ctx store.Context, filter ListFilter) (int, error) {
 		return nil
 	})
 	return count, err
+}
+
+func (d *DAO) ListByIngredient(ctx store.Context, ingredientID entity.IngredientID) ([]*models.Drink, error) {
+	var out []*models.Drink
+	err := store.Read(ctx, func(tx *bstore.Tx) error {
+		target := ingredientID.EntityUID()
+		rows, err := bstore.QueryTx[DrinkRow](tx).FilterFn(func(r DrinkRow) bool {
+			if r.DeletedAt != nil {
+				return false
+			}
+			for _, ri := range r.Recipe.Ingredients {
+				if ri.IngredientID == target {
+					return true
+				}
+				for _, sub := range ri.Substitutes {
+					if sub == target {
+						return true
+					}
+				}
+			}
+			return false
+		}).SortAsc("Name").List()
+		if err != nil {
+			return store.MapError(err, "list drinks by ingredient %s", ingredientID.String())
+		}
+		drinks := make([]*models.Drink, 0, len(rows))
+		for _, r := range rows {
+			d := toModel(r)
+			drinks = append(drinks, &d)
+		}
+		out = drinks
+		return nil
+	})
+	return out, err
 }
 
 func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[DrinkRow] {

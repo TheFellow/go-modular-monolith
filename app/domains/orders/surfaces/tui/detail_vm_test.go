@@ -33,11 +33,11 @@ func TestDetailViewModel_ShowsOrderData(t *testing.T) {
 		},
 	})
 
-	menu, err := f.Menu.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
+	menu, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+	menu, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
+	menu, err = f.Menus.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
 	testutil.Ok(t, err)
 	order, err := f.Orders.Place(f.OwnerContext(), &ordersmodels.Order{
 		MenuID: menu.ID,
@@ -79,11 +79,11 @@ func TestDetailViewModel_ShowsLineItems(t *testing.T) {
 		},
 	})
 
-	menu, err := f.Menu.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
+	menu, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+	menu, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
+	menu, err = f.Menus.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
 	testutil.Ok(t, err)
 	order, err := f.Orders.Place(f.OwnerContext(), &ordersmodels.Order{
 		MenuID: menu.ID,
@@ -124,11 +124,11 @@ func TestDetailViewModel_ShowsTotal(t *testing.T) {
 		},
 	})
 
-	menu, err := f.Menu.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
+	menu, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+	menu, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
+	menu, err = f.Menus.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
 	testutil.Ok(t, err)
 	order, err := f.Orders.Place(f.OwnerContext(), &ordersmodels.Order{
 		MenuID: menu.ID,
@@ -181,11 +181,11 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 		},
 	})
 
-	menu, err := f.Menu.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
+	menu, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+	menu, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
+	menu, err = f.Menus.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
 	testutil.Ok(t, err)
 	order, err := f.Orders.Place(f.OwnerContext(), &ordersmodels.Order{
 		MenuID: menu.ID,

@@ -1,7 +1,6 @@
 package models
 
 import (
-	"strings"
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
@@ -47,7 +46,6 @@ func (m Menu) CedarEntity() cedar.Entity {
 }
 
 func (m Menu) Validate() error {
-	m.Name = strings.TrimSpace(m.Name)
 	if m.Name == "" {
 		return errors.Invalidf("name is required")
 	}

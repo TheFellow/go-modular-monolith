@@ -123,8 +123,9 @@ func (c *Context) Transaction() (*bstore.Tx, bool) {
 }
 
 // HandlerContext is a restricted context passed to event handlers.
-// Handlers are leaf nodes — they can read data and touch entities,
-// but they cannot emit new events. This is enforced at compile time.
+// Handlers are leaf nodes — they can read data, persist changes within
+// their own domain, and touch entities, but they cannot emit new events.
+// This no-cascading rule is enforced at compile time.
 type HandlerContext struct {
 	context.Context
 	ctx *Context

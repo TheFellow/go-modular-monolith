@@ -1,6 +1,8 @@
 package store
 
 import (
+	stderrors "errors"
+
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/mjl-/bstore"
 )
@@ -11,14 +13,14 @@ func MapError(err error, format string, args ...any) error {
 	if err == nil {
 		return nil
 	}
-	switch err {
-	case bstore.ErrAbsent:
+	if stderrors.Is(err, bstore.ErrAbsent) {
 		return errors.NotFoundf(format, args...)
-	case bstore.ErrUnique:
-		return errors.Conflictf(format, args...)
-	case bstore.ErrZero:
-		return errors.Invalidf(format, args...)
-	default:
-		return errors.Internalf(format+": %w", append(args, err)...)
 	}
+	if stderrors.Is(err, bstore.ErrUnique) {
+		return errors.Conflictf(format, args...)
+	}
+	if stderrors.Is(err, bstore.ErrZero) {
+		return errors.Invalidf(format, args...)
+	}
+	return errors.Internalf(format+": %w", append(args, err)...)
 }

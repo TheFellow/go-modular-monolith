@@ -286,7 +286,7 @@ func (m *ListViewModel) showCompleteConfirm(order *ordersmodels.Order) tea.Cmd {
 	}
 	return func() tea.Msg {
 		switch order.Status {
-		case ordersmodels.OrderStatusPending, ordersmodels.OrderStatusPreparing:
+		case ordersmodels.OrderStatusPending:
 		case ordersmodels.OrderStatusCompleted:
 			return CompleteErrorMsg{Err: errors.Invalidf("order is already completed")}
 		case ordersmodels.OrderStatusCancelled:
@@ -336,7 +336,7 @@ func (m *ListViewModel) showCancelConfirm(order *ordersmodels.Order) tea.Cmd {
 	}
 	return func() tea.Msg {
 		switch order.Status {
-		case ordersmodels.OrderStatusPending, ordersmodels.OrderStatusPreparing:
+		case ordersmodels.OrderStatusPending:
 		case ordersmodels.OrderStatusCompleted:
 			return CancelErrorMsg{Err: errors.Invalidf("cannot cancel a completed order")}
 		case ordersmodels.OrderStatusCancelled:
@@ -420,7 +420,7 @@ func (m *ListViewModel) menuName(menuID entity.MenuID) (string, error) {
 	if menuID.IsZero() {
 		return "", errors.Internalf("order missing menu id")
 	}
-	menu, err := m.app.Menu.Get(m.context(), menuID)
+	menu, err := m.app.Menus.Get(m.context(), menuID)
 	if err != nil {
 		return "", errors.Internalf("load menu %s: %w", menuID.String(), err)
 	}

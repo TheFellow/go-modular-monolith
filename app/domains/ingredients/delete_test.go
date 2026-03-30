@@ -45,11 +45,11 @@ func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	menu, err := f.Menu.Create(ctx, &menuM.Menu{Name: "Test Menu"})
+	menu, err := f.Menus.Create(ctx, &menuM.Menu{Name: "Test Menu"})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.AddDrink(ctx, &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+	menu, err = f.Menus.AddDrink(ctx, &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
-	menu, err = f.Menu.Publish(ctx, &menuM.Menu{ID: menu.ID})
+	menu, err = f.Menus.Publish(ctx, &menuM.Menu{ID: menu.ID})
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(menu.Items) != 1, "expected 1 menu item, got %d", len(menu.Items))
 
@@ -62,7 +62,7 @@ func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
 	_, err = f.Drinks.Get(ctx, drink.ID)
 	testutil.ErrorIsNotFound(t, err)
 
-	gotMenu, err := f.Menu.Get(ctx, menu.ID)
+	gotMenu, err := f.Menus.Get(ctx, menu.ID)
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(gotMenu.Items) != 0, "expected menu items to be removed, got %d", len(gotMenu.Items))
 }

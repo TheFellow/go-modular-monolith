@@ -16,7 +16,7 @@ import (
 func TestListViewModel_ShowsMenusAfterLoad(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	_, err := f.Menu.Create(f.OwnerContext(), &menumodels.Menu{Name: "Happy Hour"})
+	_, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Happy Hour"})
 	testutil.Ok(t, err)
 
 	model := tuitest.InitAndLoad(t, menustui.NewListViewModel(
@@ -59,12 +59,12 @@ func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
 
-	draft, err := f.Menu.Create(ctx, &menumodels.Menu{Name: "Draft Menu"})
+	draft, err := f.Menus.Create(ctx, &menumodels.Menu{Name: "Draft Menu"})
 	testutil.Ok(t, err)
 
-	published, err := f.Menu.Create(ctx, &menumodels.Menu{Name: "Published Menu"})
+	published, err := f.Menus.Create(ctx, &menumodels.Menu{Name: "Published Menu"})
 	testutil.Ok(t, err)
-	_, err = f.Menu.Publish(ctx, &menumodels.Menu{ID: published.ID})
+	_, err = f.Menus.Publish(ctx, &menumodels.Menu{ID: published.ID})
 	testutil.Ok(t, err)
 
 	_ = draft
@@ -96,9 +96,9 @@ func TestListViewModel_DetailShowsDrinks(t *testing.T) {
 		},
 	})
 
-	menu, err := f.Menu.Create(f.OwnerContext(), &menumodels.Menu{Name: "Summer Menu"})
+	menu, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Summer Menu"})
 	testutil.Ok(t, err)
-	_, err = f.Menu.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{
+	_, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{
 		MenuID:  menu.ID,
 		DrinkID: drink.ID,
 	})

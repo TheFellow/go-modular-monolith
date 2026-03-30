@@ -175,7 +175,7 @@ func (d *DetailViewModel) menu(id entity.MenuID) (*menusmodels.Menu, error) {
 	if id.IsZero() {
 		return nil, errors.Internalf("order missing menu id")
 	}
-	menu, err := d.app.Menu.Get(d.context(), id)
+	menu, err := d.app.Menus.Get(d.context(), id)
 	if err != nil {
 		return nil, errors.Internalf("load menu %s: %w", id.String(), err)
 	}

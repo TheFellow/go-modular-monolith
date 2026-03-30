@@ -19,7 +19,7 @@ func (c *Commands) Cancel(ctx *middleware.Context, order *models.Order) (*models
 		return nil, errors.Invalidf("order %q is already completed", order.ID.String())
 	case models.OrderStatusCancelled:
 		return order, nil
-	case models.OrderStatusPending, models.OrderStatusPreparing:
+	case models.OrderStatusPending:
 	default:
 		return nil, errors.Invalidf("unexpected status %q", order.Status)
 	}

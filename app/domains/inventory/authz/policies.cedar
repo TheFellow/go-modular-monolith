@@ -7,7 +7,7 @@ permit(
         Mixology::Inventory::Action::"list",
         Mixology::Inventory::Action::"get"
     ],
-    resource is Mixology::Inventory
+    resource
 );
 
 // Managers can modify inventory.

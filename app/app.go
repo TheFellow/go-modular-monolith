@@ -29,7 +29,7 @@ type App struct {
 	Drinks      *drinks.Module
 	Ingredients *ingredients.Module
 	Inventory   *inventory.Module
-	Menu        *menus.Module
+	Menus       *menus.Module
 	Orders      *orders.Module
 
 	principal        optional.Value[cedar.EntityUID]
@@ -46,7 +46,7 @@ func New(opts ...Option) *App {
 		Drinks:      drinks.NewModule(),
 		Ingredients: ingredients.NewModule(),
 		Inventory:   inventory.NewModule(),
-		Menu:        menus.NewModule(),
+		Menus:       menus.NewModule(),
 		Orders:      orders.NewModule(),
 		principal:   optional.None[cedar.EntityUID](),
 	}
