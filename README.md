@@ -141,7 +141,9 @@ flowchart TD
 
 When multiple handlers subscribe to the same event, the dispatcher supports a two-phase
 protocol. Handlers implementing the `PreparingHandler` interface define a `Handling()` method
-that is called for **all** handlers before any `Handle()` runs. This lets handlers query
+that is called for **all** handlers before any `Handle()` runs. Handlers are intentionally
+constructed fresh for each event dispatch, so `Handling()` may query and store event-local
+state on the handler receiver for the later `Handle()` call. This lets handlers inspect
 affected entities before mutations begin — used, for example, when `IngredientDeleted` is
 handled by both the Drinks and Menus domains.
 

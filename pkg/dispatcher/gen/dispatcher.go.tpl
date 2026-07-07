@@ -11,6 +11,9 @@ import (
 func (d *Dispatcher) Dispatch(ctx *{{ .MiddlewareAlias }}.Context, event any) error {
 	hctx := {{ .MiddlewareAlias }}.NewHandlerContext(ctx)
 
+	// Handlers are intentionally constructed fresh inside each event dispatch.
+	// Preparing handlers may capture event-local state on the receiver during
+	// Handling(), and the same receiver is then used by Handle() below.
 	switch e := event.(type) {
 {{- range .Groups }}
 	case {{ index $.ImportAlias .Event.PkgPath }}.{{ .Event.Name }}:

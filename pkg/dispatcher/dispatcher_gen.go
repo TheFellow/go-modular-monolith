@@ -19,6 +19,9 @@ import (
 func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	hctx := middleware.NewHandlerContext(ctx)
 
+	// Handlers are intentionally constructed fresh inside each event dispatch.
+	// Preparing handlers may capture event-local state on the receiver during
+	// Handling(), and the same receiver is then used by Handle() below.
 	switch e := event.(type) {
 	case drinks_events.DrinkDeleted:
 		menusHandler := menus_handlers.NewDrinkDeleted()
