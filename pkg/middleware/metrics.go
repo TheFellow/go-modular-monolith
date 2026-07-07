@@ -37,7 +37,7 @@ var nopMetricsCollector = NewMetricsCollector(telemetry.Nop())
 
 func Metrics() Middleware {
 	return func(ctx *Context, op Operation, next Next) error {
-		mc, ok := MetricsCollectorFromContext(ctx.Context)
+		mc, ok := ctx.MetricsCollector()
 		if !ok || mc == nil {
 			mc = nopMetricsCollector
 		}
@@ -56,7 +56,7 @@ func Metrics() Middleware {
 			} else {
 				mc.commandTotal.Inc(actionLabel, "success")
 			}
-		default:
+		case OperationKindQuery:
 			mc.queryDuration.ObserveDuration(start, actionLabel)
 			if err != nil {
 				mc.queryTotal.Inc(actionLabel, "error")

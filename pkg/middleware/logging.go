@@ -24,7 +24,7 @@ func Logging() Middleware {
 		duration := time.Since(start)
 
 		if op.Kind == OperationKindCommand {
-			if activity, ok := ActivityFromContext(ctx.Context); ok && !activity.Resource.IsZero() {
+			if activity, ok := ctx.Activity(); ok && !activity.Resource.IsZero() {
 				ctx.Context = log.WithLogAttrs(ctx.Context, log.Resource(activity.Resource))
 				logger = log.FromContext(ctx)
 			}
@@ -46,7 +46,7 @@ func logOperationCompleted(logger *slog.Logger, kind OperationKind, duration tim
 	switch kind {
 	case OperationKindCommand:
 		logger.Info("command completed", slog.Duration("duration", duration))
-	default:
+	case OperationKindQuery:
 		logger.Debug("query completed", slog.Duration("duration", duration))
 	}
 }
@@ -55,7 +55,7 @@ func logOperationFailed(logger *slog.Logger, kind OperationKind, duration time.D
 	switch kind {
 	case OperationKindCommand:
 		logger.Error("command failed", slog.Duration("duration", duration), log.Err(err))
-	default:
+	case OperationKindQuery:
 		logger.Warn("query failed", slog.Duration("duration", duration), log.Err(err))
 	}
 }

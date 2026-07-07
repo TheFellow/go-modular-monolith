@@ -61,7 +61,7 @@ func RunCommand[In CedarEntity, Out CedarEntity](ctx *Context, spec CommandSpec[
 			return err
 		}
 
-		if activity, ok := ActivityFromContext(c.Context); ok && activity.Resource.IsZero() {
+		if activity, ok := c.Activity(); ok && activity.Resource.IsZero() {
 			activity.Resource = input.CedarEntity().UID
 		}
 
@@ -74,7 +74,7 @@ func RunCommand[In CedarEntity, Out CedarEntity](ctx *Context, spec CommandSpec[
 			return err
 		}
 
-		if activity, ok := ActivityFromContext(c.Context); ok && activity.Resource.IsZero() {
+		if activity, ok := c.Activity(); ok && activity.Resource.IsZero() {
 			activity.Resource = res.CedarEntity().UID
 		}
 

@@ -23,7 +23,7 @@ func DispatchEvents() Middleware {
 			return err
 		}
 
-		d, ok := DispatcherFromContext(ctx.Context)
+		d, ok := ctx.Dispatcher()
 		if !ok || d == nil {
 			return nil
 		}

@@ -4,7 +4,6 @@ import (
 	"github.com/mjl-/bstore"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 func UnitOfWork() Middleware {
@@ -13,7 +12,7 @@ func UnitOfWork() Middleware {
 			return next(ctx)
 		}
 
-		s, ok := store.FromContext(ctx.Context)
+		s, ok := ctx.Store()
 		if !ok || s == nil {
 			return errors.Internalf("store missing from context")
 		}
