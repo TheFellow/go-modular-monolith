@@ -8,6 +8,12 @@ import (
 )
 
 type activityKey struct{}
+type activityRecorderKey struct{}
+
+// ActivityRecorder persists completed command activity outside domain event dispatch.
+type ActivityRecorder interface {
+	RecordActivity(ctx *Context, activity middlewareevents.Activity) error
+}
 
 func WithActivity(a *middlewareevents.Activity) ContextOpt {
 	return func(c *Context) {
@@ -24,6 +30,22 @@ func ActivityFromContext(ctx context.Context) (*middlewareevents.Activity, bool)
 	}
 	a, ok := ctx.Value(activityKey{}).(*middlewareevents.Activity)
 	return a, ok
+}
+
+// WithActivityRecorder attaches an activity recorder to the middleware context.
+func WithActivityRecorder(r ActivityRecorder) ContextOpt {
+	return func(c *Context) {
+		c.Context = context.WithValue(c.Context, activityRecorderKey{}, r)
+	}
+}
+
+// ActivityRecorderFromContext returns the activity recorder attached to ctx, if any.
+func ActivityRecorderFromContext(ctx context.Context) (ActivityRecorder, bool) {
+	if ctx == nil {
+		return nil, false
+	}
+	r, ok := ctx.Value(activityRecorderKey{}).(ActivityRecorder)
+	return r, ok
 }
 
 func (c *Context) TouchEntity(uid cedar.EntityUID) {

@@ -121,6 +121,9 @@ func (a *App) contextWithPrincipal(parent context.Context, principal cedar.Entit
 		if a.Dispatcher != nil {
 			opts = append(opts, middleware.WithEventDispatcher(a.Dispatcher))
 		}
+		if a.Audit != nil {
+			opts = append(opts, middleware.WithActivityRecorder(a.Audit))
+		}
 		if a.metricsCollector != nil {
 			opts = append(opts, middleware.WithMetricsCollector(a.metricsCollector))
 		}

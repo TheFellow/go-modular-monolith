@@ -169,8 +169,8 @@ flowchart LR
         U --> E[Load + AuthZ + Execute + AuthZ]
         E --> EV[Events]
         EV --> H[Handlers]
-        H --> AC[ActivityCompleted]
-        AC --> AU[Audit Handler]
+        H --> R[Activity Recorder]
+        R --> AU[Audit Log]
     end
 
     U -.->|commit| DB[(Database)]
@@ -222,8 +222,6 @@ Denied requests return a typed permission error.
 | Orders | Customer orders | Menu, Drinks, Inventory | OrderPlaced, OrderCompleted, OrderCancelled |
 | Audit | Activity log, audit entries | - | - |
 
-Note: Audit consumes `ActivityCompleted` from middleware but produces no domain events.
-
 ## Code Generation
 
 Four `go:generate` programs follow the same pattern: a `gen/` subdirectory with a Go program
@@ -272,7 +270,9 @@ and audit tracking all apply identically. Forms include validation, and destruct
 
 ## Activity Tracking & Audit
 
-Every command execution is tracked as an **Activity** and persisted to the audit log.
+Every command execution is tracked as an **Activity** and persisted to the audit log through
+an explicit activity recorder. Domain events continue through the dispatcher; audit activity
+recording is separate from that event flow.
 
 ```mermaid
 sequenceDiagram
@@ -280,7 +280,7 @@ sequenceDiagram
     participant TA as TrackActivity
     participant UoW as UnitOfWork
     participant H as Handlers
-    participant AH as Audit Handler
+    participant AR as Activity Recorder
     participant DB as Database
 
     C->>TA: Execute
@@ -291,8 +291,8 @@ sequenceDiagram
     H-->>UoW: Done
     UoW->>TA: Complete
     TA->>TA: activity.Complete()
-    TA->>AH: Emit ActivityCompleted
-    AH->>DB: Persist AuditEntry
+    TA->>AR: RecordActivity(activity)
+    AR->>DB: Persist AuditEntry
 ```
 
 ### Touch Recording

@@ -51,7 +51,3 @@ func (a *Activity) Complete(err error) {
 		a.Error = err.Error()
 	}
 }
-
-type ActivityCompleted struct {
-	Activity Activity
-}
