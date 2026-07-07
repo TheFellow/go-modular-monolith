@@ -4,15 +4,18 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 )
 
-func TrackActivity() CommandMiddleware {
-	return func(ctx *Context, action cedar.EntityUID, next CommandNext) error {
-		activity := middlewareevents.NewActivity(action, cedar.EntityUID{}, ctx.Principal())
+func TrackActivity() Middleware {
+	return func(ctx *Context, op Operation, next Next) error {
+		if op.Kind != OperationKindCommand {
+			return next(ctx)
+		}
+
+		activity := middlewareevents.NewActivity(op.Action, op.Resource.UID, ctx.Principal())
 		WithActivity(activity)(ctx)
 
 		err := next(ctx)

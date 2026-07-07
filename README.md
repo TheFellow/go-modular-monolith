@@ -85,7 +85,7 @@ app/
         commands/      Write logic (not importable by other domains)
         dao/           bstore persistence
 pkg/
-  middleware/      Command & query pipelines (logging, metrics, authz, UoW, activity)
+  middleware/      Operation pipelines (logging, metrics, authz, UoW, activity)
   authz/           Cedar policy engine integration
   authn/           Actor definitions (owner, manager, sommelier, bartender, anonymous)
   dispatcher/      Generated event -> handler routing
@@ -149,7 +149,7 @@ handled by both the Drinks and Menus domains.
 
 ### Write Pipeline (Commands)
 
-The command chain is: Logging, Metrics, TrackActivity, UnitOfWork, DispatchEvents. Authorization
+Commands use the shared operation pipeline with: Logging, Metrics, TrackActivity, UnitOfWork, DispatchEvents. Authorization
 is **not** a separate middleware step — it happens inline inside `RunCommand`, which authorizes
 twice: once on the loaded input entity and once on the output entity. This dual check lets
 policies consider both the pre-mutation state (e.g., "can this user modify a Draft menu?") and
@@ -176,9 +176,10 @@ flowchart LR
 
 ### Read Pipelines (Queries)
 
-There are two query pipelines. `QueryChain` checks action-level permission (e.g., "can this
-principal list drinks?"). `QueryWithResourceChain` additionally passes a `cedar.Entity` for
-resource-scoped authorization (e.g., "can this principal view this specific menu?").
+Queries use the shared operation pipeline with: Logging, Metrics, AuthZ. A query operation can
+carry only an action for action-level permission (e.g., "can this principal list drinks?") or
+also carry a `cedar.Entity` resource for resource-scoped authorization (e.g., "can this
+principal view this specific menu?").
 
 ```mermaid
 flowchart LR

@@ -1,19 +1,14 @@
 package middleware
 
 var (
-	Query = NewQueryChain(
-		QueryLogging(),
-		QueryMetrics(),
-		QueryAuthorize(),
+	Query = NewChain(
+		Logging(),
+		Metrics(),
+		Authorize(),
 	)
-	QueryWithResource = NewQueryWithResourceChain(
-		QueryWithResourceLogging(),
-		QueryWithResourceMetrics(),
-		QueryWithResourceAuthorize(),
-	)
-	Command = NewCommandChain(
-		CommandLogging(),
-		CommandMetrics(),
+	Command = NewChain(
+		Logging(),
+		Metrics(),
 		TrackActivity(),
 		UnitOfWork(),
 		DispatchEvents(),

@@ -35,70 +35,35 @@ func NewMetricsCollector(m telemetry.Metrics) *MetricsCollector {
 
 var nopMetricsCollector = NewMetricsCollector(telemetry.Nop())
 
-func CommandMetrics() CommandMiddleware {
-	return func(ctx *Context, action cedar.EntityUID, next CommandNext) error {
+func Metrics() Middleware {
+	return func(ctx *Context, op Operation, next Next) error {
 		mc, ok := MetricsCollectorFromContext(ctx.Context)
 		if !ok || mc == nil {
 			mc = nopMetricsCollector
 		}
 
-		actionLabel := actionLabel(action)
+		actionLabel := actionLabel(op.Action)
 		start := time.Now()
 
 		err := next(ctx)
 
-		mc.commandDuration.ObserveDuration(start, actionLabel)
-		if err != nil {
-			mc.commandTotal.Inc(actionLabel, "error")
-			mc.commandErrors.Inc(actionLabel)
-		} else {
-			mc.commandTotal.Inc(actionLabel, "success")
-		}
-		return err
-	}
-}
-
-func QueryMetrics() QueryMiddleware {
-	return func(ctx *Context, action cedar.EntityUID, next QueryNext) error {
-		mc, ok := MetricsCollectorFromContext(ctx.Context)
-		if !ok || mc == nil {
-			mc = nopMetricsCollector
-		}
-
-		actionLabel := actionLabel(action)
-		start := time.Now()
-
-		err := next(ctx)
-
-		mc.queryDuration.ObserveDuration(start, actionLabel)
-		if err != nil {
-			mc.queryTotal.Inc(actionLabel, "error")
-			mc.queryErrors.Inc(actionLabel)
-		} else {
-			mc.queryTotal.Inc(actionLabel, "success")
-		}
-		return err
-	}
-}
-
-func QueryWithResourceMetrics() QueryWithResourceMiddleware {
-	return func(ctx *Context, action cedar.EntityUID, _ cedar.Entity, next QueryWithResourceNext) error {
-		mc, ok := MetricsCollectorFromContext(ctx.Context)
-		if !ok || mc == nil {
-			mc = nopMetricsCollector
-		}
-
-		actionLabel := actionLabel(action)
-		start := time.Now()
-
-		err := next(ctx)
-
-		mc.queryDuration.ObserveDuration(start, actionLabel)
-		if err != nil {
-			mc.queryTotal.Inc(actionLabel, "error")
-			mc.queryErrors.Inc(actionLabel)
-		} else {
-			mc.queryTotal.Inc(actionLabel, "success")
+		switch op.Kind {
+		case OperationKindCommand:
+			mc.commandDuration.ObserveDuration(start, actionLabel)
+			if err != nil {
+				mc.commandTotal.Inc(actionLabel, "error")
+				mc.commandErrors.Inc(actionLabel)
+			} else {
+				mc.commandTotal.Inc(actionLabel, "success")
+			}
+		default:
+			mc.queryDuration.ObserveDuration(start, actionLabel)
+			if err != nil {
+				mc.queryTotal.Inc(actionLabel, "error")
+				mc.queryErrors.Inc(actionLabel)
+			} else {
+				mc.queryTotal.Inc(actionLabel, "success")
+			}
 		}
 		return err
 	}
