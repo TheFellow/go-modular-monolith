@@ -7,8 +7,11 @@ import (
 )
 
 func (m *Module) Cancel(ctx *middleware.Context, order *models.Order) (*models.Order, error) {
-	return middleware.RunCommand(ctx, authz.ActionCancel,
-		middleware.Get(m.queries.Get, order.ID),
-		m.commands.Cancel,
-	)
+	return middleware.RunCommand(ctx, middleware.CommandSpec[*models.Order, *models.Order]{
+		Action: authz.ActionCancel,
+		Load: func(ctx *middleware.Context) (*models.Order, error) {
+			return m.queries.Get(ctx, order.ID)
+		},
+		Handle: m.commands.Cancel,
+	})
 }

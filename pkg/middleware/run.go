@@ -45,16 +45,18 @@ func RunQueryWithResource[Req CedarEntity, Res any](
 	return out, err
 }
 
-func RunCommand[In CedarEntity, Out CedarEntity](
-	ctx *Context,
-	action cedar.EntityUID,
-	load func(*Context) (In, error),
-	execute func(*Context, In) (Out, error),
-) (Out, error) {
+// CommandSpec names the command orchestration steps RunCommand performs.
+type CommandSpec[In CedarEntity, Out CedarEntity] struct {
+	Action cedar.EntityUID
+	Load   func(*Context) (In, error)
+	Handle func(*Context, In) (Out, error)
+}
+
+func RunCommand[In CedarEntity, Out CedarEntity](ctx *Context, spec CommandSpec[In, Out]) (Out, error) {
 	var out Out
 
-	err := Command.Execute(ctx, CommandOperation(action), func(c *Context) error {
-		input, err := load(c)
+	err := Command.Execute(ctx, CommandOperation(spec.Action), func(c *Context) error {
+		input, err := spec.Load(c)
 		if err != nil {
 			return err
 		}
@@ -63,11 +65,11 @@ func RunCommand[In CedarEntity, Out CedarEntity](
 			activity.Resource = input.CedarEntity().UID
 		}
 
-		if err := authz.AuthorizeWithEntity(c.Principal(), action, input.CedarEntity()); err != nil {
+		if err := authz.AuthorizeWithEntity(c.Principal(), spec.Action, input.CedarEntity()); err != nil {
 			return err
 		}
 
-		res, err := execute(c, input)
+		res, err := spec.Handle(c, input)
 		if err != nil {
 			return err
 		}
@@ -76,7 +78,7 @@ func RunCommand[In CedarEntity, Out CedarEntity](
 			activity.Resource = res.CedarEntity().UID
 		}
 
-		if err := authz.AuthorizeWithEntity(c.Principal(), action, res.CedarEntity()); err != nil {
+		if err := authz.AuthorizeWithEntity(c.Principal(), spec.Action, res.CedarEntity()); err != nil {
 			return err
 		}
 
@@ -84,25 +86,4 @@ func RunCommand[In CedarEntity, Out CedarEntity](
 		return nil
 	})
 	return out, err
-}
-
-// Entity returns a loader that yields a fixed entity (useful for Create).
-func Entity[T CedarEntity](entity T) func(*Context) (T, error) {
-	return func(*Context) (T, error) {
-		return entity, nil
-	}
-}
-
-// Get returns a loader that fetches an entity by ID (useful for Update/Delete).
-func Get[T CedarEntity, ID any](get func(store.Context, ID) (T, error), id ID) func(*Context) (T, error) {
-	return func(ctx *Context) (T, error) {
-		return get(ctx, id)
-	}
-}
-
-// Update returns an executor that uses the desired entity instead of the loaded one.
-func Update[In, Out CedarEntity](execute func(*Context, In) (Out, error), entity In) func(*Context, In) (Out, error) {
-	return func(ctx *Context, _ In) (Out, error) {
-		return execute(ctx, entity)
-	}
 }
