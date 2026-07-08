@@ -80,6 +80,10 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadInventory())
 }
 
+func (m *ListViewModel) HandleBackKey() bool {
+	return m.adjust != nil || m.set != nil
+}
+
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:

@@ -87,6 +87,11 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, a.syncWindowCmd()
 		}
 		if key.Matches(msg, a.keys.Back) {
+			if handler, ok := a.currentViewModel().(views.BackKeyHandler); ok && handler.HandleBackKey() {
+				vm, cmd := a.currentViewModel().Update(msg)
+				a.views[a.currentView] = vm
+				return a, cmd
+			}
 			return a, a.navigateBack()
 		}
 

@@ -21,3 +21,9 @@ type ViewModel interface {
 	// FullHelp is queried when the expanded help panel is shown.
 	FullHelp() [][]key.Binding
 }
+
+// BackKeyHandler is implemented by views that sometimes handle the global back
+// key locally, such as when a form or confirmation dialog is open.
+type BackKeyHandler interface {
+	HandleBackKey() bool
+}

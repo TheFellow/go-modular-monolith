@@ -88,6 +88,10 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadMenus())
 }
 
+func (m *ListViewModel) HandleBackKey() bool {
+	return m.create != nil || m.rename != nil || m.dialog != nil
+}
+
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
