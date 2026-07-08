@@ -7,8 +7,11 @@ import (
 )
 
 func (m *Module) Create(ctx *middleware.Context, ingredient *models.Ingredient) (*models.Ingredient, error) {
-	return middleware.RunCommand(ctx, authz.ActionCreate,
-		middleware.Entity(ingredient),
-		m.commands.Create,
-	)
+	return middleware.RunCommand(ctx, middleware.CommandSpec[*models.Ingredient, *models.Ingredient]{
+		Action: authz.ActionCreate,
+		Load: func(*middleware.Context) (*models.Ingredient, error) {
+			return ingredient, nil
+		},
+		Handle: m.commands.Create,
+	})
 }

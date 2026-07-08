@@ -3,7 +3,6 @@
 package dispatcher
 
 import (
-	audit_handlers "github.com/TheFellow/go-modular-monolith/app/domains/audit/handlers"
 	drinks_events "github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
 	drinks_handlers "github.com/TheFellow/go-modular-monolith/app/domains/drinks/handlers"
 	ingredients_events "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
@@ -13,12 +12,14 @@ import (
 	menus_handlers "github.com/TheFellow/go-modular-monolith/app/domains/menus/handlers"
 	orders_events "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
 	middleware "github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	pkg_events "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 )
 
 func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	hctx := middleware.NewHandlerContext(ctx)
 
+	// Handlers are intentionally constructed fresh inside each event dispatch.
+	// Preparing handlers may capture event-local state on the receiver during
+	// Handling(), and the same receiver is then used by Handle() below.
 	switch e := event.(type) {
 	case drinks_events.DrinkDeleted:
 		menusHandler := menus_handlers.NewDrinkDeleted()
@@ -99,13 +100,6 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 			}
 		}
 		if err := menusHandler.Handle(hctx, e); err != nil {
-			if herr := d.handlerError(ctx, e, err); herr != nil {
-				return herr
-			}
-		}
-	case pkg_events.ActivityCompleted:
-		auditHandler := audit_handlers.NewActivityCompleted()
-		if err := auditHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}

@@ -7,8 +7,11 @@ import (
 )
 
 func (m *Module) Adjust(ctx *middleware.Context, patch *models.Patch) (*models.Inventory, error) {
-	return middleware.RunCommand(ctx, authz.ActionAdjust,
-		middleware.Entity(patch),
-		m.commands.Adjust,
-	)
+	return middleware.RunCommand(ctx, middleware.CommandSpec[*models.Patch, *models.Inventory]{
+		Action: authz.ActionAdjust,
+		Load: func(*middleware.Context) (*models.Patch, error) {
+			return patch, nil
+		},
+		Handle: m.commands.Adjust,
+	})
 }

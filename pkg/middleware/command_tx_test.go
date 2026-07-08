@@ -29,17 +29,18 @@ func TestRunCommand_LoaderRunsInTransaction(t *testing.T) {
 	ctx := fix.OwnerContext()
 
 	var sawTx bool
-	_, err := middleware.RunCommand(ctx, drinksauthz.ActionCreate,
-		func(ctx *middleware.Context) (testEntity, error) {
+	_, err := middleware.RunCommand(ctx, middleware.CommandSpec[testEntity, testEntity]{
+		Action: drinksauthz.ActionCreate,
+		Load: func(ctx *middleware.Context) (testEntity, error) {
 			_, sawTx = ctx.Transaction()
 			return testEntity{
 				ID: cedar.NewEntityUID(cedar.EntityType("Mixology::Drink"), cedar.String("stub")),
 			}, nil
 		},
-		func(_ *middleware.Context, in testEntity) (testEntity, error) {
+		Handle: func(_ *middleware.Context, in testEntity) (testEntity, error) {
 			return in, nil
 		},
-	)
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

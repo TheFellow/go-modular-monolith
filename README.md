@@ -85,7 +85,7 @@ app/
         commands/      Write logic (not importable by other domains)
         dao/           bstore persistence
 pkg/
-  middleware/      Command & query pipelines (logging, metrics, authz, UoW, activity)
+  middleware/      Operation pipelines (logging, metrics, authz, UoW, activity)
   authz/           Cedar policy engine integration
   authn/           Actor definitions (owner, manager, sommelier, bartender, anonymous)
   dispatcher/      Generated event -> handler routing
@@ -141,7 +141,9 @@ flowchart TD
 
 When multiple handlers subscribe to the same event, the dispatcher supports a two-phase
 protocol. Handlers implementing the `PreparingHandler` interface define a `Handling()` method
-that is called for **all** handlers before any `Handle()` runs. This lets handlers query
+that is called for **all** handlers before any `Handle()` runs. Handlers are intentionally
+constructed fresh for each event dispatch, so `Handling()` may query and store event-local
+state on the handler receiver for the later `Handle()` call. This lets handlers inspect
 affected entities before mutations begin — used, for example, when `IngredientDeleted` is
 handled by both the Drinks and Menus domains.
 
@@ -149,7 +151,7 @@ handled by both the Drinks and Menus domains.
 
 ### Write Pipeline (Commands)
 
-The command chain is: Logging, Metrics, TrackActivity, UnitOfWork, DispatchEvents. Authorization
+Commands use the shared operation pipeline with: Logging, Metrics, TrackActivity, UnitOfWork, DispatchEvents. Authorization
 is **not** a separate middleware step — it happens inline inside `RunCommand`, which authorizes
 twice: once on the loaded input entity and once on the output entity. This dual check lets
 policies consider both the pre-mutation state (e.g., "can this user modify a Draft menu?") and
@@ -167,8 +169,8 @@ flowchart LR
         U --> E[Load + AuthZ + Execute + AuthZ]
         E --> EV[Events]
         EV --> H[Handlers]
-        H --> AC[ActivityCompleted]
-        AC --> AU[Audit Handler]
+        H --> R[Activity Recorder]
+        R --> AU[Audit Log]
     end
 
     U -.->|commit| DB[(Database)]
@@ -176,9 +178,10 @@ flowchart LR
 
 ### Read Pipelines (Queries)
 
-There are two query pipelines. `QueryChain` checks action-level permission (e.g., "can this
-principal list drinks?"). `QueryWithResourceChain` additionally passes a `cedar.Entity` for
-resource-scoped authorization (e.g., "can this principal view this specific menu?").
+Queries use the shared operation pipeline with: Logging, Metrics, AuthZ. A query operation can
+carry only an action for action-level permission (e.g., "can this principal list drinks?") or
+also carry a `cedar.Entity` resource for resource-scoped authorization (e.g., "can this
+principal view this specific menu?").
 
 ```mermaid
 flowchart LR
@@ -218,8 +221,6 @@ Denied requests return a typed permission error.
 | Menu | Published menus | Drinks, Inventory | MenuCreated, DrinkAddedToMenu, DrinkRemovedFromMenu, MenuPublished, MenuDrafted |
 | Orders | Customer orders | Menu, Drinks, Inventory | OrderPlaced, OrderCompleted, OrderCancelled |
 | Audit | Activity log, audit entries | - | - |
-
-Note: Audit consumes `ActivityCompleted` from middleware but produces no domain events.
 
 ## Code Generation
 
@@ -269,7 +270,9 @@ and audit tracking all apply identically. Forms include validation, and destruct
 
 ## Activity Tracking & Audit
 
-Every command execution is tracked as an **Activity** and persisted to the audit log.
+Every command execution is tracked as an **Activity** and persisted to the audit log through
+an explicit activity recorder. Domain events continue through the dispatcher; audit activity
+recording is separate from that event flow.
 
 ```mermaid
 sequenceDiagram
@@ -277,7 +280,7 @@ sequenceDiagram
     participant TA as TrackActivity
     participant UoW as UnitOfWork
     participant H as Handlers
-    participant AH as Audit Handler
+    participant AR as Activity Recorder
     participant DB as Database
 
     C->>TA: Execute
@@ -288,8 +291,8 @@ sequenceDiagram
     H-->>UoW: Done
     UoW->>TA: Complete
     TA->>TA: activity.Complete()
-    TA->>AH: Emit ActivityCompleted
-    AH->>DB: Persist AuditEntry
+    TA->>AR: RecordActivity(activity)
+    AR->>DB: Persist AuditEntry
 ```
 
 ### Touch Recording

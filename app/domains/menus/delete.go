@@ -8,8 +8,11 @@ import (
 )
 
 func (m *Module) Delete(ctx *middleware.Context, id entity.MenuID) (*models.Menu, error) {
-	return middleware.RunCommand(ctx, authz.ActionDelete,
-		middleware.Get(m.queries.Get, id),
-		m.commands.Delete,
-	)
+	return middleware.RunCommand(ctx, middleware.CommandSpec[*models.Menu, *models.Menu]{
+		Action: authz.ActionDelete,
+		Load: func(ctx *middleware.Context) (*models.Menu, error) {
+			return m.queries.Get(ctx, id)
+		},
+		Handle: m.commands.Delete,
+	})
 }

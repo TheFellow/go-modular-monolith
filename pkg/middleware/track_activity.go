@@ -3,16 +3,23 @@ package middleware
 import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 )
 
-func TrackActivity() CommandMiddleware {
-	return func(ctx *Context, action cedar.EntityUID, next CommandNext) error {
-		activity := middlewareevents.NewActivity(action, cedar.EntityUID{}, ctx.Principal())
+func TrackActivity() Middleware {
+	return func(ctx *Context, op Operation, next Next) error {
+		if op.Kind != OperationKindCommand {
+			return next(ctx)
+		}
+
+		recorder, ok := ctx.ActivityRecorder()
+		if !ok || recorder == nil {
+			return errors.Internalf("activity recorder missing from context")
+		}
+
+		activity := middlewareevents.NewActivity(op.Action, op.Resource.UID, ctx.Principal())
 		WithActivity(activity)(ctx)
 
 		err := next(ctx)
@@ -24,33 +31,29 @@ func TrackActivity() CommandMiddleware {
 		}
 		activity.Complete(err)
 
-		d, ok := DispatcherFromContext(ctx.Context)
-		if ok && d != nil {
-			event := middlewareevents.ActivityCompleted{Activity: *activity}
-			dispatch := func(dispatchCtx *Context) error {
-				if derr := d.Dispatch(dispatchCtx, event); derr != nil {
-					log.FromContext(dispatchCtx).Error("dispatch activity completed", log.Err(derr))
-					if err == nil {
-						return errors.Internalf("dispatch activity completed: %w", derr)
-					}
+		record := func(recordCtx *Context) error {
+			if rerr := recorder.RecordActivity(recordCtx, *activity); rerr != nil {
+				log.FromContext(recordCtx).Error("record activity", log.Err(rerr))
+				if err == nil {
+					return errors.Internalf("record activity: %w", rerr)
 				}
-				return nil
 			}
+			return nil
+		}
 
-			if tx, ok := ctx.Transaction(); ok && tx != nil {
-				if derr := dispatch(ctx); derr != nil {
-					return derr
-				}
-			} else if s, ok := store.FromContext(ctx.Context); ok && s != nil {
-				if derr := s.Write(ctx, func(tx *bstore.Tx) error {
-					txCtx := NewContext(ctx, WithTransaction(tx))
-					return dispatch(txCtx)
-				}); derr != nil {
-					return derr
-				}
-			} else if derr := dispatch(ctx); derr != nil {
-				return derr
+		if tx, ok := ctx.Transaction(); ok && tx != nil {
+			if rerr := record(ctx); rerr != nil {
+				return rerr
 			}
+		} else if s, ok := ctx.Store(); ok && s != nil {
+			if rerr := s.Write(ctx, func(tx *bstore.Tx) error {
+				txCtx := NewContext(ctx, WithTransaction(tx))
+				return record(txCtx)
+			}); rerr != nil {
+				return rerr
+			}
+		} else if rerr := record(ctx); rerr != nil {
+			return rerr
 		}
 
 		return err

@@ -11,7 +11,7 @@ func Read(ctx Context, f func(*bstore.Tx) error) error {
 	if tx, ok := ctx.Transaction(); ok && tx != nil {
 		return f(tx)
 	}
-	s, ok := FromContext(ctx)
+	s, ok := ctx.Store()
 	if !ok || s == nil {
 		return errors.Internalf("store missing from context")
 	}

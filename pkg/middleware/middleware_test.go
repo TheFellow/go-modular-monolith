@@ -87,11 +87,11 @@ func TestQueryLogging_PermissionError_LogsDenied(t *testing.T) {
 
 	action := drinksauthz.ActionList
 
-	chain := middleware.NewQueryChain(
-		middleware.QueryLogging(),
+	chain := middleware.NewChain(
+		middleware.Logging(),
 	)
 
-	err := chain.Execute(mctx, action, func(_ *middleware.Context) error {
+	err := chain.Execute(mctx, middleware.QueryOperation(action), func(_ *middleware.Context) error {
 		return errors.Permissionf("access denied")
 	})
 
@@ -118,11 +118,11 @@ func TestQueryLogging_OtherError_Logs(t *testing.T) {
 
 	action := drinksauthz.ActionList
 
-	chain := middleware.NewQueryChain(
-		middleware.QueryLogging(),
+	chain := middleware.NewChain(
+		middleware.Logging(),
 	)
 
-	err := chain.Execute(mctx, action, func(_ *middleware.Context) error {
+	err := chain.Execute(mctx, middleware.QueryOperation(action), func(_ *middleware.Context) error {
 		return errors.Internalf("database error")
 	})
 
@@ -145,11 +145,11 @@ func TestCommandLogging_PermissionError_LogsDenied(t *testing.T) {
 
 	action := drinksauthz.ActionCreate
 
-	chain := middleware.NewCommandChain(
-		middleware.CommandLogging(),
+	chain := middleware.NewChain(
+		middleware.Logging(),
 	)
 
-	err := chain.Execute(mctx, action, func(_ *middleware.Context) error {
+	err := chain.Execute(mctx, middleware.CommandOperation(action), func(_ *middleware.Context) error {
 		return errors.Permissionf("access denied")
 	})
 
@@ -184,7 +184,7 @@ func TestQueryChain_WithAuthZ_Denial_LogsOnceAndRecordsRequestMetrics(t *testing
 	action := drinksauthz.ActionCreate
 
 	// Use the full chain with AuthZ
-	err := middleware.Query.Execute(mctx, action, func(_ *middleware.Context) error {
+	err := middleware.Query.Execute(mctx, middleware.QueryOperation(action), func(_ *middleware.Context) error {
 		t.Fatal("handler should not be called when authz denies")
 		return nil
 	})
@@ -228,7 +228,7 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	action := drinksauthz.ActionList
 	handlerCalled := false
 
-	err := middleware.Query.Execute(mctx, action, func(_ *middleware.Context) error {
+	err := middleware.Query.Execute(mctx, middleware.QueryOperation(action), func(_ *middleware.Context) error {
 		handlerCalled = true
 		return nil
 	})
@@ -250,6 +250,31 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	queryDuration := mem.HistogramCount(telemetry.MetricQueryDuration, "Drink.list")
 	if queryDuration != 1 {
 		t.Errorf("expected 1 query duration observation, got %v", queryDuration)
+	}
+}
+
+func TestTrackActivity_MissingRecorderFailsBeforeCommand(t *testing.T) {
+	t.Parallel()
+
+	logBuf := &testLogBuffer{}
+	mem := telemetry.Memory()
+	mctx := newTestContext(logBuf, mem)
+
+	chain := middleware.NewChain(
+		middleware.TrackActivity(),
+	)
+
+	called := false
+	err := chain.Execute(mctx, middleware.CommandOperation(drinksauthz.ActionCreate), func(_ *middleware.Context) error {
+		called = true
+		return nil
+	})
+
+	if !errors.IsInternal(err) {
+		t.Fatalf("expected internal setup error, got %v", err)
+	}
+	if called {
+		t.Fatal("expected command body not to run without an activity recorder")
 	}
 }
 
@@ -286,13 +311,13 @@ func TestDispatchEvents_DispatchesEvents(t *testing.T) {
 	action := drinksauthz.ActionCreate
 
 	// Use just DispatchEvents middleware to test dispatch behavior
-	chain := middleware.NewCommandChain(
+	chain := middleware.NewChain(
 		middleware.DispatchEvents(),
 	)
 
 	event := testEvent{Name: "created"}
 
-	err := chain.Execute(mctx, action, func(ctx *middleware.Context) error {
+	err := chain.Execute(mctx, middleware.CommandOperation(action), func(ctx *middleware.Context) error {
 		ctx.AddEvent(event)
 		return nil
 	})
@@ -339,11 +364,11 @@ func TestDispatchEvents_DoesNotCascadeNewEvents(t *testing.T) {
 
 	action := drinksauthz.ActionCreate
 
-	chain := middleware.NewCommandChain(
+	chain := middleware.NewChain(
 		middleware.DispatchEvents(),
 	)
 
-	err := chain.Execute(mctx, action, func(ctx *middleware.Context) error {
+	err := chain.Execute(mctx, middleware.CommandOperation(action), func(ctx *middleware.Context) error {
 		ctx.AddEvent(testEvent{Name: "created"})
 		return nil
 	})

@@ -78,6 +78,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	noDispatchCtx := middleware.NewContext(context.Background(),
 		middleware.WithStore(f.Store),
 		middleware.WithPrincipal(ctx.Principal()),
+		middleware.WithActivityRecorder(a.Audit),
 	)
 	updated, err := a.Inventory.Set(noDispatchCtx, &inventoryM.Update{
 		IngredientID: ingredient.ID,

@@ -4,7 +4,6 @@ import (
 	"slices"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/cedar-policy/cedar-go"
 )
 
 // EventDispatcher dispatches domain events to their handlers.
@@ -14,13 +13,17 @@ type EventDispatcher interface {
 
 // DispatchEvents dispatches any events collected on the middleware context
 // after the command completes.
-func DispatchEvents() CommandMiddleware {
-	return func(ctx *Context, _ cedar.EntityUID, next CommandNext) error {
+func DispatchEvents() Middleware {
+	return func(ctx *Context, op Operation, next Next) error {
+		if op.Kind != OperationKindCommand {
+			return next(ctx)
+		}
+
 		if err := next(ctx); err != nil {
 			return err
 		}
 
-		d, ok := DispatcherFromContext(ctx.Context)
+		d, ok := ctx.Dispatcher()
 		if !ok || d == nil {
 			return nil
 		}
