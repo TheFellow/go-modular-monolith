@@ -253,6 +253,31 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	}
 }
 
+func TestTrackActivity_MissingRecorderFailsBeforeCommand(t *testing.T) {
+	t.Parallel()
+
+	logBuf := &testLogBuffer{}
+	mem := telemetry.Memory()
+	mctx := newTestContext(logBuf, mem)
+
+	chain := middleware.NewChain(
+		middleware.TrackActivity(),
+	)
+
+	called := false
+	err := chain.Execute(mctx, middleware.CommandOperation(drinksauthz.ActionCreate), func(_ *middleware.Context) error {
+		called = true
+		return nil
+	})
+
+	if !errors.IsInternal(err) {
+		t.Fatalf("expected internal setup error, got %v", err)
+	}
+	if called {
+		t.Fatal("expected command body not to run without an activity recorder")
+	}
+}
+
 // --- Test Event Dispatch Through Full Command Chain ---
 
 type mockDispatcher struct {

@@ -14,6 +14,11 @@ func TrackActivity() Middleware {
 			return next(ctx)
 		}
 
+		recorder, ok := ctx.ActivityRecorder()
+		if !ok || recorder == nil {
+			return errors.Internalf("activity recorder missing from context")
+		}
+
 		activity := middlewareevents.NewActivity(op.Action, op.Resource.UID, ctx.Principal())
 		WithActivity(activity)(ctx)
 
@@ -26,32 +31,29 @@ func TrackActivity() Middleware {
 		}
 		activity.Complete(err)
 
-		recorder, ok := ctx.ActivityRecorder()
-		if ok && recorder != nil {
-			record := func(recordCtx *Context) error {
-				if rerr := recorder.RecordActivity(recordCtx, *activity); rerr != nil {
-					log.FromContext(recordCtx).Error("record activity", log.Err(rerr))
-					if err == nil {
-						return errors.Internalf("record activity: %w", rerr)
-					}
+		record := func(recordCtx *Context) error {
+			if rerr := recorder.RecordActivity(recordCtx, *activity); rerr != nil {
+				log.FromContext(recordCtx).Error("record activity", log.Err(rerr))
+				if err == nil {
+					return errors.Internalf("record activity: %w", rerr)
 				}
-				return nil
 			}
+			return nil
+		}
 
-			if tx, ok := ctx.Transaction(); ok && tx != nil {
-				if rerr := record(ctx); rerr != nil {
-					return rerr
-				}
-			} else if s, ok := ctx.Store(); ok && s != nil {
-				if rerr := s.Write(ctx, func(tx *bstore.Tx) error {
-					txCtx := NewContext(ctx, WithTransaction(tx))
-					return record(txCtx)
-				}); rerr != nil {
-					return rerr
-				}
-			} else if rerr := record(ctx); rerr != nil {
+		if tx, ok := ctx.Transaction(); ok && tx != nil {
+			if rerr := record(ctx); rerr != nil {
 				return rerr
 			}
+		} else if s, ok := ctx.Store(); ok && s != nil {
+			if rerr := s.Write(ctx, func(tx *bstore.Tx) error {
+				txCtx := NewContext(ctx, WithTransaction(tx))
+				return record(txCtx)
+			}); rerr != nil {
+				return rerr
+			}
+		} else if rerr := record(ctx); rerr != nil {
+			return rerr
 		}
 
 		return err
