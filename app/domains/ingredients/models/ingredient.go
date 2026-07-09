@@ -1,6 +1,7 @@
 package models
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -72,10 +73,8 @@ func (c Category) Validate() error {
 	if c == "" {
 		return errors.Invalidf("category is required")
 	}
-	for _, v := range AllCategories() {
-		if c == v {
-			return nil
-		}
+	if slices.Contains(AllCategories(), c) {
+		return nil
 	}
 	return errors.Invalidf("invalid category %q", string(c))
 }

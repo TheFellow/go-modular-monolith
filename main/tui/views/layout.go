@@ -13,10 +13,7 @@ func SplitListDetailWidths(width int) (int, int) {
 	}
 	detailWidth := width - listWidth
 	if detailWidth < 24 {
-		detailWidth = width - 24
-		if detailWidth < 0 {
-			detailWidth = 0
-		}
+		detailWidth = max(width-24, 0)
 		listWidth = width - detailWidth
 	}
 

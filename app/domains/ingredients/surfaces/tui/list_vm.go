@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	drinks "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
@@ -26,6 +27,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+type listMode int
+
+const (
+	listModeBrowsing listMode = iota
+	listModeCreating
+	listModeEditing
+	listModeConfirmingDelete
+)
+
 // ListViewModel renders the ingredients list and detail panes.
 type ListViewModel struct {
 	app    *app.App
@@ -39,6 +49,7 @@ type ListViewModel struct {
 
 	list    list.Model
 	detail  *DetailViewModel
+	mode    listMode
 	create  *CreateIngredientVM
 	edit    *EditIngredientVM
 	dialog  *dialog.ConfirmDialog
@@ -89,68 +100,79 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadIngredients())
 }
 
+func (m *ListViewModel) HandleBackKey() bool {
+	return m.mode != listModeBrowsing
+}
+
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
-		if m.create != nil {
+		switch m.mode {
+		case listModeBrowsing:
+		case listModeCreating:
 			m.create.SetWidth(m.detailWidth)
-		}
-		if m.edit != nil {
+		case listModeEditing:
 			m.edit.SetWidth(m.detailWidth)
-		}
-		if m.dialog != nil {
+		case listModeConfirmingDelete:
 			m.dialog.SetWidth(m.width)
 		}
 		return m, nil
 	case IngredientCreatedMsg:
+		m.mode = listModeBrowsing
 		m.create = nil
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
 	case IngredientUpdatedMsg:
+		m.mode = listModeBrowsing
 		m.edit = nil
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
 	case IngredientDeletedMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.deleteTarget = nil
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
 	case DeleteErrorMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.deleteTarget = nil
 		m.err = msg.Err
 		return m, nil
 	case showDeleteDialogMsg:
+		m.mode = listModeConfirmingDelete
 		m.dialog = msg.dialog
 		m.deleteTarget = &msg.target
-		if m.dialog != nil {
-			m.dialog.SetWidth(m.width)
-		}
+		m.dialog.SetWidth(m.width)
 		return m, nil
 	case dialog.ConfirmMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		return m, m.performDelete()
 	case dialog.CancelMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.deleteTarget = nil
 		return m, nil
 	case tea.KeyMsg:
-		if m.dialog != nil {
+		switch m.mode {
+		case listModeBrowsing:
+		case listModeConfirmingDelete:
 			break
-		}
-		if m.create != nil {
+		case listModeCreating:
 			if key.Matches(msg, m.keys.Back) {
+				m.mode = listModeBrowsing
 				m.create = nil
 				return m, nil
 			}
 			break
-		}
-		if m.edit != nil {
+		case listModeEditing:
 			if key.Matches(msg, m.keys.Back) {
+				m.mode = listModeBrowsing
 				m.edit = nil
 				return m, nil
 			}
@@ -180,19 +202,17 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.dialog != nil {
+	switch m.mode {
+	case listModeBrowsing:
+	case listModeConfirmingDelete:
 		var cmd tea.Cmd
 		m.dialog, cmd = m.dialog.Update(msg)
 		return m, cmd
-	}
-
-	if m.edit != nil {
+	case listModeEditing:
 		var cmd tea.Cmd
 		m.edit, cmd = m.edit.Update(msg)
 		return m, cmd
-	}
-
-	if m.create != nil {
+	case listModeCreating:
 		var cmd tea.Cmd
 		m.create, cmd = m.create.Update(msg)
 		return m, cmd
@@ -215,7 +235,7 @@ func (m *ListViewModel) View() string {
 		return m.renderLoading()
 	}
 
-	if m.dialog != nil {
+	if m.mode == listModeConfirmingDelete {
 		dialogView := m.dialog.View()
 		if m.width > 0 && m.height > 0 {
 			return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialogView)
@@ -230,9 +250,11 @@ func (m *ListViewModel) View() string {
 	listView = m.styles.ListPane.Width(m.listWidth).Render(listView)
 
 	detailView := m.detail.View()
-	if m.create != nil {
+	switch m.mode {
+	case listModeBrowsing, listModeConfirmingDelete:
+	case listModeCreating:
 		detailView = m.create.View()
-	} else if m.edit != nil {
+	case listModeEditing:
 		detailView = m.edit.View()
 	}
 	detailView = m.styles.DetailPane.Width(m.detailWidth).Render(detailView)
@@ -241,39 +263,43 @@ func (m *ListViewModel) View() string {
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	if m.dialog != nil {
+	switch m.mode {
+	case listModeConfirmingDelete:
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
-	}
-	if m.create != nil || m.edit != nil {
+	case listModeCreating, listModeEditing:
 		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
+	case listModeBrowsing:
+		return []key.Binding{
+			m.keys.Up, m.keys.Down,
+			m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
+			m.keys.Create, m.keys.Edit, m.keys.Delete,
+			m.keys.Refresh, m.keys.Back,
+		}
 	}
-	return []key.Binding{
-		m.keys.Up, m.keys.Down,
-		m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
-		m.keys.Create, m.keys.Edit, m.keys.Delete,
-		m.keys.Refresh, m.keys.Back,
-	}
+	return nil
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
-	if m.dialog != nil {
+	switch m.mode {
+	case listModeConfirmingDelete:
 		return [][]key.Binding{
 			{m.dialogKeys.Confirm, m.keys.Back},
 			{m.dialogKeys.Switch},
 		}
-	}
-	if m.create != nil || m.edit != nil {
+	case listModeCreating, listModeEditing:
 		return [][]key.Binding{
 			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
 			{m.keys.Back},
 		}
+	case listModeBrowsing:
+		return [][]key.Binding{
+			{m.keys.Up, m.keys.Down, m.keys.Enter},
+			{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
+			{m.keys.Create, m.keys.Edit, m.keys.Delete},
+			{m.keys.Refresh, m.keys.Back},
+		}
 	}
-	return [][]key.Binding{
-		{m.keys.Up, m.keys.Down, m.keys.Enter},
-		{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
-		{m.keys.Create, m.keys.Edit, m.keys.Delete},
-		{m.keys.Refresh, m.keys.Back},
-	}
+	return nil
 }
 
 func (m *ListViewModel) loadIngredients() tea.Cmd {
@@ -296,6 +322,7 @@ func (m *ListViewModel) loadIngredients() tea.Cmd {
 }
 
 func (m *ListViewModel) startCreate() tea.Cmd {
+	m.mode = listModeCreating
 	m.create = NewCreateIngredientVM(m.app)
 	m.create.SetWidth(m.detailWidth)
 	return m.create.Init()
@@ -311,6 +338,7 @@ func (m *ListViewModel) startEdit() tea.Cmd {
 	if ingredient == nil {
 		return nil
 	}
+	m.mode = listModeEditing
 	m.edit = NewEditIngredientVM(m.app, ingredient)
 	m.edit.SetWidth(m.detailWidth)
 	return m.edit.Init()
@@ -356,10 +384,7 @@ func (m *ListViewModel) showDeleteConfirm(ingredient *models.Ingredient) tea.Cmd
 }
 
 func (m *ListViewModel) performDelete() tea.Cmd {
-	if m.deleteTarget == nil {
-		return nil
-	}
-	target := m.deleteTarget
+	target := *m.deleteTarget
 	return func() tea.Msg {
 		deleted, err := m.app.Ingredients.Delete(m.context(), target.ID)
 		if err != nil {
@@ -433,10 +458,8 @@ func drinkUsesIngredient(drink *drinksmodels.Drink, ingredientID entity.Ingredie
 		if recipeIngredient.IngredientID == ingredientID {
 			return true
 		}
-		for _, substitute := range recipeIngredient.Substitutes {
-			if substitute == ingredientID {
-				return true
-			}
+		if slices.Contains(recipeIngredient.Substitutes, ingredientID) {
+			return true
 		}
 	}
 	return false

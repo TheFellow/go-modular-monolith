@@ -62,6 +62,7 @@ go build ./...
 go tool arch-lint -config=.arch-lint.yaml
 go tool go-check-sumtype ./...
 go tool exhaustive ./...
+go tool modernize ./...
 go test ./...
 ```
 
@@ -249,7 +250,8 @@ Seven `arch-lint` rules (`.arch-lint.yaml`) enforce module boundaries at CI time
 | handlers-no-modules | Handlers accessing module roots (must use queries/events/models) |
 
 Additional compile-time guarantees: `go-check-sumtype` enforces exhaustive pattern matching on
-sum types, and `exhaustive` ensures all enum switches are complete.
+sum types, `exhaustive` ensures all enum switches are complete, and `modernize` keeps the code on
+current Go idioms.
 
 ## Cross-Transport Error Types
 

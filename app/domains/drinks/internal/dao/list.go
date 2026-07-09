@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"slices"
+
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -65,10 +67,8 @@ func (d *DAO) ListByIngredient(ctx store.Context, ingredientID entity.Ingredient
 				if ri.IngredientID == target {
 					return true
 				}
-				for _, sub := range ri.Substitutes {
-					if sub == target {
-						return true
-					}
+				if slices.Contains(ri.Substitutes, target) {
+					return true
 				}
 			}
 			return false

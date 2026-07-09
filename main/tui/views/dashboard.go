@@ -379,10 +379,7 @@ func (d *Dashboard) layoutConfig() (int, int) {
 
 	gap := 2
 	minCardWidth := 28
-	availableWidth := d.width - (dashboardEdgeMargin * 2)
-	if availableWidth < 0 {
-		availableWidth = 0
-	}
+	availableWidth := max(d.width-(dashboardEdgeMargin*2), 0)
 	available := availableWidth - gap
 	if available >= minCardWidth*2 {
 		return available / 2, 2

@@ -165,12 +165,9 @@ func (g *otelGauge) Dec(labelValues ...string) {
 }
 
 func toAttrs(keys []string, values []string) []attribute.KeyValue {
-	n := len(keys)
-	if len(values) < n {
-		n = len(values)
-	}
+	n := min(len(values), len(keys))
 	attrs := make([]attribute.KeyValue, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		attrs = append(attrs, attribute.String(keys[i], values[i]))
 	}
 	return attrs

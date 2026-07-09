@@ -29,6 +29,14 @@ const (
 	inventoryColumnGap = 1
 )
 
+type listMode int
+
+const (
+	listModeBrowsing listMode = iota
+	listModeAdjusting
+	listModeSetting
+)
+
 // ListViewModel renders the inventory list and detail panes.
 type ListViewModel struct {
 	app    *app.App
@@ -41,6 +49,7 @@ type ListViewModel struct {
 	rows        []InventoryRow
 	table       table.Model
 	detail      *DetailViewModel
+	mode        listMode
 	adjust      *AdjustInventoryVM
 	set         *SetInventoryVM
 	spinner     components.Spinner
@@ -80,37 +89,47 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadInventory())
 }
 
+func (m *ListViewModel) HandleBackKey() bool {
+	return m.mode != listModeBrowsing
+}
+
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
-		if m.adjust != nil {
+		switch m.mode {
+		case listModeBrowsing:
+		case listModeAdjusting:
 			m.adjust.SetWidth(m.detailWidth)
-		}
-		if m.set != nil {
+		case listModeSetting:
 			m.set.SetWidth(m.detailWidth)
 		}
 		return m, nil
 	case InventoryAdjustedMsg:
+		m.mode = listModeBrowsing
 		m.adjust = nil
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
 	case InventorySetMsg:
+		m.mode = listModeBrowsing
 		m.set = nil
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
 	case tea.KeyMsg:
-		if m.adjust != nil {
+		switch m.mode {
+		case listModeBrowsing:
+		case listModeAdjusting:
 			if key.Matches(msg, m.keys.Back) {
+				m.mode = listModeBrowsing
 				m.adjust = nil
 				return m, nil
 			}
 			break
-		}
-		if m.set != nil {
+		case listModeSetting:
 			if key.Matches(msg, m.keys.Back) {
+				m.mode = listModeBrowsing
 				m.set = nil
 				return m, nil
 			}
@@ -136,13 +155,13 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.adjust != nil {
+	switch m.mode {
+	case listModeBrowsing:
+	case listModeAdjusting:
 		var cmd tea.Cmd
 		m.adjust, cmd = m.adjust.Update(msg)
 		return m, cmd
-	}
-
-	if m.set != nil {
+	case listModeSetting:
 		var cmd tea.Cmd
 		m.set, cmd = m.set.Update(msg)
 		return m, cmd
@@ -172,9 +191,11 @@ func (m *ListViewModel) View() string {
 	listView = m.styles.ListPane.Width(m.listWidth).Render(listView)
 
 	detailView := m.detail.View()
-	if m.adjust != nil {
+	switch m.mode {
+	case listModeBrowsing:
+	case listModeAdjusting:
 		detailView = m.adjust.View()
-	} else if m.set != nil {
+	case listModeSetting:
 		detailView = m.set.View()
 	}
 	detailView = m.styles.DetailPane.Width(m.detailWidth).Render(detailView)
@@ -183,24 +204,30 @@ func (m *ListViewModel) View() string {
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	if m.adjust != nil || m.set != nil {
+	switch m.mode {
+	case listModeAdjusting, listModeSetting:
 		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
+	case listModeBrowsing:
+		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Adjust, m.keys.Set, m.keys.Refresh, m.keys.Back}
 	}
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Adjust, m.keys.Set, m.keys.Refresh, m.keys.Back}
+	return nil
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
-	if m.adjust != nil || m.set != nil {
+	switch m.mode {
+	case listModeAdjusting, listModeSetting:
 		return [][]key.Binding{
 			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
 			{m.keys.Back},
 		}
+	case listModeBrowsing:
+		return [][]key.Binding{
+			{m.keys.Up, m.keys.Down, m.keys.Enter},
+			{m.keys.Adjust, m.keys.Set},
+			{m.keys.Refresh, m.keys.Back},
+		}
 	}
-	return [][]key.Binding{
-		{m.keys.Up, m.keys.Down, m.keys.Enter},
-		{m.keys.Adjust, m.keys.Set},
-		{m.keys.Refresh, m.keys.Back},
-	}
+	return nil
 }
 
 func (m *ListViewModel) loadInventory() tea.Cmd {
@@ -275,6 +302,7 @@ func (m *ListViewModel) startAdjust() tea.Cmd {
 	if !ok {
 		return nil
 	}
+	m.mode = listModeAdjusting
 	m.adjust = NewAdjustInventoryVM(m.app, row)
 	m.adjust.SetWidth(m.detailWidth)
 	return m.adjust.Init()
@@ -285,6 +313,7 @@ func (m *ListViewModel) startSet() tea.Cmd {
 	if !ok {
 		return nil
 	}
+	m.mode = listModeSetting
 	m.set = NewSetInventoryVM(m.app, row)
 	m.set.SetWidth(m.detailWidth)
 	return m.set.Init()
@@ -319,10 +348,7 @@ func (m *ListViewModel) setSize(width, height int) {
 
 	listWidth, detailWidth := views.SplitListDetailWidths(width)
 	listPadLeft, listPadRight := m.styles.ListPane.GetPaddingLeft(), m.styles.ListPane.GetPaddingRight()
-	innerListWidth := listWidth - listPadLeft - listPadRight
-	if innerListWidth < 0 {
-		innerListWidth = 0
-	}
+	innerListWidth := max(listWidth-listPadLeft-listPadRight, 0)
 	m.table.SetColumns(inventoryColumns(innerListWidth))
 	m.table.SetWidth(innerListWidth)
 	tableHeight := height
@@ -368,15 +394,9 @@ func inventoryColumns(width int) []table.Column {
 		width = defaultWidth
 	}
 
-	contentWidth := width - (inventoryColumnGap * columnCount)
-	if contentWidth < 0 {
-		contentWidth = 0
-	}
+	contentWidth := max(width-(inventoryColumnGap*columnCount), 0)
 
-	nameWidth := contentWidth - (categoryWidth + quantityWidth + costWidth + statusWidth)
-	if nameWidth < 0 {
-		nameWidth = 0
-	}
+	nameWidth := max(contentWidth-(categoryWidth+quantityWidth+costWidth+statusWidth), 0)
 
 	return []table.Column{
 		{Title: "Ingredient", Width: nameWidth},
