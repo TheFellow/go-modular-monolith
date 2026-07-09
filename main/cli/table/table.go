@@ -11,12 +11,7 @@ import (
 
 // PrintTable prints items as a table with headers from struct tags.
 func PrintTable[T any](items []T) error {
-	itemType := reflect.TypeOf(items)
-	if itemType == nil || itemType.Kind() != reflect.Slice {
-		return fmt.Errorf("table: items must be a slice")
-	}
-
-	elemType := itemType.Elem()
+	elemType := reflect.TypeFor[T]()
 	if elemType.Kind() == reflect.Ptr {
 		elemType = elemType.Elem()
 	}
