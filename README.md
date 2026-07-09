@@ -262,16 +262,19 @@ domain surface-agnostic — commands return domain errors that each surface rend
 
 The TUI (`go run ./main/cli --tui`) provides a Bubble Tea interface for all six domains.
 
-Each domain surface ships list, detail, create, and edit view models. The TUI runs queries and
-commands through the same middleware pipelines as the CLI, so authorization, logging, metrics,
-and audit tracking all apply identically. Forms include validation, and destructive actions
-(delete, draft) use confirmation dialogs with danger styling.
+Every domain surface supports list/detail navigation, with write workflows where the domain
+has useful TUI operations: drinks and ingredients support create/edit/delete, inventory supports
+adjust/set, menus support create/rename/delete/publish/draft, and orders support complete/cancel.
+The TUI runs queries and commands through the same middleware pipelines as the CLI, so
+authorization, logging, metrics, and write-command audit tracking apply consistently across
+surfaces. Forms include validation, and destructive or state-changing actions use confirmation
+dialogs with danger styling.
 
 ## Activity Tracking & Audit
 
-Every command execution is tracked as an **Activity** and persisted to the audit log through
-an explicit activity recorder. Domain events continue through the dispatcher; audit activity
-recording is separate from that event flow.
+Every write command executed through `RunCommand` is tracked as an **Activity** and persisted to
+the audit log through an explicit activity recorder. Domain events continue through the dispatcher;
+audit activity recording is separate from that event flow.
 
 ```mermaid
 sequenceDiagram
