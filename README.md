@@ -10,8 +10,8 @@ a CLI and a Bubble Tea TUI, both backed by an embedded bstore (bbolt) database.
 
 ### Prerequisites
 
-- Go `1.25.5` or newer (see `go.mod`)
-- No root `Makefile` or wrapper scripts are required; the repo uses plain `go` commands, and the lint tools are pinned in `go.mod` and run via `go tool`
+- Go `1.26.5` or newer (see `go.mod`)
+- No root `Makefile` or wrapper scripts are required; the repo uses plain `go` commands, `arch-lint` runs via `go tool`, and Go linting runs through the pinned `golangci-lint` command shown below.
 
 ### Common Local Workflow
 
@@ -60,9 +60,7 @@ The CLI hardcodes `data/mixology.db`.
 go generate ./...
 go build ./...
 go tool arch-lint -config=.arch-lint.yaml
-go tool go-check-sumtype ./...
-go tool exhaustive ./...
-go tool modernize ./...
+go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
 go test ./...
 ```
 
@@ -249,9 +247,8 @@ Seven `arch-lint` rules (`.arch-lint.yaml`) enforce module boundaries at CI time
 | models-no-internal | Domain models depending on internal packages |
 | handlers-no-modules | Handlers accessing module roots (must use queries/events/models) |
 
-Additional compile-time guarantees: `go-check-sumtype` enforces exhaustive pattern matching on
-sum types, `exhaustive` ensures all enum switches are complete, and `modernize` keeps the code on
-current Go idioms.
+Additional compile-time guarantees: `golangci-lint` runs the sum type, enum exhaustiveness, and
+modernization checks, while `arch-lint` enforces module boundaries.
 
 ## Cross-Transport Error Types
 

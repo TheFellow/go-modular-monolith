@@ -4,13 +4,6 @@ go 1.26.5
 
 tool github.com/TheFellow/arch-lint
 
-tool github.com/alecthomas/go-check-sumtype/cmd/go-check-sumtype
-
-tool (
-	github.com/nishanths/exhaustive/cmd/exhaustive
-	golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize
-)
-
 require (
 	github.com/cedar-policy/cedar-go v1.4.0
 	github.com/charmbracelet/bubbles v0.21.0
@@ -31,15 +24,16 @@ require (
 
 require (
 	github.com/TheFellow/arch-lint v0.0.12 // indirect
-	github.com/alecthomas/go-check-sumtype v0.3.1 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
+	github.com/aymanbagabas/go-udiff v0.4.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.8.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
 	github.com/charmbracelet/x/ansi v0.10.1 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd // indirect
+	github.com/charmbracelet/x/exp/golden v0.0.0-20250806222409-83e3a29d542f // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -54,7 +48,6 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/nishanths/exhaustive v0.12.0 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.67.4 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
@@ -76,7 +69,6 @@ require (
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/tools v0.47.1-0.20260707181000-a299dadba899 // indirect
-	golang.org/x/tools/gopls v0.23.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251222181119-0a764e51fe1b // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
