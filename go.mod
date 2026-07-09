@@ -1,6 +1,6 @@
 module github.com/TheFellow/go-modular-monolith
 
-go 1.25.5
+go 1.26.5
 
 tool github.com/TheFellow/arch-lint
 
@@ -76,7 +76,7 @@ require (
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/tools v0.47.1-0.20260707181000-a299dadba899 // indirect
-	golang.org/x/tools/gopls v0.21.1 // indirect
+	golang.org/x/tools/gopls v0.23.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251222181119-0a764e51fe1b // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )

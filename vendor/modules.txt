@@ -299,8 +299,8 @@ golang.org/x/tools/internal/typeparams
 golang.org/x/tools/internal/typesinternal
 golang.org/x/tools/internal/typesinternal/typeindex
 golang.org/x/tools/internal/versions
-# golang.org/x/tools/gopls v0.21.1
-## explicit; go 1.25
+# golang.org/x/tools/gopls v0.23.0
+## explicit; go 1.26.0
 golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize
 # google.golang.org/genproto/googleapis/rpc v0.0.0-20251222181119-0a764e51fe1b
 ## explicit; go 1.24.0
