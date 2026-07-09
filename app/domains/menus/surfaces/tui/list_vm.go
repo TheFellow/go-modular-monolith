@@ -23,6 +23,26 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+type listMode int
+
+const (
+	listModeBrowsing listMode = iota
+	listModeCreating
+	listModeRenaming
+	listModeConfirmingDelete
+	listModeConfirmingPublish
+	listModeConfirmingDraft
+)
+
+func (m listMode) isConfirming() bool {
+	switch m {
+	case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
+		return true
+	default:
+		return false
+	}
+}
+
 // ListViewModel renders the menus list and detail panes.
 type ListViewModel struct {
 	app    *app.App
@@ -36,6 +56,7 @@ type ListViewModel struct {
 
 	list    list.Model
 	detail  *DetailViewModel
+	mode    listMode
 	create  *CreateMenuVM
 	rename  *RenameMenuVM
 	dialog  *dialog.ConfirmDialog
@@ -89,124 +110,131 @@ func (m *ListViewModel) Init() tea.Cmd {
 }
 
 func (m *ListViewModel) HandleBackKey() bool {
-	return m.create != nil || m.rename != nil || m.dialog != nil
+	return m.mode != listModeBrowsing
 }
 
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
-		if m.create != nil {
+		switch m.mode {
+		case listModeCreating:
 			m.create.SetWidth(m.detailWidth)
-		}
-		if m.rename != nil {
+		case listModeRenaming:
 			m.rename.SetWidth(m.detailWidth)
-		}
-		if m.dialog != nil {
+		case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
 			m.dialog.SetWidth(m.width)
 		}
 		return m, nil
 	case MenuCreatedMsg:
+		m.mode = listModeBrowsing
 		m.create = nil
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
 	case MenuRenamedMsg:
+		m.mode = listModeBrowsing
 		m.rename = nil
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
 	case MenuDeletedMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.deleteTarget = nil
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
 	case MenuPublishedMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.publishTarget = nil
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
 	case MenuDraftedMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.draftTarget = nil
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
 	case DeleteErrorMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.deleteTarget = nil
 		m.err = msg.Err
 		return m, nil
 	case PublishErrorMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.publishTarget = nil
 		m.err = msg.Err
 		return m, nil
 	case DraftErrorMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.draftTarget = nil
 		m.err = msg.Err
 		return m, nil
 	case showDeleteDialogMsg:
+		m.mode = listModeConfirmingDelete
 		m.dialog = msg.dialog
 		m.deleteTarget = &msg.target
 		m.publishTarget = nil
 		m.draftTarget = nil
-		if m.dialog != nil {
-			m.dialog.SetWidth(m.width)
-		}
+		m.dialog.SetWidth(m.width)
 		return m, nil
 	case showPublishDialogMsg:
+		m.mode = listModeConfirmingPublish
 		m.dialog = msg.dialog
 		m.publishTarget = &msg.target
 		m.deleteTarget = nil
 		m.draftTarget = nil
-		if m.dialog != nil {
-			m.dialog.SetWidth(m.width)
-		}
+		m.dialog.SetWidth(m.width)
 		return m, nil
 	case showDraftDialogMsg:
+		m.mode = listModeConfirmingDraft
 		m.dialog = msg.dialog
 		m.draftTarget = &msg.target
 		m.deleteTarget = nil
 		m.publishTarget = nil
-		if m.dialog != nil {
-			m.dialog.SetWidth(m.width)
-		}
+		m.dialog.SetWidth(m.width)
 		return m, nil
 	case dialog.ConfirmMsg:
+		mode := m.mode
+		m.mode = listModeBrowsing
 		m.dialog = nil
-		if m.deleteTarget != nil {
+		switch mode {
+		case listModeConfirmingDelete:
 			return m, m.performDelete()
-		}
-		if m.publishTarget != nil {
+		case listModeConfirmingPublish:
 			return m, m.performPublish()
-		}
-		if m.draftTarget != nil {
+		case listModeConfirmingDraft:
 			return m, m.performDraft()
 		}
 		return m, nil
 	case dialog.CancelMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.deleteTarget = nil
 		m.publishTarget = nil
 		m.draftTarget = nil
 		return m, nil
 	case tea.KeyMsg:
-		if m.dialog != nil {
+		switch m.mode {
+		case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
 			break
-		}
-		if m.create != nil {
+		case listModeCreating:
 			if key.Matches(msg, m.keys.Back) {
+				m.mode = listModeBrowsing
 				m.create = nil
 				return m, nil
 			}
 			break
-		}
-		if m.rename != nil {
+		case listModeRenaming:
 			if key.Matches(msg, m.keys.Back) {
+				m.mode = listModeBrowsing
 				m.rename = nil
 				return m, nil
 			}
@@ -240,19 +268,16 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.dialog != nil {
+	switch m.mode {
+	case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
 		var cmd tea.Cmd
 		m.dialog, cmd = m.dialog.Update(msg)
 		return m, cmd
-	}
-
-	if m.rename != nil {
+	case listModeRenaming:
 		var cmd tea.Cmd
 		m.rename, cmd = m.rename.Update(msg)
 		return m, cmd
-	}
-
-	if m.create != nil {
+	case listModeCreating:
 		var cmd tea.Cmd
 		m.create, cmd = m.create.Update(msg)
 		return m, cmd
@@ -275,7 +300,7 @@ func (m *ListViewModel) View() string {
 		return m.renderLoading()
 	}
 
-	if m.dialog != nil {
+	if m.mode.isConfirming() {
 		dialogView := m.dialog.View()
 		if m.width > 0 && m.height > 0 {
 			return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialogView)
@@ -290,9 +315,10 @@ func (m *ListViewModel) View() string {
 	listView = m.styles.ListPane.Width(m.listWidth).Render(listView)
 
 	detailView := m.detail.View()
-	if m.create != nil {
+	switch m.mode {
+	case listModeCreating:
 		detailView = m.create.View()
-	} else if m.rename != nil {
+	case listModeRenaming:
 		detailView = m.rename.View()
 	}
 	detailView = m.styles.DetailPane.Width(m.detailWidth).Render(detailView)
@@ -301,10 +327,10 @@ func (m *ListViewModel) View() string {
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	if m.dialog != nil {
+	switch m.mode {
+	case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
-	}
-	if m.create != nil || m.rename != nil {
+	case listModeCreating, listModeRenaming:
 		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
 	}
 	return []key.Binding{
@@ -316,13 +342,13 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
-	if m.dialog != nil {
+	switch m.mode {
+	case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
 		return [][]key.Binding{
 			{m.dialogKeys.Confirm, m.keys.Back},
 			{m.dialogKeys.Switch},
 		}
-	}
-	if m.create != nil || m.rename != nil {
+	case listModeCreating, listModeRenaming:
 		return [][]key.Binding{
 			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
 			{m.keys.Back},
@@ -356,6 +382,7 @@ func (m *ListViewModel) loadMenus() tea.Cmd {
 }
 
 func (m *ListViewModel) startCreate() tea.Cmd {
+	m.mode = listModeCreating
 	m.create = NewCreateMenuVM(m.app)
 	m.create.SetWidth(m.detailWidth)
 	return m.create.Init()
@@ -381,6 +408,7 @@ func (m *ListViewModel) startRename() tea.Cmd {
 	if menu == nil {
 		return nil
 	}
+	m.mode = listModeRenaming
 	m.rename = NewRenameMenuVM(m.app, menu)
 	m.rename.SetWidth(m.detailWidth)
 	return m.rename.Init()
@@ -425,10 +453,7 @@ func (m *ListViewModel) showDeleteConfirm(menu *menusmodels.Menu) tea.Cmd {
 }
 
 func (m *ListViewModel) performDelete() tea.Cmd {
-	if m.deleteTarget == nil {
-		return nil
-	}
-	target := m.deleteTarget
+	target := *m.deleteTarget
 	return func() tea.Msg {
 		deleted, err := m.app.Menus.Delete(m.context(), target.ID)
 		if err != nil {
@@ -473,10 +498,7 @@ func (m *ListViewModel) showPublishConfirm(menu *menusmodels.Menu) tea.Cmd {
 }
 
 func (m *ListViewModel) performPublish() tea.Cmd {
-	if m.publishTarget == nil {
-		return nil
-	}
-	target := m.publishTarget
+	target := *m.publishTarget
 	return func() tea.Msg {
 		published, err := m.app.Menus.Publish(m.context(), &menusmodels.Menu{ID: target.ID})
 		if err != nil {
@@ -519,10 +541,7 @@ func (m *ListViewModel) showDraftConfirm(menu *menusmodels.Menu) tea.Cmd {
 }
 
 func (m *ListViewModel) performDraft() tea.Cmd {
-	if m.draftTarget == nil {
-		return nil
-	}
-	target := m.draftTarget
+	target := *m.draftTarget
 	return func() tea.Msg {
 		drafted, err := m.app.Menus.Draft(m.context(), &menusmodels.Menu{ID: target.ID})
 		if err != nil {

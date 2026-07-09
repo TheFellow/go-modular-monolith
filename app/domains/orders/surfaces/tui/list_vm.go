@@ -24,6 +24,23 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+type listMode int
+
+const (
+	listModeBrowsing listMode = iota
+	listModeConfirmingComplete
+	listModeConfirmingCancel
+)
+
+func (m listMode) isConfirming() bool {
+	switch m {
+	case listModeConfirmingComplete, listModeConfirmingCancel:
+		return true
+	default:
+		return false
+	}
+}
+
 // ListViewModel renders the orders list and detail panes.
 type ListViewModel struct {
 	app    *app.App
@@ -35,6 +52,7 @@ type ListViewModel struct {
 
 	list    list.Model
 	detail  *DetailViewModel
+	mode    listMode
 	dialog  *dialog.ConfirmDialog
 	spinner components.Spinner
 	loading bool
@@ -83,71 +101,76 @@ func (m *ListViewModel) Init() tea.Cmd {
 }
 
 func (m *ListViewModel) HandleBackKey() bool {
-	return m.dialog != nil
+	return m.mode != listModeBrowsing
 }
 
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
-		if m.dialog != nil {
+		if m.mode.isConfirming() {
 			m.dialog.SetWidth(m.width)
 		}
 		return m, nil
 	case OrderCompletedMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.completeTarget = nil
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadOrders())
 	case OrderCancelledMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.cancelTarget = nil
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadOrders())
 	case CompleteErrorMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.completeTarget = nil
 		m.err = msg.Err
 		return m, nil
 	case CancelErrorMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.cancelTarget = nil
 		m.err = msg.Err
 		return m, nil
 	case showCompleteDialogMsg:
+		m.mode = listModeConfirmingComplete
 		m.dialog = msg.dialog
 		m.completeTarget = &msg.target
 		m.cancelTarget = nil
-		if m.dialog != nil {
-			m.dialog.SetWidth(m.width)
-		}
+		m.dialog.SetWidth(m.width)
 		return m, nil
 	case showCancelDialogMsg:
+		m.mode = listModeConfirmingCancel
 		m.dialog = msg.dialog
 		m.cancelTarget = &msg.target
 		m.completeTarget = nil
-		if m.dialog != nil {
-			m.dialog.SetWidth(m.width)
-		}
+		m.dialog.SetWidth(m.width)
 		return m, nil
 	case dialog.ConfirmMsg:
+		mode := m.mode
+		m.mode = listModeBrowsing
 		m.dialog = nil
-		if m.completeTarget != nil {
+		switch mode {
+		case listModeConfirmingComplete:
 			return m, m.performComplete()
-		}
-		if m.cancelTarget != nil {
+		case listModeConfirmingCancel:
 			return m, m.performCancel()
 		}
 		return m, nil
 	case dialog.CancelMsg:
+		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.completeTarget = nil
 		m.cancelTarget = nil
 		return m, nil
 	case tea.KeyMsg:
-		if m.dialog != nil {
+		if m.mode.isConfirming() {
 			break
 		}
 		switch {
@@ -177,7 +200,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.dialog != nil {
+	if m.mode.isConfirming() {
 		var cmd tea.Cmd
 		m.dialog, cmd = m.dialog.Update(msg)
 		return m, cmd
@@ -200,7 +223,7 @@ func (m *ListViewModel) View() string {
 		return m.renderLoading()
 	}
 
-	if m.dialog != nil {
+	if m.mode.isConfirming() {
 		dialogView := m.dialog.View()
 		if m.width > 0 && m.height > 0 {
 			return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialogView)
@@ -221,7 +244,7 @@ func (m *ListViewModel) View() string {
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	if m.dialog != nil {
+	if m.mode.isConfirming() {
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
 	}
 	return []key.Binding{
@@ -233,7 +256,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
-	if m.dialog != nil {
+	if m.mode.isConfirming() {
 		return [][]key.Binding{
 			{m.dialogKeys.Confirm, m.keys.Back},
 			{m.dialogKeys.Switch},
@@ -313,10 +336,7 @@ func (m *ListViewModel) showCompleteConfirm(order *ordersmodels.Order) tea.Cmd {
 }
 
 func (m *ListViewModel) performComplete() tea.Cmd {
-	if m.completeTarget == nil {
-		return nil
-	}
-	target := m.completeTarget
+	target := *m.completeTarget
 	return func() tea.Msg {
 		updated, err := m.app.Orders.Complete(m.context(), &ordersmodels.Order{ID: target.ID})
 		if err != nil {
@@ -365,10 +385,7 @@ func (m *ListViewModel) showCancelConfirm(order *ordersmodels.Order) tea.Cmd {
 }
 
 func (m *ListViewModel) performCancel() tea.Cmd {
-	if m.cancelTarget == nil {
-		return nil
-	}
-	target := m.cancelTarget
+	target := *m.cancelTarget
 	return func() tea.Msg {
 		updated, err := m.app.Orders.Cancel(m.context(), &ordersmodels.Order{ID: target.ID})
 		if err != nil {
