@@ -240,28 +240,30 @@ go.yaml.in/yaml/v2
 # golang.org/x/exp v0.0.0-20220921023135-46d9e7742f1e
 ## explicit; go 1.18
 golang.org/x/exp/constraints
-# golang.org/x/mod v0.30.0
-## explicit; go 1.24.0
+# golang.org/x/mod v0.37.0
+## explicit; go 1.25.0
 golang.org/x/mod/semver
-# golang.org/x/sync v0.19.0
-## explicit; go 1.24.0
+# golang.org/x/sync v0.21.0
+## explicit; go 1.25.0
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.39.0
-## explicit; go 1.24.0
+# golang.org/x/sys v0.46.0
+## explicit; go 1.25.0
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/text v0.31.0
-## explicit; go 1.24.0
+# golang.org/x/text v0.38.0
+## explicit; go 1.25.0
 golang.org/x/text/transform
-# golang.org/x/tools v0.39.0
-## explicit; go 1.24.0
+# golang.org/x/tools v0.47.1-0.20260707181000-a299dadba899
+## explicit; go 1.25.0
 golang.org/x/tools/go/analysis
 golang.org/x/tools/go/analysis/checker
 golang.org/x/tools/go/analysis/internal
 golang.org/x/tools/go/analysis/internal/analysisflags
 golang.org/x/tools/go/analysis/internal/checker
+golang.org/x/tools/go/analysis/multichecker
 golang.org/x/tools/go/analysis/passes/inspect
+golang.org/x/tools/go/analysis/passes/modernize
 golang.org/x/tools/go/analysis/singlechecker
 golang.org/x/tools/go/analysis/unitchecker
 golang.org/x/tools/go/ast/astutil
@@ -272,7 +274,10 @@ golang.org/x/tools/go/packages
 golang.org/x/tools/go/types/objectpath
 golang.org/x/tools/go/types/typeutil
 golang.org/x/tools/internal/aliases
+golang.org/x/tools/internal/analysis/analyzerutil
 golang.org/x/tools/internal/analysis/driverutil
+golang.org/x/tools/internal/analysis/typeindex
+golang.org/x/tools/internal/astutil
 golang.org/x/tools/internal/astutil/free
 golang.org/x/tools/internal/diff
 golang.org/x/tools/internal/diff/lcs
@@ -281,14 +286,22 @@ golang.org/x/tools/internal/event/core
 golang.org/x/tools/internal/event/keys
 golang.org/x/tools/internal/event/label
 golang.org/x/tools/internal/facts
+golang.org/x/tools/internal/fmtstr
 golang.org/x/tools/internal/gcimporter
 golang.org/x/tools/internal/gocommand
+golang.org/x/tools/internal/moreiters
+golang.org/x/tools/internal/packagepath
 golang.org/x/tools/internal/packagesinternal
 golang.org/x/tools/internal/pkgbits
+golang.org/x/tools/internal/refactor
 golang.org/x/tools/internal/stdlib
 golang.org/x/tools/internal/typeparams
 golang.org/x/tools/internal/typesinternal
+golang.org/x/tools/internal/typesinternal/typeindex
 golang.org/x/tools/internal/versions
+# golang.org/x/tools/gopls v0.21.1
+## explicit; go 1.25
+golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize
 # google.golang.org/genproto/googleapis/rpc v0.0.0-20251222181119-0a764e51fe1b
 ## explicit; go 1.24.0
 # google.golang.org/grpc v1.78.0

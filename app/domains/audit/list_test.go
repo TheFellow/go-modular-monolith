@@ -1,6 +1,7 @@
 package audit_test
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -247,10 +248,5 @@ func TestAudit_ListFiltersByTime(t *testing.T) {
 }
 
 func touchesContain(touches []cedar.EntityUID, uid cedar.EntityUID) bool {
-	for _, touch := range touches {
-		if touch == uid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(touches, uid)
 }

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	drinks "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
@@ -457,10 +458,8 @@ func drinkUsesIngredient(drink *drinksmodels.Drink, ingredientID entity.Ingredie
 		if recipeIngredient.IngredientID == ingredientID {
 			return true
 		}
-		for _, substitute := range recipeIngredient.Substitutes {
-			if substitute == ingredientID {
-				return true
-			}
+		if slices.Contains(recipeIngredient.Substitutes, ingredientID) {
+			return true
 		}
 	}
 	return false

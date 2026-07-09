@@ -83,8 +83,8 @@ func parsePrice(s string) (money.Price, error) {
 		return money.Price{}, errors.Invalidf("price is required")
 	}
 
-	if strings.HasPrefix(s, "$") {
-		return money.NewPrice(strings.TrimPrefix(s, "$"), currency.USD)
+	if after, ok := strings.CutPrefix(s, "$"); ok {
+		return money.NewPrice(after, currency.USD)
 	}
 
 	parts := strings.Fields(s)

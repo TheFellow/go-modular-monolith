@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"slices"
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
@@ -93,10 +94,5 @@ func matchesEntityFilterRow(entity cedar.EntityUID, row AuditEntryRow) bool {
 	if row.ResourceType == string(entity.Type) && row.ResourceID == string(entity.ID) {
 		return true
 	}
-	for _, touched := range row.Touches {
-		if touched == entity {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(row.Touches, entity)
 }

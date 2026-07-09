@@ -348,10 +348,7 @@ func (m *ListViewModel) setSize(width, height int) {
 
 	listWidth, detailWidth := views.SplitListDetailWidths(width)
 	listPadLeft, listPadRight := m.styles.ListPane.GetPaddingLeft(), m.styles.ListPane.GetPaddingRight()
-	innerListWidth := listWidth - listPadLeft - listPadRight
-	if innerListWidth < 0 {
-		innerListWidth = 0
-	}
+	innerListWidth := max(listWidth-listPadLeft-listPadRight, 0)
 	m.table.SetColumns(inventoryColumns(innerListWidth))
 	m.table.SetWidth(innerListWidth)
 	tableHeight := height
@@ -397,15 +394,9 @@ func inventoryColumns(width int) []table.Column {
 		width = defaultWidth
 	}
 
-	contentWidth := width - (inventoryColumnGap * columnCount)
-	if contentWidth < 0 {
-		contentWidth = 0
-	}
+	contentWidth := max(width-(inventoryColumnGap*columnCount), 0)
 
-	nameWidth := contentWidth - (categoryWidth + quantityWidth + costWidth + statusWidth)
-	if nameWidth < 0 {
-		nameWidth = 0
-	}
+	nameWidth := max(contentWidth-(categoryWidth+quantityWidth+costWidth+statusWidth), 0)
 
 	return []table.Column{
 		{Title: "Ingredient", Width: nameWidth},

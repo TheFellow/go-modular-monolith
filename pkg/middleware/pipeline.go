@@ -1,6 +1,10 @@
 package middleware
 
-import cedar "github.com/cedar-policy/cedar-go"
+import (
+	"slices"
+
+	cedar "github.com/cedar-policy/cedar-go"
+)
 
 type OperationKind string
 
@@ -57,8 +61,7 @@ func NewChain(middlewares ...Middleware) *Chain {
 
 func (c *Chain) Execute(ctx *Context, op Operation, final Next) error {
 	next := final
-	for i := len(c.middlewares) - 1; i >= 0; i-- {
-		m := c.middlewares[i]
+	for _, m := range slices.Backward(c.middlewares) {
 		prev := next
 		next = func(inner *Context) error {
 			return m(inner, op, prev)
