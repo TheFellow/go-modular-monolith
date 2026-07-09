@@ -108,6 +108,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 		switch m.mode {
+		case listModeBrowsing:
 		case listModeCreating:
 			m.create.SetWidth(m.detailWidth)
 		case listModeEditing:
@@ -158,6 +159,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		switch m.mode {
+		case listModeBrowsing:
 		case listModeConfirmingDelete:
 			break
 		case listModeCreating:
@@ -200,6 +202,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	}
 
 	switch m.mode {
+	case listModeBrowsing:
 	case listModeConfirmingDelete:
 		var cmd tea.Cmd
 		m.dialog, cmd = m.dialog.Update(msg)
@@ -247,6 +250,7 @@ func (m *ListViewModel) View() string {
 
 	detailView := m.detail.View()
 	switch m.mode {
+	case listModeBrowsing, listModeConfirmingDelete:
 	case listModeCreating:
 		detailView = m.create.View()
 	case listModeEditing:
@@ -263,13 +267,15 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
 	case listModeCreating, listModeEditing:
 		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
+	case listModeBrowsing:
+		return []key.Binding{
+			m.keys.Up, m.keys.Down,
+			m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
+			m.keys.Create, m.keys.Edit, m.keys.Delete,
+			m.keys.Refresh, m.keys.Back,
+		}
 	}
-	return []key.Binding{
-		m.keys.Up, m.keys.Down,
-		m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
-		m.keys.Create, m.keys.Edit, m.keys.Delete,
-		m.keys.Refresh, m.keys.Back,
-	}
+	return nil
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
@@ -284,13 +290,15 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
 			{m.keys.Back},
 		}
+	case listModeBrowsing:
+		return [][]key.Binding{
+			{m.keys.Up, m.keys.Down, m.keys.Enter},
+			{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
+			{m.keys.Create, m.keys.Edit, m.keys.Delete},
+			{m.keys.Refresh, m.keys.Back},
+		}
 	}
-	return [][]key.Binding{
-		{m.keys.Up, m.keys.Down, m.keys.Enter},
-		{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
-		{m.keys.Create, m.keys.Edit, m.keys.Delete},
-		{m.keys.Refresh, m.keys.Back},
-	}
+	return nil
 }
 
 func (m *ListViewModel) loadIngredients() tea.Cmd {

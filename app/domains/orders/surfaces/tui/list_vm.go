@@ -36,9 +36,10 @@ func (m listMode) isConfirming() bool {
 	switch m {
 	case listModeConfirmingComplete, listModeConfirmingCancel:
 		return true
-	default:
+	case listModeBrowsing:
 		return false
 	}
+	return false
 }
 
 // ListViewModel renders the orders list and detail panes.
@@ -161,6 +162,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.performComplete()
 		case listModeConfirmingCancel:
 			return m, m.performCancel()
+		case listModeBrowsing:
+			panic(fmt.Sprintf("confirm message received in %v mode", m.mode))
 		}
 		return m, nil
 	case dialog.CancelMsg:

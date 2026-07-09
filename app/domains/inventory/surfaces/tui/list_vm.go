@@ -98,6 +98,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 		switch m.mode {
+		case listModeBrowsing:
 		case listModeAdjusting:
 			m.adjust.SetWidth(m.detailWidth)
 		case listModeSetting:
@@ -118,6 +119,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
 	case tea.KeyMsg:
 		switch m.mode {
+		case listModeBrowsing:
 		case listModeAdjusting:
 			if key.Matches(msg, m.keys.Back) {
 				m.mode = listModeBrowsing
@@ -154,6 +156,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	}
 
 	switch m.mode {
+	case listModeBrowsing:
 	case listModeAdjusting:
 		var cmd tea.Cmd
 		m.adjust, cmd = m.adjust.Update(msg)
@@ -189,6 +192,7 @@ func (m *ListViewModel) View() string {
 
 	detailView := m.detail.View()
 	switch m.mode {
+	case listModeBrowsing:
 	case listModeAdjusting:
 		detailView = m.adjust.View()
 	case listModeSetting:
@@ -203,8 +207,10 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	switch m.mode {
 	case listModeAdjusting, listModeSetting:
 		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
+	case listModeBrowsing:
+		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Adjust, m.keys.Set, m.keys.Refresh, m.keys.Back}
 	}
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Adjust, m.keys.Set, m.keys.Refresh, m.keys.Back}
+	return nil
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
@@ -214,12 +220,14 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
 			{m.keys.Back},
 		}
+	case listModeBrowsing:
+		return [][]key.Binding{
+			{m.keys.Up, m.keys.Down, m.keys.Enter},
+			{m.keys.Adjust, m.keys.Set},
+			{m.keys.Refresh, m.keys.Back},
+		}
 	}
-	return [][]key.Binding{
-		{m.keys.Up, m.keys.Down, m.keys.Enter},
-		{m.keys.Adjust, m.keys.Set},
-		{m.keys.Refresh, m.keys.Back},
-	}
+	return nil
 }
 
 func (m *ListViewModel) loadInventory() tea.Cmd {

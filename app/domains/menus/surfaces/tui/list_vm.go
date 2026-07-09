@@ -38,9 +38,10 @@ func (m listMode) isConfirming() bool {
 	switch m {
 	case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
 		return true
-	default:
+	case listModeBrowsing, listModeCreating, listModeRenaming:
 		return false
 	}
+	return false
 }
 
 // ListViewModel renders the menus list and detail panes.
@@ -118,6 +119,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 		switch m.mode {
+		case listModeBrowsing:
 		case listModeCreating:
 			m.create.SetWidth(m.detailWidth)
 		case listModeRenaming:
@@ -212,6 +214,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.performPublish()
 		case listModeConfirmingDraft:
 			return m, m.performDraft()
+		case listModeBrowsing, listModeCreating, listModeRenaming:
+			panic(fmt.Sprintf("confirm message received in %v mode", m.mode))
 		}
 		return m, nil
 	case dialog.CancelMsg:
@@ -223,6 +227,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		switch m.mode {
+		case listModeBrowsing:
 		case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
 			break
 		case listModeCreating:
@@ -269,6 +274,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	}
 
 	switch m.mode {
+	case listModeBrowsing:
 	case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
 		var cmd tea.Cmd
 		m.dialog, cmd = m.dialog.Update(msg)
@@ -316,6 +322,7 @@ func (m *ListViewModel) View() string {
 
 	detailView := m.detail.View()
 	switch m.mode {
+	case listModeBrowsing, listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
 	case listModeCreating:
 		detailView = m.create.View()
 	case listModeRenaming:
@@ -332,13 +339,15 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
 	case listModeCreating, listModeRenaming:
 		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
+	case listModeBrowsing:
+		return []key.Binding{
+			m.keys.Up, m.keys.Down,
+			m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
+			m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Draft,
+			m.keys.Refresh, m.keys.Back,
+		}
 	}
-	return []key.Binding{
-		m.keys.Up, m.keys.Down,
-		m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
-		m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Draft,
-		m.keys.Refresh, m.keys.Back,
-	}
+	return nil
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
@@ -353,13 +362,15 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
 			{m.keys.Back},
 		}
+	case listModeBrowsing:
+		return [][]key.Binding{
+			{m.keys.Up, m.keys.Down, m.keys.Enter},
+			{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
+			{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Draft},
+			{m.keys.Refresh, m.keys.Back},
+		}
 	}
-	return [][]key.Binding{
-		{m.keys.Up, m.keys.Down, m.keys.Enter},
-		{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
-		{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Draft},
-		{m.keys.Refresh, m.keys.Back},
-	}
+	return nil
 }
 
 func (m *ListViewModel) loadMenus() tea.Cmd {
