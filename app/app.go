@@ -21,7 +21,7 @@ import (
 )
 
 type App struct {
-	Store       optional.Value[*store.Store]
+	Store       *store.Store
 	Dispatcher  middleware.EventDispatcher
 	Logger      *slog.Logger
 	Metrics     telemetry.Metrics
@@ -36,47 +36,34 @@ type App struct {
 	metricsCollector *middleware.MetricsCollector
 }
 
-func New(opts ...Option) *App {
+// New constructs the application around a required store. Domain modules
+// register their private persistence models before New returns.
+func New(s *store.Store, opts ...Option) *App {
 	a := &App{
-		Store:       optional.None[*store.Store](),
+		Store:       s,
 		Dispatcher:  dispatcher.New(),
 		Logger:      slog.Default(),
 		Metrics:     telemetry.Nop(),
-		Audit:       audit.NewModule(),
-		Drinks:      drinks.NewModule(),
-		Ingredients: ingredients.NewModule(),
-		Inventory:   inventory.NewModule(),
-		Menus:       menus.NewModule(),
-		Orders:      orders.NewModule(),
+		Audit:       audit.NewModule(s),
+		Drinks:      drinks.NewModule(s),
+		Ingredients: ingredients.NewModule(s),
+		Inventory:   inventory.NewModule(s),
+		Menus:       menus.NewModule(s),
+		Orders:      orders.NewModule(s),
 		principal:   optional.None[cedar.EntityUID](),
 	}
 
 	for _, opt := range opts {
-		if opt != nil {
-			opt(a)
-		}
+		opt(a)
 	}
 
-	if a.Logger == nil {
-		a.Logger = slog.Default()
-	}
-	if a.Metrics == nil {
-		a.Metrics = telemetry.Nop()
-	}
 	a.metricsCollector = middleware.NewMetricsCollector(a.Metrics)
 
 	return a
 }
 
 func (a *App) Close() error {
-	if a == nil {
-		return nil
-	}
-	s, ok := a.Store.Unwrap()
-	if !ok || s == nil {
-		return nil
-	}
-	return s.Close()
+	return a.Store.Close()
 }
 
 func (a *App) Context() *middleware.Context {
@@ -92,9 +79,6 @@ func (a *App) ContextFor(parent context.Context, principal cedar.EntityUID) *mid
 }
 
 func (a *App) principalOrAnonymous() cedar.EntityUID {
-	if a == nil {
-		return authn.Anonymous()
-	}
 	if principal, ok := a.principal.Unwrap(); ok {
 		return principal
 	}
@@ -106,27 +90,15 @@ func (a *App) contextWithPrincipal(parent context.Context, principal cedar.Entit
 		parent = context.Background()
 	}
 
-	if a != nil {
-		parent = log.ToContext(parent, a.Logger.With(log.Actor(principal)))
-		parent = telemetry.WithMetrics(parent, a.Metrics)
-	}
+	parent = log.ToContext(parent, a.Logger.With(log.Actor(principal)))
+	parent = telemetry.WithMetrics(parent, a.Metrics)
 
 	opts := []middleware.ContextOpt{
 		middleware.WithPrincipal(principal),
-	}
-	if a != nil {
-		if s, ok := a.Store.Unwrap(); ok && s != nil {
-			opts = append(opts, middleware.WithStore(s))
-		}
-		if a.Dispatcher != nil {
-			opts = append(opts, middleware.WithEventDispatcher(a.Dispatcher))
-		}
-		if a.Audit != nil {
-			opts = append(opts, middleware.WithActivityRecorder(a.Audit))
-		}
-		if a.metricsCollector != nil {
-			opts = append(opts, middleware.WithMetricsCollector(a.metricsCollector))
-		}
+		middleware.WithStore(a.Store),
+		middleware.WithEventDispatcher(a.Dispatcher),
+		middleware.WithActivityRecorder(a.Audit),
+		middleware.WithMetricsCollector(a.metricsCollector),
 	}
 	return middleware.NewContext(parent, opts...)
 }

@@ -102,6 +102,11 @@ main/
   seed/            Database seeder
 ```
 
+The store is a required app-bootstrap dependency. As each bounded context is constructed, it
+registers its own internal bstore model with that store. Persistence types stay behind their
+domain boundary, invalid registration panics immediately as a programming error, and importing a
+package has no database-registration side effects.
+
 ## Bounded Contexts Overview
 
 ```mermaid

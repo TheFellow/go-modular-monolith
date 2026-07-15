@@ -211,6 +211,9 @@ container orchestration.
 
 It uses bstore (embedded bbolt) — zero external dependencies. ACID transactions.
 `UnitOfWork` middleware means if a handler fails, everything rolls back. The database is a file.
+The store is injected during app bootstrap, and each bounded context registers its internal
+persistence model while it is constructed. Invalid bootstrap wiring panics immediately, and
+package imports do not mutate a global registry.
 
 The project could add gRPC, Kafka, and Kubernetes. It doesn't need to yet. Every piece of
 infrastructure in this codebase exists because it solves a problem that actually occurred, not

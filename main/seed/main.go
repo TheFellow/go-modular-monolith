@@ -77,11 +77,10 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("open store: %w", err)
 	}
-	defer s.Close()
 
 	// Create app
 	a := app.New(
-		app.WithStore(s),
+		s,
 		app.WithPrincipal(authn.Owner()),
 	)
 	defer a.Close()
