@@ -143,7 +143,7 @@ func (c *CLI) Command() *cli.Command {
 				return ctx, err
 			}
 			c.app = app.New(
-				app.WithStore(s),
+				s,
 				app.WithLogger(logger),
 				app.WithMetrics(metrics),
 				app.WithPrincipal(p),

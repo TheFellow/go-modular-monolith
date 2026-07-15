@@ -3,6 +3,7 @@ package audit
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/queries"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type Module struct {
@@ -10,7 +11,8 @@ type Module struct {
 	queries *queries.Queries
 }
 
-func NewModule() *Module {
+func NewModule(s *store.Store) *Module {
+	dao.Register(s)
 	return &Module{
 		dao:     dao.New(),
 		queries: queries.New(),

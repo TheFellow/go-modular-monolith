@@ -6,6 +6,6 @@ type DAO struct{}
 
 func New() *DAO { return &DAO{} }
 
-func init() {
-	store.RegisterTypes(AuditEntryRow{})
+func Register(s *store.Store) {
+	s.Register(AuditEntryRow{})
 }

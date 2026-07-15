@@ -48,7 +48,7 @@ func NewFixture(t testing.TB) *Fixture {
 	p, err := authn.ParseActor("owner")
 	Ok(t, err)
 	a := app.New(
-		app.WithStore(s),
+		s,
 		app.WithLogger(logger),
 		app.WithMetrics(metrics),
 		app.WithPrincipal(p),

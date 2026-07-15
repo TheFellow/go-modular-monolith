@@ -20,6 +20,13 @@ func ToTUIError(err error) TUIError {
 	}
 
 	style := TUIStyleError
+	message := err.Error()
+
+	var appErr *Error
+	if errors.As(err, &appErr) {
+		message = appErr.UserMessage()
+	}
+
 	var styler tuiStyler
 	if errors.As(err, &styler) {
 		style = styler.TUIStyle()
@@ -27,7 +34,7 @@ func ToTUIError(err error) TUIError {
 
 	return TUIError{
 		Style:   style,
-		Message: err.Error(),
+		Message: message,
 		Err:     err,
 	}
 }

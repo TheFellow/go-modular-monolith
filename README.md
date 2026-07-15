@@ -6,6 +6,8 @@ A modular monolith sample that models a cocktail bar domain with explicit bounde
 middleware pipelines, Cedar-based authorization, and event-driven coordination. It ships with
 a CLI and a Bubble Tea TUI, both backed by an embedded bstore (bbolt) database.
 
+For a guided architectural walkthrough, see the [tutorial series](docs/mixology-onboarding.md).
+
 ## Development
 
 ### Prerequisites
@@ -92,13 +94,18 @@ pkg/
   telemetry/       Prometheus metrics
   log/             Structured slog logging
   errors/          Typed domain errors with mapped exit codes & TUI styles
-  optional/        Generic Value[T] optional type (Some/None/Map/FlatMap)
+  optional/        Minimal generic Value[T] optional type (Some/None/IsSome/Unwrap)
   tui/             Shared Bubble Tea components (forms, dialogs, styles, keys)
   testutil/        Fixtures, bootstrap helpers, assertion utilities
 main/
   cli/             CLI + TUI entry point (--tui flag launches the TUI)
   seed/            Database seeder
 ```
+
+The store is a required app-bootstrap dependency. As each bounded context is constructed, it
+registers its own internal bstore model with that store. Persistence types stay behind their
+domain boundary, invalid registration panics immediately as a programming error, and importing a
+package has no database-registration side effects.
 
 ## Bounded Contexts Overview
 
@@ -231,7 +238,7 @@ invoked by `//go:generate go run ./gen` in the parent package.
 | `pkg/dispatcher/gen` | `*/events/*.go` for event structs, `*/handlers/*.go` for handler methods (AST) | `dispatcher_gen.go` — type-switch `Dispatch()` wiring all event-to-handler relationships |
 | `pkg/authz/gen` | `*/authz/` directories for embedded `.cedar` policy files | `policies_gen.go` — assembles all domain policies into a single `PolicySet` |
 | `app/kernel/entity/gen` | `Entities` slice in `entities.go` | Strongly-typed IDs (`DrinkID`, `MenuID`, etc.) with parse/validate/format methods |
-| `pkg/errors/gen` | `ErrorKinds` slice in `errors.go` | Per-kind error constructors (`Invalidf`, `NotFoundf`, etc.) and matching `testutil` assertion helpers |
+| `pkg/errors/gen` | `AllKinds()` taxonomy in `kind.go` | Per-kind error constructors (`Invalidf`, `NotFoundf`, etc.) and matching `testutil` assertion helpers |
 
 ## Architecture Enforcement
 
@@ -252,11 +259,12 @@ modernization checks, while `arch-lint` enforces module boundaries.
 
 ## Cross-Transport Error Types
 
-Each `ErrorKind` in `pkg/errors` maps a single error category to HTTP status code, gRPC code,
-CLI exit code, and TUI display style simultaneously. The error generator produces both the
-`pkg/errors` types (with `Invalidf()`, `NotFoundf()`, `Permissionf()`, etc.) and matching
-`pkg/testutil` assertion helpers (`AssertNotFound`, `AssertPermission`, etc.). This keeps the
-domain surface-agnostic — commands return domain errors that each surface renders appropriately.
+Each immutable `Kind` specification in `pkg/errors` maps one error category to an HTTP status,
+gRPC code, CLI exit code, and TUI display style. Generated typed wrappers share a common error
+payload that separates diagnostic detail from presentation-safe text. The generator also creates
+matching `pkg/testutil` assertion helpers (`ErrorIsNotFound`, `ErrorIsPermission`, etc.). This
+keeps the domain surface-agnostic while preventing internal errors from leaking through a user
+surface.
 
 ## Terminal UI
 

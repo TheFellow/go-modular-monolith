@@ -12,6 +12,11 @@ func ToCLIExit(err error) error {
 		return nil
 	}
 
+	var appErr *Error
+	if errors.As(err, &appErr) {
+		return cli.Exit(appErr.UserMessage(), appErr.CLIExitCode())
+	}
+
 	if _, ok := errors.AsType[cli.ExitCoder](err); ok {
 		return err
 	}

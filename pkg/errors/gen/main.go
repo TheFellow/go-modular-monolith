@@ -23,10 +23,16 @@ func main() {
 	wd, err := os.Getwd()
 	must(err)
 
+	kinds := perrors.AllKinds()
+	specs := make([]perrors.Spec, 0, len(kinds))
+	for _, kind := range kinds {
+		specs = append(specs, perrors.SpecFor(kind))
+	}
+
 	data := struct {
-		Kinds []perrors.ErrorKind
+		Kinds []perrors.Spec
 	}{
-		Kinds: perrors.ErrorKinds,
+		Kinds: specs,
 	}
 
 	generate(wd, "errors.go.tpl", out, data)
