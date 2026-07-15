@@ -37,14 +37,6 @@ type App struct {
 	pipeline  *middleware.Pipeline
 }
 
-type activityRecorder struct {
-	app *App
-}
-
-func (r activityRecorder) RecordActivity(ctx *middleware.Context, activity middlewareevents.Activity) error {
-	return r.app.Audit.RecordActivity(ctx, activity)
-}
-
 // New constructs the application around a required store. Domain modules
 // register their private persistence models before New returns.
 func New(s *store.Store, opts ...Option) *App {
@@ -61,10 +53,12 @@ func New(s *store.Store, opts ...Option) *App {
 	}
 
 	a.pipeline = middleware.NewPipeline(middleware.PipelineConfig{
-		Store:            a.Store,
-		Dispatcher:       a.Dispatcher,
-		Metrics:          a.Metrics,
-		ActivityRecorder: activityRecorder{app: a},
+		Store:      a.Store,
+		Dispatcher: a.Dispatcher,
+		Metrics:    a.Metrics,
+		RecordActivity: func(ctx *middleware.Context, activity middlewareevents.Activity) error {
+			return a.Audit.RecordActivity(ctx, activity)
+		},
 	})
 	a.Audit = audit.NewModule(s, a.pipeline)
 	a.Drinks = drinks.NewModule(s, a.pipeline)

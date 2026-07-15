@@ -28,8 +28,8 @@ func TestRunCommand_LoaderRunsInTransaction(t *testing.T) {
 	fix := testutil.NewFixture(t)
 	ctx := fix.OwnerContext()
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
-		Store:            fix.Store,
-		ActivityRecorder: fix.Audit,
+		Store:          fix.Store,
+		RecordActivity: fix.Audit.RecordActivity,
 	})
 
 	var sawTx bool

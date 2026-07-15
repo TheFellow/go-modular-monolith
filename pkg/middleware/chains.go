@@ -1,15 +1,16 @@
 package middleware
 
 import (
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 )
 
 type PipelineConfig struct {
-	Store            *store.Store
-	Dispatcher       EventDispatcher
-	Metrics          telemetry.Metrics
-	ActivityRecorder ActivityRecorder
+	Store          *store.Store
+	Dispatcher     EventDispatcher
+	Metrics        telemetry.Metrics
+	RecordActivity func(*Context, middlewareevents.Activity) error
 }
 
 type Pipeline struct {
@@ -27,7 +28,7 @@ func NewPipeline(config PipelineConfig) *Pipeline {
 		command: NewChain(
 			Logging(),
 			Metrics(config.Metrics),
-			TrackActivity(config.Store, config.ActivityRecorder),
+			TrackActivity(config.Store, config.RecordActivity),
 			UnitOfWork(config.Store),
 			DispatchEvents(config.Dispatcher),
 		),

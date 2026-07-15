@@ -246,7 +246,7 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	}
 }
 
-func TestTrackActivity_MissingRecorderFailsBeforeCommand(t *testing.T) {
+func TestTrackActivity_MissingCallbackFailsBeforeCommand(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &testLogBuffer{}
@@ -267,7 +267,7 @@ func TestTrackActivity_MissingRecorderFailsBeforeCommand(t *testing.T) {
 		t.Fatalf("expected internal setup error, got %v", err)
 	}
 	if called {
-		t.Fatal("expected command body not to run without an activity recorder")
+		t.Fatal("expected command body not to run without a record activity callback")
 	}
 }
 

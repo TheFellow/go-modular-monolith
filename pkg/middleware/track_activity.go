@@ -9,14 +9,14 @@ import (
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 )
 
-func TrackActivity(s *store.Store, recorder ActivityRecorder) Middleware {
+func TrackActivity(s *store.Store, recordActivity func(*Context, middlewareevents.Activity) error) Middleware {
 	return func(ctx *Context, op Operation, next Next) error {
 		if op.Kind != OperationKindCommand {
 			return next(ctx)
 		}
 
-		if recorder == nil {
-			return errors.Internalf("activity recorder missing from context")
+		if recordActivity == nil {
+			return errors.Internalf("record activity callback missing from pipeline")
 		}
 
 		activity := middlewareevents.NewActivity(op.Action, op.Resource.UID, ctx.Principal())
@@ -32,7 +32,7 @@ func TrackActivity(s *store.Store, recorder ActivityRecorder) Middleware {
 		activity.Complete(err)
 
 		record := func(recordCtx *Context) error {
-			if rerr := recorder.RecordActivity(recordCtx, *activity); rerr != nil {
+			if rerr := recordActivity(recordCtx, *activity); rerr != nil {
 				log.FromContext(recordCtx).Error("record activity", log.Err(rerr))
 				if err == nil {
 					return errors.Internalf("record activity: %w", rerr)
