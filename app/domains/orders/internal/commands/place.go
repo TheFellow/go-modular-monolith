@@ -60,7 +60,7 @@ func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.
 	created.ID = entity.NewOrderID()
 	created.Status = models.OrderStatusPending
 	created.CreatedAt = now
-	created.CompletedAt = optional.NewNone[time.Time]()
+	created.CompletedAt = optional.None[time.Time]()
 
 	if err := created.Validate(); err != nil {
 		return nil, err

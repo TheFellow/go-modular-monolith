@@ -54,9 +54,7 @@ func TestKindMappings(t *testing.T) {
 			}
 
 			var appErr *errors.Error
-			if !errors.As(err, &appErr) {
-				t.Fatalf("errors.As(*Error) rejected %T", err)
-			}
+			testutil.ErrorAs(t, err, &appErr)
 			if appErr.Kind() != tt.kind || appErr.HTTPStatus() != tt.httpStatus ||
 				appErr.GRPCCode() != tt.grpcCode || appErr.CLIExitCode() != tt.cliCode ||
 				appErr.TUIStyle() != tt.tuiStyle {
@@ -84,9 +82,7 @@ func TestConstructorUnwrap(t *testing.T) {
 	err := errors.Internalf("boom: %w", cause)
 
 	testutil.ErrorIsInternal(t, err)
-	if !errors.Is(err, cause) {
-		t.Fatalf("errors.Is(%v, %v) = false", err, cause)
-	}
+	testutil.ErrorIs(t, err, cause)
 	if errors.Unwrap(err) != cause {
 		t.Fatalf("Unwrap() = %v, want %v", errors.Unwrap(err), cause)
 	}

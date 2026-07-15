@@ -94,7 +94,7 @@ pkg/
   telemetry/       Prometheus metrics
   log/             Structured slog logging
   errors/          Typed domain errors with mapped exit codes & TUI styles
-  optional/        Generic Value[T] optional type (Some/None/Map/FlatMap)
+  optional/        Minimal generic Value[T] optional type (Some/None/IsSome/Unwrap)
   tui/             Shared Bubble Tea components (forms, dialogs, styles, keys)
   testutil/        Fixtures, bootstrap helpers, assertion utilities
 main/

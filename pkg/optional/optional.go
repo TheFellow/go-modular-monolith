@@ -1,54 +1,28 @@
 package optional
 
 type Value[T any] struct {
-	Valid bool
-	Val   T
+	value T
+	valid bool
 }
 
-func NewSome[T any](v T) Value[T] { return Value[T]{Valid: true, Val: v} }
-func NewNone[T any]() Value[T]    { return Value[T]{} }
+// Some constructs a present optional value, including when value is T's zero
+// value.
+func Some[T any](value T) Value[T] {
+	return Value[T]{value: value, valid: true}
+}
 
-func Some[T any](v T) Value[T] { return NewSome(v) }
-func None[T any]() Value[T]    { return NewNone[T]() }
+// None constructs an absent optional value. The zero value of Value[T] is
+// also None.
+func None[T any]() Value[T] { return Value[T]{} }
 
-func (v Value[T]) IsSome() bool { return v.Valid }
-func (v Value[T]) IsNone() bool { return !v.Valid }
+// IsSome reports whether the optional contains a value.
+func (v Value[T]) IsSome() bool { return v.valid }
 
+// IsNone reports whether the optional is absent.
+func (v Value[T]) IsNone() bool { return !v.valid }
+
+// Unwrap returns the wrapped value and true when present, or T's zero value
+// and false when absent.
 func (v Value[T]) Unwrap() (T, bool) {
-	return v.Val, v.Valid
-}
-
-func (v Value[T]) Must() T {
-	if !v.Valid {
-		panic("optional: called Must on None")
-	}
-	return v.Val
-}
-
-func (v Value[T]) Or(fallback T) T {
-	if v.Valid {
-		return v.Val
-	}
-	return fallback
-}
-
-func (v Value[T]) OrElse(fallback func() T) T {
-	if v.Valid {
-		return v.Val
-	}
-	return fallback()
-}
-
-func Map[T, U any](v Value[T], f func(T) U) Value[U] {
-	if x, ok := v.Unwrap(); ok {
-		return NewSome(f(x))
-	}
-	return NewNone[U]()
-}
-
-func FlatMap[T, U any](v Value[T], f func(T) Value[U]) Value[U] {
-	if x, ok := v.Unwrap(); ok {
-		return f(x)
-	}
-	return NewNone[U]()
+	return v.value, v.valid
 }
