@@ -36,4 +36,5 @@ go.work.sum
 .cache/
 .gocache/
 /.claude/
+/.ai/
 /data/*
