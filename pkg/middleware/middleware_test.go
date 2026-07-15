@@ -174,12 +174,12 @@ func TestQueryChain_WithAuthZ_Denial_LogsOnceAndRecordsRequestMetrics(t *testing
 
 	// Use anonymous principal which should be denied for create
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
-	mctx := middleware.NewContext(ctx, authn.Anonymous(), pipeline)
+	mctx := middleware.NewContext(ctx, authn.Anonymous(), nil)
 
 	action := drinksauthz.ActionCreate
 
 	// Use the full chain with AuthZ
-	_, err := middleware.RunQuery(mctx, action, func(_ store.Context, _ struct{}) (struct{}, error) {
+	_, err := middleware.RunQuery(pipeline, mctx, action, func(_ store.Context, _ struct{}) (struct{}, error) {
 		t.Fatal("handler should not be called when authz denies")
 		return struct{}{}, nil
 	}, struct{}{})
@@ -216,12 +216,12 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	ctx = telemetry.WithMetrics(ctx, mem)
 
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
-	mctx := middleware.NewContext(ctx, authn.Anonymous(), pipeline)
+	mctx := middleware.NewContext(ctx, authn.Anonymous(), nil)
 
 	action := drinksauthz.ActionList
 	handlerCalled := false
 
-	_, err := middleware.RunQuery(mctx, action, func(_ store.Context, _ struct{}) (struct{}, error) {
+	_, err := middleware.RunQuery(pipeline, mctx, action, func(_ store.Context, _ struct{}) (struct{}, error) {
 		handlerCalled = true
 		return struct{}{}, nil
 	}, struct{}{})

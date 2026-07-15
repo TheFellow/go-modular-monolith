@@ -14,24 +14,20 @@ type Context struct {
 	context.Context
 	events    []any
 	principal cedar.EntityUID
-	pipeline  *Pipeline
+	store     *store.Store
 	tx        *bstore.Tx
 	activity  *middlewareevents.Activity
 }
 
-func NewContext(parent context.Context, principal cedar.EntityUID, pipeline *Pipeline) *Context {
+func NewContext(parent context.Context, principal cedar.EntityUID, s *store.Store) *Context {
 	if parent == nil {
 		parent = context.Background()
 	}
-	if pipeline == nil {
-		pipeline = defaultPipeline
-	}
-
 	c := &Context{
 		Context:   parent,
 		events:    make([]any, 0, 4),
 		principal: principal,
-		pipeline:  pipeline,
+		store:     s,
 	}
 
 	if c.principal.IsZero() {
@@ -65,10 +61,10 @@ func (c *Context) Principal() cedar.EntityUID {
 }
 
 func (c *Context) Store() (*store.Store, bool) {
-	if c == nil || c.pipeline == nil || c.pipeline.store == nil {
+	if c == nil || c.store == nil {
 		return nil, false
 	}
-	return c.pipeline.store, true
+	return c.store, true
 }
 
 func (c *Context) Transaction() (*bstore.Tx, bool) {

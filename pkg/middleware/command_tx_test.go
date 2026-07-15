@@ -27,9 +27,13 @@ func TestRunCommand_LoaderRunsInTransaction(t *testing.T) {
 
 	fix := testutil.NewFixture(t)
 	ctx := fix.OwnerContext()
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
+		Store:            fix.Store,
+		ActivityRecorder: fix.Audit,
+	})
 
 	var sawTx bool
-	_, err := middleware.RunCommand(ctx, middleware.CommandSpec[testEntity, testEntity]{
+	_, err := middleware.RunCommand(pipeline, ctx, middleware.CommandSpec[testEntity, testEntity]{
 		Action: drinksauthz.ActionCreate,
 		Load: func(ctx *middleware.Context) (testEntity, error) {
 			_, sawTx = ctx.Transaction()

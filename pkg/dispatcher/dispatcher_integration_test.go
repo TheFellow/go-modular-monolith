@@ -1,28 +1,21 @@
 package dispatcher_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
 	drinksevents "github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
 	drinksM "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	inventoryevents "github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
 	inventoryM "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/mjl-/bstore"
 )
-
-type noOpDispatcher struct{}
-
-func (noOpDispatcher) Dispatch(*middleware.Context, any) error { return nil }
 
 func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	t.Parallel()
@@ -79,31 +72,13 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("expected initial availability available, got %+v", m2.Items)
 	}
 
-	noDispatchPipeline := middleware.NewPipeline(middleware.PipelineConfig{
-		Store:            f.Store,
-		Dispatcher:       noOpDispatcher{},
-		ActivityRecorder: a.Audit,
-	})
-	noDispatchCtx := middleware.NewContext(context.Background(), ctx.Principal(), noDispatchPipeline)
-	updated, err := a.Inventory.Set(noDispatchCtx, &inventoryM.Update{
+	_, err = a.Inventory.Set(ctx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Amount:       measurement.MustAmount(0, ingredient.Unit),
 		CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
 	})
 	if err != nil {
 		t.Fatalf("set stock to zero: %v", err)
-	}
-
-	d := dispatcher.New()
-	err = f.Store.Write(ctx, func(tx *bstore.Tx) error {
-		txCtx := ctx.WithTransaction(tx)
-		return d.Dispatch(txCtx, inventoryevents.StockAdjusted{
-			Inventory: *updated,
-			Reason:    "used",
-		})
-	})
-	if err != nil {
-		t.Fatalf("dispatch: %v", err)
 	}
 
 	got, err := a.Menus.Get(ctx, m2.ID)

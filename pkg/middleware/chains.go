@@ -13,14 +13,12 @@ type PipelineConfig struct {
 }
 
 type Pipeline struct {
-	store   *store.Store
 	query   *Chain
 	command *Chain
 }
 
 func NewPipeline(config PipelineConfig) *Pipeline {
 	return &Pipeline{
-		store: config.Store,
 		query: NewChain(
 			Logging(),
 			Metrics(config.Metrics),
@@ -35,5 +33,3 @@ func NewPipeline(config PipelineConfig) *Pipeline {
 		),
 	}
 }
-
-var defaultPipeline = NewPipeline(PipelineConfig{})

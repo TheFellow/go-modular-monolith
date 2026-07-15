@@ -14,6 +14,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
@@ -36,21 +37,23 @@ type App struct {
 	pipeline  *middleware.Pipeline
 }
 
+type activityRecorder struct {
+	app *App
+}
+
+func (r activityRecorder) RecordActivity(ctx *middleware.Context, activity middlewareevents.Activity) error {
+	return r.app.Audit.RecordActivity(ctx, activity)
+}
+
 // New constructs the application around a required store. Domain modules
 // register their private persistence models before New returns.
 func New(s *store.Store, opts ...Option) *App {
 	a := &App{
-		Store:       s,
-		Dispatcher:  dispatcher.New(),
-		Logger:      slog.Default(),
-		Metrics:     telemetry.Nop(),
-		Audit:       audit.NewModule(s),
-		Drinks:      drinks.NewModule(s),
-		Ingredients: ingredients.NewModule(s),
-		Inventory:   inventory.NewModule(s),
-		Menus:       menus.NewModule(s),
-		Orders:      orders.NewModule(s),
-		principal:   optional.None[cedar.EntityUID](),
+		Store:      s,
+		Dispatcher: dispatcher.New(),
+		Logger:     slog.Default(),
+		Metrics:    telemetry.Nop(),
+		principal:  optional.None[cedar.EntityUID](),
 	}
 
 	for _, opt := range opts {
@@ -61,8 +64,14 @@ func New(s *store.Store, opts ...Option) *App {
 		Store:            a.Store,
 		Dispatcher:       a.Dispatcher,
 		Metrics:          a.Metrics,
-		ActivityRecorder: a.Audit,
+		ActivityRecorder: activityRecorder{app: a},
 	})
+	a.Audit = audit.NewModule(s, a.pipeline)
+	a.Drinks = drinks.NewModule(s, a.pipeline)
+	a.Ingredients = ingredients.NewModule(s, a.pipeline)
+	a.Inventory = inventory.NewModule(s, a.pipeline)
+	a.Menus = menus.NewModule(s, a.pipeline)
+	a.Orders = orders.NewModule(s, a.pipeline)
 
 	return a
 }
@@ -98,5 +107,5 @@ func (a *App) contextWithPrincipal(parent context.Context, principal cedar.Entit
 	parent = log.ToContext(parent, a.Logger.With(log.Actor(principal)))
 	parent = telemetry.WithMetrics(parent, a.Metrics)
 
-	return middleware.NewContext(parent, principal, a.pipeline)
+	return middleware.NewContext(parent, principal, a.Store)
 }
