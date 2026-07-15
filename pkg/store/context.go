@@ -6,10 +6,8 @@ import (
 	"github.com/mjl-/bstore"
 )
 
-// Context provides data access capabilities.
-// *middleware.Context implements this interface.
+// Context exposes transaction state to persistence operations.
 type Context interface {
 	context.Context
-	Store() (*Store, bool)
 	Transaction() (*bstore.Tx, bool)
 }

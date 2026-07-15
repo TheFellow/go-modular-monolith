@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type StockAdjusted struct {
@@ -16,11 +17,11 @@ type StockAdjusted struct {
 	availability *availability.AvailabilityCalculator
 }
 
-func NewStockAdjusted() *StockAdjusted {
+func NewStockAdjusted(s *store.Store) *StockAdjusted {
 	return &StockAdjusted{
-		dao:          dao.New(),
-		drinks:       drinksq.New(),
-		availability: availability.New(),
+		dao:          dao.New(s),
+		drinks:       drinksq.New(s),
+		availability: availability.New(s),
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type IngredientDeleted struct {
@@ -18,10 +19,10 @@ type IngredientDeleted struct {
 	removeDrinkID map[string]struct{}
 }
 
-func NewIngredientDeleted() *IngredientDeleted {
+func NewIngredientDeleted(s *store.Store) *IngredientDeleted {
 	return &IngredientDeleted{
-		dao:    dao.New(),
-		drinks: drinksq.New(),
+		dao:    dao.New(s),
+		drinks: drinksq.New(s),
 	}
 }
 

@@ -5,7 +5,6 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
@@ -14,12 +13,11 @@ type Context struct {
 	context.Context
 	events    []any
 	principal cedar.EntityUID
-	store     *store.Store
 	tx        *bstore.Tx
 	activity  *middlewareevents.Activity
 }
 
-func NewContext(parent context.Context, principal cedar.EntityUID, s *store.Store) *Context {
+func NewContext(parent context.Context, principal cedar.EntityUID) *Context {
 	if parent == nil {
 		parent = context.Background()
 	}
@@ -27,7 +25,6 @@ func NewContext(parent context.Context, principal cedar.EntityUID, s *store.Stor
 		Context:   parent,
 		events:    make([]any, 0, 4),
 		principal: principal,
-		store:     s,
 	}
 
 	if c.principal.IsZero() {
@@ -60,13 +57,6 @@ func (c *Context) Principal() cedar.EntityUID {
 	return authn.Anonymous()
 }
 
-func (c *Context) Store() (*store.Store, bool) {
-	if c == nil || c.store == nil {
-		return nil, false
-	}
-	return c.store, true
-}
-
 func (c *Context) Transaction() (*bstore.Tx, bool) {
 	if c == nil || c.tx == nil {
 		return nil, false
@@ -96,10 +86,6 @@ func NewHandlerContext(ctx *Context) *HandlerContext {
 
 func (h *HandlerContext) Transaction() (*bstore.Tx, bool) {
 	return h.ctx.Transaction()
-}
-
-func (h *HandlerContext) Store() (*store.Store, bool) {
-	return h.ctx.Store()
 }
 
 func (h *HandlerContext) TouchEntity(uid cedar.EntityUID) {

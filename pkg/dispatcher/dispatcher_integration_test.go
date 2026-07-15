@@ -162,7 +162,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	}
 
 	// Dispatch DrinkDeleted event for drink1
-	d := dispatcher.New()
+	d := dispatcher.New(f.Store)
 	err = f.Store.Write(ctx, func(tx *bstore.Tx) error {
 		txCtx := ctx.WithTransaction(tx)
 		return d.Dispatch(txCtx, drinksevents.DrinkDeleted{Drink: *drink1, DeletedAt: time.Now().UTC()})

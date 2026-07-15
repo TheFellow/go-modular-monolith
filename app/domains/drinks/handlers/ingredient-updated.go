@@ -4,15 +4,16 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	ingredientsevents "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type IngredientUpdated struct {
 	drinkQueries *queries.Queries
 }
 
-func NewIngredientUpdated() *IngredientUpdated {
+func NewIngredientUpdated(s *store.Store) *IngredientUpdated {
 	return &IngredientUpdated{
-		drinkQueries: queries.New(),
+		drinkQueries: queries.New(s),
 	}
 }
 

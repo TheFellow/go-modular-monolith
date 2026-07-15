@@ -22,23 +22,23 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	// Handling(), and the same receiver is then used by Handle() below.
 	switch e := event.(type) {
 	case drinks_events.DrinkDeleted:
-		menusHandler := menus_handlers.NewDrinkDeleted()
+		menusHandler := menus_handlers.NewDrinkDeleted(d.store)
 		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case drinks_events.DrinkUpdated:
-		menusHandler := menus_handlers.NewDrinkUpdated()
+		menusHandler := menus_handlers.NewDrinkUpdated(d.store)
 		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case ingredients_events.IngredientDeleted:
-		drinksHandler := drinks_handlers.NewIngredientDeleted()
-		inventoryHandler := inventory_handlers.NewIngredientDeleted()
-		menusHandler := menus_handlers.NewIngredientDeleted()
+		drinksHandler := drinks_handlers.NewIngredientDeleted(d.store)
+		inventoryHandler := inventory_handlers.NewIngredientDeleted(d.store)
+		menusHandler := menus_handlers.NewIngredientDeleted(d.store)
 		if err := drinksHandler.Handling(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
@@ -65,8 +65,8 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 			}
 		}
 	case ingredients_events.IngredientUpdated:
-		drinksHandler := drinks_handlers.NewIngredientUpdated()
-		menusHandler := menus_handlers.NewIngredientUpdated()
+		drinksHandler := drinks_handlers.NewIngredientUpdated(d.store)
+		menusHandler := menus_handlers.NewIngredientUpdated(d.store)
 		if err := drinksHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
@@ -78,22 +78,22 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 			}
 		}
 	case inventory_events.StockAdjusted:
-		menusHandler := menus_handlers.NewStockAdjusted()
+		menusHandler := menus_handlers.NewStockAdjusted(d.store)
 		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case menus_events.MenuPublished:
-		menusHandler := menus_handlers.NewMenuPublished()
+		menusHandler := menus_handlers.NewMenuPublished(d.store)
 		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
 		}
 	case orders_events.OrderCompleted:
-		inventoryHandler := inventory_handlers.NewOrderCompleted()
-		menusHandler := menus_handlers.NewOrderCompleted()
+		inventoryHandler := inventory_handlers.NewOrderCompleted(d.store)
+		menusHandler := menus_handlers.NewOrderCompleted(d.store)
 		if err := inventoryHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr

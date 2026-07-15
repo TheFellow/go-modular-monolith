@@ -66,7 +66,7 @@ func newTestContext(logBuf *testLogBuffer, mem *telemetry.MemoryMetrics) *middle
 	// Add telemetry to context
 	ctx = telemetry.WithMetrics(ctx, mem)
 
-	return middleware.NewContext(ctx, cedar.EntityUID{}, nil)
+	return middleware.NewContext(ctx, cedar.EntityUID{})
 }
 
 type testEvent struct {
@@ -174,7 +174,7 @@ func TestQueryChain_WithAuthZ_Denial_LogsOnceAndRecordsRequestMetrics(t *testing
 
 	// Use anonymous principal which should be denied for create
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
-	mctx := middleware.NewContext(ctx, authn.Anonymous(), nil)
+	mctx := middleware.NewContext(ctx, authn.Anonymous())
 
 	action := drinksauthz.ActionCreate
 
@@ -216,7 +216,7 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	ctx = telemetry.WithMetrics(ctx, mem)
 
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
-	mctx := middleware.NewContext(ctx, authn.Anonymous(), nil)
+	mctx := middleware.NewContext(ctx, authn.Anonymous())
 
 	action := drinksauthz.ActionList
 	handlerCalled := false
@@ -295,7 +295,7 @@ func TestDispatchEvents_DispatchesEvents(t *testing.T) {
 
 	dispatcher := &mockDispatcher{}
 
-	mctx := middleware.NewContext(ctx, cedar.EntityUID{}, nil)
+	mctx := middleware.NewContext(ctx, cedar.EntityUID{})
 
 	action := drinksauthz.ActionCreate
 
@@ -345,7 +345,7 @@ func TestDispatchEvents_DoesNotCascadeNewEvents(t *testing.T) {
 
 	dispatcher := &cascadingDispatcher{}
 
-	mctx := middleware.NewContext(ctx, cedar.EntityUID{}, nil)
+	mctx := middleware.NewContext(ctx, cedar.EntityUID{})
 
 	action := drinksauthz.ActionCreate
 

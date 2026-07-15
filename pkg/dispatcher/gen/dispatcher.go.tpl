@@ -18,7 +18,7 @@ func (d *Dispatcher) Dispatch(ctx *{{ .MiddlewareAlias }}.Context, event any) er
 {{- range .Groups }}
 	case {{ index $.ImportAlias .Event.PkgPath }}.{{ .Event.Name }}:
 {{- range .Handlers }}
-		{{ .VarName }} := {{ index $.ImportAlias .PkgPath }}.New{{ .Name }}()
+		{{ .VarName }} := {{ index $.ImportAlias .PkgPath }}.New{{ .Name }}(d.store)
 {{- end }}
 
 {{- range .Handlers }}

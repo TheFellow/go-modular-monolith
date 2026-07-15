@@ -3,6 +3,7 @@ package commands
 import (
 	ingredientsqueries "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/dao"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type Commands struct {
@@ -10,9 +11,9 @@ type Commands struct {
 	ingredients *ingredientsqueries.Queries
 }
 
-func New() *Commands {
+func New(s *store.Store) *Commands {
 	return &Commands{
-		dao:         dao.New(),
-		ingredients: ingredientsqueries.New(),
+		dao:         dao.New(s),
+		ingredients: ingredientsqueries.New(s),
 	}
 }

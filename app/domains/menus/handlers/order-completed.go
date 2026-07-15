@@ -7,6 +7,7 @@ import (
 	ordersevents "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type OrderCompleted struct {
@@ -14,10 +15,10 @@ type OrderCompleted struct {
 	drinks *drinksq.Queries
 }
 
-func NewOrderCompleted() *OrderCompleted {
+func NewOrderCompleted(s *store.Store) *OrderCompleted {
 	return &OrderCompleted{
-		dao:    dao.New(),
-		drinks: drinksq.New(),
+		dao:    dao.New(s),
+		drinks: drinksq.New(s),
 	}
 }
 

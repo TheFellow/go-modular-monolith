@@ -5,6 +5,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/availability"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type MenuPublished struct {
@@ -12,10 +13,10 @@ type MenuPublished struct {
 	availability *availability.AvailabilityCalculator
 }
 
-func NewMenuPublished() *MenuPublished {
+func NewMenuPublished(s *store.Store) *MenuPublished {
 	return &MenuPublished{
-		dao:          dao.New(),
-		availability: availability.New(),
+		dao:          dao.New(s),
+		availability: availability.New(s),
 	}
 }
 

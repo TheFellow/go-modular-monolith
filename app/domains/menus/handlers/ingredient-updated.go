@@ -5,6 +5,7 @@ import (
 	ingredientsevents "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type IngredientUpdated struct {
@@ -12,10 +13,10 @@ type IngredientUpdated struct {
 	drinks *drinksq.Queries
 }
 
-func NewIngredientUpdated() *IngredientUpdated {
+func NewIngredientUpdated(s *store.Store) *IngredientUpdated {
 	return &IngredientUpdated{
-		dao:    dao.New(),
-		drinks: drinksq.New(),
+		dao:    dao.New(s),
+		drinks: drinksq.New(s),
 	}
 }
 

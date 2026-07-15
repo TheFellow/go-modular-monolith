@@ -108,8 +108,8 @@ func TestMenuPublishedValidator_SetsAvailabilityFromInventory(t *testing.T) {
 	menu, err = f.Menus.AddDrink(ctx, &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
 
-	d := dispatcher.New()
-	menuDAO := menudao.New()
+	d := dispatcher.New(f.Store)
+	menuDAO := menudao.New(f.Store)
 
 	err = f.Store.Write(ctx, func(tx *bstore.Tx) error {
 		txCtx := ctx.WithTransaction(tx)

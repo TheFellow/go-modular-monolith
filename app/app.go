@@ -50,7 +50,7 @@ func (r activityRecorder) RecordActivity(ctx *middleware.Context, activity middl
 func New(s *store.Store, opts ...Option) *App {
 	a := &App{
 		Store:      s,
-		Dispatcher: dispatcher.New(),
+		Dispatcher: dispatcher.New(s),
 		Logger:     slog.Default(),
 		Metrics:    telemetry.Nop(),
 		principal:  optional.None[cedar.EntityUID](),
@@ -107,5 +107,5 @@ func (a *App) contextWithPrincipal(parent context.Context, principal cedar.Entit
 	parent = log.ToContext(parent, a.Logger.With(log.Actor(principal)))
 	parent = telemetry.WithMetrics(parent, a.Metrics)
 
-	return middleware.NewContext(parent, principal, a.Store)
+	return middleware.NewContext(parent, principal)
 }

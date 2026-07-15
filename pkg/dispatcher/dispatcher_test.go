@@ -14,8 +14,8 @@ import (
 func TestDispatcher_DispatchesToHandlers(t *testing.T) {
 	t.Parallel()
 
-	d := New()
-	ctx := middleware.NewContext(context.Background(), cedar.EntityUID{}, nil)
+	d := New(nil)
+	ctx := middleware.NewContext(context.Background(), cedar.EntityUID{})
 
 	event := events.IngredientCreated{
 		Ingredient: models.Ingredient{
@@ -34,8 +34,8 @@ func TestDispatcher_IgnoresUnknownEvents(t *testing.T) {
 
 	type unknownEvent struct{}
 
-	d := New()
-	ctx := middleware.NewContext(context.Background(), cedar.EntityUID{}, nil)
+	d := New(nil)
+	ctx := middleware.NewContext(context.Background(), cedar.EntityUID{})
 	if err := d.Dispatch(ctx, unknownEvent{}); err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}

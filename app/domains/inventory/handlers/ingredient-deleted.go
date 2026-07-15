@@ -5,14 +5,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type IngredientDeleted struct {
 	dao *dao.DAO
 }
 
-func NewIngredientDeleted() *IngredientDeleted {
-	return &IngredientDeleted{dao: dao.New()}
+func NewIngredientDeleted(s *store.Store) *IngredientDeleted {
+	return &IngredientDeleted{dao: dao.New(s)}
 }
 
 func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, e ingredientsevents.IngredientDeleted) error {

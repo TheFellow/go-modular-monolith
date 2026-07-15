@@ -17,7 +17,7 @@ type ListFilter struct {
 
 func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Order, error) {
 	var out []*models.Order
-	err := store.Read(ctx, func(tx *bstore.Tx) error {
+	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
 		q := d.query(tx, filter)
 		rows, err := q.List()
 		if err != nil {
@@ -39,7 +39,7 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Order, error
 
 func (d *DAO) Count(ctx store.Context, filter ListFilter) (int, error) {
 	var count int
-	err := store.Read(ctx, func(tx *bstore.Tx) error {
+	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
 		q := d.query(tx, filter)
 
 		var err error

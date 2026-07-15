@@ -5,15 +5,16 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type DrinkDeleted struct {
 	dao *dao.DAO
 }
 
-func NewDrinkDeleted() *DrinkDeleted {
+func NewDrinkDeleted(s *store.Store) *DrinkDeleted {
 	return &DrinkDeleted{
-		dao: dao.New(),
+		dao: dao.New(s),
 	}
 }
 

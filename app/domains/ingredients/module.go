@@ -17,8 +17,8 @@ type Module struct {
 func NewModule(s *store.Store, pipeline *middleware.Pipeline) *Module {
 	dao.Register(s)
 	return &Module{
-		queries:  queries.New(),
-		commands: commands.New(),
+		queries:  queries.New(s),
+		commands: commands.New(s),
 		pipeline: pipeline,
 	}
 }

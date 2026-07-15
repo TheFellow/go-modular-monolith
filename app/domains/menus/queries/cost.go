@@ -13,6 +13,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/govalues/decimal"
 )
 
@@ -22,11 +23,11 @@ type CostCalculator struct {
 	availability *availability.AvailabilityCalculator
 }
 
-func NewCostCalculator() *CostCalculator {
+func NewCostCalculator(s *store.Store) *CostCalculator {
 	return &CostCalculator{
-		drinks:       drinksq.New(),
-		inventory:    inventoryq.New(),
-		availability: availability.New(),
+		drinks:       drinksq.New(s),
+		inventory:    inventoryq.New(s),
+		availability: availability.New(s),
 	}
 }
 
