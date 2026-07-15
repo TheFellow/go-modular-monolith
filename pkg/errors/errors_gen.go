@@ -3,35 +3,16 @@ package errors
 
 import (
 	stderrors "errors"
+
 	"google.golang.org/grpc/codes"
 )
 
 type InvalidError struct {
-	msg   string
-	cause error
+	err *Error
 }
 
-func (e *InvalidError) Error() string {
-	if e == nil {
-		return ErrInvalid.Message
-	}
-	if e.msg != "" {
-		return e.msg
-	}
-	return ErrInvalid.Message
-}
-
-func (e *InvalidError) Unwrap() error        { return e.cause }
-func (e *InvalidError) Kind() ErrorKind      { return ErrInvalid }
-func (e *InvalidError) HTTPCode() httpCode   { return ErrInvalid.HTTPCode }
-func (e *InvalidError) GRPCCode() codes.Code { return ErrInvalid.GRPCCode }
-func (e *InvalidError) CLICode() int         { return ErrInvalid.CLICode }
-func (e *InvalidError) TUIStyle() TUIStyle   { return ErrInvalid.TUIStyle }
-func (e *InvalidError) ExitCode() int        { return ErrInvalid.CLICode }
-
-func Invalidf(format string, args ...any) error {
-	msg, cause := formatf(format, args...)
-	return &InvalidError{msg: msg, cause: cause}
+func Invalidf(format string, args ...any) *InvalidError {
+	return &InvalidError{err: newErrorf(KindInvalid, format, args...)}
 }
 
 func IsInvalid(err error) bool {
@@ -39,32 +20,64 @@ func IsInvalid(err error) bool {
 	return stderrors.As(err, &target)
 }
 
-type NotFoundError struct {
-	msg   string
-	cause error
+func (e *InvalidError) Error() string {
+	if e == nil || e.err == nil {
+		return SpecFor(KindInvalid).Message
+	}
+	return e.err.Error()
 }
 
-func (e *NotFoundError) Error() string {
+func (e *InvalidError) Unwrap() error {
+	if e == nil || e.err == nil {
+		return nil
+	}
+	return e.err.Unwrap()
+}
+
+func (e *InvalidError) As(target any) bool {
 	if e == nil {
-		return ErrNotFound.Message
+		return false
 	}
-	if e.msg != "" {
-		return e.msg
+	if p, ok := target.(**Error); ok {
+		*p = e.err
+		return true
 	}
-	return ErrNotFound.Message
+	return false
 }
 
-func (e *NotFoundError) Unwrap() error        { return e.cause }
-func (e *NotFoundError) Kind() ErrorKind      { return ErrNotFound }
-func (e *NotFoundError) HTTPCode() httpCode   { return ErrNotFound.HTTPCode }
-func (e *NotFoundError) GRPCCode() codes.Code { return ErrNotFound.GRPCCode }
-func (e *NotFoundError) CLICode() int         { return ErrNotFound.CLICode }
-func (e *NotFoundError) TUIStyle() TUIStyle   { return ErrNotFound.TUIStyle }
-func (e *NotFoundError) ExitCode() int        { return ErrNotFound.CLICode }
+func (e *InvalidError) Err() *Error {
+	if e == nil {
+		return nil
+	}
+	return e.err
+}
 
-func NotFoundf(format string, args ...any) error {
-	msg, cause := formatf(format, args...)
-	return &NotFoundError{msg: msg, cause: cause}
+func (e *InvalidError) Kind() Kind           { return KindInvalid }
+func (e *InvalidError) HTTPStatus() int      { return SpecFor(KindInvalid).HTTPStatus }
+func (e *InvalidError) GRPCCode() codes.Code { return SpecFor(KindInvalid).GRPCCode }
+func (e *InvalidError) CLIExitCode() int     { return SpecFor(KindInvalid).CLIExitCode }
+func (e *InvalidError) TUIStyle() TUIStyle   { return SpecFor(KindInvalid).TUIStyle }
+func (e *InvalidError) ExitCode() int        { return e.CLIExitCode() }
+func (e *InvalidError) UserMessage() string {
+	if e == nil || e.err == nil {
+		return SpecFor(KindInvalid).Message
+	}
+	return e.err.UserMessage()
+}
+
+func (e *InvalidError) WithUserMessage(message string) *InvalidError {
+	if e != nil && e.err != nil {
+		e.err.WithUserMessage(message)
+	}
+	return e
+}
+
+type NotFoundError struct {
+	err *Error
+}
+
+func NotFoundf(format string, args ...any) *NotFoundError {
+	return &NotFoundError{err: newErrorf(KindNotFound, format, args...)}
 }
 
 func IsNotFound(err error) bool {
@@ -72,32 +85,64 @@ func IsNotFound(err error) bool {
 	return stderrors.As(err, &target)
 }
 
-type PermissionError struct {
-	msg   string
-	cause error
+func (e *NotFoundError) Error() string {
+	if e == nil || e.err == nil {
+		return SpecFor(KindNotFound).Message
+	}
+	return e.err.Error()
 }
 
-func (e *PermissionError) Error() string {
+func (e *NotFoundError) Unwrap() error {
+	if e == nil || e.err == nil {
+		return nil
+	}
+	return e.err.Unwrap()
+}
+
+func (e *NotFoundError) As(target any) bool {
 	if e == nil {
-		return ErrPermission.Message
+		return false
 	}
-	if e.msg != "" {
-		return e.msg
+	if p, ok := target.(**Error); ok {
+		*p = e.err
+		return true
 	}
-	return ErrPermission.Message
+	return false
 }
 
-func (e *PermissionError) Unwrap() error        { return e.cause }
-func (e *PermissionError) Kind() ErrorKind      { return ErrPermission }
-func (e *PermissionError) HTTPCode() httpCode   { return ErrPermission.HTTPCode }
-func (e *PermissionError) GRPCCode() codes.Code { return ErrPermission.GRPCCode }
-func (e *PermissionError) CLICode() int         { return ErrPermission.CLICode }
-func (e *PermissionError) TUIStyle() TUIStyle   { return ErrPermission.TUIStyle }
-func (e *PermissionError) ExitCode() int        { return ErrPermission.CLICode }
+func (e *NotFoundError) Err() *Error {
+	if e == nil {
+		return nil
+	}
+	return e.err
+}
 
-func Permissionf(format string, args ...any) error {
-	msg, cause := formatf(format, args...)
-	return &PermissionError{msg: msg, cause: cause}
+func (e *NotFoundError) Kind() Kind           { return KindNotFound }
+func (e *NotFoundError) HTTPStatus() int      { return SpecFor(KindNotFound).HTTPStatus }
+func (e *NotFoundError) GRPCCode() codes.Code { return SpecFor(KindNotFound).GRPCCode }
+func (e *NotFoundError) CLIExitCode() int     { return SpecFor(KindNotFound).CLIExitCode }
+func (e *NotFoundError) TUIStyle() TUIStyle   { return SpecFor(KindNotFound).TUIStyle }
+func (e *NotFoundError) ExitCode() int        { return e.CLIExitCode() }
+func (e *NotFoundError) UserMessage() string {
+	if e == nil || e.err == nil {
+		return SpecFor(KindNotFound).Message
+	}
+	return e.err.UserMessage()
+}
+
+func (e *NotFoundError) WithUserMessage(message string) *NotFoundError {
+	if e != nil && e.err != nil {
+		e.err.WithUserMessage(message)
+	}
+	return e
+}
+
+type PermissionError struct {
+	err *Error
+}
+
+func Permissionf(format string, args ...any) *PermissionError {
+	return &PermissionError{err: newErrorf(KindPermission, format, args...)}
 }
 
 func IsPermission(err error) bool {
@@ -105,32 +150,64 @@ func IsPermission(err error) bool {
 	return stderrors.As(err, &target)
 }
 
-type ConflictError struct {
-	msg   string
-	cause error
+func (e *PermissionError) Error() string {
+	if e == nil || e.err == nil {
+		return SpecFor(KindPermission).Message
+	}
+	return e.err.Error()
 }
 
-func (e *ConflictError) Error() string {
+func (e *PermissionError) Unwrap() error {
+	if e == nil || e.err == nil {
+		return nil
+	}
+	return e.err.Unwrap()
+}
+
+func (e *PermissionError) As(target any) bool {
 	if e == nil {
-		return ErrConflict.Message
+		return false
 	}
-	if e.msg != "" {
-		return e.msg
+	if p, ok := target.(**Error); ok {
+		*p = e.err
+		return true
 	}
-	return ErrConflict.Message
+	return false
 }
 
-func (e *ConflictError) Unwrap() error        { return e.cause }
-func (e *ConflictError) Kind() ErrorKind      { return ErrConflict }
-func (e *ConflictError) HTTPCode() httpCode   { return ErrConflict.HTTPCode }
-func (e *ConflictError) GRPCCode() codes.Code { return ErrConflict.GRPCCode }
-func (e *ConflictError) CLICode() int         { return ErrConflict.CLICode }
-func (e *ConflictError) TUIStyle() TUIStyle   { return ErrConflict.TUIStyle }
-func (e *ConflictError) ExitCode() int        { return ErrConflict.CLICode }
+func (e *PermissionError) Err() *Error {
+	if e == nil {
+		return nil
+	}
+	return e.err
+}
 
-func Conflictf(format string, args ...any) error {
-	msg, cause := formatf(format, args...)
-	return &ConflictError{msg: msg, cause: cause}
+func (e *PermissionError) Kind() Kind           { return KindPermission }
+func (e *PermissionError) HTTPStatus() int      { return SpecFor(KindPermission).HTTPStatus }
+func (e *PermissionError) GRPCCode() codes.Code { return SpecFor(KindPermission).GRPCCode }
+func (e *PermissionError) CLIExitCode() int     { return SpecFor(KindPermission).CLIExitCode }
+func (e *PermissionError) TUIStyle() TUIStyle   { return SpecFor(KindPermission).TUIStyle }
+func (e *PermissionError) ExitCode() int        { return e.CLIExitCode() }
+func (e *PermissionError) UserMessage() string {
+	if e == nil || e.err == nil {
+		return SpecFor(KindPermission).Message
+	}
+	return e.err.UserMessage()
+}
+
+func (e *PermissionError) WithUserMessage(message string) *PermissionError {
+	if e != nil && e.err != nil {
+		e.err.WithUserMessage(message)
+	}
+	return e
+}
+
+type ConflictError struct {
+	err *Error
+}
+
+func Conflictf(format string, args ...any) *ConflictError {
+	return &ConflictError{err: newErrorf(KindConflict, format, args...)}
 }
 
 func IsConflict(err error) bool {
@@ -138,32 +215,64 @@ func IsConflict(err error) bool {
 	return stderrors.As(err, &target)
 }
 
-type FailedPreconditionError struct {
-	msg   string
-	cause error
+func (e *ConflictError) Error() string {
+	if e == nil || e.err == nil {
+		return SpecFor(KindConflict).Message
+	}
+	return e.err.Error()
 }
 
-func (e *FailedPreconditionError) Error() string {
+func (e *ConflictError) Unwrap() error {
+	if e == nil || e.err == nil {
+		return nil
+	}
+	return e.err.Unwrap()
+}
+
+func (e *ConflictError) As(target any) bool {
 	if e == nil {
-		return ErrFailedPrecondition.Message
+		return false
 	}
-	if e.msg != "" {
-		return e.msg
+	if p, ok := target.(**Error); ok {
+		*p = e.err
+		return true
 	}
-	return ErrFailedPrecondition.Message
+	return false
 }
 
-func (e *FailedPreconditionError) Unwrap() error        { return e.cause }
-func (e *FailedPreconditionError) Kind() ErrorKind      { return ErrFailedPrecondition }
-func (e *FailedPreconditionError) HTTPCode() httpCode   { return ErrFailedPrecondition.HTTPCode }
-func (e *FailedPreconditionError) GRPCCode() codes.Code { return ErrFailedPrecondition.GRPCCode }
-func (e *FailedPreconditionError) CLICode() int         { return ErrFailedPrecondition.CLICode }
-func (e *FailedPreconditionError) TUIStyle() TUIStyle   { return ErrFailedPrecondition.TUIStyle }
-func (e *FailedPreconditionError) ExitCode() int        { return ErrFailedPrecondition.CLICode }
+func (e *ConflictError) Err() *Error {
+	if e == nil {
+		return nil
+	}
+	return e.err
+}
 
-func FailedPreconditionf(format string, args ...any) error {
-	msg, cause := formatf(format, args...)
-	return &FailedPreconditionError{msg: msg, cause: cause}
+func (e *ConflictError) Kind() Kind           { return KindConflict }
+func (e *ConflictError) HTTPStatus() int      { return SpecFor(KindConflict).HTTPStatus }
+func (e *ConflictError) GRPCCode() codes.Code { return SpecFor(KindConflict).GRPCCode }
+func (e *ConflictError) CLIExitCode() int     { return SpecFor(KindConflict).CLIExitCode }
+func (e *ConflictError) TUIStyle() TUIStyle   { return SpecFor(KindConflict).TUIStyle }
+func (e *ConflictError) ExitCode() int        { return e.CLIExitCode() }
+func (e *ConflictError) UserMessage() string {
+	if e == nil || e.err == nil {
+		return SpecFor(KindConflict).Message
+	}
+	return e.err.UserMessage()
+}
+
+func (e *ConflictError) WithUserMessage(message string) *ConflictError {
+	if e != nil && e.err != nil {
+		e.err.WithUserMessage(message)
+	}
+	return e
+}
+
+type FailedPreconditionError struct {
+	err *Error
+}
+
+func FailedPreconditionf(format string, args ...any) *FailedPreconditionError {
+	return &FailedPreconditionError{err: newErrorf(KindFailedPrecondition, format, args...)}
 }
 
 func IsFailedPrecondition(err error) bool {
@@ -171,35 +280,125 @@ func IsFailedPrecondition(err error) bool {
 	return stderrors.As(err, &target)
 }
 
-type InternalError struct {
-	msg   string
-	cause error
+func (e *FailedPreconditionError) Error() string {
+	if e == nil || e.err == nil {
+		return SpecFor(KindFailedPrecondition).Message
+	}
+	return e.err.Error()
 }
 
-func (e *InternalError) Error() string {
+func (e *FailedPreconditionError) Unwrap() error {
+	if e == nil || e.err == nil {
+		return nil
+	}
+	return e.err.Unwrap()
+}
+
+func (e *FailedPreconditionError) As(target any) bool {
 	if e == nil {
-		return ErrInternal.Message
+		return false
 	}
-	if e.msg != "" {
-		return e.msg
+	if p, ok := target.(**Error); ok {
+		*p = e.err
+		return true
 	}
-	return ErrInternal.Message
+	return false
 }
 
-func (e *InternalError) Unwrap() error        { return e.cause }
-func (e *InternalError) Kind() ErrorKind      { return ErrInternal }
-func (e *InternalError) HTTPCode() httpCode   { return ErrInternal.HTTPCode }
-func (e *InternalError) GRPCCode() codes.Code { return ErrInternal.GRPCCode }
-func (e *InternalError) CLICode() int         { return ErrInternal.CLICode }
-func (e *InternalError) TUIStyle() TUIStyle   { return ErrInternal.TUIStyle }
-func (e *InternalError) ExitCode() int        { return ErrInternal.CLICode }
+func (e *FailedPreconditionError) Err() *Error {
+	if e == nil {
+		return nil
+	}
+	return e.err
+}
 
-func Internalf(format string, args ...any) error {
-	msg, cause := formatf(format, args...)
-	return &InternalError{msg: msg, cause: cause}
+func (e *FailedPreconditionError) Kind() Kind      { return KindFailedPrecondition }
+func (e *FailedPreconditionError) HTTPStatus() int { return SpecFor(KindFailedPrecondition).HTTPStatus }
+func (e *FailedPreconditionError) GRPCCode() codes.Code {
+	return SpecFor(KindFailedPrecondition).GRPCCode
+}
+func (e *FailedPreconditionError) CLIExitCode() int {
+	return SpecFor(KindFailedPrecondition).CLIExitCode
+}
+func (e *FailedPreconditionError) TUIStyle() TUIStyle {
+	return SpecFor(KindFailedPrecondition).TUIStyle
+}
+func (e *FailedPreconditionError) ExitCode() int { return e.CLIExitCode() }
+func (e *FailedPreconditionError) UserMessage() string {
+	if e == nil || e.err == nil {
+		return SpecFor(KindFailedPrecondition).Message
+	}
+	return e.err.UserMessage()
+}
+
+func (e *FailedPreconditionError) WithUserMessage(message string) *FailedPreconditionError {
+	if e != nil && e.err != nil {
+		e.err.WithUserMessage(message)
+	}
+	return e
+}
+
+type InternalError struct {
+	err *Error
+}
+
+func Internalf(format string, args ...any) *InternalError {
+	return &InternalError{err: newErrorf(KindInternal, format, args...)}
 }
 
 func IsInternal(err error) bool {
 	var target *InternalError
 	return stderrors.As(err, &target)
+}
+
+func (e *InternalError) Error() string {
+	if e == nil || e.err == nil {
+		return SpecFor(KindInternal).Message
+	}
+	return e.err.Error()
+}
+
+func (e *InternalError) Unwrap() error {
+	if e == nil || e.err == nil {
+		return nil
+	}
+	return e.err.Unwrap()
+}
+
+func (e *InternalError) As(target any) bool {
+	if e == nil {
+		return false
+	}
+	if p, ok := target.(**Error); ok {
+		*p = e.err
+		return true
+	}
+	return false
+}
+
+func (e *InternalError) Err() *Error {
+	if e == nil {
+		return nil
+	}
+	return e.err
+}
+
+func (e *InternalError) Kind() Kind           { return KindInternal }
+func (e *InternalError) HTTPStatus() int      { return SpecFor(KindInternal).HTTPStatus }
+func (e *InternalError) GRPCCode() codes.Code { return SpecFor(KindInternal).GRPCCode }
+func (e *InternalError) CLIExitCode() int     { return SpecFor(KindInternal).CLIExitCode }
+func (e *InternalError) TUIStyle() TUIStyle   { return SpecFor(KindInternal).TUIStyle }
+func (e *InternalError) ExitCode() int        { return e.CLIExitCode() }
+func (e *InternalError) UserMessage() string {
+	if e == nil || e.err == nil {
+		return SpecFor(KindInternal).Message
+	}
+	return e.err.UserMessage()
+}
+
+func (e *InternalError) WithUserMessage(message string) *InternalError {
+	if e != nil && e.err != nil {
+		e.err.WithUserMessage(message)
+	}
+	return e
 }

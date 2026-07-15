@@ -2,42 +2,75 @@
 package errors
 
 import (
-    stderrors "errors"
-    "google.golang.org/grpc/codes"
+	stderrors "errors"
+
+	"google.golang.org/grpc/codes"
 )
 
 {{ range .Kinds -}}
 type {{ .Name }}Error struct {
-	msg   string
-	cause error
+	err *Error
 }
 
-func (e *{{ .Name }}Error) Error() string {
-	if e == nil {
-		return {{ printf "Err%s" .Name }}.Message
-	}
-	if e.msg != "" {
-		return e.msg
-	}
-	return {{ printf "Err%s" .Name }}.Message
-}
-
-func (e *{{ .Name }}Error) Unwrap() error { return e.cause }
-func (e *{{ .Name }}Error) Kind() ErrorKind { return {{ printf "Err%s" .Name }} }
-func (e *{{ .Name }}Error) HTTPCode() httpCode { return {{ printf "Err%s" .Name }}.HTTPCode }
-func (e *{{ .Name }}Error) GRPCCode() codes.Code { return {{ printf "Err%s" .Name }}.GRPCCode }
-func (e *{{ .Name }}Error) CLICode() int { return {{ printf "Err%s" .Name }}.CLICode }
-func (e *{{ .Name }}Error) TUIStyle() TUIStyle { return {{ printf "Err%s" .Name }}.TUIStyle }
-func (e *{{ .Name }}Error) ExitCode() int { return {{ printf "Err%s" .Name }}.CLICode }
-
-func {{ .Name }}f(format string, args ...any) error {
-	msg, cause := formatf(format, args...)
-	return &{{ .Name }}Error{msg: msg, cause: cause}
+func {{ .Name }}f(format string, args ...any) *{{ .Name }}Error {
+	return &{{ .Name }}Error{err: newErrorf(Kind{{ .Name }}, format, args...)}
 }
 
 func Is{{ .Name }}(err error) bool {
 	var target *{{ .Name }}Error
 	return stderrors.As(err, &target)
+}
+
+func (e *{{ .Name }}Error) Error() string {
+	if e == nil || e.err == nil {
+		return SpecFor(Kind{{ .Name }}).Message
+	}
+	return e.err.Error()
+}
+
+func (e *{{ .Name }}Error) Unwrap() error {
+	if e == nil || e.err == nil {
+		return nil
+	}
+	return e.err.Unwrap()
+}
+
+func (e *{{ .Name }}Error) As(target any) bool {
+	if e == nil {
+		return false
+	}
+	if p, ok := target.(**Error); ok {
+		*p = e.err
+		return true
+	}
+	return false
+}
+
+func (e *{{ .Name }}Error) Err() *Error {
+	if e == nil {
+		return nil
+	}
+	return e.err
+}
+
+func (e *{{ .Name }}Error) Kind() Kind             { return Kind{{ .Name }} }
+func (e *{{ .Name }}Error) HTTPStatus() int        { return SpecFor(Kind{{ .Name }}).HTTPStatus }
+func (e *{{ .Name }}Error) GRPCCode() codes.Code   { return SpecFor(Kind{{ .Name }}).GRPCCode }
+func (e *{{ .Name }}Error) CLIExitCode() int       { return SpecFor(Kind{{ .Name }}).CLIExitCode }
+func (e *{{ .Name }}Error) TUIStyle() TUIStyle     { return SpecFor(Kind{{ .Name }}).TUIStyle }
+func (e *{{ .Name }}Error) ExitCode() int          { return e.CLIExitCode() }
+func (e *{{ .Name }}Error) UserMessage() string {
+	if e == nil || e.err == nil {
+		return SpecFor(Kind{{ .Name }}).Message
+	}
+	return e.err.UserMessage()
+}
+
+func (e *{{ .Name }}Error) WithUserMessage(message string) *{{ .Name }}Error {
+	if e != nil && e.err != nil {
+		e.err.WithUserMessage(message)
+	}
+	return e
 }
 
 {{ end -}}

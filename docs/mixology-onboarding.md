@@ -123,16 +123,17 @@ generator. The generator is the source of truth. The generated code is a build a
 An error is not a string. It's a contract between the layer that fails and every surface that
 renders it.
 
-Each `ErrorKind` in `pkg/errors` maps a single category to four transport codes simultaneously:
+Each immutable `Kind` specification in `pkg/errors` maps a single category to four transport codes simultaneously:
 HTTP status, gRPC code, CLI exit code, and TUI display style. Domain code returns
-`errors.NotFoundf("drink %s", id)`. The CLI renders exit code 11. The TUI renders a styled
+`errors.NotFoundf("drink %s", id)`. The CLI renders exit code 20. The TUI renders a styled
 warning. A future HTTP API would render 404. The domain never thinks about transport.
 
 The error generator also produces matching assertion helpers in `pkg/testutil`:
-`AssertNotFound(t, err)`, `AssertPermission(t, err)`, etc.
+`ErrorIsNotFound(t, err)`, `ErrorIsPermission(t, err)`, etc. Generated typed wrappers share a
+common error payload that keeps internal diagnostic detail separate from presentation-safe text.
 
-**Where to look:** `pkg/errors/errors.go` for `ErrorKind` definitions and `ErrorKinds` slice,
-then `pkg/errors/gen` for the generator.
+**Where to look:** `pkg/errors/kind.go` for the taxonomy and transport specifications,
+`pkg/errors/error.go` for the shared payload, then `pkg/errors/gen` for the generator.
 
 **The takeaway:** Errors should be typed, not stringly-typed. Define the error vocabulary once
 and let every surface map it to its own protocol. Never let a CLI exit code or HTTP status
