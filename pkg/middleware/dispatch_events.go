@@ -13,7 +13,7 @@ type EventDispatcher interface {
 
 // DispatchEvents dispatches any events collected on the middleware context
 // after the command completes.
-func DispatchEvents() Middleware {
+func DispatchEvents(d EventDispatcher) Middleware {
 	return func(ctx *Context, op Operation, next Next) error {
 		if op.Kind != OperationKindCommand {
 			return next(ctx)
@@ -23,8 +23,7 @@ func DispatchEvents() Middleware {
 			return err
 		}
 
-		d, ok := ctx.Dispatcher()
-		if !ok || d == nil {
+		if d == nil {
 			return nil
 		}
 

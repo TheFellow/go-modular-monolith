@@ -14,7 +14,7 @@ func RunQuery[Req, Res any](
 ) (Res, error) {
 	var out Res
 
-	err := Query.Execute(ctx, QueryOperation(action), func(c *Context) error {
+	err := ctx.pipeline.query.Execute(ctx, QueryOperation(action), func(c *Context) error {
 		res, err := execute(c, req)
 		if err != nil {
 			return err
@@ -34,7 +34,7 @@ func RunQueryWithResource[Req CedarEntity, Res any](
 	var out Res
 
 	resource := req.CedarEntity()
-	err := Query.Execute(ctx, QueryResourceOperation(action, resource), func(c *Context) error {
+	err := ctx.pipeline.query.Execute(ctx, QueryResourceOperation(action, resource), func(c *Context) error {
 		res, err := execute(c, req)
 		if err != nil {
 			return err
@@ -55,7 +55,7 @@ type CommandSpec[In CedarEntity, Out CedarEntity] struct {
 func RunCommand[In CedarEntity, Out CedarEntity](ctx *Context, spec CommandSpec[In, Out]) (Out, error) {
 	var out Out
 
-	err := Command.Execute(ctx, CommandOperation(spec.Action), func(c *Context) error {
+	err := ctx.pipeline.command.Execute(ctx, CommandOperation(spec.Action), func(c *Context) error {
 		input, err := spec.Load(c)
 		if err != nil {
 			return err

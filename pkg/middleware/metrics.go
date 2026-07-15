@@ -8,7 +8,7 @@ import (
 	"github.com/cedar-policy/cedar-go"
 )
 
-type MetricsCollector struct {
+type metricsCollector struct {
 	commandTotal    telemetry.Counter
 	commandDuration telemetry.Histogram
 	commandErrors   telemetry.Counter
@@ -18,11 +18,11 @@ type MetricsCollector struct {
 	queryErrors   telemetry.Counter
 }
 
-func NewMetricsCollector(m telemetry.Metrics) *MetricsCollector {
+func newMetricsCollector(m telemetry.Metrics) *metricsCollector {
 	if m == nil {
 		m = telemetry.Nop()
 	}
-	return &MetricsCollector{
+	return &metricsCollector{
 		commandTotal:    m.Counter(telemetry.MetricCommandTotal, telemetry.LabelAction, telemetry.LabelResult),
 		commandDuration: m.Histogram(telemetry.MetricCommandDuration, telemetry.LabelAction),
 		commandErrors:   m.Counter(telemetry.MetricCommandErrors, telemetry.LabelAction),
@@ -33,15 +33,9 @@ func NewMetricsCollector(m telemetry.Metrics) *MetricsCollector {
 	}
 }
 
-var nopMetricsCollector = NewMetricsCollector(telemetry.Nop())
-
-func Metrics() Middleware {
+func Metrics(metrics telemetry.Metrics) Middleware {
+	mc := newMetricsCollector(metrics)
 	return func(ctx *Context, op Operation, next Next) error {
-		mc, ok := ctx.MetricsCollector()
-		if !ok || mc == nil {
-			mc = nopMetricsCollector
-		}
-
 		actionLabel := actionLabel(op.Action)
 		start := time.Now()
 

@@ -75,11 +75,11 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("expected initial availability available, got %+v", m2.Items)
 	}
 
-	noDispatchCtx := middleware.NewContext(context.Background(), middleware.ContextConfig{
+	noDispatchPipeline := middleware.NewPipeline(middleware.PipelineConfig{
 		Store:            f.Store,
-		Principal:        ctx.Principal(),
 		ActivityRecorder: a.Audit,
 	})
+	noDispatchCtx := middleware.NewContext(context.Background(), ctx.Principal(), noDispatchPipeline)
 	updated, err := a.Inventory.Set(noDispatchCtx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Amount:       measurement.MustAmount(0, ingredient.Unit),

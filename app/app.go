@@ -32,8 +32,8 @@ type App struct {
 	Menus       *menus.Module
 	Orders      *orders.Module
 
-	principal        optional.Value[cedar.EntityUID]
-	metricsCollector *middleware.MetricsCollector
+	principal optional.Value[cedar.EntityUID]
+	pipeline  *middleware.Pipeline
 }
 
 // New constructs the application around a required store. Domain modules
@@ -57,7 +57,12 @@ func New(s *store.Store, opts ...Option) *App {
 		opt(a)
 	}
 
-	a.metricsCollector = middleware.NewMetricsCollector(a.Metrics)
+	a.pipeline = middleware.NewPipeline(middleware.PipelineConfig{
+		Store:            a.Store,
+		Dispatcher:       a.Dispatcher,
+		Metrics:          a.Metrics,
+		ActivityRecorder: a.Audit,
+	})
 
 	return a
 }
@@ -93,11 +98,5 @@ func (a *App) contextWithPrincipal(parent context.Context, principal cedar.Entit
 	parent = log.ToContext(parent, a.Logger.With(log.Actor(principal)))
 	parent = telemetry.WithMetrics(parent, a.Metrics)
 
-	return middleware.NewContext(parent, middleware.ContextConfig{
-		Principal:        principal,
-		Store:            a.Store,
-		Dispatcher:       a.Dispatcher,
-		ActivityRecorder: a.Audit,
-		MetricsCollector: a.metricsCollector,
-	})
+	return middleware.NewContext(parent, principal, a.pipeline)
 }

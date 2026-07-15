@@ -3,19 +3,19 @@ package middleware
 import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/mjl-/bstore"
 
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 )
 
-func TrackActivity() Middleware {
+func TrackActivity(s *store.Store, recorder ActivityRecorder) Middleware {
 	return func(ctx *Context, op Operation, next Next) error {
 		if op.Kind != OperationKindCommand {
 			return next(ctx)
 		}
 
-		recorder, ok := ctx.ActivityRecorder()
-		if !ok || recorder == nil {
+		if recorder == nil {
 			return errors.Internalf("activity recorder missing from context")
 		}
 
@@ -45,7 +45,7 @@ func TrackActivity() Middleware {
 			if rerr := record(ctx); rerr != nil {
 				return rerr
 			}
-		} else if s, ok := ctx.Store(); ok && s != nil {
+		} else if s != nil {
 			if rerr := s.Write(ctx, func(tx *bstore.Tx) error {
 				txCtx := ctx.WithTransaction(tx)
 				return record(txCtx)

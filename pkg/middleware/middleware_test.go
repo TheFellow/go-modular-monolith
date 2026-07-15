@@ -13,7 +13,9 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 // testLogBuffer captures log output for assertions.
@@ -64,9 +66,7 @@ func newTestContext(logBuf *testLogBuffer, mem *telemetry.MemoryMetrics) *middle
 	// Add telemetry to context
 	ctx = telemetry.WithMetrics(ctx, mem)
 
-	// Create middleware context with metrics collector
-	mc := middleware.NewMetricsCollector(mem)
-	return middleware.NewContext(ctx, middleware.ContextConfig{MetricsCollector: mc})
+	return middleware.NewContext(ctx, cedar.EntityUID{}, nil)
 }
 
 type testEvent struct {
@@ -173,18 +173,16 @@ func TestQueryChain_WithAuthZ_Denial_LogsOnceAndRecordsRequestMetrics(t *testing
 	ctx = telemetry.WithMetrics(ctx, mem)
 
 	// Use anonymous principal which should be denied for create
-	mctx := middleware.NewContext(ctx, middleware.ContextConfig{
-		Principal:        authn.Anonymous(),
-		MetricsCollector: middleware.NewMetricsCollector(mem),
-	})
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
+	mctx := middleware.NewContext(ctx, authn.Anonymous(), pipeline)
 
 	action := drinksauthz.ActionCreate
 
 	// Use the full chain with AuthZ
-	err := middleware.Query.Execute(mctx, middleware.QueryOperation(action), func(_ *middleware.Context) error {
+	_, err := middleware.RunQuery(mctx, action, func(_ store.Context, _ struct{}) (struct{}, error) {
 		t.Fatal("handler should not be called when authz denies")
-		return nil
-	})
+		return struct{}{}, nil
+	}, struct{}{})
 
 	if !errors.IsPermission(err) {
 		t.Fatalf("expected permission error, got %v", err)
@@ -217,18 +215,16 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	ctx = log.ToContext(ctx, logger)
 	ctx = telemetry.WithMetrics(ctx, mem)
 
-	mctx := middleware.NewContext(ctx, middleware.ContextConfig{
-		Principal:        authn.Anonymous(),
-		MetricsCollector: middleware.NewMetricsCollector(mem),
-	})
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
+	mctx := middleware.NewContext(ctx, authn.Anonymous(), pipeline)
 
 	action := drinksauthz.ActionList
 	handlerCalled := false
 
-	err := middleware.Query.Execute(mctx, middleware.QueryOperation(action), func(_ *middleware.Context) error {
+	_, err := middleware.RunQuery(mctx, action, func(_ store.Context, _ struct{}) (struct{}, error) {
 		handlerCalled = true
-		return nil
-	})
+		return struct{}{}, nil
+	}, struct{}{})
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -258,7 +254,7 @@ func TestTrackActivity_MissingRecorderFailsBeforeCommand(t *testing.T) {
 	mctx := newTestContext(logBuf, mem)
 
 	chain := middleware.NewChain(
-		middleware.TrackActivity(),
+		middleware.TrackActivity(nil, nil),
 	)
 
 	called := false
@@ -299,16 +295,13 @@ func TestDispatchEvents_DispatchesEvents(t *testing.T) {
 
 	dispatcher := &mockDispatcher{}
 
-	mctx := middleware.NewContext(ctx, middleware.ContextConfig{
-		MetricsCollector: middleware.NewMetricsCollector(mem),
-		Dispatcher:       dispatcher,
-	})
+	mctx := middleware.NewContext(ctx, cedar.EntityUID{}, nil)
 
 	action := drinksauthz.ActionCreate
 
 	// Use just DispatchEvents middleware to test dispatch behavior
 	chain := middleware.NewChain(
-		middleware.DispatchEvents(),
+		middleware.DispatchEvents(dispatcher),
 	)
 
 	event := testEvent{Name: "created"}
@@ -352,15 +345,12 @@ func TestDispatchEvents_DoesNotCascadeNewEvents(t *testing.T) {
 
 	dispatcher := &cascadingDispatcher{}
 
-	mctx := middleware.NewContext(ctx, middleware.ContextConfig{
-		MetricsCollector: middleware.NewMetricsCollector(mem),
-		Dispatcher:       dispatcher,
-	})
+	mctx := middleware.NewContext(ctx, cedar.EntityUID{}, nil)
 
 	action := drinksauthz.ActionCreate
 
 	chain := middleware.NewChain(
-		middleware.DispatchEvents(),
+		middleware.DispatchEvents(dispatcher),
 	)
 
 	err := chain.Execute(mctx, middleware.CommandOperation(action), func(ctx *middleware.Context) error {

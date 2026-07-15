@@ -12,37 +12,26 @@ import (
 
 type Context struct {
 	context.Context
-	events           []any
-	principal        cedar.EntityUID
-	store            *store.Store
-	tx               *bstore.Tx
-	dispatcher       EventDispatcher
-	metricsCollector *MetricsCollector
-	activity         *middlewareevents.Activity
-	activityRecorder ActivityRecorder
+	events    []any
+	principal cedar.EntityUID
+	pipeline  *Pipeline
+	tx        *bstore.Tx
+	activity  *middlewareevents.Activity
 }
 
-type ContextConfig struct {
-	Principal        cedar.EntityUID
-	Store            *store.Store
-	Dispatcher       EventDispatcher
-	MetricsCollector *MetricsCollector
-	ActivityRecorder ActivityRecorder
-}
-
-func NewContext(parent context.Context, config ContextConfig) *Context {
+func NewContext(parent context.Context, principal cedar.EntityUID, pipeline *Pipeline) *Context {
 	if parent == nil {
 		parent = context.Background()
 	}
+	if pipeline == nil {
+		pipeline = defaultPipeline
+	}
 
 	c := &Context{
-		Context:          parent,
-		events:           make([]any, 0, 4),
-		principal:        config.Principal,
-		store:            config.Store,
-		dispatcher:       config.Dispatcher,
-		metricsCollector: config.MetricsCollector,
-		activityRecorder: config.ActivityRecorder,
+		Context:   parent,
+		events:    make([]any, 0, 4),
+		principal: principal,
+		pipeline:  pipeline,
 	}
 
 	if c.principal.IsZero() {
@@ -76,10 +65,10 @@ func (c *Context) Principal() cedar.EntityUID {
 }
 
 func (c *Context) Store() (*store.Store, bool) {
-	if c == nil || c.store == nil {
+	if c == nil || c.pipeline == nil || c.pipeline.store == nil {
 		return nil, false
 	}
-	return c.store, true
+	return c.pipeline.store, true
 }
 
 func (c *Context) Transaction() (*bstore.Tx, bool) {
@@ -89,32 +78,11 @@ func (c *Context) Transaction() (*bstore.Tx, bool) {
 	return c.tx, true
 }
 
-func (c *Context) Dispatcher() (EventDispatcher, bool) {
-	if c == nil || c.dispatcher == nil {
-		return nil, false
-	}
-	return c.dispatcher, true
-}
-
-func (c *Context) MetricsCollector() (*MetricsCollector, bool) {
-	if c == nil || c.metricsCollector == nil {
-		return nil, false
-	}
-	return c.metricsCollector, true
-}
-
 func (c *Context) Activity() (*middlewareevents.Activity, bool) {
 	if c == nil || c.activity == nil {
 		return nil, false
 	}
 	return c.activity, true
-}
-
-func (c *Context) ActivityRecorder() (ActivityRecorder, bool) {
-	if c == nil || c.activityRecorder == nil {
-		return nil, false
-	}
-	return c.activityRecorder, true
 }
 
 // HandlerContext is a restricted context passed to event handlers.
