@@ -20,6 +20,10 @@ import (
 	"github.com/mjl-/bstore"
 )
 
+type noOpDispatcher struct{}
+
+func (noOpDispatcher) Dispatch(*middleware.Context, any) error { return nil }
+
 func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
@@ -77,6 +81,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 
 	noDispatchPipeline := middleware.NewPipeline(middleware.PipelineConfig{
 		Store:            f.Store,
+		Dispatcher:       noOpDispatcher{},
 		ActivityRecorder: a.Audit,
 	})
 	noDispatchCtx := middleware.NewContext(context.Background(), ctx.Principal(), noDispatchPipeline)
