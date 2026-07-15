@@ -20,7 +20,7 @@ func TrackActivity() Middleware {
 		}
 
 		activity := middlewareevents.NewActivity(op.Action, op.Resource.UID, ctx.Principal())
-		WithActivity(activity)(ctx)
+		ctx.activity = activity
 
 		err := next(ctx)
 

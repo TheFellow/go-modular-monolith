@@ -67,7 +67,6 @@ func newTestContext(logBuf *testLogBuffer, mem *telemetry.MemoryMetrics) *middle
 	// Create middleware context with metrics collector
 	mc := middleware.NewMetricsCollector(mem)
 	return middleware.NewContext(ctx,
-		middleware.WithAnonymousPrincipal(),
 		middleware.WithMetricsCollector(mc),
 	)
 }
@@ -303,7 +302,6 @@ func TestDispatchEvents_DispatchesEvents(t *testing.T) {
 	dispatcher := &mockDispatcher{}
 
 	mctx := middleware.NewContext(ctx,
-		middleware.WithAnonymousPrincipal(),
 		middleware.WithMetricsCollector(middleware.NewMetricsCollector(mem)),
 		middleware.WithEventDispatcher(dispatcher),
 	)
@@ -357,7 +355,6 @@ func TestDispatchEvents_DoesNotCascadeNewEvents(t *testing.T) {
 	dispatcher := &cascadingDispatcher{}
 
 	mctx := middleware.NewContext(ctx,
-		middleware.WithAnonymousPrincipal(),
 		middleware.WithMetricsCollector(middleware.NewMetricsCollector(mem)),
 		middleware.WithEventDispatcher(dispatcher),
 	)

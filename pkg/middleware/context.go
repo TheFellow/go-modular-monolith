@@ -3,9 +3,9 @@ package middleware
 import (
 	"context"
 
+	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
-	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
@@ -48,20 +48,10 @@ func WithEventDispatcher(d EventDispatcher) ContextOpt {
 	}
 }
 
-func WithMetrics(m telemetry.Metrics) ContextOpt {
-	return func(c *Context) {
-		c.Context = telemetry.WithMetrics(c.Context, m)
-	}
-}
-
 func WithMetricsCollector(mc *MetricsCollector) ContextOpt {
 	return func(c *Context) {
 		c.metricsCollector = mc
 	}
-}
-
-func WithAnonymousPrincipal() ContextOpt {
-	return WithPrincipal(cedar.NewEntityUID(cedar.EntityType("Mixology::Actor"), cedar.String("anonymous")))
 }
 
 func NewContext(parent context.Context, opts ...ContextOpt) *Context {
@@ -93,7 +83,7 @@ func NewContext(parent context.Context, opts ...ContextOpt) *Context {
 	}
 
 	if c.principal.IsZero() {
-		WithAnonymousPrincipal()(c)
+		c.principal = authn.Anonymous()
 	}
 
 	return c
@@ -111,7 +101,7 @@ func (c *Context) Principal() cedar.EntityUID {
 	if c != nil && !c.principal.IsZero() {
 		return c.principal
 	}
-	return cedar.NewEntityUID(cedar.EntityType("Mixology::Actor"), cedar.String("anonymous"))
+	return authn.Anonymous()
 }
 
 func (c *Context) Store() (*store.Store, bool) {

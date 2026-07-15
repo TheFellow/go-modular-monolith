@@ -10,15 +10,6 @@ type ActivityRecorder interface {
 	RecordActivity(ctx *Context, activity middlewareevents.Activity) error
 }
 
-func WithActivity(a *middlewareevents.Activity) ContextOpt {
-	return func(c *Context) {
-		if a == nil {
-			return
-		}
-		c.activity = a
-	}
-}
-
 // WithActivityRecorder attaches an activity recorder to the middleware context.
 func WithActivityRecorder(r ActivityRecorder) ContextOpt {
 	return func(c *Context) {
