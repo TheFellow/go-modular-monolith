@@ -93,12 +93,11 @@ func (a *App) contextWithPrincipal(parent context.Context, principal cedar.Entit
 	parent = log.ToContext(parent, a.Logger.With(log.Actor(principal)))
 	parent = telemetry.WithMetrics(parent, a.Metrics)
 
-	opts := []middleware.ContextOpt{
-		middleware.WithPrincipal(principal),
-		middleware.WithStore(a.Store),
-		middleware.WithEventDispatcher(a.Dispatcher),
-		middleware.WithActivityRecorder(a.Audit),
-		middleware.WithMetricsCollector(a.metricsCollector),
-	}
-	return middleware.NewContext(parent, opts...)
+	return middleware.NewContext(parent, middleware.ContextConfig{
+		Principal:        principal,
+		Store:            a.Store,
+		Dispatcher:       a.Dispatcher,
+		ActivityRecorder: a.Audit,
+		MetricsCollector: a.metricsCollector,
+	})
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/mjl-/bstore"
 )
@@ -113,7 +112,7 @@ func TestMenuPublishedValidator_SetsAvailabilityFromInventory(t *testing.T) {
 	menuDAO := menudao.New()
 
 	err = f.Store.Write(ctx, func(tx *bstore.Tx) error {
-		txCtx := middleware.NewContext(ctx, middleware.WithTransaction(tx))
+		txCtx := ctx.WithTransaction(tx)
 
 		updated := *menu
 		updated.Status = menuM.MenuStatusPublished

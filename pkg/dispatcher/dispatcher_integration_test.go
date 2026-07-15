@@ -75,11 +75,11 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		t.Fatalf("expected initial availability available, got %+v", m2.Items)
 	}
 
-	noDispatchCtx := middleware.NewContext(context.Background(),
-		middleware.WithStore(f.Store),
-		middleware.WithPrincipal(ctx.Principal()),
-		middleware.WithActivityRecorder(a.Audit),
-	)
+	noDispatchCtx := middleware.NewContext(context.Background(), middleware.ContextConfig{
+		Store:            f.Store,
+		Principal:        ctx.Principal(),
+		ActivityRecorder: a.Audit,
+	})
 	updated, err := a.Inventory.Set(noDispatchCtx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Amount:       measurement.MustAmount(0, ingredient.Unit),
@@ -91,7 +91,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 
 	d := dispatcher.New()
 	err = f.Store.Write(ctx, func(tx *bstore.Tx) error {
-		txCtx := middleware.NewContext(ctx, middleware.WithTransaction(tx))
+		txCtx := ctx.WithTransaction(tx)
 		return d.Dispatch(txCtx, inventoryevents.StockAdjusted{
 			Inventory: *updated,
 			Reason:    "used",
@@ -184,7 +184,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	// Dispatch DrinkDeleted event for drink1
 	d := dispatcher.New()
 	err = f.Store.Write(ctx, func(tx *bstore.Tx) error {
-		txCtx := middleware.NewContext(ctx, middleware.WithTransaction(tx))
+		txCtx := ctx.WithTransaction(tx)
 		return d.Dispatch(txCtx, drinksevents.DrinkDeleted{Drink: *drink1, DeletedAt: time.Now().UTC()})
 	})
 	if err != nil {

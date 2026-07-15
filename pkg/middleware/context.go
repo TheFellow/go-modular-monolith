@@ -22,64 +22,27 @@ type Context struct {
 	activityRecorder ActivityRecorder
 }
 
-type ContextOpt func(*Context)
-
-func WithPrincipal(p cedar.EntityUID) ContextOpt {
-	return func(c *Context) {
-		c.principal = p
-	}
+type ContextConfig struct {
+	Principal        cedar.EntityUID
+	Store            *store.Store
+	Dispatcher       EventDispatcher
+	MetricsCollector *MetricsCollector
+	ActivityRecorder ActivityRecorder
 }
 
-func WithTransaction(tx *bstore.Tx) ContextOpt {
-	return func(c *Context) {
-		c.tx = tx
-	}
-}
-
-func WithStore(s *store.Store) ContextOpt {
-	return func(c *Context) {
-		c.store = s
-	}
-}
-
-func WithEventDispatcher(d EventDispatcher) ContextOpt {
-	return func(c *Context) {
-		c.dispatcher = d
-	}
-}
-
-func WithMetricsCollector(mc *MetricsCollector) ContextOpt {
-	return func(c *Context) {
-		c.metricsCollector = mc
-	}
-}
-
-func NewContext(parent context.Context, opts ...ContextOpt) *Context {
+func NewContext(parent context.Context, config ContextConfig) *Context {
 	if parent == nil {
 		parent = context.Background()
 	}
 
-	var parentMiddleware *Context
-	if p, ok := parent.(*Context); ok {
-		parentMiddleware = p
-		parent = p.Context
-	}
-
 	c := &Context{
-		Context: parent,
-		events:  make([]any, 0, 4),
-	}
-	if parentMiddleware != nil {
-		c.principal = parentMiddleware.principal
-		c.store = parentMiddleware.store
-		c.tx = parentMiddleware.tx
-		c.dispatcher = parentMiddleware.dispatcher
-		c.metricsCollector = parentMiddleware.metricsCollector
-		c.activity = parentMiddleware.activity
-		c.activityRecorder = parentMiddleware.activityRecorder
-	}
-	for _, opt := range opts {
-		opt(c)
+		Context:          parent,
+		events:           make([]any, 0, 4),
+		principal:        config.Principal,
+		store:            config.Store,
+		dispatcher:       config.Dispatcher,
+		metricsCollector: config.MetricsCollector,
+		activityRecorder: config.ActivityRecorder,
 	}
 
 	if c.principal.IsZero() {
@@ -87,6 +50,14 @@ func NewContext(parent context.Context, opts ...ContextOpt) *Context {
 	}
 
 	return c
+}
+
+func (c *Context) WithTransaction(tx *bstore.Tx) *Context {
+	derived := *c
+	derived.Context = c.Context
+	derived.events = make([]any, 0, 4)
+	derived.tx = tx
+	return &derived
 }
 
 func (c *Context) AddEvent(event any) {

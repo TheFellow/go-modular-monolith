@@ -47,7 +47,7 @@ func TrackActivity() Middleware {
 			}
 		} else if s, ok := ctx.Store(); ok && s != nil {
 			if rerr := s.Write(ctx, func(tx *bstore.Tx) error {
-				txCtx := NewContext(ctx, WithTransaction(tx))
+				txCtx := ctx.WithTransaction(tx)
 				return record(txCtx)
 			}); rerr != nil {
 				return rerr

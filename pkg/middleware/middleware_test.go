@@ -66,9 +66,7 @@ func newTestContext(logBuf *testLogBuffer, mem *telemetry.MemoryMetrics) *middle
 
 	// Create middleware context with metrics collector
 	mc := middleware.NewMetricsCollector(mem)
-	return middleware.NewContext(ctx,
-		middleware.WithMetricsCollector(mc),
-	)
+	return middleware.NewContext(ctx, middleware.ContextConfig{MetricsCollector: mc})
 }
 
 type testEvent struct {
@@ -175,10 +173,10 @@ func TestQueryChain_WithAuthZ_Denial_LogsOnceAndRecordsRequestMetrics(t *testing
 	ctx = telemetry.WithMetrics(ctx, mem)
 
 	// Use anonymous principal which should be denied for create
-	mctx := middleware.NewContext(ctx,
-		middleware.WithPrincipal(authn.Anonymous()),
-		middleware.WithMetricsCollector(middleware.NewMetricsCollector(mem)),
-	)
+	mctx := middleware.NewContext(ctx, middleware.ContextConfig{
+		Principal:        authn.Anonymous(),
+		MetricsCollector: middleware.NewMetricsCollector(mem),
+	})
 
 	action := drinksauthz.ActionCreate
 
@@ -219,10 +217,10 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	ctx = log.ToContext(ctx, logger)
 	ctx = telemetry.WithMetrics(ctx, mem)
 
-	mctx := middleware.NewContext(ctx,
-		middleware.WithPrincipal(authn.Anonymous()),
-		middleware.WithMetricsCollector(middleware.NewMetricsCollector(mem)),
-	)
+	mctx := middleware.NewContext(ctx, middleware.ContextConfig{
+		Principal:        authn.Anonymous(),
+		MetricsCollector: middleware.NewMetricsCollector(mem),
+	})
 
 	action := drinksauthz.ActionList
 	handlerCalled := false
@@ -301,10 +299,10 @@ func TestDispatchEvents_DispatchesEvents(t *testing.T) {
 
 	dispatcher := &mockDispatcher{}
 
-	mctx := middleware.NewContext(ctx,
-		middleware.WithMetricsCollector(middleware.NewMetricsCollector(mem)),
-		middleware.WithEventDispatcher(dispatcher),
-	)
+	mctx := middleware.NewContext(ctx, middleware.ContextConfig{
+		MetricsCollector: middleware.NewMetricsCollector(mem),
+		Dispatcher:       dispatcher,
+	})
 
 	action := drinksauthz.ActionCreate
 
@@ -354,10 +352,10 @@ func TestDispatchEvents_DoesNotCascadeNewEvents(t *testing.T) {
 
 	dispatcher := &cascadingDispatcher{}
 
-	mctx := middleware.NewContext(ctx,
-		middleware.WithMetricsCollector(middleware.NewMetricsCollector(mem)),
-		middleware.WithEventDispatcher(dispatcher),
-	)
+	mctx := middleware.NewContext(ctx, middleware.ContextConfig{
+		MetricsCollector: middleware.NewMetricsCollector(mem),
+		Dispatcher:       dispatcher,
+	})
 
 	action := drinksauthz.ActionCreate
 

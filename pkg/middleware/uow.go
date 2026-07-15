@@ -18,7 +18,7 @@ func UnitOfWork() Middleware {
 		}
 
 		return s.Write(ctx, func(tx *bstore.Tx) error {
-			txCtx := NewContext(ctx, WithTransaction(tx))
+			txCtx := ctx.WithTransaction(tx)
 			return next(txCtx)
 		})
 	}
