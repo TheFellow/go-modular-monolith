@@ -15,7 +15,7 @@ type Store struct {
 	db *bstore.DB
 }
 
-func Open(path string) (*Store, error) {
+func Open(ctx context.Context, path string) (*Store, error) {
 	dir := filepath.Dir(path)
 	if dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -23,7 +23,7 @@ func Open(path string) (*Store, error) {
 		}
 	}
 
-	db, err := bstore.Open(context.Background(), path, nil)
+	db, err := bstore.Open(ctx, path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,8 +33,8 @@ func Open(path string) (*Store, error) {
 
 // Register adds domain-owned persistence models to this store. Domain module
 // bootstrap calls it before the application begins serving operations.
-func (s *Store) Register(models ...any) {
-	if err := s.db.Register(context.Background(), models...); err != nil {
+func (s *Store) Register(ctx context.Context, models ...any) {
+	if err := s.db.Register(ctx, models...); err != nil {
 		panic(err)
 	}
 }

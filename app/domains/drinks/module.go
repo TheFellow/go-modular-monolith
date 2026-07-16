@@ -1,6 +1,8 @@
 package drinks
 
 import (
+	"context"
+
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/commands"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
@@ -14,8 +16,8 @@ type Module struct {
 	pipeline *middleware.Pipeline
 }
 
-func NewModule(s *store.Store, pipeline *middleware.Pipeline) *Module {
-	dao.Register(s)
+func NewModule(ctx context.Context, s *store.Store, pipeline *middleware.Pipeline) *Module {
+	dao.Register(ctx, s)
 	return &Module{
 		queries:  queries.New(s),
 		commands: commands.New(s),

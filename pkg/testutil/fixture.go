@@ -15,6 +15,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
@@ -40,19 +41,15 @@ func NewFixture(t testing.TB) *Fixture {
 	t.Helper()
 
 	path := filepath.Join(t.TempDir(), "mixology.test.db")
-	s, err := store.Open(path)
-	Ok(t, err)
-
 	metrics := telemetry.Memory()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	ctx := log.ToContext(context.Background(), logger)
+	ctx = telemetry.WithMetrics(ctx, metrics)
+	s, err := store.Open(ctx, path)
+	Ok(t, err)
 	p, err := authn.ParseActor("owner")
 	Ok(t, err)
-	a := app.New(
-		s,
-		p,
-		logger,
-		metrics,
-	)
+	a := app.New(ctx, s, p)
 	t.Cleanup(func() { _ = a.Close() })
 
 	ownerCtx := a.Context()
@@ -83,7 +80,7 @@ func (f *Fixture) ActorContext(actor string) *middleware.Context {
 	f.T.Helper()
 	p, err := authn.ParseActor(actor)
 	Ok(f.T, err)
-	return f.App.ContextFor(context.Background(), p)
+	return f.App.ContextFor(p)
 }
 
 func (f *Fixture) Bootstrap() *Bootstrap {

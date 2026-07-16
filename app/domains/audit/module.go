@@ -1,6 +1,8 @@
 package audit
 
 import (
+	"context"
+
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/queries"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -13,8 +15,8 @@ type Module struct {
 	pipeline *middleware.Pipeline
 }
 
-func NewModule(s *store.Store, pipeline *middleware.Pipeline) *Module {
-	dao.Register(s)
+func NewModule(ctx context.Context, s *store.Store, pipeline *middleware.Pipeline) *Module {
+	dao.Register(ctx, s)
 	return &Module{
 		dao:      dao.New(s),
 		queries:  queries.New(s),

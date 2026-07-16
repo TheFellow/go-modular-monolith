@@ -137,19 +137,20 @@ func (c *CLI) Command() *cli.Command {
 			if err != nil {
 				return ctx, err
 			}
+			ctx = pkglog.ToContext(ctx, logger)
+			ctx = telemetry.WithMetrics(ctx, metrics)
 
-			s, err := store.Open(c.dbPath)
+			s, err := store.Open(ctx, c.dbPath)
 			if err != nil {
 				return ctx, err
 			}
 			c.app = app.New(
+				ctx,
 				s,
 				p,
-				logger,
-				metrics,
 			)
 
-			ctx = c.app.ContextFrom(ctx)
+			ctx = c.app.Context()
 			mctx, ok := ctx.(*middleware.Context)
 
 			if cmd != nil && cmd.Bool("tui") {

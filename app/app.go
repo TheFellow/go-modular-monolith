@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
@@ -28,35 +27,33 @@ type App struct {
 	Menus       *menus.Module
 	Orders      *orders.Module
 
-	logger    *slog.Logger
-	metrics   telemetry.Metrics
+	ctx       context.Context
 	principal cedar.EntityUID
 }
 
 // New constructs the application around a required store. Domain modules
 // register their private persistence models before New returns.
-func New(s *store.Store, principal cedar.EntityUID, logger *slog.Logger, metrics telemetry.Metrics) *App {
+func New(ctx context.Context, s *store.Store, principal cedar.EntityUID) *App {
 	a := &App{
 		Store:     s,
-		logger:    logger,
-		metrics:   metrics,
+		ctx:       ctx,
 		principal: principal,
 	}
 
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
 		Store:      a.Store,
 		Dispatcher: dispatcher.New(s),
-		Metrics:    a.metrics,
+		Metrics:    telemetry.FromContext(ctx),
 		RecordActivity: func(ctx *middleware.Context, activity middlewareevents.Activity) error {
 			return a.Audit.RecordActivity(ctx, activity)
 		},
 	})
-	a.Audit = audit.NewModule(s, pipeline)
-	a.Drinks = drinks.NewModule(s, pipeline)
-	a.Ingredients = ingredients.NewModule(s, pipeline)
-	a.Inventory = inventory.NewModule(s, pipeline)
-	a.Menus = menus.NewModule(s, pipeline)
-	a.Orders = orders.NewModule(s, pipeline)
+	a.Audit = audit.NewModule(ctx, s, pipeline)
+	a.Drinks = drinks.NewModule(ctx, s, pipeline)
+	a.Ingredients = ingredients.NewModule(ctx, s, pipeline)
+	a.Inventory = inventory.NewModule(ctx, s, pipeline)
+	a.Menus = menus.NewModule(ctx, s, pipeline)
+	a.Orders = orders.NewModule(ctx, s, pipeline)
 
 	return a
 }
@@ -66,24 +63,15 @@ func (a *App) Close() error {
 }
 
 func (a *App) Context() *middleware.Context {
-	return a.ContextFrom(context.Background())
+	return a.contextWithPrincipal(a.ctx, a.principal)
 }
 
-func (a *App) ContextFrom(parent context.Context) *middleware.Context {
-	return a.contextWithPrincipal(parent, a.principal)
-}
-
-func (a *App) ContextFor(parent context.Context, principal cedar.EntityUID) *middleware.Context {
-	return a.contextWithPrincipal(parent, principal)
+func (a *App) ContextFor(principal cedar.EntityUID) *middleware.Context {
+	return a.contextWithPrincipal(a.ctx, principal)
 }
 
 func (a *App) contextWithPrincipal(parent context.Context, principal cedar.EntityUID) *middleware.Context {
-	if parent == nil {
-		parent = context.Background()
-	}
-
-	parent = log.ToContext(parent, a.logger.With(log.Actor(principal)))
-	parent = telemetry.WithMetrics(parent, a.metrics)
+	parent = log.ToContext(parent, log.FromContext(parent).With(log.Actor(principal)))
 
 	return middleware.NewContext(parent, principal)
 }

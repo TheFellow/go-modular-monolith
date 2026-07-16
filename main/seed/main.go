@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 )
@@ -75,17 +77,18 @@ func run() error {
 		dbPath = p
 	}
 
-	s, err := store.Open(dbPath)
+	bootstrapCtx := log.ToContext(context.Background(), slog.Default())
+	bootstrapCtx = telemetry.WithMetrics(bootstrapCtx, telemetry.Nop())
+	s, err := store.Open(bootstrapCtx, dbPath)
 	if err != nil {
 		return fmt.Errorf("open store: %w", err)
 	}
 
 	// Create app
 	a := app.New(
+		bootstrapCtx,
 		s,
 		authn.Owner(),
-		slog.Default(),
-		telemetry.Nop(),
 	)
 	defer a.Close()
 
