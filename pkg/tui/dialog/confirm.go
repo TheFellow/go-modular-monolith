@@ -143,8 +143,8 @@ func (d *ConfirmDialog) Update(msg tea.Msg) (*ConfirmDialog, tea.Cmd) {
 // View renders the dialog.
 func (d *ConfirmDialog) View() string {
 	contentWidth := d.dialogContentWidth()
-	titleStyle := d.styles.Title.Copy().Width(contentWidth).Align(lipgloss.Center)
-	messageStyle := d.styles.Message.Copy().Width(contentWidth)
+	titleStyle := d.styles.Title.Width(contentWidth).Align(lipgloss.Center)
+	messageStyle := d.styles.Message.Width(contentWidth)
 
 	title := titleStyle.Render(d.title)
 	message := messageStyle.Render(d.message)

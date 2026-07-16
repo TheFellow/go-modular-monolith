@@ -70,7 +70,7 @@ func (s *SelectField) Update(msg tea.Msg) (Field, tea.Cmd) {
 func (s *SelectField) View() string {
 	label := s.label
 	if s.required {
-		label = label + " *"
+		label += " *"
 		label = s.labelRequiredStyle.Render(label)
 	} else {
 		label = s.styles.Label.Render(label)

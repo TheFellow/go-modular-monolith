@@ -54,24 +54,24 @@ func WithPrecision(p int) FieldOption {
 }
 
 // WithMin adds a minimum numeric validator.
-func WithMin(min float64) FieldOption {
+func WithMin(minimum float64) FieldOption {
 	return func(field Field) {
 		typed, ok := field.(*NumberField)
 		if !ok {
 			return
 		}
-		typed.validators = append(typed.validators, Min(min))
+		typed.validators = append(typed.validators, Min(minimum))
 	}
 }
 
 // WithMax adds a maximum numeric validator.
-func WithMax(max float64) FieldOption {
+func WithMax(maximum float64) FieldOption {
 	return func(field Field) {
 		typed, ok := field.(*NumberField)
 		if !ok {
 			return
 		}
-		typed.validators = append(typed.validators, Max(max))
+		typed.validators = append(typed.validators, Max(maximum))
 	}
 }
 
@@ -102,7 +102,7 @@ func (n *NumberField) Update(msg tea.Msg) (Field, tea.Cmd) {
 func (n *NumberField) View() string {
 	label := n.label
 	if n.required {
-		label = label + " *"
+		label += " *"
 		label = n.labelRequiredStyle.Render(label)
 	} else {
 		label = n.styles.Label.Render(label)
@@ -260,7 +260,7 @@ func (n *NumberField) formatFloat(value float64) string {
 	return strconv.FormatFloat(value, 'f', -1, 64)
 }
 
-func precisionValid(raw string, max int) bool {
+func precisionValid(raw string, maximum int) bool {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
 		return true
@@ -275,5 +275,5 @@ func precisionValid(raw string, max int) bool {
 	if len(parts) != 2 {
 		return true
 	}
-	return len(parts[1]) <= max
+	return len(parts[1]) <= maximum
 }

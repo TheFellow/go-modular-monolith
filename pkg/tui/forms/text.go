@@ -50,7 +50,7 @@ func (t *TextField) Update(msg tea.Msg) (Field, tea.Cmd) {
 func (t *TextField) View() string {
 	label := t.label
 	if t.required {
-		label = label + " *"
+		label += " *"
 		label = t.labelRequiredStyle.Render(label)
 	} else {
 		label = t.styles.Label.Render(label)

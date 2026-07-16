@@ -229,21 +229,18 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		switch m.mode {
 		case listModeBrowsing:
 		case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
-			break
 		case listModeCreating:
 			if key.Matches(msg, m.keys.Back) {
 				m.mode = listModeBrowsing
 				m.create = nil
 				return m, nil
 			}
-			break
 		case listModeRenaming:
 			if key.Matches(msg, m.keys.Back) {
 				m.mode = listModeBrowsing
 				m.rename = nil
 				return m, nil
 			}
-			break
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):

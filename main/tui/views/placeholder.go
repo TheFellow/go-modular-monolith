@@ -25,8 +25,7 @@ func (p *Placeholder) Init() tea.Cmd {
 
 // Update implements tea.Model.
 func (p *Placeholder) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
+	if msg, ok := msg.(tea.WindowSizeMsg); ok {
 		p.width = msg.Width
 		p.height = msg.Height
 	}

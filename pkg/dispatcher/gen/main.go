@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
-	"unicode"
 )
 
 //go:embed dispatcher.go.tpl
@@ -188,7 +187,7 @@ func main() {
 		fatalf("format source: %v\n\n%s", err, buf.String())
 	}
 
-	outPath := filepath.Join("dispatcher_gen.go")
+	outPath := "dispatcher_gen.go"
 	if err := os.WriteFile(outPath, src, 0o644); err != nil {
 		fatalf("write %s: %v", outPath, err)
 	}
@@ -202,9 +201,9 @@ func assignHandlerVarNames(groups []*eventGroup) {
 			if base == "" {
 				base = "handler"
 			}
-			base = base + "Handler"
+			base += "Handler"
 			if token.Lookup(base).IsKeyword() {
-				base = base + "H"
+				base += "H"
 			}
 
 			used[base]++
@@ -236,41 +235,6 @@ func domainFromPkgPath(pkgPath string) string {
 	}
 
 	return ""
-}
-
-func lowerCamel(s string) string {
-	if s == "" {
-		return ""
-	}
-	r := []rune(s)
-
-	// Find leading uppercase runes.
-	i := 0
-	for i < len(r) && unicode.IsUpper(r[i]) {
-		i++
-	}
-	if i == 0 {
-		return s
-	}
-	// All uppercase: lower all.
-	if i == len(r) {
-		for j := range r {
-			r[j] = unicode.ToLower(r[j])
-		}
-		return string(r)
-	}
-	// Single leading uppercase: lower it.
-	if i == 1 {
-		r[0] = unicode.ToLower(r[0])
-		return string(r)
-	}
-
-	// Multiple leading uppercase, followed by a lowercase. Lowercase all but the last
-	// leading uppercase rune, e.g. HTTPServer -> httpServer.
-	for j := 0; j < i-1; j++ {
-		r[j] = unicode.ToLower(r[j])
-	}
-	return string(r)
 }
 
 func fatalf(format string, args ...any) {

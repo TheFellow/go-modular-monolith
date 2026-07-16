@@ -119,7 +119,7 @@ func TestListViewModel_DetailShowsRecipeSteps(t *testing.T) {
 	view := model.View()
 	testutil.ErrorIf(
 		t,
-		!(strings.Contains(view, "1. Shake") && strings.Contains(view, "2. Strain")),
+		!strings.Contains(view, "1. Shake") || !strings.Contains(view, "2. Strain"),
 		"expected detail to contain recipe steps, got:\n%s",
 		view,
 	)

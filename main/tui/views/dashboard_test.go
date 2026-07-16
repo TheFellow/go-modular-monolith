@@ -3,6 +3,8 @@ package views
 import "testing"
 
 func TestDashboardLayoutConfig(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name          string
 		width         int
@@ -18,6 +20,8 @@ func TestDashboardLayoutConfig(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			d := &Dashboard{width: tc.width}
 			cardWidth, columns := d.layoutConfig()
 			if cardWidth != tc.expectedWidth || columns != tc.expectedCols {

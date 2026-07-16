@@ -122,7 +122,9 @@ func (c *CLI) menuCommands() *cli.Command {
 						if len(an.Items) > 0 {
 							fmt.Println()
 							w := newTabWriter()
-							fmt.Fprintln(w, "DRINK_ID\tNAME\tCOST\tPRICE\tMARGIN\tSTATUS")
+							if _, err := fmt.Fprintln(w, "DRINK_ID\tNAME\tCOST\tPRICE\tMARGIN\tSTATUS"); err != nil {
+								return err
+							}
 							for _, item := range an.Items {
 								cost := "n/a"
 								if item.Cost != nil && !item.CostUnknown {
@@ -144,10 +146,12 @@ func (c *CLI) menuCommands() *cli.Command {
 								status := string(item.Availability)
 								if len(item.Substitutions) > 0 {
 									sub := item.Substitutions[0]
-									status = status + fmt.Sprintf(" (sub: %s for %s)", sub.Substitute.String(), sub.Original.String())
+									status += fmt.Sprintf(" (sub: %s for %s)", sub.Substitute.String(), sub.Original.String())
 								}
 
-								fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", item.DrinkID.String(), item.Name, cost, price, margin, strings.ToUpper(status))
+								if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", item.DrinkID.String(), item.Name, cost, price, margin, strings.ToUpper(status)); err != nil {
+									return err
+								}
 							}
 							if err := w.Flush(); err != nil {
 								return err
@@ -157,9 +161,13 @@ func (c *CLI) menuCommands() *cli.Command {
 						fmt.Println()
 						fmt.Println("Analytics:")
 						w := newTabWriter()
-						fmt.Fprintf(w, "Available:\t%d/%d\n", an.AvailableCount, an.TotalCount)
+						if _, err := fmt.Fprintf(w, "Available:\t%d/%d\n", an.AvailableCount, an.TotalCount); err != nil {
+							return err
+						}
 						if an.AverageMargin != nil {
-							fmt.Fprintf(w, "Average margin:\t%.0f%%\n", *an.AverageMargin*100)
+							if _, err := fmt.Fprintf(w, "Average margin:\t%.0f%%\n", *an.AverageMargin*100); err != nil {
+								return err
+							}
 						}
 						return w.Flush()
 					}

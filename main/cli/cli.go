@@ -118,7 +118,7 @@ func (c *CLI) Command() *cli.Command {
 			}
 			logger := pkglog.Setup(c.logLevel, c.logFormat, logOutput)
 
-			var metrics telemetry.Metrics = telemetry.Nop()
+			var metrics = telemetry.Nop()
 			if c.enableMetrics {
 				prom, err := telemetry.NewPrometheus()
 				if err != nil {

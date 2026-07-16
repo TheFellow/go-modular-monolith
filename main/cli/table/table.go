@@ -2,6 +2,7 @@ package table
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"strings"
@@ -11,8 +12,12 @@ import (
 
 // PrintTable prints items as a table with headers from struct tags.
 func PrintTable[T any](items []T) error {
+	return printTable(os.Stdout, items)
+}
+
+func printTable[T any](output io.Writer, items []T) error {
 	elemType := reflect.TypeFor[T]()
-	if elemType.Kind() == reflect.Ptr {
+	if elemType.Kind() == reflect.Pointer {
 		elemType = elemType.Elem()
 	}
 	if elemType.Kind() != reflect.Struct {
@@ -20,17 +25,19 @@ func PrintTable[T any](items []T) error {
 	}
 
 	fields := getTableFields(elemType)
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := tabwriter.NewWriter(output, 0, 0, 2, ' ', 0)
 
 	headers := make([]string, len(fields))
 	for i, f := range fields {
 		headers[i] = f.header
 	}
-	fmt.Fprintln(w, strings.Join(headers, "\t"))
+	if _, err := fmt.Fprintln(w, strings.Join(headers, "\t")); err != nil {
+		return err
+	}
 
 	for _, item := range items {
 		val := reflect.ValueOf(item)
-		if val.Kind() == reflect.Ptr {
+		if val.Kind() == reflect.Pointer {
 			if val.IsNil() {
 				return fmt.Errorf("table: nil item")
 			}
@@ -44,7 +51,9 @@ func PrintTable[T any](items []T) error {
 		for i, f := range fields {
 			values[i] = formatValue(val.Field(f.index))
 		}
-		fmt.Fprintln(w, strings.Join(values, "\t"))
+		if _, err := fmt.Fprintln(w, strings.Join(values, "\t")); err != nil {
+			return err
+		}
 	}
 
 	return w.Flush()
@@ -52,11 +61,15 @@ func PrintTable[T any](items []T) error {
 
 // PrintDetail prints a single item as key-value pairs.
 func PrintDetail[T any](item T) error {
+	return printDetail(os.Stdout, item)
+}
+
+func printDetail[T any](output io.Writer, item T) error {
 	val := reflect.ValueOf(item)
 	if !val.IsValid() {
 		return fmt.Errorf("table: invalid item")
 	}
-	if val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer {
 		if val.IsNil() {
 			return fmt.Errorf("table: nil item")
 		}
@@ -67,13 +80,15 @@ func PrintDetail[T any](item T) error {
 	}
 
 	fields := getJSONFields(val.Type())
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := tabwriter.NewWriter(output, 0, 0, 2, ' ', 0)
 	for _, f := range fields {
 		fieldVal := val.Field(f.index)
 		if f.omitempty && isZero(fieldVal) {
 			continue
 		}
-		fmt.Fprintf(w, "%s:\t%s\n", f.label, formatValue(fieldVal))
+		if _, err := fmt.Fprintf(w, "%s:\t%s\n", f.label, formatValue(fieldVal)); err != nil {
+			return err
+		}
 	}
 	return w.Flush()
 }
@@ -157,7 +172,7 @@ func formatValue(v reflect.Value) string {
 	if !v.IsValid() {
 		return ""
 	}
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return ""
 		}
@@ -178,7 +193,7 @@ func formatValue(v reflect.Value) string {
 }
 
 func isZero(v reflect.Value) bool {
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return true
 		}

@@ -88,7 +88,7 @@ func run() error {
 
 	// Create app
 	a := app.New(bootstrapCtx, app.Config{Store: s})
-	defer a.Close()
+	defer func() { _ = a.Close() }()
 
 	// Create context as owner
 	ctx := middleware.NewContext(bootstrapCtx)

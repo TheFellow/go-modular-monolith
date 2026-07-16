@@ -8,6 +8,8 @@ import (
 )
 
 func TestConfirmDialogNavigation(t *testing.T) {
+	t.Parallel()
+
 	dlg := dialog.NewConfirmDialog("Title", "Message")
 	dlg, _ = dlg.Update(tea.KeyMsg{Type: tea.KeyTab})
 	updated, cmd := dlg.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -20,6 +22,8 @@ func TestConfirmDialogNavigation(t *testing.T) {
 }
 
 func TestConfirmDialogConfirm(t *testing.T) {
+	t.Parallel()
+
 	dlg := dialog.NewConfirmDialog("Title", "Message")
 	updated, cmd := dlg.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	if !updated.IsConfirmed() {
@@ -38,6 +42,8 @@ func TestConfirmDialogConfirm(t *testing.T) {
 }
 
 func TestConfirmDialogCancel(t *testing.T) {
+	t.Parallel()
+
 	dlg := dialog.NewConfirmDialog("Title", "Message", dialog.WithFocusCancel())
 	updated, cmd := dlg.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	if !updated.IsCancelled() {
@@ -56,6 +62,8 @@ func TestConfirmDialogCancel(t *testing.T) {
 }
 
 func TestConfirmDialogEscCancel(t *testing.T) {
+	t.Parallel()
+
 	dlg := dialog.NewConfirmDialog("Title", "Message")
 	updated, cmd := dlg.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	if !updated.IsCancelled() {

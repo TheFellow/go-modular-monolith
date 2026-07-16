@@ -1,8 +1,35 @@
 version: "2"
 
 linters:
-  default: none
+  default: standard
   enable:
+    - errorlint
     - exhaustive
-    - gochecksumtype
+    - gocritic
+    - misspell
+    - noctx
+    - nolintlint
+    - paralleltest
+    - revive
     - modernize
+  settings:
+    gocritic:
+      disabled-checks:
+        # this check is not always a slam dunk, especially if the chain is
+        # nested under a for loop
+        - ifElseChain
+    revive:
+      enable-default-rules: true
+      rules:
+        # go doc perfection isn't something we're striving for in this project
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+        # allow `_name` to document an intentionally-unused parameter
+        - name: unused-parameter
+          arguments:
+            - allowRegex: "^_"
+        - name: context-as-argument
+          arguments:
+            - allow-types-before: "*testing.T,testing.TB"

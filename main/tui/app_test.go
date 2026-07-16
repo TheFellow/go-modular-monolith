@@ -20,6 +20,8 @@ import (
 )
 
 func TestStatusBarView_UsesWarningStyleForNotFound(t *testing.T) {
+	t.Parallel()
+
 	app := &App{styles: styles.App}
 	app.lastError = errors.NotFoundf("ingredient missing")
 
@@ -30,6 +32,8 @@ func TestStatusBarView_UsesWarningStyleForNotFound(t *testing.T) {
 }
 
 func TestStatusBarView_UsesErrorStyleForInvalid(t *testing.T) {
+	t.Parallel()
+
 	app := &App{styles: styles.App}
 	app.lastError = errors.Invalidf("invalid input")
 
@@ -40,6 +44,8 @@ func TestStatusBarView_UsesErrorStyleForInvalid(t *testing.T) {
 }
 
 func TestStatusBarView_UsesErrorStyleForPermission(t *testing.T) {
+	t.Parallel()
+
 	app := &App{styles: styles.App}
 	app.lastError = errors.Permissionf("permission denied")
 
