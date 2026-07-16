@@ -165,11 +165,7 @@ func TestListViewModel_ColumnWidths_FitWithinWidth(t *testing.T) {
 		ingredientHeader := strings.Contains(header, "Ingr") || strings.Contains(header, "In\u2026")
 		testutil.ErrorIf(
 			t,
-			!(ingredientHeader &&
-				strings.Contains(header, "Category") &&
-				strings.Contains(header, "Quantity") &&
-				strings.Contains(header, "Cost") &&
-				strings.Contains(header, "Status")),
+			!ingredientHeader || !strings.Contains(header, "Category") || !strings.Contains(header, "Quantity") || !strings.Contains(header, "Cost") || !strings.Contains(header, "Status"),
 			"expected header to include all columns at width %d, got: %q",
 			width,
 			header,

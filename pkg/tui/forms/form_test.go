@@ -9,6 +9,8 @@ import (
 )
 
 func TestFormNavigation(t *testing.T) {
+	t.Parallel()
+
 	keys := forms.FormKeys{
 		NextField: key.NewBinding(key.WithKeys("tab")),
 		PrevField: key.NewBinding(key.WithKeys("shift+tab")),
@@ -34,6 +36,8 @@ func TestFormNavigation(t *testing.T) {
 }
 
 func TestFormValidation(t *testing.T) {
+	t.Parallel()
+
 	keys := forms.FormKeys{}
 	name := forms.NewTextField("Name", forms.WithRequired())
 	age := forms.NewNumberField("Age", forms.WithMin(21))

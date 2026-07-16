@@ -78,8 +78,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.setSize(msg.Width, msg.Height)
 		return m, nil
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, m.keys.Refresh):
+		if key.Matches(msg, m.keys.Refresh) {
 			m.loading = true
 			m.err = nil
 			return m, tea.Batch(m.spinner.Init(), m.loadEntries())

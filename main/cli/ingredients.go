@@ -26,12 +26,10 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Flags: []cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{
-						Name:    "category",
-						Aliases: []string{"c"},
-						Usage:   ingredientscli.CategoryUsage(),
-						Validator: func(s string) error {
-							return ingredientscli.ValidateCategory(s)
-						},
+						Name:      "category",
+						Aliases:   []string{"c"},
+						Usage:     ingredientscli.CategoryUsage(),
+						Validator: ingredientscli.ValidateCategory,
 					},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -85,20 +83,16 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					StdinFlag,
 					FileFlag,
 					&cli.StringFlag{
-						Name:    "category",
-						Aliases: []string{"c"},
-						Usage:   ingredientscli.CategoryUsage(),
-						Validator: func(s string) error {
-							return ingredientscli.ValidateCategory(s)
-						},
+						Name:      "category",
+						Aliases:   []string{"c"},
+						Usage:     ingredientscli.CategoryUsage(),
+						Validator: ingredientscli.ValidateCategory,
 					},
 					&cli.StringFlag{
-						Name:    "unit",
-						Aliases: []string{"u"},
-						Usage:   ingredientscli.UnitUsage(),
-						Validator: func(s string) error {
-							return ingredientscli.ValidateUnit(s)
-						},
+						Name:      "unit",
+						Aliases:   []string{"u"},
+						Usage:     ingredientscli.UnitUsage(),
+						Validator: ingredientscli.ValidateUnit,
 					},
 					&cli.StringFlag{
 						Name:    "description",
@@ -172,20 +166,16 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						Usage:   "New name",
 					},
 					&cli.StringFlag{
-						Name:    "category",
-						Aliases: []string{"c"},
-						Usage:   ingredientscli.CategoryUsage(),
-						Validator: func(s string) error {
-							return ingredientscli.ValidateCategory(s)
-						},
+						Name:      "category",
+						Aliases:   []string{"c"},
+						Usage:     ingredientscli.CategoryUsage(),
+						Validator: ingredientscli.ValidateCategory,
 					},
 					&cli.StringFlag{
-						Name:    "unit",
-						Aliases: []string{"u"},
-						Usage:   ingredientscli.UnitUsage(),
-						Validator: func(s string) error {
-							return ingredientscli.ValidateUnit(s)
-						},
+						Name:      "unit",
+						Aliases:   []string{"u"},
+						Usage:     ingredientscli.UnitUsage(),
+						Validator: ingredientscli.ValidateUnit,
 					},
 					&cli.StringFlag{
 						Name:    "description",

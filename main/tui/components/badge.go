@@ -31,15 +31,15 @@ type BadgeStyles struct {
 	Out       lipgloss.Style
 }
 
-func NewBadgeStyles(primary, success, warning, error_ lipgloss.AdaptiveColor) BadgeStyles {
+func NewBadgeStyles(_primary, success, warning, errorColor lipgloss.AdaptiveColor) BadgeStyles {
 	return BadgeStyles{
 		Draft:     lipgloss.NewStyle().Foreground(warning),
 		Published: lipgloss.NewStyle().Foreground(success),
 		Pending:   lipgloss.NewStyle().Foreground(warning),
 		Completed: lipgloss.NewStyle().Foreground(success),
-		Cancelled: lipgloss.NewStyle().Foreground(error_),
+		Cancelled: lipgloss.NewStyle().Foreground(errorColor),
 		OK:        lipgloss.NewStyle().Foreground(success),
 		Low:       lipgloss.NewStyle().Foreground(warning),
-		Out:       lipgloss.NewStyle().Foreground(error_),
+		Out:       lipgloss.NewStyle().Foreground(errorColor),
 	}
 }

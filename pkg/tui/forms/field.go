@@ -90,8 +90,7 @@ func WithMaxLength(n int) FieldOption {
 		if n <= 0 {
 			return
 		}
-		switch typed := field.(type) {
-		case *TextField:
+		if typed, ok := field.(*TextField); ok {
 			typed.validators = append(typed.validators, MaxLength(n))
 			typed.input.CharLimit = n
 		}

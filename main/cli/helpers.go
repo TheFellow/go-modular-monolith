@@ -66,7 +66,7 @@ func readJSONInput[T any](cmd *cli.Command) (T, error) {
 		if err != nil {
 			return zero, err
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		r = f
 	}
 

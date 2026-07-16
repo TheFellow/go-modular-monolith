@@ -266,7 +266,7 @@ func (a *App) statusBarView() string {
 	var content string
 	if a.lastError != nil {
 		tuiErr := perrors.ToTUIError(a.lastError)
-		style := a.styles.ErrorText
+		var style lipgloss.Style
 		switch tuiErr.Style {
 		case perrors.TUIStyleWarning:
 			style = a.styles.WarningText

@@ -8,7 +8,6 @@ import (
 	inventory "github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
@@ -126,14 +125,12 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 				m.adjust = nil
 				return m, nil
 			}
-			break
 		case listModeSetting:
 			if key.Matches(msg, m.keys.Back) {
 				m.mode = listModeBrowsing
 				m.set = nil
 				return m, nil
 			}
-			break
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
@@ -439,17 +436,6 @@ func renderStatus(status string, styles tui.ListViewStyles) string {
 	default:
 		return status
 	}
-}
-
-func formatCost(cost optional.Value[money.Price]) (string, error) {
-	price, ok := cost.Unwrap()
-	if !ok {
-		return "N/A", nil
-	}
-	if err := price.Validate(); err != nil {
-		return "", err
-	}
-	return price.String(), nil
 }
 
 func stockStatus(amount measurement.Amount) string {

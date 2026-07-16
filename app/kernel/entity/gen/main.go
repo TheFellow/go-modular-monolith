@@ -17,7 +17,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	tmpl := template.Must(template.New("entity").Funcs(template.FuncMap{
 		"lower": strings.ToLower,

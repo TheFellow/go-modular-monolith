@@ -3,7 +3,6 @@ package money
 import (
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
@@ -160,9 +159,4 @@ func roundHalfUp(d decimal.Decimal, scale int) (decimal.Decimal, error) {
 		return decimal.Decimal{}, err
 	}
 	return n.Trunc(scale), nil
-}
-
-func decimalFromFloat64(v float64) (decimal.Decimal, error) {
-	// Avoid binary float math during money operations: represent the float as a decimal string first.
-	return decimal.Parse(strconv.FormatFloat(v, 'f', -1, 64))
 }

@@ -259,8 +259,9 @@ Seven `arch-lint` rules (`.arch-lint.yaml`) enforce module boundaries at CI time
 | models-no-internal | Domain models depending on internal packages |
 | handlers-no-modules | Handlers accessing module roots (must use queries/events/models) |
 
-Additional compile-time guarantees: `golangci-lint` runs the sum type, enum exhaustiveness, and
-modernization checks, while `arch-lint` enforces module boundaries.
+Additional compile-time guarantees: `golangci-lint` runs its standard checks plus wrapped-error,
+enum exhaustiveness, modernization, and project style checks, while `arch-lint` enforces module
+boundaries.
 
 ## Cross-Transport Error Types
 

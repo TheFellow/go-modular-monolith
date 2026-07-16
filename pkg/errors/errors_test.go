@@ -83,7 +83,7 @@ func TestConstructorUnwrap(t *testing.T) {
 
 	testutil.ErrorIsInternal(t, err)
 	testutil.ErrorIs(t, err, cause)
-	if errors.Unwrap(err) != cause {
+	if !errors.Is(errors.Unwrap(err), cause) {
 		t.Fatalf("Unwrap() = %v, want %v", errors.Unwrap(err), cause)
 	}
 }
@@ -101,7 +101,7 @@ func TestUserMessages(t *testing.T) {
 		t.Fatalf("internal UserMessage() = %q", got)
 	}
 
-	internal.WithUserMessage("Please try again")
+	internal = internal.WithUserMessage("Please try again")
 	if got := internal.UserMessage(); got != "Please try again" {
 		t.Fatalf("overridden UserMessage() = %q", got)
 	}
@@ -118,7 +118,8 @@ func TestSurfaceAdaptersUseSafeMessage(t *testing.T) {
 	}
 
 	cliErr := errors.ToCLIExit(err)
-	exitErr, ok := cliErr.(cli.ExitCoder)
+	var exitErr cli.ExitCoder
+	ok := errors.As(cliErr, &exitErr)
 	if !ok {
 		t.Fatalf("ToCLIExit() returned %T", cliErr)
 	}

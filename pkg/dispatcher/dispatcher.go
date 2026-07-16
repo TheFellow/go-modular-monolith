@@ -21,7 +21,7 @@ func New(s *store.Store) *Dispatcher {
 
 // handlerError is called when a handler returns an error.
 // Return a non-nil error to stop dispatch immediately.
-func (d *Dispatcher) handlerError(ctx *middleware.Context, event any, err error) error {
+func (d *Dispatcher) handlerError(_ctx *middleware.Context, _event any, err error) error {
 	return err
 }
 
