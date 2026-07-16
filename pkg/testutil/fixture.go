@@ -35,6 +35,7 @@ type Fixture struct {
 	Orders      *orders.Module
 
 	ownerCtx *middleware.Context
+	ctx      context.Context
 }
 
 func NewFixture(t testing.TB) *Fixture {
@@ -45,11 +46,12 @@ func NewFixture(t testing.TB) *Fixture {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	ctx := log.ToContext(context.Background(), logger)
 	ctx = telemetry.WithMetrics(ctx, metrics)
-	s, err := store.Open(ctx, path)
-	Ok(t, err)
 	p, err := authn.ParseActor("owner")
 	Ok(t, err)
-	a := app.New(ctx, s, p)
+	ctx = authn.ToContext(ctx, p)
+	s, err := store.Open(ctx, path)
+	Ok(t, err)
+	a := app.New(ctx, app.Config{Store: s})
 	t.Cleanup(func() { _ = a.Close() })
 
 	ownerCtx := a.Context()
@@ -68,6 +70,7 @@ func NewFixture(t testing.TB) *Fixture {
 		Orders:      a.Orders,
 
 		ownerCtx: ownerCtx,
+		ctx:      ctx,
 	}
 }
 
@@ -80,7 +83,7 @@ func (f *Fixture) ActorContext(actor string) *middleware.Context {
 	f.T.Helper()
 	p, err := authn.ParseActor(actor)
 	Ok(f.T, err)
-	return f.App.ContextFor(p)
+	return f.App.ContextFrom(authn.ToContext(f.ctx, p))
 }
 
 func (f *Fixture) Bootstrap() *Bootstrap {

@@ -9,13 +9,13 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
+	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
-	"github.com/cedar-policy/cedar-go"
 )
 
 type App struct {
@@ -27,17 +27,16 @@ type App struct {
 	Menus       *menus.Module
 	Orders      *orders.Module
 
-	ctx       context.Context
-	principal cedar.EntityUID
+	ctx context.Context
 }
 
 // New constructs the application around a required store. Domain modules
 // register their private persistence models before New returns.
-func New(ctx context.Context, s *store.Store, principal cedar.EntityUID) *App {
+func New(ctx context.Context, config Config) *App {
+	s := config.Store
 	a := &App{
-		Store:     s,
-		ctx:       ctx,
-		principal: principal,
+		Store: s,
+		ctx:   ctx,
 	}
 
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
@@ -63,14 +62,11 @@ func (a *App) Close() error {
 }
 
 func (a *App) Context() *middleware.Context {
-	return a.contextWithPrincipal(a.ctx, a.principal)
+	return a.ContextFrom(a.ctx)
 }
 
-func (a *App) ContextFor(principal cedar.EntityUID) *middleware.Context {
-	return a.contextWithPrincipal(a.ctx, principal)
-}
-
-func (a *App) contextWithPrincipal(parent context.Context, principal cedar.EntityUID) *middleware.Context {
+func (a *App) ContextFrom(parent context.Context) *middleware.Context {
+	principal := authn.FromContext(parent)
 	parent = log.ToContext(parent, log.FromContext(parent).With(log.Actor(principal)))
 
 	return middleware.NewContext(parent, principal)

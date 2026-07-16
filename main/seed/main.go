@@ -79,17 +79,14 @@ func run() error {
 
 	bootstrapCtx := log.ToContext(context.Background(), slog.Default())
 	bootstrapCtx = telemetry.WithMetrics(bootstrapCtx, telemetry.Nop())
+	bootstrapCtx = authn.ToContext(bootstrapCtx, authn.Owner())
 	s, err := store.Open(bootstrapCtx, dbPath)
 	if err != nil {
 		return fmt.Errorf("open store: %w", err)
 	}
 
 	// Create app
-	a := app.New(
-		bootstrapCtx,
-		s,
-		authn.Owner(),
-	)
+	a := app.New(bootstrapCtx, app.Config{Store: s})
 	defer a.Close()
 
 	// Create context as owner

@@ -139,16 +139,13 @@ func (c *CLI) Command() *cli.Command {
 			}
 			ctx = pkglog.ToContext(ctx, logger)
 			ctx = telemetry.WithMetrics(ctx, metrics)
+			ctx = authn.ToContext(ctx, p)
 
 			s, err := store.Open(ctx, c.dbPath)
 			if err != nil {
 				return ctx, err
 			}
-			c.app = app.New(
-				ctx,
-				s,
-				p,
-			)
+			c.app = app.New(ctx, app.Config{Store: s})
 
 			ctx = c.app.Context()
 			mctx, ok := ctx.(*middleware.Context)
