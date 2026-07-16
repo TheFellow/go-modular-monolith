@@ -21,11 +21,11 @@ type AvailabilityCalculator struct {
 	ingredients *ingredientsq.Queries
 }
 
-func New() *AvailabilityCalculator {
+func New(s *store.Store) *AvailabilityCalculator {
 	return &AvailabilityCalculator{
-		drinks:      drinksq.New(),
-		inventory:   inventoryq.New(),
-		ingredients: ingredientsq.New(),
+		drinks:      drinksq.New(s),
+		inventory:   inventoryq.New(s),
+		ingredients: ingredientsq.New(s),
 	}
 }
 

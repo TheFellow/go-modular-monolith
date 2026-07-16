@@ -15,6 +15,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
@@ -23,7 +24,7 @@ import (
 type Fixture struct {
 	T       testing.TB
 	Store   *store.Store
-	App     *app.App
+	App     *app.Session
 	Metrics *telemetry.MemoryMetrics
 
 	Audit       *audit.Module
@@ -34,28 +35,27 @@ type Fixture struct {
 	Orders      *orders.Module
 
 	ownerCtx *middleware.Context
+	ctx      context.Context
 }
 
 func NewFixture(t testing.TB) *Fixture {
 	t.Helper()
 
 	path := filepath.Join(t.TempDir(), "mixology.test.db")
-	s, err := store.Open(path)
-	Ok(t, err)
-
 	metrics := telemetry.Memory()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	ctx := log.ToContext(context.Background(), logger)
+	ctx = telemetry.WithMetrics(ctx, metrics)
 	p, err := authn.ParseActor("owner")
 	Ok(t, err)
-	a := app.New(
-		s,
-		app.WithLogger(logger),
-		app.WithMetrics(metrics),
-		app.WithPrincipal(p),
-	)
-	t.Cleanup(func() { _ = a.Close() })
+	ctx = authn.ToContext(ctx, p)
+	s, err := store.Open(ctx, path)
+	Ok(t, err)
+	application := app.New(ctx, app.Config{Store: s})
+	t.Cleanup(func() { _ = application.Close() })
+	a := app.NewSession(ctx, application)
 
-	ownerCtx := a.Context()
+	ownerCtx := middleware.NewContext(ctx)
 
 	return &Fixture{
 		T:       t,
@@ -71,6 +71,7 @@ func NewFixture(t testing.TB) *Fixture {
 		Orders:      a.Orders,
 
 		ownerCtx: ownerCtx,
+		ctx:      ctx,
 	}
 }
 
@@ -83,7 +84,7 @@ func (f *Fixture) ActorContext(actor string) *middleware.Context {
 	f.T.Helper()
 	p, err := authn.ParseActor(actor)
 	Ok(f.T, err)
-	return f.App.ContextFor(context.Background(), p)
+	return middleware.NewContext(authn.ToContext(f.ctx, p))
 }
 
 func (f *Fixture) Bootstrap() *Bootstrap {

@@ -20,7 +20,7 @@ import (
 
 // SetInventoryVM renders an inventory set form.
 type SetInventoryVM struct {
-	app        *app.App
+	app        *app.Session
 	form       *forms.Form
 	row        InventoryRow
 	styles     forms.FormStyles
@@ -37,7 +37,7 @@ type SetErrorMsg struct {
 }
 
 // NewSetInventoryVM builds a SetInventoryVM with fields configured.
-func NewSetInventoryVM(app *app.App, row InventoryRow) *SetInventoryVM {
+func NewSetInventoryVM(app *app.Session, row InventoryRow) *SetInventoryVM {
 	quantityField := forms.NewNumberField(
 		"Quantity",
 		forms.WithRequired(),

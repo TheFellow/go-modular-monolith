@@ -13,7 +13,7 @@ type ListRequest struct {
 }
 
 func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.Ingredient, error) {
-	return middleware.RunQuery(ctx, authz.ActionList, m.list, req)
+	return middleware.RunQuery(m.pipeline, ctx, authz.ActionList, m.list, req)
 }
 
 func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.Ingredient, error) {
@@ -25,7 +25,7 @@ func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.Ingredient,
 }
 
 func (m *Module) Count(ctx *middleware.Context, req ListRequest) (int, error) {
-	return middleware.RunQuery(ctx, authz.ActionList, m.count, req)
+	return middleware.RunQuery(m.pipeline, ctx, authz.ActionList, m.count, req)
 }
 
 func (m *Module) count(ctx store.Context, req ListRequest) (int, error) {

@@ -16,7 +16,7 @@ import (
 
 // CreateIngredientVM renders a create ingredient form.
 type CreateIngredientVM struct {
-	app         *app.App
+	app         *app.Session
 	form        *forms.Form
 	styles      forms.FormStyles
 	keys        forms.FormKeys
@@ -39,7 +39,7 @@ type CreateErrorMsg struct {
 }
 
 // NewCreateIngredientVM builds a CreateIngredientVM with fields configured.
-func NewCreateIngredientVM(app *app.App) *CreateIngredientVM {
+func NewCreateIngredientVM(app *app.Session) *CreateIngredientVM {
 	categoryOptions := make([]forms.SelectOption, len(models.AllCategories()))
 	for i, c := range models.AllCategories() {
 		categoryOptions[i] = forms.SelectOption{Label: string(c), Value: c}

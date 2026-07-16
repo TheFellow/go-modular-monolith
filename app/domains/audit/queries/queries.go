@@ -1,11 +1,14 @@
 package queries
 
-import "github.com/TheFellow/go-modular-monolith/app/domains/audit/internal/dao"
+import (
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit/internal/dao"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
+)
 
 type Queries struct {
 	dao *dao.DAO
 }
 
-func New() *Queries {
-	return &Queries{dao: dao.New()}
+func New(s *store.Store) *Queries {
+	return &Queries{dao: dao.New(s)}
 }

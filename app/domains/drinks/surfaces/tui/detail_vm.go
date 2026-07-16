@@ -20,12 +20,12 @@ type DetailViewModel struct {
 	width           int
 	height          int
 	drink           optional.Value[models.Drink]
-	app             *app.App
+	app             *app.Session
 	ingredientNames map[entity.IngredientID]string
 	ingredientErr   error
 }
 
-func NewDetailViewModel(styles tui.ListViewStyles, app *app.App) *DetailViewModel {
+func NewDetailViewModel(styles tui.ListViewStyles, app *app.Session) *DetailViewModel {
 	return &DetailViewModel{
 		styles: styles,
 		app:    app,

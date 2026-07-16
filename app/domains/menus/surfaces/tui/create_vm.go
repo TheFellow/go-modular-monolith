@@ -15,7 +15,7 @@ import (
 
 // CreateMenuVM renders a create menu form.
 type CreateMenuVM struct {
-	app         *app.App
+	app         *app.Session
 	form        *forms.Form
 	styles      forms.FormStyles
 	keys        forms.FormKeys
@@ -36,7 +36,7 @@ type CreateErrorMsg struct {
 }
 
 // NewCreateMenuVM builds a CreateMenuVM with fields configured.
-func NewCreateMenuVM(app *app.App) *CreateMenuVM {
+func NewCreateMenuVM(app *app.Session) *CreateMenuVM {
 	nameField := forms.NewTextField(
 		"Name",
 		forms.WithRequired(),

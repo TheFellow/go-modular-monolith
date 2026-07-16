@@ -1,16 +1,36 @@
 package middleware
 
-var (
-	Query = NewChain(
-		Logging(),
-		Metrics(),
-		Authorize(),
-	)
-	Command = NewChain(
-		Logging(),
-		Metrics(),
-		TrackActivity(),
-		UnitOfWork(),
-		DispatchEvents(),
-	)
+import (
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 )
+
+type PipelineConfig struct {
+	Store          *store.Store
+	Dispatcher     EventDispatcher
+	Metrics        telemetry.Metrics
+	RecordActivity func(*Context, middlewareevents.Activity) error
+}
+
+type Pipeline struct {
+	query   *Chain
+	command *Chain
+}
+
+func NewPipeline(config PipelineConfig) *Pipeline {
+	return &Pipeline{
+		query: NewChain(
+			Logging(),
+			Metrics(config.Metrics),
+			Authorize(),
+		),
+		command: NewChain(
+			Logging(),
+			Metrics(config.Metrics),
+			TrackActivity(config.Store, config.RecordActivity),
+			UnitOfWork(config.Store),
+			DispatchEvents(config.Dispatcher),
+		),
+	}
+}

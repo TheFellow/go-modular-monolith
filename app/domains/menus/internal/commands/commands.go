@@ -4,6 +4,7 @@ import (
 	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/availability"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type Commands struct {
@@ -12,10 +13,10 @@ type Commands struct {
 	drinks       *drinksq.Queries
 }
 
-func New() *Commands {
+func New(s *store.Store) *Commands {
 	return &Commands{
-		dao:          dao.New(),
-		availability: availability.New(),
-		drinks:       drinksq.New(),
+		dao:          dao.New(s),
+		availability: availability.New(s),
+		drinks:       drinksq.New(s),
 	}
 }

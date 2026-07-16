@@ -9,7 +9,7 @@ import (
 
 func (d *DAO) ListByDrink(ctx store.Context, drinkID entity.DrinkID) ([]*models.Menu, error) {
 	var out []*models.Menu
-	err := store.Read(ctx, func(tx *bstore.Tx) error {
+	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
 		rows, err := bstore.QueryTx[MenuRow](tx).FilterFn(func(r MenuRow) bool {
 			if r.DeletedAt != nil {
 				return false

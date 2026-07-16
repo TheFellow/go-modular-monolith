@@ -8,12 +8,15 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-type Dispatcher struct{}
+type Dispatcher struct {
+	store *store.Store
+}
 
-func New() *Dispatcher {
-	return &Dispatcher{}
+func New(s *store.Store) *Dispatcher {
+	return &Dispatcher{store: s}
 }
 
 // handlerError is called when a handler returns an error.

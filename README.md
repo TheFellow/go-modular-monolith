@@ -107,6 +107,11 @@ registers its own internal bstore model with that store. Persistence types stay 
 domain boundary, invalid registration panics immediately as a programming error, and importing a
 package has no database-registration side effects.
 
+Entry points configure logging, metrics, and the authenticated principal on a `context.Context`,
+then construct the application with `app.New(ctx, app.Config{Store: s})`. The application does not
+retain request context or identity. CLI calls create a middleware context from the current request;
+the TUI uses an explicit `app.Session` to bind its persistent login to the application.
+
 ## Bounded Contexts Overview
 
 ```mermaid
@@ -175,7 +180,7 @@ flowchart LR
         U --> E[Load + AuthZ + Execute + AuthZ]
         E --> EV[Events]
         EV --> H[Handlers]
-        H --> R[Activity Recorder]
+        H --> R[Audit Writer]
         R --> AU[Audit Log]
     end
 
@@ -281,8 +286,9 @@ dialogs with danger styling.
 ## Activity Tracking & Audit
 
 Every write command executed through `RunCommand` is tracked as an **Activity** and persisted to
-the audit log through an explicit activity recorder. Domain events continue through the dispatcher;
-audit activity recording is separate from that event flow.
+the audit log through an explicit audit writer callback. Domain events continue through the
+dispatcher; audit activity recording is separate from that event flow. Audit reads remain on the
+public audit module, while the writer is private to application bootstrap.
 
 ```mermaid
 sequenceDiagram
@@ -290,7 +296,7 @@ sequenceDiagram
     participant TA as TrackActivity
     participant UoW as UnitOfWork
     participant H as Handlers
-    participant AR as Activity Recorder
+    participant AR as Audit Writer
     participant DB as Database
 
     C->>TA: Execute

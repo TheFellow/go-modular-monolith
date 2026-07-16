@@ -13,7 +13,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/mjl-/bstore"
 )
@@ -109,11 +108,11 @@ func TestMenuPublishedValidator_SetsAvailabilityFromInventory(t *testing.T) {
 	menu, err = f.Menus.AddDrink(ctx, &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
 
-	d := dispatcher.New()
-	menuDAO := menudao.New()
+	d := dispatcher.New(f.Store)
+	menuDAO := menudao.New(f.Store)
 
 	err = f.Store.Write(ctx, func(tx *bstore.Tx) error {
-		txCtx := middleware.NewContext(ctx, middleware.WithTransaction(tx))
+		txCtx := ctx.WithTransaction(tx)
 
 		updated := *menu
 		updated.Status = menuM.MenuStatusPublished

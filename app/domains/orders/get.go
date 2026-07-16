@@ -14,7 +14,7 @@ type getRequest struct {
 }
 
 func (m *Module) Get(ctx *middleware.Context, id entity.OrderID) (*models.Order, error) {
-	return middleware.RunQueryWithResource(ctx, authz.ActionGet, m.get, getRequest{ID: id})
+	return middleware.RunQueryWithResource(m.pipeline, ctx, authz.ActionGet, m.get, getRequest{ID: id})
 }
 
 func (m *Module) get(ctx store.Context, req getRequest) (*models.Order, error) {

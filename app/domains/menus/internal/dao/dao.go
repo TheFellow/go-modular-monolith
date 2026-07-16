@@ -1,11 +1,15 @@
 package dao
 
-import "github.com/TheFellow/go-modular-monolith/pkg/store"
+import (
+	"context"
 
-type DAO struct{}
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
+)
 
-func New() *DAO { return &DAO{} }
+type DAO struct{ store *store.Store }
 
-func Register(s *store.Store) {
-	s.Register(MenuRow{})
+func New(s *store.Store) *DAO { return &DAO{store: s} }
+
+func Register(ctx context.Context, s *store.Store) {
+	s.Register(ctx, MenuRow{})
 }

@@ -3,100 +3,39 @@ package middleware
 import (
 	"context"
 
+	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
-	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
 
 type Context struct {
 	context.Context
-	events           []any
-	principal        cedar.EntityUID
-	store            *store.Store
-	tx               *bstore.Tx
-	dispatcher       EventDispatcher
-	metricsCollector *MetricsCollector
-	activity         *middlewareevents.Activity
-	activityRecorder ActivityRecorder
+	events    []any
+	principal cedar.EntityUID
+	tx        *bstore.Tx
+	activity  *middlewareevents.Activity
 }
 
-type ContextOpt func(*Context)
-
-func WithPrincipal(p cedar.EntityUID) ContextOpt {
-	return func(c *Context) {
-		c.principal = p
-	}
-}
-
-func WithTransaction(tx *bstore.Tx) ContextOpt {
-	return func(c *Context) {
-		c.tx = tx
-	}
-}
-
-func WithStore(s *store.Store) ContextOpt {
-	return func(c *Context) {
-		c.store = s
-	}
-}
-
-func WithEventDispatcher(d EventDispatcher) ContextOpt {
-	return func(c *Context) {
-		c.dispatcher = d
-	}
-}
-
-func WithMetrics(m telemetry.Metrics) ContextOpt {
-	return func(c *Context) {
-		c.Context = telemetry.WithMetrics(c.Context, m)
-	}
-}
-
-func WithMetricsCollector(mc *MetricsCollector) ContextOpt {
-	return func(c *Context) {
-		c.metricsCollector = mc
-	}
-}
-
-func WithAnonymousPrincipal() ContextOpt {
-	return WithPrincipal(cedar.NewEntityUID(cedar.EntityType("Mixology::Actor"), cedar.String("anonymous")))
-}
-
-func NewContext(parent context.Context, opts ...ContextOpt) *Context {
-	if parent == nil {
-		parent = context.Background()
-	}
-
-	var parentMiddleware *Context
-	if p, ok := parent.(*Context); ok {
-		parentMiddleware = p
-		parent = p.Context
-	}
-
+func NewContext(parent context.Context) *Context {
+	principal := authn.FromContext(parent)
+	parent = log.ToContext(parent, log.FromContext(parent).With(log.Actor(principal)))
 	c := &Context{
-		Context: parent,
-		events:  make([]any, 0, 4),
-	}
-	if parentMiddleware != nil {
-		c.principal = parentMiddleware.principal
-		c.store = parentMiddleware.store
-		c.tx = parentMiddleware.tx
-		c.dispatcher = parentMiddleware.dispatcher
-		c.metricsCollector = parentMiddleware.metricsCollector
-		c.activity = parentMiddleware.activity
-		c.activityRecorder = parentMiddleware.activityRecorder
-	}
-	for _, opt := range opts {
-		opt(c)
-	}
-
-	if c.principal.IsZero() {
-		WithAnonymousPrincipal()(c)
+		Context:   parent,
+		events:    make([]any, 0, 4),
+		principal: principal,
 	}
 
 	return c
+}
+
+func (c *Context) WithTransaction(tx *bstore.Tx) *Context {
+	derived := *c
+	derived.Context = c.Context
+	derived.events = make([]any, 0, 4)
+	derived.tx = tx
+	return &derived
 }
 
 func (c *Context) AddEvent(event any) {
@@ -111,14 +50,7 @@ func (c *Context) Principal() cedar.EntityUID {
 	if c != nil && !c.principal.IsZero() {
 		return c.principal
 	}
-	return cedar.NewEntityUID(cedar.EntityType("Mixology::Actor"), cedar.String("anonymous"))
-}
-
-func (c *Context) Store() (*store.Store, bool) {
-	if c == nil || c.store == nil {
-		return nil, false
-	}
-	return c.store, true
+	return authn.Anonymous()
 }
 
 func (c *Context) Transaction() (*bstore.Tx, bool) {
@@ -128,32 +60,11 @@ func (c *Context) Transaction() (*bstore.Tx, bool) {
 	return c.tx, true
 }
 
-func (c *Context) Dispatcher() (EventDispatcher, bool) {
-	if c == nil || c.dispatcher == nil {
-		return nil, false
-	}
-	return c.dispatcher, true
-}
-
-func (c *Context) MetricsCollector() (*MetricsCollector, bool) {
-	if c == nil || c.metricsCollector == nil {
-		return nil, false
-	}
-	return c.metricsCollector, true
-}
-
 func (c *Context) Activity() (*middlewareevents.Activity, bool) {
 	if c == nil || c.activity == nil {
 		return nil, false
 	}
 	return c.activity, true
-}
-
-func (c *Context) ActivityRecorder() (ActivityRecorder, bool) {
-	if c == nil || c.activityRecorder == nil {
-		return nil, false
-	}
-	return c.activityRecorder, true
 }
 
 // HandlerContext is a restricted context passed to event handlers.
@@ -171,10 +82,6 @@ func NewHandlerContext(ctx *Context) *HandlerContext {
 
 func (h *HandlerContext) Transaction() (*bstore.Tx, bool) {
 	return h.ctx.Transaction()
-}
-
-func (h *HandlerContext) Store() (*store.Store, bool) {
-	return h.ctx.Store()
 }
 
 func (h *HandlerContext) TouchEntity(uid cedar.EntityUID) {

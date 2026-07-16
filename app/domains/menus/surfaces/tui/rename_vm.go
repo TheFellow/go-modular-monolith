@@ -17,7 +17,7 @@ import (
 
 // RenameMenuVM renders an inline rename form.
 type RenameMenuVM struct {
-	app        *app.App
+	app        *app.Session
 	input      textinput.Model
 	menu       *models.Menu
 	styles     forms.FormStyles
@@ -37,7 +37,7 @@ type RenameErrorMsg struct {
 }
 
 // NewRenameMenuVM builds a RenameMenuVM with input configured.
-func NewRenameMenuVM(app *app.App, menu *models.Menu) *RenameMenuVM {
+func NewRenameMenuVM(app *app.Session, menu *models.Menu) *RenameMenuVM {
 	if menu == nil {
 		menu = &models.Menu{}
 	}

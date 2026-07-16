@@ -16,7 +16,7 @@ import (
 
 // EditDrinkVM renders an edit drink form.
 type EditDrinkVM struct {
-	app         *app.App
+	app         *app.Session
 	form        *forms.Form
 	drink       *models.Drink
 	styles      forms.FormStyles
@@ -40,7 +40,7 @@ type UpdateErrorMsg struct {
 }
 
 // NewEditDrinkVM builds an EditDrinkVM with fields configured.
-func NewEditDrinkVM(app *app.App, drink *models.Drink) *EditDrinkVM {
+func NewEditDrinkVM(app *app.Session, drink *models.Drink) *EditDrinkVM {
 	if drink == nil {
 		drink = &models.Drink{}
 	}

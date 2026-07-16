@@ -7,7 +7,7 @@ import (
 )
 
 // Run starts the TUI with the given application.
-func Run(application *app.App) error {
+func Run(application *app.Session) error {
 	model := NewApp(application)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 	_, err := p.Run()

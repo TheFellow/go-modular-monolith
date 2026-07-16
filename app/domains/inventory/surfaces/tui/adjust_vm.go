@@ -21,7 +21,7 @@ import (
 
 // AdjustInventoryVM renders an inventory adjustment form.
 type AdjustInventoryVM struct {
-	app        *app.App
+	app        *app.Session
 	form       *forms.Form
 	row        InventoryRow
 	styles     forms.FormStyles
@@ -38,7 +38,7 @@ type AdjustErrorMsg struct {
 }
 
 // NewAdjustInventoryVM builds an AdjustInventoryVM with fields configured.
-func NewAdjustInventoryVM(app *app.App, row InventoryRow) *AdjustInventoryVM {
+func NewAdjustInventoryVM(app *app.Session, row InventoryRow) *AdjustInventoryVM {
 	reasonOptions := []forms.SelectOption{
 		{Label: "Received", Value: models.ReasonReceived},
 		{Label: "Used", Value: models.ReasonUsed},

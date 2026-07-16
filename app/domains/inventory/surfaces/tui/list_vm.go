@@ -39,7 +39,7 @@ const (
 
 // ListViewModel renders the inventory list and detail panes.
 type ListViewModel struct {
-	app    *app.App
+	app    *app.Session
 	styles tui.ListViewStyles
 	keys   tui.ListViewKeys
 
@@ -61,7 +61,7 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App) *ListViewModel {
+func NewListViewModel(app *app.Session) *ListViewModel {
 	columns := inventoryColumns(0)
 	model := table.New(
 		table.WithColumns(columns),

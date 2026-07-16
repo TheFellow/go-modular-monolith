@@ -20,7 +20,7 @@ type ListFilter struct {
 
 func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Drink, error) {
 	var out []*models.Drink
-	err := store.Read(ctx, func(tx *bstore.Tx) error {
+	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
 		q := d.query(tx, filter)
 		rows, err := q.SortAsc("Name").List()
 		if err != nil {
@@ -42,7 +42,7 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Drink, error
 
 func (d *DAO) Count(ctx store.Context, filter ListFilter) (int, error) {
 	var count int
-	err := store.Read(ctx, func(tx *bstore.Tx) error {
+	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
 		q := d.query(tx, filter)
 
 		var err error
@@ -57,7 +57,7 @@ func (d *DAO) Count(ctx store.Context, filter ListFilter) (int, error) {
 
 func (d *DAO) ListByIngredient(ctx store.Context, ingredientID entity.IngredientID) ([]*models.Drink, error) {
 	var out []*models.Drink
-	err := store.Read(ctx, func(tx *bstore.Tx) error {
+	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
 		target := ingredientID.EntityUID()
 		rows, err := bstore.QueryTx[DrinkRow](tx).FilterFn(func(r DrinkRow) bool {
 			if r.DeletedAt != nil {

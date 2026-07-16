@@ -13,6 +13,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 )
 
@@ -64,12 +65,7 @@ func newTestContext(logBuf *testLogBuffer, mem *telemetry.MemoryMetrics) *middle
 	// Add telemetry to context
 	ctx = telemetry.WithMetrics(ctx, mem)
 
-	// Create middleware context with metrics collector
-	mc := middleware.NewMetricsCollector(mem)
-	return middleware.NewContext(ctx,
-		middleware.WithAnonymousPrincipal(),
-		middleware.WithMetricsCollector(mc),
-	)
+	return middleware.NewContext(authn.ToContext(ctx, authn.Anonymous()))
 }
 
 type testEvent struct {
@@ -176,18 +172,16 @@ func TestQueryChain_WithAuthZ_Denial_LogsOnceAndRecordsRequestMetrics(t *testing
 	ctx = telemetry.WithMetrics(ctx, mem)
 
 	// Use anonymous principal which should be denied for create
-	mctx := middleware.NewContext(ctx,
-		middleware.WithPrincipal(authn.Anonymous()),
-		middleware.WithMetricsCollector(middleware.NewMetricsCollector(mem)),
-	)
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
+	mctx := middleware.NewContext(authn.ToContext(ctx, authn.Anonymous()))
 
 	action := drinksauthz.ActionCreate
 
 	// Use the full chain with AuthZ
-	err := middleware.Query.Execute(mctx, middleware.QueryOperation(action), func(_ *middleware.Context) error {
+	_, err := middleware.RunQuery(pipeline, mctx, action, func(_ store.Context, _ struct{}) (struct{}, error) {
 		t.Fatal("handler should not be called when authz denies")
-		return nil
-	})
+		return struct{}{}, nil
+	}, struct{}{})
 
 	if !errors.IsPermission(err) {
 		t.Fatalf("expected permission error, got %v", err)
@@ -220,18 +214,16 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	ctx = log.ToContext(ctx, logger)
 	ctx = telemetry.WithMetrics(ctx, mem)
 
-	mctx := middleware.NewContext(ctx,
-		middleware.WithPrincipal(authn.Anonymous()),
-		middleware.WithMetricsCollector(middleware.NewMetricsCollector(mem)),
-	)
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
+	mctx := middleware.NewContext(authn.ToContext(ctx, authn.Anonymous()))
 
 	action := drinksauthz.ActionList
 	handlerCalled := false
 
-	err := middleware.Query.Execute(mctx, middleware.QueryOperation(action), func(_ *middleware.Context) error {
+	_, err := middleware.RunQuery(pipeline, mctx, action, func(_ store.Context, _ struct{}) (struct{}, error) {
 		handlerCalled = true
-		return nil
-	})
+		return struct{}{}, nil
+	}, struct{}{})
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -253,7 +245,7 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	}
 }
 
-func TestTrackActivity_MissingRecorderFailsBeforeCommand(t *testing.T) {
+func TestTrackActivity_MissingCallbackFailsBeforeCommand(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &testLogBuffer{}
@@ -261,7 +253,7 @@ func TestTrackActivity_MissingRecorderFailsBeforeCommand(t *testing.T) {
 	mctx := newTestContext(logBuf, mem)
 
 	chain := middleware.NewChain(
-		middleware.TrackActivity(),
+		middleware.TrackActivity(nil, nil),
 	)
 
 	called := false
@@ -274,7 +266,7 @@ func TestTrackActivity_MissingRecorderFailsBeforeCommand(t *testing.T) {
 		t.Fatalf("expected internal setup error, got %v", err)
 	}
 	if called {
-		t.Fatal("expected command body not to run without an activity recorder")
+		t.Fatal("expected command body not to run without a record activity callback")
 	}
 }
 
@@ -302,17 +294,13 @@ func TestDispatchEvents_DispatchesEvents(t *testing.T) {
 
 	dispatcher := &mockDispatcher{}
 
-	mctx := middleware.NewContext(ctx,
-		middleware.WithAnonymousPrincipal(),
-		middleware.WithMetricsCollector(middleware.NewMetricsCollector(mem)),
-		middleware.WithEventDispatcher(dispatcher),
-	)
+	mctx := middleware.NewContext(authn.ToContext(ctx, authn.Anonymous()))
 
 	action := drinksauthz.ActionCreate
 
 	// Use just DispatchEvents middleware to test dispatch behavior
 	chain := middleware.NewChain(
-		middleware.DispatchEvents(),
+		middleware.DispatchEvents(dispatcher),
 	)
 
 	event := testEvent{Name: "created"}
@@ -356,16 +344,12 @@ func TestDispatchEvents_DoesNotCascadeNewEvents(t *testing.T) {
 
 	dispatcher := &cascadingDispatcher{}
 
-	mctx := middleware.NewContext(ctx,
-		middleware.WithAnonymousPrincipal(),
-		middleware.WithMetricsCollector(middleware.NewMetricsCollector(mem)),
-		middleware.WithEventDispatcher(dispatcher),
-	)
+	mctx := middleware.NewContext(authn.ToContext(ctx, authn.Anonymous()))
 
 	action := drinksauthz.ActionCreate
 
 	chain := middleware.NewChain(
-		middleware.DispatchEvents(),
+		middleware.DispatchEvents(dispatcher),
 	)
 
 	err := chain.Execute(mctx, middleware.CommandOperation(action), func(ctx *middleware.Context) error {

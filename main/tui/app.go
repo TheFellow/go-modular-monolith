@@ -40,7 +40,7 @@ type App struct {
 	prevViews   []View
 
 	// Application layer
-	app *app.App
+	app *app.Session
 
 	// UI State
 	styles    styles.Styles
@@ -56,7 +56,7 @@ type App struct {
 }
 
 // NewApp creates a new App with the given application.
-func NewApp(application *app.App) *App {
+func NewApp(application *app.Session) *App {
 	helpModel := help.New()
 	helpModel.ShowAll = false
 

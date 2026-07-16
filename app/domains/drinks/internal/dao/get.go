@@ -10,7 +10,7 @@ import (
 
 func (d *DAO) Get(ctx store.Context, id entity.DrinkID) (*models.Drink, error) {
 	var row DrinkRow
-	err := store.Read(ctx, func(tx *bstore.Tx) error {
+	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
 		row = DrinkRow{ID: id.String()}
 		return tx.Get(&row)
 	})

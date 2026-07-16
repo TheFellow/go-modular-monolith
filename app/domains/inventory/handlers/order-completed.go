@@ -8,14 +8,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type OrderCompleted struct {
 	dao *dao.DAO
 }
 
-func NewOrderCompleted() *OrderCompleted {
-	return &OrderCompleted{dao: dao.New()}
+func NewOrderCompleted(s *store.Store) *OrderCompleted {
+	return &OrderCompleted{dao: dao.New(s)}
 }
 
 func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.OrderCompleted) error {

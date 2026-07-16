@@ -5,6 +5,7 @@ import (
 
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -27,9 +28,13 @@ func TestRunCommand_LoaderRunsInTransaction(t *testing.T) {
 
 	fix := testutil.NewFixture(t)
 	ctx := fix.OwnerContext()
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
+		Store:          fix.Store,
+		RecordActivity: func(*middleware.Context, middlewareevents.Activity) error { return nil },
+	})
 
 	var sawTx bool
-	_, err := middleware.RunCommand(ctx, middleware.CommandSpec[testEntity, testEntity]{
+	_, err := middleware.RunCommand(pipeline, ctx, middleware.CommandSpec[testEntity, testEntity]{
 		Action: drinksauthz.ActionCreate,
 		Load: func(ctx *middleware.Context) (testEntity, error) {
 			_, sawTx = ctx.Transaction()

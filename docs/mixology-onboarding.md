@@ -62,12 +62,12 @@ Authorization happens inline inside `RunCommand`, which checks permissions on bo
 entity and the output entity (the "dual-state check" — can you touch the current state AND
 create the resulting state?).
 
-**Query pipelines:** Logging → Metrics → AuthZ → Execute. Two variants: `QueryChain` for
-action-level checks ("can this principal list drinks?") and `QueryWithResourceChain` for
+**Query pipeline:** Logging → Metrics → AuthZ → Execute. Query operations either carry only an
+action for action-level checks ("can this principal list drinks?") or also carry a resource for
 resource-level checks ("can this principal view this specific menu?").
 
-**Where to look:** `pkg/middleware/chains.go` (three lines — the entire pipeline definition),
-then `pkg/middleware/run.go` for `RunCommand` with dual authorization.
+**Where to look:** `pkg/middleware/chains.go` for dependency-bound pipeline construction, then
+`pkg/middleware/run.go` for query execution and `RunCommand` with dual authorization.
 
 **The takeaway:** If you're writing `log.Info()` or `if !authorized` inside a command handler,
 you're in the wrong layer. Push cross-cutting concerns into infrastructure. Domain code should
@@ -185,15 +185,15 @@ core.
 Tests should exercise the same code paths as production.
 
 `pkg/testutil` provides a `Fixture` that stands up the full middleware pipeline with an
-in-memory database. Tests call the same module methods that the CLI and TUI call. There's no
+isolated temporary database. Tests call the same module methods that the CLI and TUI call. There's no
 mocking of middleware — the test runs through logging, authorization, transactions, and event
 dispatch.
 
 `ActorContext()` switches between principals so authorization tests are trivial:
 
 ```go
-ctx := f.OwnerContext()    // full access
-ctx  = f.ActorContext(authn.Bartender())  // restricted
+ctx := f.OwnerContext()          // full access
+ctx  = f.ActorContext("bartender") // restricted
 _, err := f.Drinks.Delete(ctx, drinkID)
 testutil.AssertPermission(t, err)
 ```

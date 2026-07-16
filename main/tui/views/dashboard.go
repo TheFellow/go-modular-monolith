@@ -27,7 +27,7 @@ import (
 
 // Dashboard is the main navigation hub of the TUI.
 type Dashboard struct {
-	app    *app.App
+	app    *app.Session
 	styles styles.DashboardStyles
 	keys   keys.DashboardKeys
 	width  int
@@ -72,7 +72,7 @@ type DashboardLoadedMsg struct {
 }
 
 // NewDashboard creates a new Dashboard view.
-func NewDashboard(app *app.App) *Dashboard {
+func NewDashboard(app *app.Session) *Dashboard {
 	d := &Dashboard{
 		app:     app,
 		styles:  styles.App.Dashboard,

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -17,7 +19,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	"github.com/TheFellow/go-modular-monolith/pkg/log"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 )
 
 //go:embed data/ingredients.json
@@ -73,20 +78,20 @@ func run() error {
 		dbPath = p
 	}
 
-	s, err := store.Open(dbPath)
+	bootstrapCtx := log.ToContext(context.Background(), slog.Default())
+	bootstrapCtx = telemetry.WithMetrics(bootstrapCtx, telemetry.Nop())
+	bootstrapCtx = authn.ToContext(bootstrapCtx, authn.Owner())
+	s, err := store.Open(bootstrapCtx, dbPath)
 	if err != nil {
 		return fmt.Errorf("open store: %w", err)
 	}
 
 	// Create app
-	a := app.New(
-		s,
-		app.WithPrincipal(authn.Owner()),
-	)
+	a := app.New(bootstrapCtx, app.Config{Store: s})
 	defer a.Close()
 
 	// Create context as owner
-	ctx := a.Context()
+	ctx := middleware.NewContext(bootstrapCtx)
 
 	// Parse JSON data
 	var ingredients []seedIngredient

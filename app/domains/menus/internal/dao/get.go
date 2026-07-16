@@ -10,7 +10,7 @@ import (
 
 func (d *DAO) Get(ctx store.Context, id entity.MenuID) (*models.Menu, error) {
 	var row MenuRow
-	err := store.Read(ctx, func(tx *bstore.Tx) error {
+	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
 		row = MenuRow{ID: id.String()}
 		return tx.Get(&row)
 	})

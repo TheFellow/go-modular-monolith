@@ -7,7 +7,7 @@ import (
 )
 
 func (m *Module) Update(ctx *middleware.Context, menu *models.Menu) (*models.Menu, error) {
-	return middleware.RunCommand(ctx, middleware.CommandSpec[*models.Menu, *models.Menu]{
+	return middleware.RunCommand(m.pipeline, ctx, middleware.CommandSpec[*models.Menu, *models.Menu]{
 		Action: authz.ActionUpdate,
 		Load: func(ctx *middleware.Context) (*models.Menu, error) {
 			return m.queries.Get(ctx, menu.ID)

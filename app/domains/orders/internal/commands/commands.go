@@ -6,6 +6,7 @@ import (
 	inventoryq "github.com/TheFellow/go-modular-monolith/app/domains/inventory/queries"
 	menuq "github.com/TheFellow/go-modular-monolith/app/domains/menus/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/internal/dao"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type Commands struct {
@@ -17,12 +18,12 @@ type Commands struct {
 	inventory   *inventoryq.Queries
 }
 
-func New() *Commands {
+func New(s *store.Store) *Commands {
 	return &Commands{
-		dao:         dao.New(),
-		menus:       menuq.New(),
-		drinks:      drinksq.New(),
-		ingredients: ingredientsq.New(),
-		inventory:   inventoryq.New(),
+		dao:         dao.New(s),
+		menus:       menuq.New(s),
+		drinks:      drinksq.New(s),
+		ingredients: ingredientsq.New(s),
+		inventory:   inventoryq.New(s),
 	}
 }

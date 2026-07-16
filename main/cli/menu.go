@@ -59,7 +59,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					for _, m := range res {
 						rows = append(rows, menucli.ToMenuRow(m))
 						if cmd.Bool("costs") && len(m.Items) > 0 {
-							an, err := menuqueries.NewAnalyticsCalculator().Analyze(ctx, *m, cmd.Float64("target-margin"))
+							an, err := menuqueries.NewAnalyticsCalculator(c.app.Store).Analyze(ctx, *m, cmd.Float64("target-margin"))
 							if err != nil {
 								return err
 							}
@@ -99,7 +99,7 @@ func (c *CLI) menuCommands() *cli.Command {
 
 					if cmd.Bool("json") {
 						if cmd.Bool("costs") {
-							an, err := menuqueries.NewAnalyticsCalculator().Analyze(ctx, *res, cmd.Float64("target-margin"))
+							an, err := menuqueries.NewAnalyticsCalculator(c.app.Store).Analyze(ctx, *res, cmd.Float64("target-margin"))
 							if err != nil {
 								return err
 							}
@@ -114,7 +114,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					if cmd.Bool("costs") {
-						an, err := menuqueries.NewAnalyticsCalculator().Analyze(ctx, m, cmd.Float64("target-margin"))
+						an, err := menuqueries.NewAnalyticsCalculator(c.app.Store).Analyze(ctx, m, cmd.Float64("target-margin"))
 						if err != nil {
 							return err
 						}
