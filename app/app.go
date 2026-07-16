@@ -10,12 +10,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
-	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	"github.com/cedar-policy/cedar-go"
@@ -23,9 +21,6 @@ import (
 
 type App struct {
 	Store       *store.Store
-	Dispatcher  middleware.EventDispatcher
-	Logger      *slog.Logger
-	Metrics     telemetry.Metrics
 	Audit       *audit.Module
 	Drinks      *drinks.Module
 	Ingredients *ingredients.Module
@@ -33,39 +28,35 @@ type App struct {
 	Menus       *menus.Module
 	Orders      *orders.Module
 
-	principal optional.Value[cedar.EntityUID]
-	pipeline  *middleware.Pipeline
+	logger    *slog.Logger
+	metrics   telemetry.Metrics
+	principal cedar.EntityUID
 }
 
 // New constructs the application around a required store. Domain modules
 // register their private persistence models before New returns.
-func New(s *store.Store, opts ...Option) *App {
+func New(s *store.Store, principal cedar.EntityUID, logger *slog.Logger, metrics telemetry.Metrics) *App {
 	a := &App{
-		Store:      s,
-		Dispatcher: dispatcher.New(s),
-		Logger:     slog.Default(),
-		Metrics:    telemetry.Nop(),
-		principal:  optional.None[cedar.EntityUID](),
+		Store:     s,
+		logger:    logger,
+		metrics:   metrics,
+		principal: principal,
 	}
 
-	for _, opt := range opts {
-		opt(a)
-	}
-
-	a.pipeline = middleware.NewPipeline(middleware.PipelineConfig{
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
 		Store:      a.Store,
-		Dispatcher: a.Dispatcher,
-		Metrics:    a.Metrics,
+		Dispatcher: dispatcher.New(s),
+		Metrics:    a.metrics,
 		RecordActivity: func(ctx *middleware.Context, activity middlewareevents.Activity) error {
 			return a.Audit.RecordActivity(ctx, activity)
 		},
 	})
-	a.Audit = audit.NewModule(s, a.pipeline)
-	a.Drinks = drinks.NewModule(s, a.pipeline)
-	a.Ingredients = ingredients.NewModule(s, a.pipeline)
-	a.Inventory = inventory.NewModule(s, a.pipeline)
-	a.Menus = menus.NewModule(s, a.pipeline)
-	a.Orders = orders.NewModule(s, a.pipeline)
+	a.Audit = audit.NewModule(s, pipeline)
+	a.Drinks = drinks.NewModule(s, pipeline)
+	a.Ingredients = ingredients.NewModule(s, pipeline)
+	a.Inventory = inventory.NewModule(s, pipeline)
+	a.Menus = menus.NewModule(s, pipeline)
+	a.Orders = orders.NewModule(s, pipeline)
 
 	return a
 }
@@ -79,18 +70,11 @@ func (a *App) Context() *middleware.Context {
 }
 
 func (a *App) ContextFrom(parent context.Context) *middleware.Context {
-	return a.contextWithPrincipal(parent, a.principalOrAnonymous())
+	return a.contextWithPrincipal(parent, a.principal)
 }
 
 func (a *App) ContextFor(parent context.Context, principal cedar.EntityUID) *middleware.Context {
 	return a.contextWithPrincipal(parent, principal)
-}
-
-func (a *App) principalOrAnonymous() cedar.EntityUID {
-	if principal, ok := a.principal.Unwrap(); ok {
-		return principal
-	}
-	return authn.Anonymous()
 }
 
 func (a *App) contextWithPrincipal(parent context.Context, principal cedar.EntityUID) *middleware.Context {
@@ -98,8 +82,8 @@ func (a *App) contextWithPrincipal(parent context.Context, principal cedar.Entit
 		parent = context.Background()
 	}
 
-	parent = log.ToContext(parent, a.Logger.With(log.Actor(principal)))
-	parent = telemetry.WithMetrics(parent, a.Metrics)
+	parent = log.ToContext(parent, a.logger.With(log.Actor(principal)))
+	parent = telemetry.WithMetrics(parent, a.metrics)
 
 	return middleware.NewContext(parent, principal)
 }

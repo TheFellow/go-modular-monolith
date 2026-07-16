@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 )
 
 //go:embed data/ingredients.json
@@ -81,7 +83,9 @@ func run() error {
 	// Create app
 	a := app.New(
 		s,
-		app.WithPrincipal(authn.Owner()),
+		authn.Owner(),
+		slog.Default(),
+		telemetry.Nop(),
 	)
 	defer a.Close()
 

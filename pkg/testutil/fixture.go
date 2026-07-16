@@ -49,9 +49,9 @@ func NewFixture(t testing.TB) *Fixture {
 	Ok(t, err)
 	a := app.New(
 		s,
-		app.WithLogger(logger),
-		app.WithMetrics(metrics),
-		app.WithPrincipal(p),
+		p,
+		logger,
+		metrics,
 	)
 	t.Cleanup(func() { _ = a.Close() })
 

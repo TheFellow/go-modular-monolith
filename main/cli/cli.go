@@ -144,9 +144,9 @@ func (c *CLI) Command() *cli.Command {
 			}
 			c.app = app.New(
 				s,
-				app.WithLogger(logger),
-				app.WithMetrics(metrics),
-				app.WithPrincipal(p),
+				p,
+				logger,
+				metrics,
 			)
 
 			ctx = c.app.ContextFrom(ctx)
