@@ -30,7 +30,8 @@ type App struct {
 // register their private persistence models before New returns.
 func New(ctx context.Context, config Config) *App {
 	s := config.Store
-	auditWriter := audit.NewWriter(ctx, s)
+	audit.RegisterSchema(ctx, s)
+	auditWriter := audit.NewWriter(s)
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
 		Store:          s,
 		Dispatcher:     dispatcher.New(s),

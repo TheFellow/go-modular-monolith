@@ -1,10 +1,17 @@
 package audit
 
 import (
+	"context"
+
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/queries"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
+
+func RegisterSchema(ctx context.Context, s *store.Store) {
+	dao.Register(ctx, s)
+}
 
 type Module struct {
 	queries  *queries.Queries

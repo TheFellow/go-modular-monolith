@@ -1,8 +1,6 @@
 package audit
 
 import (
-	"context"
-
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
@@ -15,8 +13,7 @@ type Writer struct {
 	dao *dao.DAO
 }
 
-func NewWriter(ctx context.Context, s *store.Store) *Writer {
-	dao.Register(ctx, s)
+func NewWriter(s *store.Store) *Writer {
 	return &Writer{dao: dao.New(s)}
 }
 
