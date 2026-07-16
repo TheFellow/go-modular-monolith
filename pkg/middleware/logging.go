@@ -14,7 +14,7 @@ func Logging() Middleware {
 		if op.HasResource() {
 			attrs = append(attrs, log.Resource(op.Resource.UID))
 		}
-		ctx.Context = log.WithLogAttrs(ctx.Context, attrs...)
+		ctx.Context = log.ToContext(ctx.Context, log.FromContext(ctx).With(attrs...))
 
 		logger := log.FromContext(ctx)
 		start := time.Now()
@@ -25,7 +25,7 @@ func Logging() Middleware {
 
 		if op.Kind == OperationKindCommand {
 			if activity, ok := ctx.Activity(); ok && !activity.Resource.IsZero() {
-				ctx.Context = log.WithLogAttrs(ctx.Context, log.Resource(activity.Resource))
+				ctx.Context = log.ToContext(ctx.Context, log.FromContext(ctx).With(log.Resource(activity.Resource)))
 				logger = log.FromContext(ctx)
 			}
 		}

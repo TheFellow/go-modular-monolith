@@ -18,25 +18,13 @@ func Resource(r cedar.EntityUID) slog.Attr {
 	return slog.String("resource", r.String())
 }
 
-func Domain(name string) slog.Attr {
-	return slog.String("domain", name)
-}
-
 func EventType(name string) slog.Attr {
 	return slog.String("event_type", name)
 }
 
-func RequestID(id string) slog.Attr {
-	return slog.String("request_id", id)
-}
-
-func Allowed(v bool) slog.Attr {
-	return slog.Bool("allowed", v)
-}
-
 func Err(err error) slog.Attr {
 	if err == nil {
-		return slog.Attr{}
+		return slog.String("error", "")
 	}
-	return slog.Any("error", err)
+	return slog.String("error", err.Error())
 }

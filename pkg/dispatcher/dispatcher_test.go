@@ -2,11 +2,13 @@ package dispatcher
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -15,7 +17,7 @@ func TestDispatcher_DispatchesToHandlers(t *testing.T) {
 	t.Parallel()
 
 	d := New(nil)
-	ctx := middleware.NewContext(context.Background(), cedar.EntityUID{})
+	ctx := middleware.NewContext(log.ToContext(context.Background(), slog.Default()), cedar.EntityUID{})
 
 	event := events.IngredientCreated{
 		Ingredient: models.Ingredient{
@@ -35,7 +37,7 @@ func TestDispatcher_IgnoresUnknownEvents(t *testing.T) {
 	type unknownEvent struct{}
 
 	d := New(nil)
-	ctx := middleware.NewContext(context.Background(), cedar.EntityUID{})
+	ctx := middleware.NewContext(log.ToContext(context.Background(), slog.Default()), cedar.EntityUID{})
 	if err := d.Dispatch(ctx, unknownEvent{}); err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}

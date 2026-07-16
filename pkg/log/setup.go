@@ -3,15 +3,10 @@ package log
 import (
 	"io"
 	"log/slog"
-	"os"
 	"strings"
 )
 
 func Setup(level, format string, w io.Writer) *slog.Logger {
-	if w == nil {
-		w = os.Stderr
-	}
-
 	opts := &slog.HandlerOptions{
 		Level: ParseLevel(level),
 	}
