@@ -25,7 +25,7 @@ const auditDefaultLimit = 50
 
 // ListViewModel renders the audit list and detail panes.
 type ListViewModel struct {
-	app    *app.App
+	app    *app.Session
 	styles tui.ListViewStyles
 	keys   tui.ListViewKeys
 
@@ -41,7 +41,7 @@ type ListViewModel struct {
 	detailWidth int
 }
 
-func NewListViewModel(app *app.App) *ListViewModel {
+func NewListViewModel(app *app.Session) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
 	delegate.Styles.SelectedTitle = tuistyles.App.ListView.Selected

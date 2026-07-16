@@ -24,7 +24,7 @@ import (
 type Fixture struct {
 	T       testing.TB
 	Store   *store.Store
-	App     *app.App
+	App     *app.Session
 	Metrics *telemetry.MemoryMetrics
 
 	Audit       *audit.Module
@@ -51,10 +51,11 @@ func NewFixture(t testing.TB) *Fixture {
 	ctx = authn.ToContext(ctx, p)
 	s, err := store.Open(ctx, path)
 	Ok(t, err)
-	a := app.New(ctx, app.Config{Store: s})
-	t.Cleanup(func() { _ = a.Close() })
+	application := app.New(ctx, app.Config{Store: s})
+	t.Cleanup(func() { _ = application.Close() })
+	a := app.NewSession(ctx, application)
 
-	ownerCtx := a.Context()
+	ownerCtx := middleware.NewContext(ctx)
 
 	return &Fixture{
 		T:       t,
@@ -83,7 +84,7 @@ func (f *Fixture) ActorContext(actor string) *middleware.Context {
 	f.T.Helper()
 	p, err := authn.ParseActor(actor)
 	Ok(f.T, err)
-	return f.App.ContextFrom(authn.ToContext(f.ctx, p))
+	return middleware.NewContext(authn.ToContext(f.ctx, p))
 }
 
 func (f *Fixture) Bootstrap() *Bootstrap {

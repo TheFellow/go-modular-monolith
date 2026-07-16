@@ -15,7 +15,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
 // testLogBuffer captures log output for assertions.
@@ -66,7 +65,7 @@ func newTestContext(logBuf *testLogBuffer, mem *telemetry.MemoryMetrics) *middle
 	// Add telemetry to context
 	ctx = telemetry.WithMetrics(ctx, mem)
 
-	return middleware.NewContext(ctx, cedar.EntityUID{})
+	return middleware.NewContext(authn.ToContext(ctx, authn.Anonymous()))
 }
 
 type testEvent struct {
@@ -174,7 +173,7 @@ func TestQueryChain_WithAuthZ_Denial_LogsOnceAndRecordsRequestMetrics(t *testing
 
 	// Use anonymous principal which should be denied for create
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
-	mctx := middleware.NewContext(ctx, authn.Anonymous())
+	mctx := middleware.NewContext(authn.ToContext(ctx, authn.Anonymous()))
 
 	action := drinksauthz.ActionCreate
 
@@ -216,7 +215,7 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	ctx = telemetry.WithMetrics(ctx, mem)
 
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
-	mctx := middleware.NewContext(ctx, authn.Anonymous())
+	mctx := middleware.NewContext(authn.ToContext(ctx, authn.Anonymous()))
 
 	action := drinksauthz.ActionList
 	handlerCalled := false
@@ -295,7 +294,7 @@ func TestDispatchEvents_DispatchesEvents(t *testing.T) {
 
 	dispatcher := &mockDispatcher{}
 
-	mctx := middleware.NewContext(ctx, cedar.EntityUID{})
+	mctx := middleware.NewContext(authn.ToContext(ctx, authn.Anonymous()))
 
 	action := drinksauthz.ActionCreate
 
@@ -345,7 +344,7 @@ func TestDispatchEvents_DoesNotCascadeNewEvents(t *testing.T) {
 
 	dispatcher := &cascadingDispatcher{}
 
-	mctx := middleware.NewContext(ctx, cedar.EntityUID{})
+	mctx := middleware.NewContext(authn.ToContext(ctx, authn.Anonymous()))
 
 	action := drinksauthz.ActionCreate
 

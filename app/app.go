@@ -9,9 +9,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
-	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
-	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -26,8 +24,6 @@ type App struct {
 	Inventory   *inventory.Module
 	Menus       *menus.Module
 	Orders      *orders.Module
-
-	ctx context.Context
 }
 
 // New constructs the application around a required store. Domain modules
@@ -36,7 +32,6 @@ func New(ctx context.Context, config Config) *App {
 	s := config.Store
 	a := &App{
 		Store: s,
-		ctx:   ctx,
 	}
 
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
@@ -59,15 +54,4 @@ func New(ctx context.Context, config Config) *App {
 
 func (a *App) Close() error {
 	return a.Store.Close()
-}
-
-func (a *App) Context() *middleware.Context {
-	return a.ContextFrom(a.ctx)
-}
-
-func (a *App) ContextFrom(parent context.Context) *middleware.Context {
-	principal := authn.FromContext(parent)
-	parent = log.ToContext(parent, log.FromContext(parent).With(log.Actor(principal)))
-
-	return middleware.NewContext(parent, principal)
 }

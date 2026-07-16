@@ -20,10 +20,10 @@ type DetailViewModel struct {
 	width  int
 	height int
 	menu   optional.Value[models.Menu]
-	app    *app.App
+	app    *app.Session
 }
 
-func NewDetailViewModel(styles tui.ListViewStyles, app *app.App) *DetailViewModel {
+func NewDetailViewModel(styles tui.ListViewStyles, app *app.Session) *DetailViewModel {
 	return &DetailViewModel{
 		styles: styles,
 		app:    app,

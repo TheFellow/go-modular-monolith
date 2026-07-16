@@ -147,28 +147,22 @@ func (c *CLI) Command() *cli.Command {
 			}
 			c.app = app.New(ctx, app.Config{Store: s})
 
-			ctx = c.app.Context()
-			mctx, ok := ctx.(*middleware.Context)
+			baseCtx := ctx
+			mctx := middleware.NewContext(ctx)
 
 			if cmd != nil && cmd.Bool("tui") {
-				if !ok {
-					return ctx, cli.Exit(fmt.Errorf("expected middleware context for TUI"), apperrors.ExitGeneral)
-				}
 				args := cmd.Args().Slice()
 				if len(args) > 0 {
 					return ctx, cli.Exit(fmt.Errorf("too many arguments for --tui"), apperrors.ExitUsage)
 				}
 
-				if err := tui.Run(c.app); err != nil {
-					return ctx, err
+				if err := tui.Run(app.NewSession(baseCtx, c.app)); err != nil {
+					return mctx, err
 				}
-				return ctx, cli.Exit("", 0)
+				return mctx, cli.Exit("", 0)
 			}
 
-			if ok {
-				return mctx, nil
-			}
-			return ctx, nil
+			return mctx, nil
 		},
 		After: func(ctx context.Context, _ *cli.Command) error {
 			if c.app != nil {

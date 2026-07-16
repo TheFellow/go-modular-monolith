@@ -20,6 +20,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 )
@@ -90,7 +91,7 @@ func run() error {
 	defer a.Close()
 
 	// Create context as owner
-	ctx := a.Context()
+	ctx := middleware.NewContext(bootstrapCtx)
 
 	// Parse JSON data
 	var ingredients []seedIngredient

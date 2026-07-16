@@ -17,7 +17,7 @@ import (
 
 // EditIngredientVM renders an edit ingredient form.
 type EditIngredientVM struct {
-	app         *app.App
+	app         *app.Session
 	form        *forms.Form
 	ingredient  *models.Ingredient
 	styles      forms.FormStyles
@@ -41,7 +41,7 @@ type UpdateErrorMsg struct {
 }
 
 // NewEditIngredientVM builds an EditIngredientVM with fields configured.
-func NewEditIngredientVM(app *app.App, ingredient *models.Ingredient) *EditIngredientVM {
+func NewEditIngredientVM(app *app.Session, ingredient *models.Ingredient) *EditIngredientVM {
 	if ingredient == nil {
 		ingredient = &models.Ingredient{}
 	}

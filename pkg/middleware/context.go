@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
@@ -17,18 +18,13 @@ type Context struct {
 	activity  *middlewareevents.Activity
 }
 
-func NewContext(parent context.Context, principal cedar.EntityUID) *Context {
-	if parent == nil {
-		parent = context.Background()
-	}
+func NewContext(parent context.Context) *Context {
+	principal := authn.FromContext(parent)
+	parent = log.ToContext(parent, log.FromContext(parent).With(log.Actor(principal)))
 	c := &Context{
 		Context:   parent,
 		events:    make([]any, 0, 4),
 		principal: principal,
-	}
-
-	if c.principal.IsZero() {
-		c.principal = authn.Anonymous()
 	}
 
 	return c

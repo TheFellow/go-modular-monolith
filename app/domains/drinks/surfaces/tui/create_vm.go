@@ -18,7 +18,7 @@ import (
 
 // CreateDrinkVM renders a create drink form.
 type CreateDrinkVM struct {
-	app         *app.App
+	app         *app.Session
 	form        *forms.Form
 	styles      forms.FormStyles
 	keys        forms.FormKeys
@@ -41,7 +41,7 @@ type CreateErrorMsg struct {
 }
 
 // NewCreateDrinkVM builds a CreateDrinkVM with fields configured.
-func NewCreateDrinkVM(app *app.App) *CreateDrinkVM {
+func NewCreateDrinkVM(app *app.Session) *CreateDrinkVM {
 	categoryOptions := make([]forms.SelectOption, len(models.AllDrinkCategories()))
 	for i, c := range models.AllDrinkCategories() {
 		categoryOptions[i] = forms.SelectOption{Label: string(c), Value: c}
