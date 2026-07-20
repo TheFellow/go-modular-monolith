@@ -23,7 +23,7 @@ func NewPipeline(config PipelineConfig) *Pipeline {
 		query: NewChain(
 			Logging(),
 			Metrics(config.Metrics),
-			Authorize(),
+			AuthorizeQuery(),
 		),
 		command: NewChain(
 			Logging(),

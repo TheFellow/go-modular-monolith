@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"github.com/TheFellow/go-modular-monolith/pkg/authz"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -51,7 +50,7 @@ func RunQueryWithResource[Req CedarEntity, Res any](
 type CommandSpec[In CedarEntity, Out CedarEntity] struct {
 	Action cedar.EntityUID
 	Load   func(*Context) (In, error)
-	Handle func(*Context, In) (Out, error)
+	Handle CommandHandler[In, Out]
 }
 
 func RunCommand[In CedarEntity, Out CedarEntity](pipeline *Pipeline, ctx *Context, spec CommandSpec[In, Out]) (Out, error) {
@@ -62,26 +61,20 @@ func RunCommand[In CedarEntity, Out CedarEntity](pipeline *Pipeline, ctx *Contex
 		if err != nil {
 			return err
 		}
+		inputEntity := input.CedarEntity()
 
 		if activity, ok := c.Activity(); ok && activity.Resource.IsZero() {
-			activity.Resource = input.CedarEntity().UID
+			activity.Resource = inputEntity.UID
 		}
 
-		if err := authz.AuthorizeWithEntity(c.Principal(), spec.Action, input.CedarEntity()); err != nil {
-			return err
-		}
-
-		res, err := spec.Handle(c, input)
+		handle := AuthorizeCommand(spec.Action, spec.Handle)
+		res, err := handle(c, input)
 		if err != nil {
 			return err
 		}
 
 		if activity, ok := c.Activity(); ok && activity.Resource.IsZero() {
 			activity.Resource = res.CedarEntity().UID
-		}
-
-		if err := authz.AuthorizeWithEntity(c.Principal(), spec.Action, res.CedarEntity()); err != nil {
-			return err
 		}
 
 		out = res
