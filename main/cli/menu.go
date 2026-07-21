@@ -12,6 +12,7 @@ import (
 	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/urfave/cli/v3"
 )
 
@@ -23,7 +24,7 @@ func (c *CLI) menuCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List menus",
-				Flags: []cli.Flag{
+				Flags: append([]cli.Flag{
 					JSONFlag,
 					CostsFlag,
 					TargetMarginFlag,
@@ -38,25 +39,28 @@ func (c *CLI) menuCommands() *cli.Command {
 							return menumodels.MenuStatus(s).Validate()
 						},
 					},
-				},
+				}, listPagingFlags()...),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					pageReq := pagingRequest(cmd)
 					res, err := c.app.Menus.List(ctx, menus.ListRequest{
 						Status: menumodels.MenuStatus(cmd.String("status")),
+						Cursor: pageReq.Cursor,
+						Limit:  pageReq.Limit,
 					})
 					if err != nil {
 						return err
 					}
 
 					if cmd.Bool("json") {
-						out := make([]menucli.Menu, 0, len(res))
-						for _, m := range res {
+						out := make([]menucli.Menu, 0, len(res.Items))
+						for _, m := range res.Items {
 							out = append(out, menucli.FromDomainMenu(*m))
 						}
-						return writeJSON(cmd.Writer, out)
+						return writeJSON(cmd.Writer, paging.Page[menucli.Menu]{Items: out, Next: res.Next})
 					}
 
-					rows := make([]menucli.MenuRow, 0, len(res))
-					for _, m := range res {
+					rows := make([]menucli.MenuRow, 0, len(res.Items))
+					for _, m := range res.Items {
 						rows = append(rows, menucli.ToMenuRow(m))
 						if cmd.Bool("costs") && len(m.Items) > 0 {
 							an, err := menuqueries.NewAnalyticsCalculator(c.app.Store).Analyze(ctx, *m, cmd.Float64("target-margin"))
@@ -75,7 +79,10 @@ func (c *CLI) menuCommands() *cli.Command {
 							}
 						}
 					}
-					return clitable.PrintTable(rows)
+					if err := clitable.PrintTable(rows); err != nil {
+						return err
+					}
+					return printNextCursor(cmd.Writer, res.Next)
 				}),
 			},
 			{

@@ -34,13 +34,13 @@ func TestListFilter_IDs(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	list, err := queries.New(f.Store).List(f.OwnerContext(), dao.ListFilter{
+	list := queries.New(f.Store).List(f.OwnerContext(), dao.ListFilter{
 		IDs: []entity.IngredientID{ing1.ID, ing3.ID},
 	})
-	testutil.Ok(t, err)
 
-	found := make(map[string]bool, len(list))
-	for _, ingredient := range list {
+	found := make(map[string]bool)
+	for ingredient, err := range list {
+		testutil.Ok(t, err)
 		if ingredient == nil {
 			continue
 		}

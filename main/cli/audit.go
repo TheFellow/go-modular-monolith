@@ -11,7 +11,6 @@ import (
 	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/urfave/cli/v3"
 )
@@ -76,7 +75,7 @@ func (c *CLI) auditCommands() *cli.Command {
 }
 
 func auditListFlags() []cli.Flag {
-	return []cli.Flag{
+	return append([]cli.Flag{
 		JSONFlag,
 		&cli.StringFlag{
 			Name:  "entity",
@@ -98,19 +97,11 @@ func auditListFlags() []cli.Flag {
 			Name:  "to",
 			Usage: "Filter by end time (RFC3339 or YYYY-MM-DD)",
 		},
-		&cli.IntFlag{
-			Name:  "limit",
-			Usage: "Number of entries in a cursor page (default 100)",
-		},
-		&cli.StringFlag{
-			Name:  "cursor",
-			Usage: "Continue after an audit entry cursor",
-		},
-	}
+	}, listPagingFlags()...)
 }
 
 func auditHistoryFlags() []cli.Flag {
-	return []cli.Flag{
+	return append([]cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "Filter by start time (RFC3339 or YYYY-MM-DD)",
@@ -119,15 +110,7 @@ func auditHistoryFlags() []cli.Flag {
 			Name:  "to",
 			Usage: "Filter by end time (RFC3339 or YYYY-MM-DD)",
 		},
-		&cli.IntFlag{
-			Name:  "limit",
-			Usage: "Number of entries in a cursor page (default 100)",
-		},
-		&cli.StringFlag{
-			Name:  "cursor",
-			Usage: "Continue after an audit entry cursor",
-		},
-	}
+	}, listPagingFlags()...)
 }
 
 func (c *CLI) printAuditList(ctx *middleware.Context, cmd *cli.Command, req audit.ListRequest) error {
@@ -141,17 +124,14 @@ func (c *CLI) printAuditList(ctx *middleware.Context, cmd *cli.Command, req audi
 	if err := printAuditEntries(page.Items); err != nil {
 		return err
 	}
-	if page.Next != "" {
-		_, err = fmt.Fprintf(cmd.Writer, "Next cursor: %s\n", page.Next)
-		return err
-	}
-	return nil
+	return printNextCursor(cmd.Writer, page.Next)
 }
 
 func auditListRequest(cmd *cli.Command) (audit.ListRequest, error) {
 	var req audit.ListRequest
-	req.Limit = cmd.Int("limit")
-	req.Cursor = paging.Cursor(strings.TrimSpace(cmd.String("cursor")))
+	pageReq := pagingRequest(cmd)
+	req.Limit = pageReq.Limit
+	req.Cursor = pageReq.Cursor
 
 	if raw := strings.TrimSpace(cmd.String("entity")); raw != "" {
 		uid, err := parseEntityUID(raw)

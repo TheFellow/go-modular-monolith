@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"iter"
+
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -13,40 +15,27 @@ type ListFilter struct {
 	IngredientID entity.IngredientID
 	MaxQuantity  optional.Value[float64]
 	MinQuantity  optional.Value[float64]
+	BeforeID     string
 }
 
-func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Inventory, error) {
-	var out []*models.Inventory
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		q := d.query(tx, filter)
-		rows, err := q.List()
+func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Inventory, error] {
+	return func(yield func(*models.Inventory, error) bool) {
+		err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+			for row, err := range d.query(tx, filter).SortDesc("InventoryID").All() {
+				if err != nil {
+					return store.MapError(err, "iterate stock")
+				}
+				stock := toModel(row)
+				if !yield(&stock, nil) {
+					return nil
+				}
+			}
+			return nil
+		})
 		if err != nil {
-			return store.MapError(err, "list stock")
+			yield(nil, err)
 		}
-		stock := make([]*models.Inventory, 0, len(rows))
-		for _, r := range rows {
-			s := toModel(r)
-			stock = append(stock, &s)
-		}
-		out = stock
-		return nil
-	})
-	return out, err
-}
-
-func (d *DAO) Count(ctx store.Context, filter ListFilter) (int, error) {
-	var count int
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		q := d.query(tx, filter)
-
-		var err error
-		count, err = q.Count()
-		if err != nil {
-			return store.MapError(err, "count stock")
-		}
-		return nil
-	})
-	return count, err
+	}
 }
 
 func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[StockRow] {
@@ -60,6 +49,9 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[StockRow] {
 	}
 	if v, ok := filter.MinQuantity.Unwrap(); ok {
 		q = q.FilterGreaterEqual("Quantity", v)
+	}
+	if filter.BeforeID != "" {
+		q = q.FilterLess("InventoryID", filter.BeforeID)
 	}
 
 	return q

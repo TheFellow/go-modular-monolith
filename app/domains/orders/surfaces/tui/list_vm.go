@@ -280,8 +280,8 @@ func (m *ListViewModel) loadOrders() tea.Cmd {
 			return OrdersLoadedMsg{Err: err}
 		}
 
-		orders := make([]ordersmodels.Order, 0, len(ordersList))
-		for i, order := range ordersList {
+		orders := make([]ordersmodels.Order, 0, len(ordersList.Items))
+		for i, order := range ordersList.Items {
 			if order == nil {
 				return OrdersLoadedMsg{Err: errors.Internalf("order %d missing", i)}
 			}

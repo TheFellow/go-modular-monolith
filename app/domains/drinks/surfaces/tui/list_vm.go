@@ -305,7 +305,7 @@ func (m *ListViewModel) loadDrinks() tea.Cmd {
 		}
 
 		var items []models.Drink
-		for i, drink := range drinksList {
+		for i, drink := range drinksList.Items {
 			if drink == nil {
 				return DrinksLoadedMsg{Err: fmt.Errorf("drink %d missing", i)}
 			}
@@ -356,7 +356,7 @@ func (m *ListViewModel) showDeleteConfirm(drink *models.Drink) tea.Cmd {
 		if err != nil {
 			return DeleteErrorMsg{Err: err}
 		}
-		menuCount := countMenusWithDrink(menusList, drink.ID)
+		menuCount := countMenusWithDrink(menusList.Items, drink.ID)
 		message := fmt.Sprintf("Delete %q?", drink.Name)
 		if menuCount > 0 {
 			message = fmt.Sprintf(

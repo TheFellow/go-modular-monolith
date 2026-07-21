@@ -33,7 +33,7 @@ func TestFixture_IsolatedParallelStores(t *testing.T) {
 		fix.CreateDrink("A").With("Gin", 2.0).Build()
 		res, err := fix.Drinks.List(fix.OwnerContext(), drinks.ListRequest{})
 		testutil.Ok(t, err)
-		testutil.ErrorIf(t, len(res) != 1, "expected 1 drink, got %d", len(res))
+		testutil.ErrorIf(t, len(res.Items) != 1, "expected 1 drink, got %d", len(res.Items))
 	})
 
 	t.Run("B", func(t *testing.T) {
@@ -43,7 +43,7 @@ func TestFixture_IsolatedParallelStores(t *testing.T) {
 		fix.CreateDrink("B").With("Vodka", 2.0).Build()
 		res, err := fix.Drinks.List(fix.OwnerContext(), drinks.ListRequest{})
 		testutil.Ok(t, err)
-		testutil.ErrorIf(t, len(res) != 1, "expected 1 drink, got %d", len(res))
+		testutil.ErrorIf(t, len(res.Items) != 1, "expected 1 drink, got %d", len(res.Items))
 	})
 }
 

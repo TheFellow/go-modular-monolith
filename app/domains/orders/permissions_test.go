@@ -72,7 +72,7 @@ func TestPermissions_Orders(t *testing.T) {
 			if tc.canRead {
 				wantCount = 1
 			}
-			testutil.ErrorIf(t, len(listed) != wantCount, "expected %d visible orders, got %d", wantCount, len(listed))
+			testutil.ErrorIf(t, len(listed.Items) != wantCount, "expected %d visible orders, got %d", wantCount, len(listed.Items))
 
 			_, err = a.Orders.Get(ctx, order.ID)
 			if tc.canRead {

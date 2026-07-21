@@ -62,7 +62,7 @@ func (f *Fixture) findOrCreateIngredient(name string) *ingredientsmodels.Ingredi
 	Ok(f.T, err)
 
 	want := normalizeName(name)
-	for _, ing := range ings {
+	for _, ing := range ings.Items {
 		if normalizeName(ing.Name) == want {
 			return ing
 		}

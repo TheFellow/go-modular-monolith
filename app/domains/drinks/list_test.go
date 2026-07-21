@@ -53,10 +53,10 @@ func TestDrinks_ListFiltersByName(t *testing.T) {
 
 	all, err := f.Drinks.List(ctx, drinks.ListRequest{})
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, len(all) != 3, "expected 3 drinks, got %d", len(all))
+	testutil.ErrorIf(t, len(all.Items) != 3, "expected 3 drinks, got %d", len(all.Items))
 
 	filtered, err := f.Drinks.List(ctx, drinks.ListRequest{Name: "Margarita"})
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, len(filtered) != 1, "expected 1 drink, got %d", len(filtered))
-	testutil.ErrorIf(t, filtered[0].Name != "Margarita", "expected Margarita, got %q", filtered[0].Name)
+	testutil.ErrorIf(t, len(filtered.Items) != 1, "expected 1 drink, got %d", len(filtered.Items))
+	testutil.ErrorIf(t, filtered.Items[0].Name != "Margarita", "expected Margarita, got %q", filtered.Items[0].Name)
 }

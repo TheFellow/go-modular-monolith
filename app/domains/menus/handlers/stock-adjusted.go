@@ -26,12 +26,10 @@ func NewStockAdjusted(s *store.Store) *StockAdjusted {
 }
 
 func (h *StockAdjusted) Handle(ctx *middleware.HandlerContext, e inventoryevents.StockAdjusted) error {
-	menus, err := h.dao.List(ctx, dao.ListFilter{Status: models.MenuStatusPublished})
-	if err != nil {
-		return err
-	}
-
-	for _, menu := range menus {
+	for menu, err := range h.dao.List(ctx, dao.ListFilter{Status: models.MenuStatusPublished}) {
+		if err != nil {
+			return err
+		}
 		changed := false
 		for i := range menu.Items {
 			item := menu.Items[i]

@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"iter"
 	"slices"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
@@ -16,43 +17,27 @@ type ListFilter struct {
 	Glass    models.GlassType     // Exact match on Glass
 	// IncludeDeleted includes soft-deleted rows (DeletedAt != nil).
 	IncludeDeleted bool
+	BeforeID       string
 }
 
-func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Drink, error) {
-	var out []*models.Drink
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		q := d.query(tx, filter)
-		rows, err := q.SortAsc("Name").List()
-		if err != nil {
-			return store.MapError(err, "list drinks")
-		}
-		drinks := make([]*models.Drink, 0, len(rows))
-		for _, r := range rows {
-			if !filter.IncludeDeleted && r.DeletedAt != nil {
-				continue
+func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Drink, error] {
+	return func(yield func(*models.Drink, error) bool) {
+		err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+			for row, err := range d.query(tx, filter).SortDesc("ID").All() {
+				if err != nil {
+					return store.MapError(err, "iterate drinks")
+				}
+				drink := toModel(row)
+				if !yield(&drink, nil) {
+					return nil
+				}
 			}
-			d := toModel(r)
-			drinks = append(drinks, &d)
-		}
-		out = drinks
-		return nil
-	})
-	return out, err
-}
-
-func (d *DAO) Count(ctx store.Context, filter ListFilter) (int, error) {
-	var count int
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		q := d.query(tx, filter)
-
-		var err error
-		count, err = q.Count()
+			return nil
+		})
 		if err != nil {
-			return store.MapError(err, "count drinks")
+			yield(nil, err)
 		}
-		return nil
-	})
-	return count, err
+	}
 }
 
 func (d *DAO) ListByIngredient(ctx store.Context, ingredientID entity.IngredientID) ([]*models.Drink, error) {
@@ -98,6 +83,9 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[DrinkRow] {
 	}
 	if filter.Glass != "" {
 		q = q.FilterEqual("Glass", string(filter.Glass))
+	}
+	if filter.BeforeID != "" {
+		q = q.FilterLess("ID", filter.BeforeID)
 	}
 	if !filter.IncludeDeleted {
 		q = q.FilterFn(func(r DrinkRow) bool {

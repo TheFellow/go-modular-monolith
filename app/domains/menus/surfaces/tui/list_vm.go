@@ -377,8 +377,8 @@ func (m *ListViewModel) loadMenus() tea.Cmd {
 			return MenusLoadedMsg{Err: err}
 		}
 
-		menus := make([]menusmodels.Menu, 0, len(menusList))
-		for i, menu := range menusList {
+		menus := make([]menusmodels.Menu, 0, len(menusList.Items))
+		for i, menu := range menusList.Items {
 			if menu == nil {
 				return MenusLoadedMsg{Err: errors.Internalf("menu %d missing", i)}
 			}

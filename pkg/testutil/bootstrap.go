@@ -44,7 +44,7 @@ func (b *Bootstrap) WithStock(quantity float64) *Bootstrap {
 	ings, err := b.fix.Ingredients.List(ctx, ingredients.ListRequest{})
 	Ok(b.fix.T, err)
 
-	for _, ing := range ings {
+	for _, ing := range ings.Items {
 		_, err := b.fix.Inventory.Set(ctx, &inventorymodels.Update{
 			IngredientID: ing.ID,
 			Amount:       measurement.MustAmount(quantity, ing.Unit),
@@ -65,7 +65,7 @@ func (b *Bootstrap) WithIngredient(name string, unit measurement.Unit) *ingredie
 	Ok(b.fix.T, err)
 
 	want := normalizeName(name)
-	for _, ing := range ings {
+	for _, ing := range ings.Items {
 		if normalizeName(ing.Name) == want {
 			return ing
 		}

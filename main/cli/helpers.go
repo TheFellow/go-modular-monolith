@@ -13,8 +13,31 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/urfave/cli/v3"
 )
+
+func listPagingFlags() []cli.Flag {
+	return []cli.Flag{
+		&cli.IntFlag{Name: "limit", Usage: "Number of entries in a cursor page (default 100)"},
+		&cli.StringFlag{Name: "cursor", Usage: "Continue after a result cursor"},
+	}
+}
+
+func pagingRequest(cmd *cli.Command) paging.Request {
+	return paging.Request{
+		Cursor: paging.Cursor(strings.TrimSpace(cmd.String("cursor"))),
+		Limit:  cmd.Int("limit"),
+	}
+}
+
+func printNextCursor(w io.Writer, cursor paging.Cursor) error {
+	if cursor == "" {
+		return nil
+	}
+	_, err := fmt.Fprintf(w, "Next cursor: %s\n", cursor)
+	return err
+}
 
 var (
 	JSONFlag         cli.Flag = &cli.BoolFlag{Name: "json", Usage: "Output JSON"}

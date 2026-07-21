@@ -10,6 +10,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/urfave/cli/v3"
 )
 
@@ -21,7 +22,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List drinks",
-				Flags: []cli.Flag{
+				Flags: append([]cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{Name: "name", Usage: "Filter by exact name match"},
 					&cli.StringFlag{
@@ -40,26 +41,32 @@ func (c *CLI) drinksCommands() *cli.Command {
 							return drinksmodels.GlassType(strings.TrimSpace(s)).Validate()
 						},
 					},
-				},
+				}, listPagingFlags()...),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					pageReq := pagingRequest(cmd)
 					res, err := c.app.Drinks.List(ctx, drinks.ListRequest{
 						Name:     cmd.String("name"),
 						Category: drinksmodels.DrinkCategory(cmd.String("category")),
 						Glass:    drinksmodels.GlassType(cmd.String("glass")),
+						Cursor:   pageReq.Cursor,
+						Limit:    pageReq.Limit,
 					})
 					if err != nil {
 						return err
 					}
 
 					if cmd.Bool("json") {
-						out := make([]drinkscli.Drink, 0, len(res))
-						for _, d := range res {
+						out := make([]drinkscli.Drink, 0, len(res.Items))
+						for _, d := range res.Items {
 							out = append(out, drinkscli.FromDomainDrink(*d))
 						}
-						return writeJSON(cmd.Writer, out)
+						return writeJSON(cmd.Writer, paging.Page[drinkscli.Drink]{Items: out, Next: res.Next})
 					}
 
-					return clitable.PrintTable(drinkscli.ToDrinkRows(res))
+					if err := clitable.PrintTable(drinkscli.ToDrinkRows(res.Items)); err != nil {
+						return err
+					}
+					return printNextCursor(cmd.Writer, res.Next)
 				}),
 			},
 			{

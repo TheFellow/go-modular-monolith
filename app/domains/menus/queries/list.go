@@ -1,23 +1,13 @@
 package queries
 
 import (
-	"sort"
+	"iter"
 
 	menudao "github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-func (q *Queries) List(ctx store.Context, filter menudao.ListFilter) ([]*models.Menu, error) {
-	out, err := q.dao.List(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.Before(out[j].CreatedAt) })
-	return out, nil
-}
-
-func (q *Queries) Count(ctx store.Context, filter menudao.ListFilter) (int, error) {
-	return q.dao.Count(ctx, filter)
+func (q *Queries) List(ctx store.Context, filter menudao.ListFilter) iter.Seq2[*models.Menu, error] {
+	return q.dao.List(ctx, filter)
 }

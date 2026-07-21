@@ -23,7 +23,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List ingredients",
-				Flags: []cli.Flag{
+				Flags: append([]cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{
 						Name:      "category",
@@ -31,10 +31,13 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						Usage:     ingredientscli.CategoryUsage(),
 						Validator: ingredientscli.ValidateCategory,
 					},
-				},
+				}, listPagingFlags()...),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					pageReq := pagingRequest(cmd)
 					res, err := c.app.Ingredients.List(ctx, ingredients.ListRequest{
 						Category: models.Category(cmd.String("category")),
+						Cursor:   pageReq.Cursor,
+						Limit:    pageReq.Limit,
 					})
 					if err != nil {
 						return err
@@ -44,7 +47,10 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					return clitable.PrintTable(ingredientscli.ToIngredientRows(res))
+					if err := clitable.PrintTable(ingredientscli.ToIngredientRows(res.Items)); err != nil {
+						return err
+					}
+					return printNextCursor(cmd.Writer, res.Next)
 				}),
 			},
 			{
