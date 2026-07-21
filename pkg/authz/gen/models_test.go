@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/cedar-policy/cedar-go/x/exp/schema"
 )
 
@@ -24,17 +25,12 @@ namespace Mixology::Drink {
 }`
 
 	var parsed schema.Schema
-	if err := parsed.UnmarshalCedar([]byte(src)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := parsed.Resolve(); err != nil {
-		t.Fatal(err)
-	}
+	testutil.Ok(t, parsed.UnmarshalCedar([]byte(src)))
+	_, err := parsed.Resolve()
+	testutil.Ok(t, err)
 
 	got, err := renderModuleModels(parsed.AST(), "drinks")
-	if err != nil {
-		t.Fatal(err)
-	}
+	testutil.Ok(t, err)
 	normalized := strings.Join(strings.Fields(string(got)), " ")
 	for _, want := range []string{
 		`DrinkType cedar.EntityType = "Mixology::Drink"`,
@@ -44,30 +40,24 @@ namespace Mixology::Drink {
 		`Owner cedar.EntityUID`,
 		`DrinkNameAttr: cedar.String(m.Name)`,
 	} {
-		if !strings.Contains(normalized, want) {
-			t.Errorf("generated source missing %q:\n%s", want, got)
-		}
+		testutil.ErrorIf(t, !strings.Contains(normalized, want), "generated source missing %q:\n%s", want, got)
 	}
 
-	generatedTests, err := renderModuleModelTests(parsed.AST(), "drinks")
-	if err != nil {
-		t.Fatal(err)
-	}
+	generatedTests, err := renderModuleModelTests(parsed.AST(), "drinks",
+		"github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz")
+	testutil.Ok(t, err)
 	testSource := strings.Join(strings.Fields(string(generatedTests)), " ")
 	for _, want := range []string{
 		`func TestDrinkCedarEntity(t *testing.T)`,
 		`UID: cedar.NewEntityUID("Wrong::Type", "test-id")`,
-		`UID: cedar.NewEntityUID(DrinkType, "test-id")`,
-		`DrinkNameAttr: cedar.String("test-name")`,
+		`UID: cedar.NewEntityUID(moduleauthz.DrinkType, "test-id")`,
+		`moduleauthz.DrinkNameAttr: cedar.String("test-name")`,
 	} {
-		if !strings.Contains(testSource, want) {
-			t.Errorf("generated test source missing %q:\n%s", want, generatedTests)
-		}
+		testutil.ErrorIf(t, !strings.Contains(testSource, want), "generated test source missing %q:\n%s", want, generatedTests)
 	}
 
 	for _, source := range [][]byte{got, generatedTests} {
-		if strings.Contains(string(source), "app/kernel/entity") {
-			t.Errorf("generated authz code depends on the kernel entity generator:\n%s", source)
-		}
+		testutil.ErrorIf(t, strings.Contains(string(source), "app/kernel/entity"),
+			"generated authz code depends on the kernel entity generator:\n%s", source)
 	}
 }
