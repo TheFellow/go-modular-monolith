@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	inventoryauthz "github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
@@ -21,23 +22,13 @@ type Inventory struct {
 }
 
 func (s Inventory) EntityUID() cedar.EntityUID {
-	uid := s.ID.EntityUID()
-	if uid.Type == "" {
-		uid = cedar.NewEntityUID(cedar.EntityType(InventoryEntityType), uid.ID)
-	}
-	return uid
+	return cedar.NewEntityUID(InventoryEntityType, s.ID.EntityUID().ID)
 }
 
 func (s Inventory) CedarEntity() cedar.Entity {
-	return cedar.Entity{
-		UID:     s.EntityUID(),
-		Parents: cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(cedar.RecordMap{
-			"IngredientID": s.IngredientID.EntityUID(),
-			"Unit":         cedar.String(s.Amount.Unit()),
-		}),
-		Tags: cedar.NewRecord(nil),
-	}
+	return inventoryauthz.Inventory{
+		UID: s.EntityUID(), IngredientID: s.IngredientID.EntityUID(), Unit: string(s.Amount.Unit()),
+	}.CedarEntity()
 }
 
 type AdjustmentReason string

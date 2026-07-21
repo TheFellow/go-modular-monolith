@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	auditauthz "github.com/TheFellow/go-modular-monolith/app/domains/audit/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -26,10 +27,5 @@ type AuditEntry struct {
 }
 
 func (e AuditEntry) CedarEntity() cedar.Entity {
-	return cedar.Entity{
-		UID:        e.ID.EntityUID(),
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
-	}
+	return auditauthz.AuditEntry{UID: e.ID.EntityUID()}.CedarEntity()
 }

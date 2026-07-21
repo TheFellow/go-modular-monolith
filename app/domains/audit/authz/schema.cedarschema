@@ -1,0 +1,12 @@
+namespace Mixology {
+    entity Actor enum ["owner", "manager", "sommelier", "bartender", "anonymous"];
+    entity AuditEntry;
+}
+
+namespace Mixology::AuditEntry {
+    action list, get appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::AuditEntry,
+        context: {}
+    };
+}

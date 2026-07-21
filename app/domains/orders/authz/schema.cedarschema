@@ -1,0 +1,17 @@
+namespace Mixology {
+    entity Actor enum ["owner", "manager", "sommelier", "bartender", "anonymous"];
+    entity Menu;
+
+    entity Order {
+        MenuID: Menu,
+        Status: String
+    };
+}
+
+namespace Mixology::Order {
+    action list, get, place, complete, cancel appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::Order,
+        context: {}
+    };
+}

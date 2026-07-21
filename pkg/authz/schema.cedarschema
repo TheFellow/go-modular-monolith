@@ -1,0 +1,17 @@
+namespace Mixology {
+    entity Actor enum ["owner", "manager", "sommelier", "bartender", "anonymous"];
+
+    action login appliesTo {
+        principal: Actor,
+        resource: Mixology::Auth::Session,
+        context: {}
+    };
+}
+
+namespace Mixology::Auth {
+    entity Session;
+}
+
+namespace Mixology::AuthZ {
+    entity Query;
+}

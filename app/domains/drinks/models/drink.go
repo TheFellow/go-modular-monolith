@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	drinkauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -29,19 +30,8 @@ func (d Drink) EntityUID() cedar.EntityUID {
 }
 
 func (d Drink) CedarEntity() cedar.Entity {
-	uid := d.ID.EntityUID()
-	if uid.Type == "" {
-		uid = cedar.NewEntityUID(cedar.EntityType(DrinkEntityType), uid.ID)
-	}
-	return cedar.Entity{
-		UID:     uid,
-		Parents: cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(cedar.RecordMap{
-			"Name":        cedar.String(d.Name),
-			"Category":    cedar.String(d.Category),
-			"Glass":       cedar.String(d.Glass),
-			"Description": cedar.String(d.Description),
-		}),
-		Tags: cedar.NewRecord(nil),
-	}
+	return drinkauthz.Drink{
+		UID: d.ID.EntityUID(), Name: d.Name, Category: string(d.Category),
+		Glass: string(d.Glass), Description: d.Description,
+	}.CedarEntity()
 }
