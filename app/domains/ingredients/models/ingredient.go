@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	ingredientauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -28,20 +29,9 @@ func (i Ingredient) EntityUID() cedar.EntityUID {
 }
 
 func (i Ingredient) CedarEntity() cedar.Entity {
-	uid := i.ID.EntityUID()
-	if uid.Type == "" {
-		uid = cedar.NewEntityUID(cedar.EntityType(IngredientEntityType), uid.ID)
-	}
-	return cedar.Entity{
-		UID:     uid,
-		Parents: cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(cedar.RecordMap{
-			"Name":     cedar.String(i.Name),
-			"Category": cedar.String(i.Category),
-			"Unit":     cedar.String(i.Unit),
-		}),
-		Tags: cedar.NewRecord(nil),
-	}
+	return ingredientauthz.Ingredient{
+		UID: i.ID.EntityUID(), Name: i.Name, Category: string(i.Category), Unit: string(i.Unit),
+	}.CedarEntity()
 }
 
 type Category string

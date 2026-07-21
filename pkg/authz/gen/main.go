@@ -19,6 +19,7 @@ type modulePolicy struct {
 	importAlias string
 	importPath  string
 	document    string
+	directory   string
 }
 
 type templateImport struct {
@@ -50,7 +51,9 @@ func main() {
 
 	modulePath := readModulePath(filepath.Join(repoRoot, "go.mod"))
 	baseDocs := discoverPackagePolicies(repoRoot)
+	validateBasePolicies(repoRoot)
 	modules := discoverModulePolicies(repoRoot, modulePath)
+	generateModuleModels(modules)
 
 	data := templateData{
 		Imports: make([]templateImport, 0, len(modules)),
@@ -126,6 +129,7 @@ func discoverModulePolicies(repoRoot, modulePath string) []modulePolicy {
 			importAlias: importAlias,
 			importPath:  modulePath + "/app/domains/" + moduleName + "/authz",
 			document:    filepath.ToSlash(filepath.Join("app", "domains", moduleName, "authz", "policies.cedar")),
+			directory:   filepath.Dir(policiesPath),
 		})
 	}
 

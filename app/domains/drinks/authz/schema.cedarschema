@@ -1,0 +1,18 @@
+namespace Mixology {
+    entity Actor enum ["owner", "manager", "sommelier", "bartender", "anonymous"];
+
+    entity Drink {
+        Name: String,
+        Category: String,
+        Glass: String,
+        Description: String
+    };
+}
+
+namespace Mixology::Drink {
+    action list, get, create, update, delete appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::Drink,
+        context: {}
+    };
+}

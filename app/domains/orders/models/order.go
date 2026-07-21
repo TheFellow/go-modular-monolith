@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	orderauthz "github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -31,19 +32,9 @@ func (o Order) EntityUID() cedar.EntityUID {
 }
 
 func (o Order) CedarEntity() cedar.Entity {
-	uid := o.ID.EntityUID()
-	if uid.Type == "" {
-		uid = cedar.NewEntityUID(cedar.EntityType(OrderEntityType), uid.ID)
-	}
-	return cedar.Entity{
-		UID:     uid,
-		Parents: cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(cedar.RecordMap{
-			"MenuID": o.MenuID.EntityUID(),
-			"Status": cedar.String(o.Status),
-		}),
-		Tags: cedar.NewRecord(nil),
-	}
+	return orderauthz.Order{
+		UID: o.ID.EntityUID(), MenuID: o.MenuID.EntityUID(), Status: string(o.Status),
+	}.CedarEntity()
 }
 
 func (o Order) Validate() error {

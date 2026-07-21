@@ -1,0 +1,17 @@
+namespace Mixology {
+    entity Actor enum ["owner", "manager", "sommelier", "bartender", "anonymous"];
+    entity Ingredient;
+
+    entity Inventory {
+        IngredientID: Ingredient,
+        Unit: String
+    };
+}
+
+namespace Mixology::Inventory {
+    action list, get, adjust, set appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::Inventory,
+        context: {}
+    };
+}

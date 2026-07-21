@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	menuauthz "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -30,19 +31,9 @@ func (m Menu) EntityUID() cedar.EntityUID {
 }
 
 func (m Menu) CedarEntity() cedar.Entity {
-	uid := m.ID.EntityUID()
-	if uid.Type == "" {
-		uid = cedar.NewEntityUID(cedar.EntityType(entity.TypeMenu), uid.ID)
-	}
-	return cedar.Entity{
-		UID:     uid,
-		Parents: cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(cedar.RecordMap{
-			"Name":   cedar.String(m.Name),
-			"Status": cedar.String(m.Status),
-		}),
-		Tags: cedar.NewRecord(nil),
-	}
+	return menuauthz.Menu{
+		UID: m.ID.EntityUID(), Name: m.Name, Status: string(m.Status),
+	}.CedarEntity()
 }
 
 func (m Menu) Validate() error {
