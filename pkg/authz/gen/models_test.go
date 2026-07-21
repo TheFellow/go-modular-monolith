@@ -48,4 +48,26 @@ namespace Mixology::Drink {
 			t.Errorf("generated source missing %q:\n%s", want, got)
 		}
 	}
+
+	generatedTests, err := renderModuleModelTests(parsed.AST(), "drinks")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testSource := strings.Join(strings.Fields(string(generatedTests)), " ")
+	for _, want := range []string{
+		`func TestDrinkCedarEntity(t *testing.T)`,
+		`UID: cedar.NewEntityUID("Wrong::Type", "test-id")`,
+		`UID: cedar.NewEntityUID(DrinkType, "test-id")`,
+		`DrinkNameAttr: cedar.String("test-name")`,
+	} {
+		if !strings.Contains(testSource, want) {
+			t.Errorf("generated test source missing %q:\n%s", want, generatedTests)
+		}
+	}
+
+	for _, source := range [][]byte{got, generatedTests} {
+		if strings.Contains(string(source), "app/kernel/entity") {
+			t.Errorf("generated authz code depends on the kernel entity generator:\n%s", source)
+		}
+	}
 }

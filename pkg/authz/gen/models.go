@@ -36,6 +36,10 @@ func generateModuleModels(modules []modulePolicy) {
 		out, err := renderModuleModels(s.AST(), module.moduleName)
 		must(err)
 		must(os.WriteFile(filepath.Join(module.directory, "models_gen.go"), out, 0o644))
+
+		tests, err := renderModuleModelTests(s.AST(), module.moduleName)
+		must(err)
+		must(os.WriteFile(filepath.Join(module.directory, "models_gen_test.go"), tests, 0o644))
 	}
 }
 
