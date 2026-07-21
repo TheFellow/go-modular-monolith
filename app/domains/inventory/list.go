@@ -18,7 +18,7 @@ type ListRequest struct {
 }
 
 func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.Inventory, error) {
-	return middleware.RunQuery(m.pipeline, ctx, authz.ActionList, m.list, req)
+	return middleware.RunListQuery(m.pipeline, ctx, authz.ActionList, m.list, req)
 }
 
 func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.Inventory, error) {
@@ -34,13 +34,9 @@ func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.Inventory, 
 }
 
 func (m *Module) Count(ctx *middleware.Context, req ListRequest) (int, error) {
-	return middleware.RunQuery(m.pipeline, ctx, authz.ActionList, m.count, req)
-}
-
-func (m *Module) count(ctx store.Context, req ListRequest) (int, error) {
-	filter := inventorydao.ListFilter{
-		IngredientID: req.IngredientID,
-		MaxQuantity:  req.LowStock,
+	stock, err := m.List(ctx, req)
+	if err != nil {
+		return 0, err
 	}
-	return m.queries.Count(ctx, filter)
+	return len(stock), nil
 }

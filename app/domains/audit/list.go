@@ -21,7 +21,16 @@ type ListRequest struct {
 }
 
 func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.AuditEntry, error) {
-	return middleware.RunQuery(m.pipeline, ctx, authz.ActionList, m.list, req)
+	unbounded := req
+	unbounded.Limit = 0
+	entries, err := middleware.RunListQuery(m.pipeline, ctx, authz.ActionList, m.list, unbounded)
+	if err != nil {
+		return nil, err
+	}
+	if req.Limit > 0 && len(entries) > req.Limit {
+		entries = entries[:req.Limit]
+	}
+	return entries, nil
 }
 
 func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.AuditEntry, error) {
@@ -37,19 +46,11 @@ func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.AuditEntry,
 }
 
 func (m *Module) Count(ctx *middleware.Context, req ListRequest) (int, error) {
-	return middleware.RunQuery(m.pipeline, ctx, authz.ActionList, m.count, req)
-}
-
-func (m *Module) count(ctx store.Context, req ListRequest) (int, error) {
-	filter := dao.ListFilter{
-		Action:        req.Action,
-		Principal:     req.Principal,
-		Entity:        req.Entity,
-		StartedAfter:  req.From,
-		StartedBefore: req.To,
-		Limit:         req.Limit,
+	entries, err := m.List(ctx, req)
+	if err != nil {
+		return 0, err
 	}
-	return m.queries.Count(ctx, filter)
+	return len(entries), nil
 }
 
 func (m *Module) GetEntityHistory(ctx *middleware.Context, uid cedar.EntityUID) ([]*models.AuditEntry, error) {

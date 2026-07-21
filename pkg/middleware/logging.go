@@ -10,11 +10,7 @@ import (
 
 func Logging() Middleware {
 	return func(ctx *Context, op Operation, next Next) error {
-		attrs := []any{log.Action(op.Action)}
-		if op.HasResource() {
-			attrs = append(attrs, log.Resource(op.Resource.UID))
-		}
-		ctx.Context = log.ToContext(ctx.Context, log.FromContext(ctx).With(attrs...))
+		ctx.Context = log.ToContext(ctx.Context, log.FromContext(ctx).With(log.Action(op.Action)))
 
 		logger := log.FromContext(ctx)
 		start := time.Now()

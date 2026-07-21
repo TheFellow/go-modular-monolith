@@ -10,10 +10,16 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func TestAuthorize_AllowsAnonymousList(t *testing.T) {
+func TestAuthorizeWithEntity_AllowsAnonymousList(t *testing.T) {
 	t.Parallel()
 
-	err := authz.Authorize(authn.Anonymous(), drinksauthz.ActionList)
+	resource := cedar.Entity{
+		UID: cedar.NewEntityUID(cedar.EntityType("Mixology::Drink"), cedar.String("wine")),
+		Attributes: cedar.NewRecord(cedar.RecordMap{
+			"Category": cedar.String("wine"),
+		}),
+	}
+	err := authz.AuthorizeWithEntity(authn.Anonymous(), drinksauthz.ActionList, resource)
 	if err != nil {
 		t.Fatalf("expected allow, got %v", err)
 	}

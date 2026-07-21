@@ -4,6 +4,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
@@ -19,7 +20,7 @@ func TrackActivity(s *store.Store, recordActivity func(*Context, middlewareevent
 			return errors.Internalf("record activity callback missing from pipeline")
 		}
 
-		activity := middlewareevents.NewActivity(op.Action, op.Resource.UID, ctx.Principal())
+		activity := middlewareevents.NewActivity(op.Action, cedar.EntityUID{}, ctx.Principal())
 		ctx.activity = activity
 
 		err := next(ctx)
