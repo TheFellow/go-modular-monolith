@@ -3,9 +3,6 @@
 package entity
 
 import (
-	"strings"
-
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -28,13 +25,8 @@ func New{{ .Name }}ID() {{ .Name }}ID {
 
 // Parse{{ .Name }}ID creates a {{ .Name }}ID from a string.
 func Parse{{ .Name }}ID(id string) ({{ .Name }}ID, error) {
-	if id == "" {
-		return {{ .Name }}ID(cedar.NewEntityUID(Type{{ .Name }}, cedar.String(""))), nil
-	}
-	if !strings.HasPrefix(id, Prefix{{ .Name }}+"-") {
-		return {{ .Name }}ID{}, errors.Invalidf("invalid {{ lower .Name }} id prefix: %s", id)
-	}
-	return {{ .Name }}ID(cedar.NewEntityUID(Type{{ .Name }}, cedar.String(id))), nil
+	uid, err := parseID(Type{{ .Name }}, Prefix{{ .Name }}, id)
+	return {{ .Name }}ID(uid), err
 }
 
 // EntityUID converts to cedar.EntityUID for Cedar API interop.
