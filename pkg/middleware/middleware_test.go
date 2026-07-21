@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"iter"
 	"log/slog"
 	"strings"
 	"testing"
@@ -13,10 +14,65 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
 )
+
+func TestPageQuery_FillsPagePastDeniedEntities(t *testing.T) {
+	t.Parallel()
+
+	fix := testutil.NewFixture(t)
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Store: fix.Store})
+	items := []testEntity{
+		testDrink("beer-1", "beer"),
+		testDrink("wine-1", "wine"),
+		testDrink("beer-2", "beer"),
+		testDrink("wine-2", "wine"),
+		testDrink("wine-3", "wine"),
+	}
+
+	page, err := middleware.RunPageQuery(
+		pipeline,
+		fix.ActorContext("sommelier"),
+		drinksauthz.ActionList,
+		func(store.Context, struct{}, paging.Cursor) iter.Seq2[testEntity, error] {
+			return func(yield func(testEntity, error) bool) {
+				for _, item := range items {
+					if !yield(item, nil) {
+						return
+					}
+				}
+			}
+		},
+		func(item testEntity) paging.Cursor { return paging.Cursor(item.ID.ID) },
+		struct{}{},
+		paging.Request{Limit: 2},
+	)
+	if err != nil {
+		t.Fatalf("page query: %v", err)
+	}
+	if len(page.Items) != 2 || page.Items[0].ID.ID != "wine-1" || page.Items[1].ID.ID != "wine-2" {
+		t.Fatalf("expected two visible wine entries, got %#v", page.Items)
+	}
+	if page.Next != "wine-2" {
+		t.Fatalf("expected cursor wine-2, got %q", page.Next)
+	}
+}
+
+func testDrink(id, category string) testEntity {
+	return testEntity{
+		ID: cedar.NewEntityUID(drinksauthz.DrinkType, cedar.String(id)),
+		Attributes: cedar.RecordMap{
+			drinksauthz.DrinkCategoryAttr:    cedar.String(category),
+			drinksauthz.DrinkDescriptionAttr: cedar.String(""),
+			drinksauthz.DrinkGlassAttr:       cedar.String(""),
+			drinksauthz.DrinkNameAttr:        cedar.String(id),
+		},
+	}
+}
 
 // testLogBuffer captures log output for assertions.
 type testLogBuffer struct {

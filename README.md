@@ -44,6 +44,8 @@ go run ./main/seed
 go run ./main/cli ingredients list
 go run ./main/cli menu list
 go run ./main/cli audit list --limit 20
+# Continue with the cursor printed by the previous command.
+go run ./main/cli audit list --limit 20 --cursor aud-...
 
 # Test authorization boundaries with different roles
 go run ./main/cli --actor bartender menu list
@@ -346,6 +348,7 @@ func (h *DrinkDeleted) Handle(ctx *middleware.HandlerContext, e drinksevents.Dri
 ```bash
 # List recent audit entries
 mixology audit list --limit 20
+mixology audit list --limit 20 --cursor aud-...
 
 # Filter by principal
 mixology audit list --principal owner

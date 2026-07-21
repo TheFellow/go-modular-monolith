@@ -1,9 +1,56 @@
 package middleware
 
 import (
+	"iter"
+
+	"github.com/TheFellow/go-modular-monolith/pkg/authz"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 )
+
+// RunPageQuery consumes an ordered sequence until it has a full page of
+// entities the caller may see. Permission-denied entities are skipped without
+// shortening the page; evaluation and storage errors still fail the query.
+func RunPageQuery[Req any, Item CedarEntity](
+	pipeline *Pipeline,
+	ctx *Context,
+	action cedar.EntityUID,
+	execute func(store.Context, Req, paging.Cursor) iter.Seq2[Item, error],
+	cursor func(Item) paging.Cursor,
+	req Req,
+	pageRequest paging.Request,
+) (paging.Page[Item], error) {
+	page := paging.Page[Item]{Items: []Item{}}
+	if pageRequest.Limit <= 0 {
+		return page, errors.Invalidf("page limit must be greater than zero")
+	}
+
+	err := pipeline.query.Execute(ctx, QueryOperation(action), func(c *Context) error {
+		for item, err := range execute(c, req, pageRequest.Cursor) {
+			if err != nil {
+				return err
+			}
+
+			err = authz.AuthorizeWithEntity(c.Principal(), action, item.CedarEntity())
+			switch {
+			case err == nil:
+				if len(page.Items) == pageRequest.Limit {
+					page.Next = cursor(page.Items[len(page.Items)-1])
+					return nil
+				}
+				page.Items = append(page.Items, item)
+			case errors.IsPermission(err):
+				continue
+			default:
+				return err
+			}
+		}
+		return nil
+	})
+	return page, err
+}
 
 // RunListQuery loads a list and elides entities the caller cannot see.
 func RunListQuery[Req any, Item CedarEntity](

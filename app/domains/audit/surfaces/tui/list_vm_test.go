@@ -99,6 +99,6 @@ func auditEntryFor(t testing.TB, f *testutil.Fixture, action cedar.EntityUID, en
 		Limit:  1,
 	})
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, len(entries) == 0, "expected audit entry for %s", action.String())
-	return *entries[0]
+	testutil.ErrorIf(t, len(entries.Items) == 0, "expected audit entry for %s", action.String())
+	return *entries.Items[0]
 }

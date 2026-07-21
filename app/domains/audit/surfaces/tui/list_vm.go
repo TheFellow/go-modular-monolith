@@ -147,8 +147,8 @@ func (m *ListViewModel) loadEntries() tea.Cmd {
 			return AuditLoadedMsg{Err: err}
 		}
 
-		rows := make([]auditmodels.AuditEntry, 0, len(entries))
-		for i, entry := range entries {
+		rows := make([]auditmodels.AuditEntry, 0, len(entries.Items))
+		for i, entry := range entries.Items {
 			if entry == nil {
 				return AuditLoadedMsg{Err: errors.Internalf("audit entry %d missing", i)}
 			}
