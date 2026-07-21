@@ -100,7 +100,7 @@ func auditListFlags() []cli.Flag {
 		},
 		&cli.IntFlag{
 			Name:  "limit",
-			Usage: "Number of entries in a cursor page",
+			Usage: "Number of entries in a cursor page (default 100)",
 		},
 		&cli.StringFlag{
 			Name:  "cursor",
@@ -121,7 +121,7 @@ func auditHistoryFlags() []cli.Flag {
 		},
 		&cli.IntFlag{
 			Name:  "limit",
-			Usage: "Number of entries in a cursor page",
+			Usage: "Number of entries in a cursor page (default 100)",
 		},
 		&cli.StringFlag{
 			Name:  "cursor",
@@ -131,41 +131,27 @@ func auditHistoryFlags() []cli.Flag {
 }
 
 func (c *CLI) printAuditList(ctx *middleware.Context, cmd *cli.Command, req audit.ListRequest) error {
-	cursor := paging.Cursor(strings.TrimSpace(cmd.String("cursor")))
-	if req.Limit <= 0 && cursor != "" {
-		return fmt.Errorf("--cursor requires --limit")
-	}
-	if req.Limit > 0 {
-		page, err := c.app.Audit.ListPage(ctx, req, paging.Request{Cursor: cursor, Limit: req.Limit})
-		if err != nil {
-			return err
-		}
-		if cmd.Bool("json") {
-			return writeJSON(cmd.Writer, page)
-		}
-		if err := printAuditEntries(page.Items); err != nil {
-			return err
-		}
-		if page.Next != "" {
-			_, err = fmt.Fprintf(cmd.Writer, "Next cursor: %s\n", page.Next)
-			return err
-		}
-		return nil
-	}
-
-	entries, err := c.app.Audit.List(ctx, req)
+	page, err := c.app.Audit.List(ctx, req)
 	if err != nil {
 		return err
 	}
 	if cmd.Bool("json") {
-		return writeJSON(cmd.Writer, entries)
+		return writeJSON(cmd.Writer, page)
 	}
-	return printAuditEntries(entries)
+	if err := printAuditEntries(page.Items); err != nil {
+		return err
+	}
+	if page.Next != "" {
+		_, err = fmt.Fprintf(cmd.Writer, "Next cursor: %s\n", page.Next)
+		return err
+	}
+	return nil
 }
 
 func auditListRequest(cmd *cli.Command) (audit.ListRequest, error) {
 	var req audit.ListRequest
 	req.Limit = cmd.Int("limit")
+	req.Cursor = paging.Cursor(strings.TrimSpace(cmd.String("cursor")))
 
 	if raw := strings.TrimSpace(cmd.String("entity")); raw != "" {
 		uid, err := parseEntityUID(raw)

@@ -272,8 +272,8 @@ func (d *Dashboard) loadData() tea.Cmd {
 		if entries, err := d.app.Audit.List(ctx, audit.ListRequest{Limit: dashboardRecentMax}); err != nil {
 			loadErr = firstErr(loadErr, err)
 		} else {
-			data.RecentActivity = make([]AuditSummary, 0, len(entries))
-			for _, entry := range entries {
+			data.RecentActivity = make([]AuditSummary, 0, len(entries.Items))
+			for _, entry := range entries.Items {
 				ts := entry.CompletedAt
 				if ts.IsZero() {
 					ts = entry.StartedAt

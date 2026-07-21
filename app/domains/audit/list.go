@@ -20,20 +20,18 @@ type ListRequest struct {
 	Entity    cedar.EntityUID
 	From      time.Time
 	To        time.Time
+	Cursor    paging.Cursor
 	Limit     int
 }
 
-func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.AuditEntry, error) {
-	if req.Limit > 0 {
-		page, err := m.ListPage(ctx, req, paging.Request{Limit: req.Limit})
-		return page.Items, err
-	}
-	return middleware.RunListQuery(m.pipeline, ctx, authz.ActionList, m.list, req)
-}
+const defaultPageLimit = 100
 
-// ListPage returns a stable cursor page ordered by descending audit-entry ID.
-func (m *Module) ListPage(ctx *middleware.Context, req ListRequest, pageRequest paging.Request) (paging.Page[*models.AuditEntry], error) {
-	_, err := entity.ParseAuditEntryID(string(pageRequest.Cursor))
+// List returns a stable cursor page ordered by descending audit-entry ID.
+func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*models.AuditEntry], error) {
+	if req.Limit == 0 {
+		req.Limit = defaultPageLimit
+	}
+	_, err := entity.ParseAuditEntryID(string(req.Cursor))
 	if err != nil {
 		return paging.Page[*models.AuditEntry]{}, err
 	}
@@ -44,16 +42,12 @@ func (m *Module) ListPage(ctx *middleware.Context, req ListRequest, pageRequest 
 		authz.ActionList,
 		func(ctx store.Context, filter dao.ListFilter, cursor paging.Cursor) iter.Seq2[*models.AuditEntry, error] {
 			filter.BeforeID = string(cursor)
-			return m.queries.All(ctx, filter)
+			return m.queries.List(ctx, filter)
 		},
 		func(entry *models.AuditEntry) paging.Cursor { return paging.Cursor(entry.ID.String()) },
 		filter,
-		pageRequest,
+		paging.Request{Cursor: req.Cursor, Limit: req.Limit},
 	)
-}
-
-func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.AuditEntry, error) {
-	return m.queries.List(ctx, m.listFilter(req))
 }
 
 func (m *Module) listFilter(req ListRequest) dao.ListFilter {
@@ -67,17 +61,26 @@ func (m *Module) listFilter(req ListRequest) dao.ListFilter {
 }
 
 func (m *Module) Count(ctx *middleware.Context, req ListRequest) (int, error) {
-	entries, err := m.List(ctx, req)
-	if err != nil {
-		return 0, err
+	req.Cursor = ""
+	req.Limit = defaultPageLimit
+	count := 0
+	for {
+		page, err := m.List(ctx, req)
+		if err != nil {
+			return 0, err
+		}
+		count += len(page.Items)
+		if page.Next == "" {
+			return count, nil
+		}
+		req.Cursor = page.Next
 	}
-	return len(entries), nil
 }
 
-func (m *Module) GetEntityHistory(ctx *middleware.Context, uid cedar.EntityUID) ([]*models.AuditEntry, error) {
+func (m *Module) GetEntityHistory(ctx *middleware.Context, uid cedar.EntityUID) (paging.Page[*models.AuditEntry], error) {
 	return m.List(ctx, ListRequest{Entity: uid})
 }
 
-func (m *Module) GetActorActivity(ctx *middleware.Context, principal cedar.EntityUID) ([]*models.AuditEntry, error) {
+func (m *Module) GetActorActivity(ctx *middleware.Context, principal cedar.EntityUID) (paging.Page[*models.AuditEntry], error) {
 	return m.List(ctx, ListRequest{Principal: principal})
 }
