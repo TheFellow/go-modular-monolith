@@ -162,11 +162,12 @@ handled by both the Drinks and Menus domains.
 
 ### Write Pipeline (Commands)
 
-Commands use the shared operation pipeline with: Logging, Metrics, TrackActivity, UnitOfWork, DispatchEvents. Authorization
-is **not** a separate middleware step — it happens inline inside `RunCommand`, which authorizes
-twice: once on the loaded input entity and once on the output entity. This dual check lets
-policies consider both the pre-mutation state (e.g., "can this user modify a Draft menu?") and
-the post-mutation result (e.g., "is the resulting entity in a state this user can create?").
+Commands use the shared operation pipeline with Logging, Metrics, TrackActivity, UnitOfWork,
+and DispatchEvents. After `RunCommand` loads the current entity inside the unit of work, the
+typed `AuthorizeCommand` middleware authorizes the loaded state, calls the handler, and then
+authorizes the resulting state. This dual check lets policies consider both the pre-mutation
+state (e.g., "can this user modify a Draft menu?") and the post-mutation result (e.g., "is the
+resulting entity in a state this user can create?").
 
 Both the input and output types must satisfy the `CedarEntity` interface, which requires them to
 represent themselves as Cedar entities for policy evaluation.
@@ -177,8 +178,11 @@ flowchart LR
         L[Logging] --> M[Metrics]
         M --> A[TrackActivity]
         A --> U[UnitOfWork]
-        U --> E[Load + AuthZ + Execute + AuthZ]
-        E --> EV[Events]
+        U --> LD[Load]
+        LD --> AI[Authorize input]
+        AI --> E[Execute]
+        E --> AO[Authorize output]
+        AO --> EV[Events]
         EV --> H[Handlers]
         H --> R[Audit Writer]
         R --> AU[Audit Log]
@@ -189,17 +193,21 @@ flowchart LR
 
 ### Read Pipelines (Queries)
 
-Queries use the shared operation pipeline with: Logging, Metrics, AuthZ. A query operation can
-carry only an action for action-level permission (e.g., "can this principal list drinks?") or
-also carry a `cedar.Entity` resource for resource-scoped authorization (e.g., "can this
-principal view this specific menu?").
+Queries share the Logging and Metrics pipeline, then use a result-aware authorization wrapper.
+`RunEntityQuery` loads one entity and authorizes its `CedarEntity` before returning it. Lookup
+errors, including not found, are returned unchanged because there is no entity to authorize.
+`RunListQuery` loads candidate entities, authorizes each one, and silently elides permission
+denials; authorization evaluation and infrastructure errors still fail the query. Counts are
+derived from the filtered list so they cannot reveal hidden entities.
 
 ```mermaid
 flowchart LR
     subgraph Query Pipeline
         L[Logging] --> M[Metrics]
-        M --> Z[AuthZ]
-        Z --> E[Execute]
+        M --> E[Execute]
+        E --> G[Get: authorize entity]
+        E --> LS[List: authorize each entity]
+        LS --> F[Return visible entities]
     end
 ```
 
@@ -214,13 +222,13 @@ into a single `PolicySet` at startup.
 | Actor | Access |
 |-------|--------|
 | owner | Full access to all domains |
-| manager | Operational commands (menus, inventory, orders) |
-| sommelier | Drinks, menus, ingredients |
-| bartender | Orders and read-only views |
-| anonymous | Read-only queries only |
+| manager | Operational commands and full catalog visibility |
+| sommelier | Wine drinks plus permitted menu and ingredient operations |
+| bartender | Non-wine drinks, orders, and permitted read-only views |
+| anonymous | Public read-only views |
 
-Queries pass through AuthZ middleware. Commands authorize inline via `RunCommand` (see above).
-Denied requests return a typed permission error.
+Gets and commands return a typed permission error when their entity is denied. Lists treat
+denied entities as normal filtering and return only the visible subset.
 
 ## Context Responsibilities
 

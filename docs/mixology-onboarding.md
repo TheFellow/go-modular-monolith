@@ -58,16 +58,18 @@ Every operation enters through a middleware pipeline. Domain code never calls a 
 transaction, or checks permissions. The pipeline does it.
 
 **Command pipeline:** Logging → Metrics → TrackActivity → UnitOfWork → DispatchEvents.
-Authorization happens inline inside `RunCommand`, which checks permissions on both the input
-entity and the output entity (the "dual-state check" — can you touch the current state AND
-create the resulting state?).
+After `RunCommand` loads the current entity, typed `AuthorizeCommand` middleware checks the
+loaded state, invokes the handler, and checks the result (the "dual-state check" — can you touch
+the current state AND create the resulting state?).
 
-**Query pipeline:** Logging → Metrics → AuthZ → Execute. Query operations either carry only an
-action for action-level checks ("can this principal list drinks?") or also carry a resource for
-resource-level checks ("can this principal view this specific menu?").
+**Query pipeline:** Logging → Metrics → Execute → result-aware AuthZ. `RunEntityQuery` authorizes
+a successfully loaded entity and returns lookup errors unchanged. `RunListQuery` authorizes
+each candidate and elides denied entities instead of returning a permission error. Counts use
+the visible result set.
 
 **Where to look:** `pkg/middleware/chains.go` for dependency-bound pipeline construction, then
-`pkg/middleware/run.go` for query execution and `RunCommand` with dual authorization.
+`pkg/middleware/authz.go` for the typed authorization wrappers and `pkg/middleware/run.go` for
+query and command execution.
 
 **The takeaway:** If you're writing `log.Info()` or `if !authorized` inside a command handler,
 you're in the wrong layer. Push cross-cutting concerns into infrastructure. Domain code should
@@ -147,14 +149,19 @@ Authorization uses [Cedar](https://www.cedarpolicy.com/) policies. Each domain d
 policies in `<domain>/authz/` as `.cedar` files — declarative rules, not Go conditionals. The
 `pkg/authz/gen` generator assembles all policies into a single `PolicySet` at startup.
 
-Five roles: `owner` (full), `manager` (operations), `sommelier` (drinks/menus/ingredients),
-`bartender` (orders + read-only), `anonymous` (read-only).
+Five roles: `owner` (full), `manager` (operations and full catalog visibility), `sommelier`
+(wine drinks plus permitted menu/ingredient operations), `bartender` (non-wine drinks and
+orders), and `anonymous` (public read-only views).
 
 Both the input and output of every command must satisfy the `CedarEntity` interface — the system
 can evaluate authorization against the entity's actual state, not just its type.
 
+Query results use the same representation. A denied get returns a permission error, while a
+denied list item is omitted because partial visibility is expected. For example, a sommelier's
+drink list contains wines but elides non-wine drinks.
+
 **Where to look:** Any `authz/` directory inside a domain, then `pkg/authz/authorize.go` for
-the evaluation engine, then `pkg/middleware/run.go` lines 66 and 79 for the dual check.
+the evaluation engine, then `pkg/middleware/authz.go` for command, get, and list semantics.
 
 **The takeaway:** When you can read authorization rules in a `.cedar` file without understanding
 Go, you've separated policy from mechanism. Anyone can audit who can do what without reading
@@ -165,9 +172,9 @@ source code.
 A CLI, a TUI, and (eventually) an API should share 100% of their business logic.
 
 The `main/cli` binary serves both the CLI and the TUI (`--tui` flag). Both surfaces import
-domain modules and call the same `RunCommand` / `RunQuery` functions through the same middleware
-pipelines. Authorization, logging, metrics, and audit tracking apply identically regardless of
-surface.
+domain modules and call the same `RunCommand`, `RunEntityQuery`, and `RunListQuery` functions
+through the same middleware pipelines. Authorization, logging, metrics, and audit tracking
+apply identically regardless of surface.
 
 Each domain has a `surfaces/` directory with `cli/` and `tui/` subdirectories. These are thin
 presentation layers — they map user input to domain calls and format output. They contain zero
