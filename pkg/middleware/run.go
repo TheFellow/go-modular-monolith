@@ -5,17 +5,21 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-func RunQuery[Req, Res any](
+// RunListQuery loads a list and elides entities the caller cannot see.
+func RunListQuery[Req any, Item CedarEntity](
 	pipeline *Pipeline,
 	ctx *Context,
 	action cedar.EntityUID,
-	execute func(store.Context, Req) (Res, error),
+	execute func(store.Context, Req) ([]Item, error),
 	req Req,
-) (Res, error) {
-	var out Res
+) ([]Item, error) {
+	var out []Item
+	handle := AuthorizeListQuery(action, func(c *Context, req Req) ([]Item, error) {
+		return execute(c, req)
+	})
 
 	err := pipeline.query.Execute(ctx, QueryOperation(action), func(c *Context) error {
-		res, err := execute(c, req)
+		res, err := handle(c, req)
 		if err != nil {
 			return err
 		}
@@ -25,7 +29,9 @@ func RunQuery[Req, Res any](
 	return out, err
 }
 
-func RunQueryWithResource[Req CedarEntity, Res any](
+// RunEntityQuery loads one entity and authorizes that entity before returning
+// it to the caller.
+func RunEntityQuery[Req any, Res CedarEntity](
 	pipeline *Pipeline,
 	ctx *Context,
 	action cedar.EntityUID,
@@ -33,10 +39,12 @@ func RunQueryWithResource[Req CedarEntity, Res any](
 	req Req,
 ) (Res, error) {
 	var out Res
+	handle := AuthorizeEntityQuery(action, func(c *Context, req Req) (Res, error) {
+		return execute(c, req)
+	})
 
-	resource := req.CedarEntity()
-	err := pipeline.query.Execute(ctx, QueryResourceOperation(action, resource), func(c *Context) error {
-		res, err := execute(c, req)
+	err := pipeline.query.Execute(ctx, QueryOperation(action), func(c *Context) error {
+		res, err := handle(c, req)
 		if err != nil {
 			return err
 		}

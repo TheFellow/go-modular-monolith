@@ -24,3 +24,12 @@ type AuditEntry struct {
 
 	Touches []cedar.EntityUID
 }
+
+func (e AuditEntry) CedarEntity() cedar.Entity {
+	return cedar.Entity{
+		UID:        e.ID.EntityUID(),
+		Parents:    cedar.NewEntityUIDSet(),
+		Attributes: cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(nil),
+	}
+}

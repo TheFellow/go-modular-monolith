@@ -15,6 +15,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 // testLogBuffer captures log output for assertions.
@@ -160,7 +161,7 @@ func TestCommandLogging_PermissionError_LogsDenied(t *testing.T) {
 
 // --- Full Chain Integration Tests ---
 
-func TestQueryChain_WithAuthZ_Denial_LogsOnceAndRecordsRequestMetrics(t *testing.T) {
+func TestListQuery_ElidesDeniedEntities(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &testLogBuffer{}
@@ -171,39 +172,38 @@ func TestQueryChain_WithAuthZ_Denial_LogsOnceAndRecordsRequestMetrics(t *testing
 	ctx = log.ToContext(ctx, logger)
 	ctx = telemetry.WithMetrics(ctx, mem)
 
-	// Use anonymous principal which should be denied for create
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
 	mctx := middleware.NewContext(authn.ToContext(ctx, authn.Anonymous()))
 
-	action := drinksauthz.ActionCreate
-
-	// Use the full chain with AuthZ
-	_, err := middleware.RunQuery(pipeline, mctx, action, func(_ store.Context, _ struct{}) (struct{}, error) {
-		t.Fatal("handler should not be called when authz denies")
-		return struct{}{}, nil
+	action := drinksauthz.ActionUpdate
+	executed := false
+	items, err := middleware.RunListQuery(pipeline, mctx, action, func(_ store.Context, _ struct{}) ([]testEntity, error) {
+		executed = true
+		return []testEntity{{
+			ID: cedar.NewEntityUID(cedar.EntityType("Mixology::Drink"), cedar.String("stub")),
+		}}, nil
 	}, struct{}{})
-
-	if !errors.IsPermission(err) {
-		t.Fatalf("expected permission error, got %v", err)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !executed {
+		t.Fatal("expected list query to execute before filtering")
+	}
+	if len(items) != 0 {
+		t.Fatalf("expected denied entity to be elided, got %d items", len(items))
 	}
 
-	denialCount := logBuf.Count("query denied")
-	if denialCount != 1 {
-		t.Errorf("expected exactly 1 'query denied' log, got %d", denialCount)
-	}
-
-	queryTotal := mem.CounterValue(telemetry.MetricQueryTotal, "Drink.create", "error")
+	queryTotal := mem.CounterValue(telemetry.MetricQueryTotal, "Drink.update", "success")
 	if queryTotal != 1 {
-		t.Errorf("expected 1 query error metric, got %v", queryTotal)
+		t.Errorf("expected 1 query success metric, got %v", queryTotal)
 	}
-
-	queryDuration := mem.HistogramCount(telemetry.MetricQueryDuration, "Drink.create")
+	queryDuration := mem.HistogramCount(telemetry.MetricQueryDuration, "Drink.update")
 	if queryDuration != 1 {
 		t.Errorf("expected 1 query duration observation, got %v", queryDuration)
 	}
 }
 
-func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
+func TestListQuery_AllowedResultRecordsMetrics(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &testLogBuffer{}
@@ -220,9 +220,11 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	action := drinksauthz.ActionList
 	handlerCalled := false
 
-	_, err := middleware.RunQuery(pipeline, mctx, action, func(_ store.Context, _ struct{}) (struct{}, error) {
+	items, err := middleware.RunListQuery(pipeline, mctx, action, func(_ store.Context, _ struct{}) ([]testEntity, error) {
 		handlerCalled = true
-		return struct{}{}, nil
+		return []testEntity{{
+			ID: cedar.NewEntityUID(cedar.EntityType("Mixology::Drink"), cedar.String("stub")),
+		}}, nil
 	}, struct{}{})
 
 	if err != nil {
@@ -231,6 +233,9 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 
 	if !handlerCalled {
 		t.Error("expected handler to be called")
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected authorized entity to be returned, got %d items", len(items))
 	}
 
 	// Check query metrics
@@ -242,6 +247,45 @@ func TestQueryChain_WithAuthZ_AllowedRequest_MetricsRecorded(t *testing.T) {
 	queryDuration := mem.HistogramCount(telemetry.MetricQueryDuration, "Drink.list")
 	if queryDuration != 1 {
 		t.Errorf("expected 1 query duration observation, got %v", queryDuration)
+	}
+}
+
+func TestEntityQuery_AuthorizesLoadedResult(t *testing.T) {
+	t.Parallel()
+
+	logBuf := &testLogBuffer{}
+	mem := telemetry.Memory()
+	mctx := newTestContext(logBuf, mem)
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
+
+	executed := false
+	_, err := middleware.RunEntityQuery(pipeline, mctx, drinksauthz.ActionUpdate, func(_ store.Context, _ struct{}) (testEntity, error) {
+		executed = true
+		return testEntity{
+			ID: cedar.NewEntityUID(cedar.EntityType("Mixology::Drink"), cedar.String("stub")),
+		}, nil
+	}, struct{}{})
+	if !errors.IsPermission(err) {
+		t.Fatalf("expected permission error, got %v", err)
+	}
+	if !executed {
+		t.Fatal("expected entity query to load its result before authorization")
+	}
+}
+
+func TestEntityQuery_ReturnsNotFoundWithoutAuthorization(t *testing.T) {
+	t.Parallel()
+
+	logBuf := &testLogBuffer{}
+	mem := telemetry.Memory()
+	mctx := newTestContext(logBuf, mem)
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
+
+	_, err := middleware.RunEntityQuery(pipeline, mctx, drinksauthz.ActionUpdate, func(_ store.Context, _ struct{}) (testEntity, error) {
+		return testEntity{}, errors.NotFoundf("drink missing")
+	}, struct{}{})
+	if !errors.IsNotFound(err) {
+		t.Fatalf("expected not-found error, got %v", err)
 	}
 }
 

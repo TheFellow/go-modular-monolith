@@ -30,14 +30,16 @@ func TestPermissions_Drinks(t *testing.T) {
 
 	cases := []struct {
 		name             string
+		canReadWine      bool
+		canReadNonWine   bool
 		canManageWine    bool
 		canManageNonWine bool
 	}{
-		{name: "owner", canManageWine: true, canManageNonWine: true},
-		{name: "manager", canManageWine: true, canManageNonWine: true},
-		{name: "sommelier", canManageWine: true, canManageNonWine: false},
-		{name: "bartender", canManageWine: false, canManageNonWine: true},
-		{name: "anonymous", canManageWine: false, canManageNonWine: false},
+		{name: "owner", canReadWine: true, canReadNonWine: true, canManageWine: true, canManageNonWine: true},
+		{name: "manager", canReadWine: true, canReadNonWine: true, canManageWine: true, canManageNonWine: true},
+		{name: "sommelier", canReadWine: true, canManageWine: true},
+		{name: "bartender", canReadNonWine: true, canManageNonWine: true},
+		{name: "anonymous", canReadWine: true, canReadNonWine: true},
 	}
 
 	for _, tc := range cases {
@@ -57,11 +59,39 @@ func TestPermissions_Drinks(t *testing.T) {
 			wineExisting := b.WithDrink(drinkForPermissions("Permissions Wine", models.DrinkCategoryWine, base.ID))
 			nonWineExisting := b.WithDrink(drinkForPermissions("Permissions Cocktail", models.DrinkCategoryCocktail, base.ID))
 
-			_, err := a.Drinks.List(ctx, drinks.ListRequest{})
-			testutil.PermissionTestPass(t, err)
+			listed, err := a.Drinks.List(ctx, drinks.ListRequest{})
+			testutil.Ok(t, err)
+			visible := make(map[entity.DrinkID]bool, len(listed))
+			for _, drink := range listed {
+				visible[drink.ID] = true
+			}
+			testutil.ErrorIf(t, visible[wineExisting.ID] != tc.canReadWine, "unexpected wine visibility")
+			testutil.ErrorIf(t, visible[nonWineExisting.ID] != tc.canReadNonWine, "unexpected non-wine visibility")
 
-			_, err = a.Drinks.Get(ctx, models.NewDrinkID("does-not-exist"))
-			testutil.PermissionTestPass(t, err)
+			count, err := a.Drinks.Count(ctx, drinks.ListRequest{})
+			testutil.Ok(t, err)
+			wantCount := 0
+			if tc.canReadWine {
+				wantCount++
+			}
+			if tc.canReadNonWine {
+				wantCount++
+			}
+			testutil.ErrorIf(t, count != wantCount, "expected visible count %d, got %d", wantCount, count)
+
+			_, err = a.Drinks.Get(ctx, wineExisting.ID)
+			if tc.canReadWine {
+				testutil.PermissionTestPass(t, err)
+			} else {
+				testutil.PermissionTestFail(t, err)
+			}
+
+			_, err = a.Drinks.Get(ctx, nonWineExisting.ID)
+			if tc.canReadNonWine {
+				testutil.PermissionTestPass(t, err)
+			} else {
+				testutil.PermissionTestFail(t, err)
+			}
 
 			wineCreate := drinkForPermissions("New Wine", models.DrinkCategoryWine, base.ID)
 			_, err = a.Drinks.Create(ctx, &wineCreate)

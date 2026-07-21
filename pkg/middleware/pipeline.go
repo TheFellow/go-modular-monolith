@@ -14,10 +14,8 @@ const (
 )
 
 type Operation struct {
-	Kind        OperationKind
-	Action      cedar.EntityUID
-	Resource    cedar.Entity
-	hasResource bool
+	Kind   OperationKind
+	Action cedar.EntityUID
 }
 
 func QueryOperation(action cedar.EntityUID) Operation {
@@ -27,24 +25,11 @@ func QueryOperation(action cedar.EntityUID) Operation {
 	}
 }
 
-func QueryResourceOperation(action cedar.EntityUID, resource cedar.Entity) Operation {
-	return Operation{
-		Kind:        OperationKindQuery,
-		Action:      action,
-		Resource:    resource,
-		hasResource: true,
-	}
-}
-
 func CommandOperation(action cedar.EntityUID) Operation {
 	return Operation{
 		Kind:   OperationKindCommand,
 		Action: action,
 	}
-}
-
-func (op Operation) HasResource() bool {
-	return op.hasResource
 }
 
 type Next func(*Context) error

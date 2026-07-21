@@ -66,14 +66,15 @@ func TestPermissions_Orders(t *testing.T) {
 			})
 			testutil.Ok(t, err)
 
-			_, err = a.Orders.List(ctx, orders.ListRequest{})
+			listed, err := a.Orders.List(ctx, orders.ListRequest{})
+			testutil.Ok(t, err)
+			wantCount := 0
 			if tc.canRead {
-				testutil.PermissionTestPass(t, err)
-			} else {
-				testutil.PermissionTestFail(t, err)
+				wantCount = 1
 			}
+			testutil.ErrorIf(t, len(listed) != wantCount, "expected %d visible orders, got %d", wantCount, len(listed))
 
-			_, err = a.Orders.Get(ctx, ordersM.NewOrderID("does-not-exist"))
+			_, err = a.Orders.Get(ctx, order.ID)
 			if tc.canRead {
 				testutil.PermissionTestPass(t, err)
 			} else {

@@ -2,23 +2,53 @@ package middleware
 
 import (
 	"github.com/TheFellow/go-modular-monolith/pkg/authz"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-// AuthorizeQuery authorizes query operations, using the shared query resource
-// when the operation does not carry a resource of its own.
-func AuthorizeQuery() Middleware {
-	return func(ctx *Context, op Operation, next Next) error {
-		if op.HasResource() {
-			if err := authz.AuthorizeWithEntity(ctx.Principal(), op.Action, op.Resource); err != nil {
-				return err
-			}
-		} else {
-			if err := authz.Authorize(ctx.Principal(), op.Action); err != nil {
-				return err
+// QueryHandler executes a query and returns its result.
+type QueryHandler[Req, Out any] func(*Context, Req) (Out, error)
+
+// AuthorizeListQuery filters a loaded list to the entities the caller is
+// authorized to see. A permission denial hides that entity; evaluation and
+// infrastructure errors still fail the query.
+func AuthorizeListQuery[Req any, Item CedarEntity](action cedar.EntityUID, next QueryHandler[Req, []Item]) QueryHandler[Req, []Item] {
+	return func(ctx *Context, req Req) ([]Item, error) {
+		items, err := next(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+
+		visible := make([]Item, 0, len(items))
+		for _, item := range items {
+			err := authz.AuthorizeWithEntity(ctx.Principal(), action, item.CedarEntity())
+			switch {
+			case err == nil:
+				visible = append(visible, item)
+			case errors.IsPermission(err):
+				continue
+			default:
+				return nil, err
 			}
 		}
-		return next(ctx)
+		return visible, nil
+	}
+}
+
+// AuthorizeEntityQuery executes a query and authorizes its loaded result
+// before returning it to the caller. This is the authorization shape used by
+// get queries.
+func AuthorizeEntityQuery[Req any, Out CedarEntity](action cedar.EntityUID, next QueryHandler[Req, Out]) QueryHandler[Req, Out] {
+	return func(ctx *Context, req Req) (Out, error) {
+		var zero Out
+		out, err := next(ctx, req)
+		if err != nil {
+			return zero, err
+		}
+		if err := authz.AuthorizeWithEntity(ctx.Principal(), action, out.CedarEntity()); err != nil {
+			return zero, err
+		}
+		return out, nil
 	}
 }
 
