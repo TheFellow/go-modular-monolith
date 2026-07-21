@@ -33,9 +33,10 @@ func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*mo
 	if req.Limit == 0 {
 		req.Limit = defaultPageLimit
 	}
-	_, err := entity.ParseAuditEntryID(string(req.Cursor))
-	if err != nil {
-		return paging.Page[*models.AuditEntry]{}, err
+	if req.Cursor != "" {
+		if _, err := entity.ParseAuditEntryID(string(req.Cursor)); err != nil {
+			return paging.Page[*models.AuditEntry]{}, err
+		}
 	}
 	filter := m.listFilter(req)
 	return middleware.RunPageQuery(

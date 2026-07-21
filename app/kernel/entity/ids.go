@@ -15,7 +15,7 @@ func NewID(entityType cedar.EntityType, prefix string) cedar.EntityUID {
 
 func parseID(entityType cedar.EntityType, prefix, id string) (cedar.EntityUID, error) {
 	if id == "" {
-		return cedar.NewEntityUID(entityType, cedar.String("")), nil
+		return cedar.EntityUID{}, errors.Invalidf("invalid %s id: empty", prefix)
 	}
 
 	suffix, ok := strings.CutPrefix(id, prefix+"-")
