@@ -51,7 +51,7 @@ func renderModuleModelTests(tree *ast.Schema, moduleName, importPath string) ([]
 		fmt.Fprintf(&b, "\t\t\tmoduleauthz.%s%sAttr: %s,\n", goEntity, exportedName(string(attr)), value)
 	}
 	b.WriteString("\t\t}),\n\t\tTags: cedar.NewRecord(nil),\n\t}\n\n")
-	b.WriteString("\ttestutil.ErrorIf(t, !want.Equal(got), \"CedarEntity() = %#v, want %#v\", got, want)\n")
+	b.WriteString("\ttestutil.Equals(t, got, want)\n")
 	b.WriteString("}\n")
 
 	return format.Source(b.Bytes())

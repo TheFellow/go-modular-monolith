@@ -30,5 +30,5 @@ func TestOrderCedarEntity(t *testing.T) {
 		Tags: cedar.NewRecord(nil),
 	}
 
-	testutil.ErrorIf(t, !want.Equal(got), "CedarEntity() = %#v, want %#v", got, want)
+	testutil.Equals(t, got, want)
 }
