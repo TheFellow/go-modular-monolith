@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"iter"
+
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -14,43 +16,27 @@ type ListFilter struct {
 	IDs      []entity.IngredientID
 	// IncludeDeleted includes soft-deleted rows (DeletedAt != nil).
 	IncludeDeleted bool
+	BeforeID       string
 }
 
-func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Ingredient, error) {
-	var out []*models.Ingredient
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		q := d.query(tx, filter)
-		rows, err := q.SortAsc("Name").List()
-		if err != nil {
-			return store.MapError(err, "list ingredients")
-		}
-		ingredients := make([]*models.Ingredient, 0, len(rows))
-		for _, r := range rows {
-			if !filter.IncludeDeleted && r.DeletedAt != nil {
-				continue
+func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Ingredient, error] {
+	return func(yield func(*models.Ingredient, error) bool) {
+		err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+			for row, err := range d.query(tx, filter).SortDesc("ID").All() {
+				if err != nil {
+					return store.MapError(err, "iterate ingredients")
+				}
+				ingredient := toModel(row)
+				if !yield(&ingredient, nil) {
+					return nil
+				}
 			}
-			i := toModel(r)
-			ingredients = append(ingredients, &i)
-		}
-		out = ingredients
-		return nil
-	})
-	return out, err
-}
-
-func (d *DAO) Count(ctx store.Context, filter ListFilter) (int, error) {
-	var count int
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		q := d.query(tx, filter)
-
-		var err error
-		count, err = q.Count()
+			return nil
+		})
 		if err != nil {
-			return store.MapError(err, "count ingredients")
+			yield(nil, err)
 		}
-		return nil
-	})
-	return count, err
+	}
 }
 
 func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[IngredientRow] {
@@ -70,6 +56,9 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[IngredientRo
 			_, ok := idSet[r.ID]
 			return ok
 		})
+	}
+	if filter.BeforeID != "" {
+		q = q.FilterLess("ID", filter.BeforeID)
 	}
 	if !filter.IncludeDeleted {
 		q = q.FilterFn(func(r IngredientRow) bool {

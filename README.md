@@ -42,6 +42,9 @@ go run ./main/seed
 
 # CLI examples
 go run ./main/cli ingredients list
+go run ./main/cli ingredients list --limit 20
+# Continue any list command with the cursor printed by its previous page.
+go run ./main/cli ingredients list --limit 20 --cursor ing-...
 go run ./main/cli menu list
 go run ./main/cli audit list --limit 20
 # Continue with the cursor printed by the previous command.

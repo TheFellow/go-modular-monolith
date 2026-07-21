@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"iter"
+
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -13,43 +15,27 @@ type ListFilter struct {
 	MenuID entity.MenuID
 	// IncludeDeleted includes soft-deleted rows (DeletedAt != nil).
 	IncludeDeleted bool
+	BeforeID       string
 }
 
-func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.Order, error) {
-	var out []*models.Order
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		q := d.query(tx, filter)
-		rows, err := q.List()
-		if err != nil {
-			return store.MapError(err, "list orders")
-		}
-		orders := make([]*models.Order, 0, len(rows))
-		for _, r := range rows {
-			if !filter.IncludeDeleted && r.DeletedAt != nil {
-				continue
+func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Order, error] {
+	return func(yield func(*models.Order, error) bool) {
+		err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+			for row, err := range d.query(tx, filter).SortDesc("ID").All() {
+				if err != nil {
+					return store.MapError(err, "iterate orders")
+				}
+				order := toModel(row)
+				if !yield(&order, nil) {
+					return nil
+				}
 			}
-			o := toModel(r)
-			orders = append(orders, &o)
-		}
-		out = orders
-		return nil
-	})
-	return out, err
-}
-
-func (d *DAO) Count(ctx store.Context, filter ListFilter) (int, error) {
-	var count int
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		q := d.query(tx, filter)
-
-		var err error
-		count, err = q.Count()
+			return nil
+		})
 		if err != nil {
-			return store.MapError(err, "count orders")
+			yield(nil, err)
 		}
-		return nil
-	})
-	return count, err
+	}
 }
 
 func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[OrderRow] {
@@ -59,6 +45,9 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[OrderRow] {
 	}
 	if !filter.MenuID.IsZero() {
 		q = q.FilterEqual("MenuID", filter.MenuID.String())
+	}
+	if filter.BeforeID != "" {
+		q = q.FilterLess("ID", filter.BeforeID)
 	}
 	if !filter.IncludeDeleted {
 		q = q.FilterFn(func(r OrderRow) bool {

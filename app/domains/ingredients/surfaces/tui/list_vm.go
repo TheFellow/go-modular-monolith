@@ -306,8 +306,8 @@ func (m *ListViewModel) loadIngredients() tea.Cmd {
 			return IngredientsLoadedMsg{Err: err}
 		}
 
-		items := make([]models.Ingredient, 0, len(ingredientsList))
-		for i, ingredient := range ingredientsList {
+		items := make([]models.Ingredient, 0, len(ingredientsList.Items))
+		for i, ingredient := range ingredientsList.Items {
 			if ingredient == nil {
 				return IngredientsLoadedMsg{Err: errors.Internalf("ingredient %d missing", i)}
 			}
@@ -358,7 +358,7 @@ func (m *ListViewModel) showDeleteConfirm(ingredient *models.Ingredient) tea.Cmd
 		if err != nil {
 			return DeleteErrorMsg{Err: err}
 		}
-		drinkCount := countDrinksUsingIngredient(drinks, ingredient.ID)
+		drinkCount := countDrinksUsingIngredient(drinks.Items, ingredient.ID)
 		message := fmt.Sprintf("Delete %q?", ingredient.Name)
 		if drinkCount > 0 {
 			message = fmt.Sprintf(

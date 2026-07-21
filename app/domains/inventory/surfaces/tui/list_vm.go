@@ -234,8 +234,8 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 			return InventoryLoadedMsg{Err: err}
 		}
 
-		ingredientIDs := make(map[entity.IngredientID]struct{}, len(inventoryList))
-		for _, item := range inventoryList {
+		ingredientIDs := make(map[entity.IngredientID]struct{}, len(inventoryList.Items))
+		for _, item := range inventoryList.Items {
 			if item.IngredientID.IsZero() {
 				return InventoryLoadedMsg{Err: errors.Internalf("inventory %s missing ingredient", item.ID.String())}
 			}
@@ -252,8 +252,8 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 			return InventoryLoadedMsg{Err: errors.Internalf("load ingredients: %w", err)}
 		}
 
-		rows := make([]InventoryRow, 0, len(inventoryList))
-		for _, item := range inventoryList {
+		rows := make([]InventoryRow, 0, len(inventoryList.Items))
+		for _, item := range inventoryList.Items {
 			ingredient, ok := ingredientByID[item.IngredientID]
 			if !ok {
 				return InventoryLoadedMsg{Err: errors.Internalf("ingredient %s missing", item.IngredientID.String())}

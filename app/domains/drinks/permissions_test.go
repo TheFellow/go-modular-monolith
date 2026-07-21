@@ -61,8 +61,8 @@ func TestPermissions_Drinks(t *testing.T) {
 
 			listed, err := a.Drinks.List(ctx, drinks.ListRequest{})
 			testutil.Ok(t, err)
-			visible := make(map[entity.DrinkID]bool, len(listed))
-			for _, drink := range listed {
+			visible := make(map[entity.DrinkID]bool, len(listed.Items))
+			for _, drink := range listed.Items {
 				visible[drink.ID] = true
 			}
 			testutil.ErrorIf(t, visible[wineExisting.ID] != tc.canReadWine, "unexpected wine visibility")

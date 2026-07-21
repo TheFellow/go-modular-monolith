@@ -24,14 +24,12 @@ type ListRequest struct {
 	Limit     int
 }
 
-const defaultPageLimit = 100
-
 // List returns a stable cursor page ordered by descending audit-entry ID.
 // KSUIDs created within one second are ordered by their random payload rather
 // than StartedAt, and separate page requests do not form a database snapshot.
 func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*models.AuditEntry], error) {
 	if req.Limit == 0 {
-		req.Limit = defaultPageLimit
+		req.Limit = paging.DefaultLimit
 	}
 	if req.Cursor != "" {
 		if _, err := entity.ParseAuditEntryID(string(req.Cursor)); err != nil {
@@ -64,20 +62,11 @@ func (m *Module) listFilter(req ListRequest) dao.ListFilter {
 }
 
 func (m *Module) Count(ctx *middleware.Context, req ListRequest) (int, error) {
-	req.Cursor = ""
-	req.Limit = defaultPageLimit
-	count := 0
-	for {
-		page, err := m.List(ctx, req)
-		if err != nil {
-			return 0, err
-		}
-		count += len(page.Items)
-		if page.Next == "" {
-			return count, nil
-		}
-		req.Cursor = page.Next
-	}
+	return paging.Count(func(cursor paging.Cursor) (paging.Page[*models.AuditEntry], error) {
+		req.Cursor = cursor
+		req.Limit = paging.DefaultLimit
+		return m.List(ctx, req)
+	})
 }
 
 func (m *Module) GetEntityHistory(ctx *middleware.Context, uid cedar.EntityUID) (paging.Page[*models.AuditEntry], error) {

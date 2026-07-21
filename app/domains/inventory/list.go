@@ -1,12 +1,15 @@
 package inventory
 
 import (
+	"iter"
+
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	inventorydao "github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
@@ -15,28 +18,38 @@ type ListRequest struct {
 
 	// LowStock, when set, lists items with amount value <= LowStock (per item unit).
 	LowStock optional.Value[float64]
+	Cursor   paging.Cursor
+	Limit    int
 }
 
-func (m *Module) List(ctx *middleware.Context, req ListRequest) ([]*models.Inventory, error) {
-	return middleware.RunListQuery(m.pipeline, ctx, authz.ActionList, m.list, req)
-}
-
-func (m *Module) list(ctx store.Context, req ListRequest) ([]*models.Inventory, error) {
+func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*models.Inventory], error) {
+	if req.Limit == 0 {
+		req.Limit = paging.DefaultLimit
+	}
+	if req.Cursor != "" {
+		if _, err := entity.ParseInventoryID(string(req.Cursor)); err != nil {
+			return paging.Page[*models.Inventory]{}, err
+		}
+	}
 	filter := inventorydao.ListFilter{
 		IngredientID: req.IngredientID,
 		MaxQuantity:  req.LowStock,
 	}
-	stock, err := m.queries.List(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-	return stock, nil
+	return middleware.RunPageQuery(
+		m.pipeline, ctx, authz.ActionList,
+		func(ctx store.Context, filter inventorydao.ListFilter, cursor paging.Cursor) iter.Seq2[*models.Inventory, error] {
+			filter.BeforeID = string(cursor)
+			return m.queries.List(ctx, filter)
+		},
+		func(item *models.Inventory) paging.Cursor { return paging.Cursor(item.ID.String()) },
+		filter, paging.Request{Cursor: req.Cursor, Limit: req.Limit},
+	)
 }
 
 func (m *Module) Count(ctx *middleware.Context, req ListRequest) (int, error) {
-	stock, err := m.List(ctx, req)
-	if err != nil {
-		return 0, err
-	}
-	return len(stock), nil
+	return paging.Count(func(cursor paging.Cursor) (paging.Page[*models.Inventory], error) {
+		req.Cursor = cursor
+		req.Limit = paging.DefaultLimit
+		return m.List(ctx, req)
+	})
 }

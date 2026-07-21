@@ -180,10 +180,10 @@ func (m *CreateDrinkVM) defaultRecipe() (models.Recipe, error) {
 	if err != nil {
 		return models.Recipe{}, err
 	}
-	if len(ingredients) == 0 {
+	if len(ingredients.Items) == 0 {
 		return models.Recipe{}, errors.New("at least one ingredient is required to create a drink")
 	}
-	first := ingredients[0]
+	first := ingredients.Items[0]
 	amount, err := measurement.NewAmount(1, first.Unit)
 	if err != nil {
 		return models.Recipe{}, err

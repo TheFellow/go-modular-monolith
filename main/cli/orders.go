@@ -104,7 +104,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List orders",
-				Flags: []cli.Flag{
+				Flags: append([]cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{
 						Name:  "status",
@@ -117,10 +117,13 @@ func (c *CLI) ordersCommands() *cli.Command {
 							return ordersmodels.OrderStatus(s).Validate()
 						},
 					},
-				},
+				}, listPagingFlags()...),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					pageReq := pagingRequest(cmd)
 					res, err := c.app.Orders.List(ctx, orders.ListRequest{
 						Status: ordersmodels.OrderStatus(cmd.String("status")),
+						Cursor: pageReq.Cursor,
+						Limit:  pageReq.Limit,
 					})
 					if err != nil {
 						return err
@@ -128,7 +131,10 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if cmd.Bool("json") {
 						return writeJSON(cmd.Writer, res)
 					}
-					return clitable.PrintTable(orderscli.ToOrderRows(res))
+					if err := clitable.PrintTable(orderscli.ToOrderRows(res.Items)); err != nil {
+						return err
+					}
+					return printNextCursor(cmd.Writer, res.Next)
 				}),
 			},
 			{

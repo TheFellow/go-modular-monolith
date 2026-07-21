@@ -52,30 +52,6 @@ func RunPageQuery[Req any, Item CedarEntity](
 	return page, err
 }
 
-// RunListQuery loads a list and elides entities the caller cannot see.
-func RunListQuery[Req any, Item CedarEntity](
-	pipeline *Pipeline,
-	ctx *Context,
-	action cedar.EntityUID,
-	execute func(store.Context, Req) ([]Item, error),
-	req Req,
-) ([]Item, error) {
-	var out []Item
-	handle := AuthorizeListQuery(action, func(c *Context, req Req) ([]Item, error) {
-		return execute(c, req)
-	})
-
-	err := pipeline.query.Execute(ctx, QueryOperation(action), func(c *Context) error {
-		res, err := handle(c, req)
-		if err != nil {
-			return err
-		}
-		out = res
-		return nil
-	})
-	return out, err
-}
-
 // RunEntityQuery loads one entity and authorizes that entity before returning
 // it to the caller.
 func RunEntityQuery[Req any, Res CedarEntity](
