@@ -11,6 +11,7 @@ import (
 	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/urfave/cli/v3"
 )
@@ -29,14 +30,7 @@ func (c *CLI) auditCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					entries, err := c.app.Audit.List(ctx, req)
-					if err != nil {
-						return err
-					}
-					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, entries)
-					}
-					return printAuditEntries(entries)
+					return c.printAuditList(ctx, cmd, req)
 				}),
 			},
 			{
@@ -55,11 +49,7 @@ func (c *CLI) auditCommands() *cli.Command {
 						return err
 					}
 					req.Entity = entityID
-					entries, err := c.app.Audit.List(ctx, req)
-					if err != nil {
-						return err
-					}
-					return printAuditEntries(entries)
+					return c.printAuditList(ctx, cmd, req)
 				}),
 			},
 			{
@@ -78,11 +68,7 @@ func (c *CLI) auditCommands() *cli.Command {
 						return err
 					}
 					req.Principal = principal
-					entries, err := c.app.Audit.List(ctx, req)
-					if err != nil {
-						return err
-					}
-					return printAuditEntries(entries)
+					return c.printAuditList(ctx, cmd, req)
 				}),
 			},
 		},
@@ -114,7 +100,11 @@ func auditListFlags() []cli.Flag {
 		},
 		&cli.IntFlag{
 			Name:  "limit",
-			Usage: "Limit number of entries",
+			Usage: "Number of entries in a cursor page",
+		},
+		&cli.StringFlag{
+			Name:  "cursor",
+			Usage: "Continue after an audit entry cursor",
 		},
 	}
 }
@@ -131,9 +121,46 @@ func auditHistoryFlags() []cli.Flag {
 		},
 		&cli.IntFlag{
 			Name:  "limit",
-			Usage: "Limit number of entries",
+			Usage: "Number of entries in a cursor page",
+		},
+		&cli.StringFlag{
+			Name:  "cursor",
+			Usage: "Continue after an audit entry cursor",
 		},
 	}
+}
+
+func (c *CLI) printAuditList(ctx *middleware.Context, cmd *cli.Command, req audit.ListRequest) error {
+	cursor := paging.Cursor(strings.TrimSpace(cmd.String("cursor")))
+	if req.Limit <= 0 && cursor != "" {
+		return fmt.Errorf("--cursor requires --limit")
+	}
+	if req.Limit > 0 {
+		page, err := c.app.Audit.ListPage(ctx, req, paging.Request{Cursor: cursor, Limit: req.Limit})
+		if err != nil {
+			return err
+		}
+		if cmd.Bool("json") {
+			return writeJSON(cmd.Writer, page)
+		}
+		if err := printAuditEntries(page.Items); err != nil {
+			return err
+		}
+		if page.Next != "" {
+			_, err = fmt.Fprintf(cmd.Writer, "Next cursor: %s\n", page.Next)
+			return err
+		}
+		return nil
+	}
+
+	entries, err := c.app.Audit.List(ctx, req)
+	if err != nil {
+		return err
+	}
+	if cmd.Bool("json") {
+		return writeJSON(cmd.Writer, entries)
+	}
+	return printAuditEntries(entries)
 }
 
 func auditListRequest(cmd *cli.Command) (audit.ListRequest, error) {

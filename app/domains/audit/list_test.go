@@ -13,9 +13,58 @@ import (
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/cedar-policy/cedar-go"
 )
+
+func TestAudit_ListPageUsesCursorWithoutDuplicates(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ctx := f.OwnerContext()
+
+	for _, name := range []string{"A", "B", "C", "D", "E"} {
+		_, err := f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{
+			Name: name, Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz,
+		})
+		testutil.Ok(t, err)
+	}
+
+	var got []string
+	var cursor paging.Cursor
+	for {
+		page, err := f.App.Audit.ListPage(ctx, audit.ListRequest{}, paging.Request{Cursor: cursor, Limit: 2})
+		testutil.Ok(t, err)
+		for _, entry := range page.Items {
+			got = append(got, entry.ID.String())
+		}
+		if page.Next == "" {
+			break
+		}
+		cursor = page.Next
+	}
+
+	if len(got) != 5 {
+		t.Fatalf("expected 5 entries across pages, got %d", len(got))
+	}
+	seen := map[string]bool{}
+	for _, id := range got {
+		if seen[id] {
+			t.Fatalf("duplicate entry %q across cursor pages", id)
+		}
+		seen[id] = true
+	}
+}
+
+func TestAudit_ListPageRejectsInvalidCursor(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+
+	_, err := f.App.Audit.ListPage(f.OwnerContext(), audit.ListRequest{}, paging.Request{
+		Cursor: "not-an-audit-entry", Limit: 10,
+	})
+	testutil.ErrorIsInvalid(t, err)
+}
 
 func TestAudit_RecordsActivityForCommand(t *testing.T) {
 	t.Parallel()

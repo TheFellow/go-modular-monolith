@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"iter"
 	"slices"
 	"time"
 
@@ -17,7 +18,29 @@ type ListFilter struct {
 	Entity        cedar.EntityUID
 	StartedAfter  time.Time
 	StartedBefore time.Time
-	Limit         int
+	BeforeID      string
+}
+
+// All returns an ordered sequence that remains inside its bstore read
+// transaction for the duration of iteration.
+func (d *DAO) All(ctx store.Context, filter ListFilter) iter.Seq2[*models.AuditEntry, error] {
+	return func(yield func(*models.AuditEntry, error) bool) {
+		err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+			for row, err := range d.query(tx, filter).All() {
+				if err != nil {
+					return store.MapError(err, "iterate audit entries")
+				}
+				entry := toModel(row)
+				if !yield(&entry, nil) {
+					return nil
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			yield(nil, err)
+		}
+	}
 }
 
 func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.AuditEntry, error) {
@@ -32,9 +55,6 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) ([]*models.AuditEntry, 
 		for _, r := range rows {
 			e := toModel(r)
 			entries = append(entries, &e)
-		}
-		if filter.Limit > 0 && !filter.Entity.IsZero() && len(entries) > filter.Limit {
-			entries = entries[:filter.Limit]
 		}
 		out = entries
 		return nil
@@ -51,9 +71,6 @@ func (d *DAO) Count(ctx store.Context, filter ListFilter) (int, error) {
 		count, err = q.Count()
 		if err != nil {
 			return store.MapError(err, "count audit entries")
-		}
-		if filter.Limit > 0 && !filter.Entity.IsZero() && count > filter.Limit {
-			count = filter.Limit
 		}
 		return nil
 	})
@@ -75,15 +92,15 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[AuditEntryRo
 	if !filter.StartedBefore.IsZero() {
 		q = q.FilterLessEqual("StartedAt", filter.StartedBefore)
 	}
+	if filter.BeforeID != "" {
+		q = q.FilterLess("ID", filter.BeforeID)
+	}
 	if !filter.Entity.IsZero() {
 		q = q.FilterFn(func(r AuditEntryRow) bool {
 			return matchesEntityFilterRow(filter.Entity, r)
 		})
 	}
-	q = q.SortDesc("StartedAt")
-	if filter.Limit > 0 && filter.Entity.IsZero() {
-		q = q.Limit(filter.Limit)
-	}
+	q = q.SortDesc("ID")
 	return q
 }
 
