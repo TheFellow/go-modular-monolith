@@ -60,10 +60,12 @@ func TestAudit_ListPageRejectsInvalidCursor(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	_, err := f.App.Audit.List(f.OwnerContext(), audit.ListRequest{
-		Cursor: "not-an-audit-entry", Limit: 10,
-	})
-	testutil.ErrorIsInvalid(t, err)
+	for _, cursor := range []paging.Cursor{"not-an-audit-entry", "aud-complete-nonsense"} {
+		_, err := f.App.Audit.List(f.OwnerContext(), audit.ListRequest{
+			Cursor: cursor, Limit: 10,
+		})
+		testutil.ErrorIsInvalid(t, err)
+	}
 }
 
 func TestAudit_RecordsActivityForCommand(t *testing.T) {

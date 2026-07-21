@@ -3,9 +3,6 @@
 package entity
 
 import (
-	"strings"
-
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -26,13 +23,8 @@ func NewDrinkID() DrinkID {
 
 // ParseDrinkID creates a DrinkID from a string.
 func ParseDrinkID(id string) (DrinkID, error) {
-	if id == "" {
-		return DrinkID(cedar.NewEntityUID(TypeDrink, cedar.String(""))), nil
-	}
-	if !strings.HasPrefix(id, PrefixDrink+"-") {
-		return DrinkID{}, errors.Invalidf("invalid drink id prefix: %s", id)
-	}
-	return DrinkID(cedar.NewEntityUID(TypeDrink, cedar.String(id))), nil
+	uid, err := parseID(TypeDrink, PrefixDrink, id)
+	return DrinkID(uid), err
 }
 
 // EntityUID converts to cedar.EntityUID for Cedar API interop.
@@ -67,13 +59,8 @@ func NewIngredientID() IngredientID {
 
 // ParseIngredientID creates a IngredientID from a string.
 func ParseIngredientID(id string) (IngredientID, error) {
-	if id == "" {
-		return IngredientID(cedar.NewEntityUID(TypeIngredient, cedar.String(""))), nil
-	}
-	if !strings.HasPrefix(id, PrefixIngredient+"-") {
-		return IngredientID{}, errors.Invalidf("invalid ingredient id prefix: %s", id)
-	}
-	return IngredientID(cedar.NewEntityUID(TypeIngredient, cedar.String(id))), nil
+	uid, err := parseID(TypeIngredient, PrefixIngredient, id)
+	return IngredientID(uid), err
 }
 
 // EntityUID converts to cedar.EntityUID for Cedar API interop.
@@ -108,13 +95,8 @@ func NewMenuID() MenuID {
 
 // ParseMenuID creates a MenuID from a string.
 func ParseMenuID(id string) (MenuID, error) {
-	if id == "" {
-		return MenuID(cedar.NewEntityUID(TypeMenu, cedar.String(""))), nil
-	}
-	if !strings.HasPrefix(id, PrefixMenu+"-") {
-		return MenuID{}, errors.Invalidf("invalid menu id prefix: %s", id)
-	}
-	return MenuID(cedar.NewEntityUID(TypeMenu, cedar.String(id))), nil
+	uid, err := parseID(TypeMenu, PrefixMenu, id)
+	return MenuID(uid), err
 }
 
 // EntityUID converts to cedar.EntityUID for Cedar API interop.
@@ -149,13 +131,8 @@ func NewOrderID() OrderID {
 
 // ParseOrderID creates a OrderID from a string.
 func ParseOrderID(id string) (OrderID, error) {
-	if id == "" {
-		return OrderID(cedar.NewEntityUID(TypeOrder, cedar.String(""))), nil
-	}
-	if !strings.HasPrefix(id, PrefixOrder+"-") {
-		return OrderID{}, errors.Invalidf("invalid order id prefix: %s", id)
-	}
-	return OrderID(cedar.NewEntityUID(TypeOrder, cedar.String(id))), nil
+	uid, err := parseID(TypeOrder, PrefixOrder, id)
+	return OrderID(uid), err
 }
 
 // EntityUID converts to cedar.EntityUID for Cedar API interop.
@@ -190,13 +167,8 @@ func NewInventoryID() InventoryID {
 
 // ParseInventoryID creates a InventoryID from a string.
 func ParseInventoryID(id string) (InventoryID, error) {
-	if id == "" {
-		return InventoryID(cedar.NewEntityUID(TypeInventory, cedar.String(""))), nil
-	}
-	if !strings.HasPrefix(id, PrefixInventory+"-") {
-		return InventoryID{}, errors.Invalidf("invalid inventory id prefix: %s", id)
-	}
-	return InventoryID(cedar.NewEntityUID(TypeInventory, cedar.String(id))), nil
+	uid, err := parseID(TypeInventory, PrefixInventory, id)
+	return InventoryID(uid), err
 }
 
 // EntityUID converts to cedar.EntityUID for Cedar API interop.
@@ -231,13 +203,8 @@ func NewAuditEntryID() AuditEntryID {
 
 // ParseAuditEntryID creates a AuditEntryID from a string.
 func ParseAuditEntryID(id string) (AuditEntryID, error) {
-	if id == "" {
-		return AuditEntryID(cedar.NewEntityUID(TypeAuditEntry, cedar.String(""))), nil
-	}
-	if !strings.HasPrefix(id, PrefixAuditEntry+"-") {
-		return AuditEntryID{}, errors.Invalidf("invalid auditentry id prefix: %s", id)
-	}
-	return AuditEntryID(cedar.NewEntityUID(TypeAuditEntry, cedar.String(id))), nil
+	uid, err := parseID(TypeAuditEntry, PrefixAuditEntry, id)
+	return AuditEntryID(uid), err
 }
 
 // EntityUID converts to cedar.EntityUID for Cedar API interop.

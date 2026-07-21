@@ -27,13 +27,16 @@ type ListRequest struct {
 const defaultPageLimit = 100
 
 // List returns a stable cursor page ordered by descending audit-entry ID.
+// KSUIDs created within one second are ordered by their random payload rather
+// than StartedAt, and separate page requests do not form a database snapshot.
 func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*models.AuditEntry], error) {
 	if req.Limit == 0 {
 		req.Limit = defaultPageLimit
 	}
-	_, err := entity.ParseAuditEntryID(string(req.Cursor))
-	if err != nil {
-		return paging.Page[*models.AuditEntry]{}, err
+	if req.Cursor != "" {
+		if _, err := entity.ParseAuditEntryID(string(req.Cursor)); err != nil {
+			return paging.Page[*models.AuditEntry]{}, err
+		}
 	}
 	filter := m.listFilter(req)
 	return middleware.RunPageQuery(
