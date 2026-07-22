@@ -15,7 +15,7 @@ type IngredientRow struct {
 	Name     string `table:"NAME" json:"name"`
 	Category string `table:"CATEGORY" json:"category"`
 	Unit     string `table:"UNIT" json:"unit"`
-	Desc     string `table:"-" json:"description,omitempty"`
+	Desc     string `table:"DESCRIPTION" json:"description,omitempty"`
 }
 
 func ToIngredientRow(i *models.Ingredient) IngredientRow {

@@ -18,7 +18,7 @@ import (
 
 func (c *CLI) menuCommands() *cli.Command {
 	return &cli.Command{
-		Name:  "menu",
+		Name:  "menus",
 		Usage: "Curate drink menus",
 		Commands: []*cli.Command{
 			{

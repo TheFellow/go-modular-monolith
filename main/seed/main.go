@@ -240,7 +240,7 @@ func run() error {
 	fmt.Println("  - 1 published menu")
 	fmt.Println()
 	fmt.Println("View the menu with cost analysis:")
-	fmt.Printf("  mixology menu show --id %s --costs --target-margin 0.7\n", createdMenu.ID)
+	fmt.Printf("  mixology menus show --id %s --costs --target-margin 0.7\n", createdMenu.ID)
 	fmt.Println()
 	fmt.Println("List all drinks:")
 	fmt.Println("  mixology drinks list")

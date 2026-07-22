@@ -17,7 +17,7 @@ import (
 
 func (c *CLI) ordersCommands() *cli.Command {
 	return &cli.Command{
-		Name:  "order",
+		Name:  "orders",
 		Usage: "Manage orders",
 		Commands: []*cli.Command{
 			{

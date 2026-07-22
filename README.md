@@ -45,13 +45,13 @@ go run ./main/cli ingredients list
 go run ./main/cli ingredients list --limit 20
 # Continue any list command with the cursor printed by its previous page.
 go run ./main/cli ingredients list --limit 20 --cursor ing-...
-go run ./main/cli menu list
+go run ./main/cli menus list
 go run ./main/cli audit list --limit 20
 # Continue with the cursor printed by the previous command.
 go run ./main/cli audit list --limit 20 --cursor aud-...
 
 # Test authorization boundaries with different roles
-go run ./main/cli --actor bartender menu list
+go run ./main/cli --actor bartender menus list
 go run ./main/cli --as anonymous drinks list
 
 # Launch the TUI
@@ -371,8 +371,8 @@ mixology audit history Mixology::Drink::drk-abc123
 ```bash
 mixology drinks get --id drk-abc123
 mixology ingredients get --id ing-abc123
-mixology menu show --id mnu-abc123
-mixology menu add-drink --menu-id mnu-abc123 --drink-id drk-abc123
-mixology order place --menu-id mnu-abc123 drk-abc123:2 drk-xyz789:1
+mixology menus show --id mnu-abc123
+mixology menus add-drink --menu-id mnu-abc123 --drink-id drk-abc123
+mixology orders place --menu-id mnu-abc123 drk-abc123:2 drk-xyz789:1
 mixology inventory adjust --ingredient-id ing-abc123 --delta -0.5 --reason used
 ```

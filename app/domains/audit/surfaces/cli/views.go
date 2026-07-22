@@ -7,14 +7,16 @@ import (
 )
 
 type AuditRow struct {
-	ID        string `table:"ID" json:"id"`
-	StartedAt string `table:"STARTED_AT" json:"started_at"`
-	Action    string `table:"ACTION" json:"action"`
-	Resource  string `table:"RESOURCE" json:"resource"`
-	Principal string `table:"PRINCIPAL" json:"principal"`
-	Success   bool   `table:"SUCCESS" json:"success"`
-	Touches   int    `table:"TOUCHES" json:"touches"`
-	Error     string `table:"ERROR" json:"error,omitempty"`
+	ID          string `table:"ID" json:"id"`
+	StartedAt   string `table:"STARTED_AT" json:"started_at"`
+	CompletedAt string `table:"COMPLETED_AT" json:"completed_at"`
+	Duration    string `table:"DURATION" json:"duration"`
+	Action      string `table:"ACTION" json:"action"`
+	Resource    string `table:"RESOURCE" json:"resource"`
+	Principal   string `table:"PRINCIPAL" json:"principal"`
+	Success     bool   `table:"SUCCESS" json:"success"`
+	Touches     int    `table:"TOUCHES" json:"touches"`
+	Error       string `table:"ERROR" json:"error,omitempty"`
 }
 
 func ToAuditRow(entry *models.AuditEntry) AuditRow {
@@ -22,15 +24,24 @@ func ToAuditRow(entry *models.AuditEntry) AuditRow {
 		return AuditRow{}
 	}
 	return AuditRow{
-		ID:        entry.ID.String(),
-		StartedAt: formatTime(entry.StartedAt),
-		Action:    entry.Action,
-		Resource:  entry.Resource.String(),
-		Principal: entry.Principal.String(),
-		Success:   entry.Success,
-		Touches:   len(entry.Touches),
-		Error:     entry.Error,
+		ID:          entry.ID.String(),
+		StartedAt:   formatTime(entry.StartedAt),
+		CompletedAt: formatTime(entry.CompletedAt),
+		Duration:    formatDuration(entry.StartedAt, entry.CompletedAt),
+		Action:      entry.Action,
+		Resource:    entry.Resource.String(),
+		Principal:   entry.Principal.String(),
+		Success:     entry.Success,
+		Touches:     len(entry.Touches),
+		Error:       entry.Error,
 	}
+}
+
+func formatDuration(start, end time.Time) string {
+	if start.IsZero() || end.IsZero() || end.Before(start) {
+		return ""
+	}
+	return end.Sub(start).Round(time.Microsecond).String()
 }
 
 func ToAuditRows(entries []*models.AuditEntry) []AuditRow {
