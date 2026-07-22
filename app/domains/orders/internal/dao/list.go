@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/mjl-/bstore"
 )
@@ -16,6 +17,7 @@ type ListFilter struct {
 	// IncludeDeleted includes soft-deleted rows (DeletedAt != nil).
 	IncludeDeleted bool
 	BeforeID       string
+	Expression     *appfilter.Expression[models.ListFilterView]
 }
 
 func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Order, error] {
@@ -54,5 +56,8 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[OrderRow] {
 			return r.DeletedAt == nil
 		})
 	}
+	q = appfilter.ApplyBstore(q, filter.Expression, func(r OrderRow) models.ListFilterView {
+		return models.ListFilterView{ID: r.ID, MenuID: r.MenuID, Status: r.Status, CreatedAt: r.CreatedAt, Notes: r.Notes}
+	})
 	return q
 }

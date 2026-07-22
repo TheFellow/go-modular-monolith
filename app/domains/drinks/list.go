@@ -7,6 +7,7 @@ import (
 	drinksdao "github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -16,11 +17,16 @@ type ListRequest struct {
 	Name     string               // Optional: filter by exact name match
 	Category models.DrinkCategory // Optional: filter by category
 	Glass    models.GlassType     // Optional: filter by glass
+	Filter   string
 	Cursor   paging.Cursor
 	Limit    int
 }
 
 func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*models.Drink], error) {
+	expression, err := appfilter.Parse(models.ListFilterSchema(), req.Filter)
+	if err != nil {
+		return paging.Page[*models.Drink]{}, err
+	}
 	if req.Limit == 0 {
 		req.Limit = paging.DefaultLimit
 	}
@@ -30,9 +36,10 @@ func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*mo
 		}
 	}
 	filter := drinksdao.ListFilter{
-		Name:     req.Name,
-		Category: req.Category,
-		Glass:    req.Glass,
+		Name:       req.Name,
+		Category:   req.Category,
+		Glass:      req.Glass,
+		Expression: expression,
 	}
 	return middleware.RunPageQuery(
 		m.pipeline, ctx, authz.ActionList,

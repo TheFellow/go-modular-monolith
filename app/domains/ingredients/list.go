@@ -7,6 +7,7 @@ import (
 	ingredientsdao "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -14,11 +15,16 @@ import (
 
 type ListRequest struct {
 	Category models.Category
+	Filter   string
 	Cursor   paging.Cursor
 	Limit    int
 }
 
 func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*models.Ingredient], error) {
+	expression, err := appfilter.Parse(models.ListFilterSchema(), req.Filter)
+	if err != nil {
+		return paging.Page[*models.Ingredient]{}, err
+	}
 	if req.Limit == 0 {
 		req.Limit = paging.DefaultLimit
 	}
@@ -27,7 +33,7 @@ func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*mo
 			return paging.Page[*models.Ingredient]{}, err
 		}
 	}
-	filter := ingredientsdao.ListFilter{Category: req.Category}
+	filter := ingredientsdao.ListFilter{Category: req.Category, Expression: expression}
 	return middleware.RunPageQuery(
 		m.pipeline, ctx, authz.ActionList,
 		func(ctx store.Context, filter ingredientsdao.ListFilter, cursor paging.Cursor) iter.Seq2[*models.Ingredient, error] {

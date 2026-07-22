@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -20,6 +21,7 @@ type ListRequest struct {
 	Entity    cedar.EntityUID
 	From      time.Time
 	To        time.Time
+	Filter    string
 	Cursor    paging.Cursor
 	Limit     int
 }
@@ -28,6 +30,10 @@ type ListRequest struct {
 // KSUIDs created within one second are ordered by their random payload rather
 // than StartedAt, and separate page requests do not form a database snapshot.
 func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*models.AuditEntry], error) {
+	expression, err := appfilter.Parse(models.ListFilterSchema(), req.Filter)
+	if err != nil {
+		return paging.Page[*models.AuditEntry]{}, err
+	}
 	if req.Limit == 0 {
 		req.Limit = paging.DefaultLimit
 	}
@@ -37,6 +43,7 @@ func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*mo
 		}
 	}
 	filter := m.listFilter(req)
+	filter.Expression = expression
 	return middleware.RunPageQuery(
 		m.pipeline,
 		ctx,

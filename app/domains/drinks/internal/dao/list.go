@@ -6,6 +6,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/mjl-/bstore"
 )
@@ -18,6 +19,7 @@ type ListFilter struct {
 	// IncludeDeleted includes soft-deleted rows (DeletedAt != nil).
 	IncludeDeleted bool
 	BeforeID       string
+	Expression     *appfilter.Expression[models.ListFilterView]
 }
 
 func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Drink, error] {
@@ -92,6 +94,12 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[DrinkRow] {
 			return r.DeletedAt == nil
 		})
 	}
+	q = appfilter.ApplyBstore(q, filter.Expression, func(r DrinkRow) models.ListFilterView {
+		return models.ListFilterView{
+			ID: r.ID, Name: r.Name, Category: r.Category, Glass: r.Glass, Description: r.Description,
+			Recipe: models.RecipeFilterView{Garnish: r.Recipe.Garnish},
+		}
+	})
 
 	return q
 }
