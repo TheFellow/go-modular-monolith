@@ -95,6 +95,14 @@ func (c *CLI) Command() *cli.Command {
 			},
 		},
 		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+			// Filter help is schema-only and must not require a database or a
+			// configured actor. The command action renders it from the concrete
+			// schema after this lightweight context is installed.
+			if commandTreeBool(cmd, "filter-help") {
+				ctx = authn.ToContext(ctx, authn.Anonymous())
+				ctx = pkglog.ToContext(ctx, pkglog.Setup("error", "text", io.Discard))
+				return middleware.NewContext(ctx), nil
+			}
 			if cmd != nil && cmd.Bool("tui") && c.logFile == "" {
 				logDir := filepath.Dir(c.dbPath)
 				if logDir != "" && logDir != "." {
@@ -192,4 +200,19 @@ func (c *CLI) Command() *cli.Command {
 			c.auditCommands(),
 		},
 	}
+}
+
+func commandTreeBool(cmd *cli.Command, name string) bool {
+	if cmd == nil {
+		return false
+	}
+	if cmd.Bool(name) {
+		return true
+	}
+	for _, child := range cmd.Commands {
+		if commandTreeBool(child, name) {
+			return true
+		}
+	}
+	return false
 }

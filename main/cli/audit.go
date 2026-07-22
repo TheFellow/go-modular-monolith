@@ -23,8 +23,8 @@ func (c *CLI) auditCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List audit entries",
-				Flags: auditListFlags(),
-				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+				Flags: appendFilterFlags(auditListFlags(), auditmodels.ListFilterSchema()),
+				Action: filterAction(c, auditmodels.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					req, err := auditListRequest(cmd)
 					if err != nil {
 						return err
@@ -36,8 +36,8 @@ func (c *CLI) auditCommands() *cli.Command {
 				Name:      "history",
 				Usage:     "List audit entries for an entity",
 				Arguments: []cli.Argument{&cli.StringArgs{Name: "entity", UsageText: "Entity UID (Type::id)", Min: 1, Max: 1}},
-				Flags:     auditHistoryFlags(),
-				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+				Flags:     appendFilterFlags(auditHistoryFlags(), auditmodels.ListFilterSchema()),
+				Action: filterAction(c, auditmodels.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					entityArg := cmd.StringArgs("entity")[0]
 					entityID, err := parseEntityUID(entityArg)
 					if err != nil {
@@ -55,8 +55,8 @@ func (c *CLI) auditCommands() *cli.Command {
 				Name:      "actor",
 				Usage:     "List audit entries for an actor",
 				Arguments: []cli.Argument{&cli.StringArgs{Name: "actor", UsageText: "Actor (owner|manager|sommelier|bartender|anonymous) or Entity UID", Min: 1, Max: 1}},
-				Flags:     auditHistoryFlags(),
-				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+				Flags:     appendFilterFlags(auditHistoryFlags(), auditmodels.ListFilterSchema()),
+				Action: filterAction(c, auditmodels.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					actorArg := cmd.StringArgs("actor")[0]
 					principal, err := parsePrincipal(actorArg)
 					if err != nil {
@@ -132,6 +132,7 @@ func auditListRequest(cmd *cli.Command) (audit.ListRequest, error) {
 	pageReq := pagingRequest(cmd)
 	req.Limit = pageReq.Limit
 	req.Cursor = pageReq.Cursor
+	req.Filter = cmd.String("filter")
 
 	if raw := strings.TrimSpace(cmd.String("entity")); raw != "" {
 		uid, err := parseEntityUID(raw)

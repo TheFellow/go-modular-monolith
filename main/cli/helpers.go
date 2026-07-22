@@ -6,13 +6,17 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"text/tabwriter"
+	"time"
 	"unicode"
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/urfave/cli/v3"
 )
@@ -22,6 +26,87 @@ func listPagingFlags() []cli.Flag {
 		&cli.IntFlag{Name: "limit", Usage: "Number of entries in a cursor page (default 100)"},
 		&cli.StringFlag{Name: "cursor", Usage: "Continue after a result cursor"},
 	}
+}
+
+func filterFlags[T any](schema appfilter.Schema[T]) []cli.Flag {
+	return []cli.Flag{
+		&cli.StringFlag{Name: "filter", Usage: "Filter expression (run with --filter-help for fields and examples)"},
+		&cli.BoolFlag{Name: "filter-help", Usage: "Show filter fields, syntax, and examples, then exit"},
+	}
+}
+
+func appendFilterFlags[T any](flags []cli.Flag, schema appfilter.Schema[T]) []cli.Flag {
+	return append(flags, filterFlags(schema)...)
+}
+
+func filterAction[T any](c *CLI, schema appfilter.Schema[T], fn func(*middleware.Context, *cli.Command) error) cli.ActionFunc {
+	return c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+		if cmd.Bool("filter-help") {
+			return writeFilterHelp(cmd.Writer, schema)
+		}
+		return fn(ctx, cmd)
+	})
+}
+
+func writeFilterHelp[T any](w io.Writer, schema appfilter.Schema[T]) error {
+	if _, err := fmt.Fprintln(w, "FILTER SYNTAX"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "  Comparisons: ==  !=  <  <=  >  >=  in  not in"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "  Logic:       && / and   || / or   ! / not   (parentheses)"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "  Strings:     value.contains(\"x\"), startsWith, endsWith, matches"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "               Infix aliases are also accepted: value contains \"x\""); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "  Time:        date(\"2026-07-01T00:00:00Z\")"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "\nFIELDS"); err != nil {
+		return err
+	}
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	for _, field := range schema.Fields() {
+		if _, err := fmt.Fprintf(tw, "  %s\t%s\t%s\n", field.Name, filterTypeName(field.Type), field.Description); err != nil {
+			return err
+		}
+	}
+	if err := tw.Flush(); err != nil {
+		return err
+	}
+	examples := schema.Examples()
+	if len(examples) > 0 {
+		if _, err := fmt.Fprintln(w, "\nEXAMPLES"); err != nil {
+			return err
+		}
+		for _, example := range examples {
+			if _, err := fmt.Fprintf(w, "  --filter '%s'\n", example); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func filterTypeName(t reflect.Type) string {
+	if t == reflect.TypeFor[time.Time]() {
+		return "timestamp"
+	}
+	if t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
+		return "list<" + filterTypeName(t.Elem()) + ">"
+	}
+	if t.Kind() == reflect.Pointer {
+		return filterTypeName(t.Elem()) + "?"
+	}
+	if t.Name() != "" && t.PkgPath() == "" {
+		return t.Name()
+	}
+	return t.Kind().String()
 }
 
 func pagingRequest(cmd *cli.Command) paging.Request {
