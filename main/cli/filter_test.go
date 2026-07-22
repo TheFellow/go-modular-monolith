@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	stderrors "errors"
 	"strings"
 	"testing"
 
@@ -13,6 +14,7 @@ import (
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/filter"
+	"github.com/urfave/cli/v3"
 )
 
 func TestFilterHelpUsesConcreteSchema(t *testing.T) {
@@ -53,22 +55,28 @@ func checkFilterExamples[T any](t *testing.T, schema filter.Schema[T]) {
 	}
 }
 
-func TestFilterHelpDoesNotOpenApplication(t *testing.T) {
-	c, err := NewCLI()
-	if err != nil {
-		t.Fatal(err)
-	}
-	c.dbPath = t.TempDir() // opening a directory would fail if Before reached storage
-	cmd := c.Command()
-	var out bytes.Buffer
-	cmd.Writer = &out
-	cmd.ErrWriter = &out
-	cmd.Command("ingredients").Command("list").Writer = &out
-	if err := cmd.Run(context.Background(), []string{"mixology", "ingredients", "list", "--filter-help"}); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(out.String(), "FILTER SYNTAX") {
-		t.Fatalf("unexpected output:\n%s", out.String())
+func TestFilterHelpDoesNotOpenApplicationOrRequireScopeArgument(t *testing.T) {
+	for _, args := range [][]string{
+		{"mixology", "ingredients", "list", "--filter-help"},
+		{"mixology", "audit", "history", "--filter-help"},
+		{"mixology", "audit", "actor", "--filter-help"},
+	} {
+		c, err := NewCLI()
+		if err != nil {
+			t.Fatal(err)
+		}
+		c.dbPath = t.TempDir() // opening a directory would fail if Before reached storage
+		cmd := c.Command()
+		var out bytes.Buffer
+		leaf := cmd.Command(args[1]).Command(args[2])
+		leaf.Writer = &out
+		leaf.ErrWriter = &out
+		if err := cmd.Run(context.Background(), args); err != nil {
+			t.Fatalf("%v: %v", args, err)
+		}
+		if !strings.Contains(out.String(), "FILTER SYNTAX") {
+			t.Fatalf("%v output:\n%s", args, out.String())
+		}
 	}
 }
 
@@ -89,6 +97,24 @@ func TestEveryListCommandHasFilterFlags(t *testing.T) {
 			if !names["filter"] || !names["filter-help"] {
 				t.Errorf("%s list filter flags = %v", noun.Name, names)
 			}
+		}
+	}
+}
+
+func TestAuditScopeArgumentRemainsRequiredWithoutFilterHelp(t *testing.T) {
+	for _, scope := range []string{"history", "actor"} {
+		c, err := NewCLI()
+		if err != nil {
+			t.Fatal(err)
+		}
+		c.dbPath = t.TempDir() + "/test.db"
+		cmd := c.Command()
+		var out bytes.Buffer
+		cmd.Writer, cmd.ErrWriter = &out, &out
+		err = cmd.Run(context.Background(), []string{"mixology", "audit", scope})
+		var exit cli.ExitCoder
+		if !stderrors.As(err, &exit) || exit.ExitCode() != 2 {
+			t.Fatalf("audit %s error = %v, want usage exit", scope, err)
 		}
 	}
 }

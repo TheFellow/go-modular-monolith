@@ -209,10 +209,10 @@ func commandTreeBool(cmd *cli.Command, name string) bool {
 	if cmd.Bool(name) {
 		return true
 	}
-	for _, child := range cmd.Commands {
-		if commandTreeBool(child, name) {
-			return true
-		}
+	// Follow only the parsed command path. Scanning siblings could observe a
+	// stale flag value if a Command instance were deliberately reused.
+	if child := cmd.Command(cmd.Args().First()); child != nil {
+		return commandTreeBool(child, name)
 	}
 	return false
 }

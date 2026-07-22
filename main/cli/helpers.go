@@ -116,6 +116,14 @@ func pagingRequest(cmd *cli.Command) paging.Request {
 	}
 }
 
+func requiredStringArg(cmd *cli.Command, name string) (string, error) {
+	values := cmd.StringArgs(name)
+	if len(values) == 0 || strings.TrimSpace(values[0]) == "" {
+		return "", cli.Exit(fmt.Sprintf("%s argument is required", name), errors.ExitUsage)
+	}
+	return values[0], nil
+}
+
 func printNextCursor(w io.Writer, cursor paging.Cursor) error {
 	if cursor == "" {
 		return nil
