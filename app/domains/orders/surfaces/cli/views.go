@@ -11,10 +11,13 @@ import (
 )
 
 type OrderRow struct {
-	ID        string `table:"ID" json:"id"`
-	MenuID    string `table:"MENU_ID" json:"menu_id"`
-	Status    string `table:"STATUS" json:"status"`
-	CreatedAt string `table:"CREATED_AT" json:"created_at"`
+	ID            string `table:"ID" json:"id"`
+	MenuID        string `table:"MENU_ID" json:"menu_id"`
+	Status        string `table:"STATUS" json:"status"`
+	Items         int    `table:"ITEMS" json:"items"`
+	TotalQuantity int    `table:"TOTAL_QUANTITY" json:"total_quantity"`
+	CreatedAt     string `table:"CREATED_AT" json:"created_at"`
+	CompletedAt   string `table:"COMPLETED_AT" json:"completed_at,omitempty"`
 }
 
 type OrderDetail struct {
@@ -29,6 +32,7 @@ type OrderDetail struct {
 type OrderItemRow struct {
 	DrinkID  string `table:"DRINK_ID" json:"drink_id"`
 	Quantity int    `table:"QUANTITY" json:"quantity"`
+	Notes    string `table:"NOTES" json:"notes,omitempty"`
 }
 
 type OrderInput struct {
@@ -40,11 +44,22 @@ func ToOrderRow(o *models.Order) OrderRow {
 	if o == nil {
 		return OrderRow{}
 	}
+	var completedAt string
+	if t, ok := o.CompletedAt.Unwrap(); ok {
+		completedAt = formatTime(t)
+	}
+	var totalQuantity int
+	for _, item := range o.Items {
+		totalQuantity += item.Quantity
+	}
 	return OrderRow{
-		ID:        o.ID.String(),
-		MenuID:    o.MenuID.String(),
-		Status:    string(o.Status),
-		CreatedAt: formatTime(o.CreatedAt),
+		ID:            o.ID.String(),
+		MenuID:        o.MenuID.String(),
+		Status:        string(o.Status),
+		Items:         len(o.Items),
+		TotalQuantity: totalQuantity,
+		CreatedAt:     formatTime(o.CreatedAt),
+		CompletedAt:   completedAt,
 	}
 }
 
@@ -80,6 +95,7 @@ func ToOrderItemRows(items []models.OrderItem) []OrderItemRow {
 		rows = append(rows, OrderItemRow{
 			DrinkID:  item.DrinkID.String(),
 			Quantity: item.Quantity,
+			Notes:    item.Notes,
 		})
 	}
 	return rows
@@ -120,6 +136,7 @@ func (input OrderInput) ToDomain() (*models.Order, error) {
 		items = append(items, models.OrderItem{
 			DrinkID:  drinkID,
 			Quantity: item.Quantity,
+			Notes:    item.Notes,
 		})
 	}
 	return &models.Order{

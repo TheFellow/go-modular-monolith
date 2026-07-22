@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
@@ -18,7 +19,8 @@ type InventoryRow struct {
 	IngredientID string   `table:"INGREDIENT_ID" json:"ingredient_id"`
 	Quantity     Quantity `table:"QUANTITY" json:"quantity"`
 	Unit         string   `table:"UNIT" json:"unit"`
-	CostPerUnit  string   `table:"-" json:"cost_per_unit,omitempty"`
+	CostPerUnit  string   `table:"COST_PER_UNIT" json:"cost_per_unit,omitempty"`
+	LastUpdated  string   `table:"LAST_UPDATED" json:"last_updated"`
 }
 
 type InventoryInput struct {
@@ -39,10 +41,16 @@ func ToInventoryRow(s *models.Inventory) InventoryRow {
 	if s == nil {
 		return InventoryRow{}
 	}
+	var costPerUnit string
+	if cost, ok := s.CostPerUnit.Unwrap(); ok {
+		costPerUnit = cost.String()
+	}
 	return InventoryRow{
 		IngredientID: s.IngredientID.String(),
 		Quantity:     Quantity(s.Amount.Value()),
 		Unit:         string(s.Amount.Unit()),
+		CostPerUnit:  costPerUnit,
+		LastUpdated:  formatTime(s.LastUpdated),
 	}
 }
 
@@ -130,6 +138,13 @@ type Quantity float64
 
 func (q Quantity) String() string {
 	return fmt.Sprintf("%.2f", q)
+}
+
+func formatTime(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format(time.RFC3339)
 }
 
 func parsePrice(s string) (money.Price, error) {
