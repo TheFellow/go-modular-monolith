@@ -36,7 +36,13 @@ func ApplyBstore[Row, View any](q *bstore.Query[Row], expression *Expression[Vie
 	}
 	return q.FilterFn(func(row Row) bool {
 		matched, err := expression.Match(project(row))
-		return err == nil && matched
+		if err != nil {
+			// Parse only admits statically checked, non-failing constructs. A
+			// runtime error is therefore a programmer/invariant failure and must
+			// never be disguised as an ordinary non-match.
+			panic(err)
+		}
+		return matched
 	})
 }
 
@@ -83,6 +89,11 @@ func (e *Expression[T]) pushdown(node Node) (pushdown, bool) {
 	var raw []any
 	switch right.Kind {
 	case KindLiteral:
+		raw = []any{right.Value}
+	case KindCall:
+		if right.Value == nil {
+			return pushdown{}, false
+		}
 		raw = []any{right.Value}
 	case KindList:
 		if op != "in" && op != "not in" {

@@ -1,7 +1,9 @@
 package filter_test
 
 import (
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/filter"
 )
@@ -13,7 +15,64 @@ type view struct {
 	Name     string `expr:"name" filter:"Display name" filter-column:"Name"`
 	Category string `expr:"category" filter:"Category" filter-column:"Category"`
 	Deleted  bool   `expr:"deleted" filter:"Whether deleted"`
+	Active   bool   `expr:"active" filter:"Whether active"`
 	Nested   nested `expr:"nested"`
+}
+
+func TestCanonicalPrecedenceAndBooleanSpellings(t *testing.T) {
+	schema := filter.NewSchema[view]()
+	tests := map[string]string{
+		`deleted or active and name == "x"`:  `deleted || active && name == "x"`,
+		`(deleted || active) && name == "x"`: `(deleted || active) && name == "x"`,
+		`not deleted or !active`:             `!deleted || !active`,
+	}
+	for source, want := range tests {
+		expression, err := filter.Parse(schema, source)
+		if err != nil {
+			t.Fatalf("Parse(%q): %v", source, err)
+		}
+		if expression.String() != want {
+			t.Errorf("Parse(%q).String() = %q, want %q", source, expression.String(), want)
+		}
+	}
+}
+
+func TestDotAndInfixStringPredicatesAreEquivalent(t *testing.T) {
+	schema := filter.NewSchema[view]()
+	for _, predicate := range []string{"contains", "startsWith", "endsWith", "matches"} {
+		dot, err := filter.Parse(schema, `name.`+predicate+`("gin")`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		infix, err := filter.Parse(schema, `name `+predicate+` "gin"`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if dot.String() != infix.String() {
+			t.Errorf("%s: dot=%q infix=%q", predicate, dot, infix)
+		}
+	}
+}
+
+func TestRejectsRuntimeFailableLiterals(t *testing.T) {
+	type timed struct {
+		At time.Time `expr:"at" filter:"Time"`
+	}
+	for _, source := range []string{
+		`at >= date("not-a-date")`,
+		`name.matches("[")`,
+		`name.matches(nested.name)`,
+	} {
+		var err error
+		if strings.HasPrefix(source, "at") {
+			_, err = filter.Parse(filter.NewSchema[timed](), source)
+		} else {
+			_, err = filter.Parse(filter.NewSchema[view](), source)
+		}
+		if err == nil {
+			t.Errorf("Parse(%q) succeeded", source)
+		}
+	}
 }
 
 func TestParseAliasesDotSyntaxAndRoundTrip(t *testing.T) {

@@ -2,7 +2,9 @@ package filter
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/expr-lang/expr/ast"
 )
@@ -73,23 +75,55 @@ func buildTree(node ast.Node) (Node, error) {
 		if err != nil {
 			return Node{}, err
 		}
+		if n.Operator == "matches" {
+			pattern, ok := right.Value.(string)
+			if right.Kind != KindLiteral || !ok {
+				return Node{}, fmt.Errorf("matches requires a string literal pattern")
+			}
+			if _, err := regexp.Compile(pattern); err != nil {
+				return Node{}, fmt.Errorf("invalid regular expression: %w", err)
+			}
+		}
 		return Node{Kind: KindBinary, Operator: canonicalOperator(n.Operator), Children: []Node{left, right}}, nil
 	case *ast.BuiltinNode:
 		if n.Name != "date" && n.Name != "duration" {
 			return Node{}, fmt.Errorf("function %q is not supported", n.Name)
 		}
-		children, err := buildChildren(n.Arguments)
-		return Node{Kind: KindCall, Name: n.Name, Children: children}, err
+		return buildLiteralCall(n.Name, n.Arguments)
 	case *ast.CallNode:
 		id, ok := n.Callee.(*ast.IdentifierNode)
 		if !ok || (id.Value != "date" && id.Value != "duration") {
 			return Node{}, fmt.Errorf("function calls other than date and duration are not supported")
 		}
-		children, err := buildChildren(n.Arguments)
-		return Node{Kind: KindCall, Name: id.Value, Children: children}, err
+		return buildLiteralCall(id.Value, n.Arguments)
 	default:
 		return Node{}, fmt.Errorf("expression construct %T is not supported", node)
 	}
+}
+
+func buildLiteralCall(name string, arguments []ast.Node) (Node, error) {
+	children, err := buildChildren(arguments)
+	if err != nil {
+		return Node{}, err
+	}
+	if len(children) != 1 || children[0].Kind != KindLiteral {
+		return Node{}, fmt.Errorf("%s requires one string literal", name)
+	}
+	value, ok := children[0].Value.(string)
+	if !ok {
+		return Node{}, fmt.Errorf("%s requires one string literal", name)
+	}
+	var parsed any
+	switch name {
+	case "date":
+		parsed, err = time.Parse(time.RFC3339, value)
+	case "duration":
+		parsed, err = time.ParseDuration(value)
+	}
+	if err != nil {
+		return Node{}, fmt.Errorf("invalid %s literal %q: %w", name, value, err)
+	}
+	return Node{Kind: KindCall, Name: name, Value: parsed, Children: children}, nil
 }
 
 func buildChildren(nodes []ast.Node) ([]Node, error) {

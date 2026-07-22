@@ -6,7 +6,12 @@ import (
 	"strings"
 	"testing"
 
+	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
+	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/filter"
 )
 
@@ -26,6 +31,24 @@ func TestFilterHelpUsesConcreteSchema(t *testing.T) {
 	for _, example := range models.ListFilterSchema().Examples() {
 		if _, err := filter.Parse(models.ListFilterSchema(), example); err != nil {
 			t.Fatalf("generated example %q does not parse: %v", example, err)
+		}
+	}
+}
+
+func TestEveryGeneratedFilterExampleParses(t *testing.T) {
+	checkFilterExamples(t, auditmodels.ListFilterSchema())
+	checkFilterExamples(t, drinksmodels.ListFilterSchema())
+	checkFilterExamples(t, models.ListFilterSchema())
+	checkFilterExamples(t, inventorymodels.ListFilterSchema())
+	checkFilterExamples(t, menusmodels.ListFilterSchema())
+	checkFilterExamples(t, ordersmodels.ListFilterSchema())
+}
+
+func checkFilterExamples[T any](t *testing.T, schema filter.Schema[T]) {
+	t.Helper()
+	for _, example := range schema.Examples() {
+		if _, err := filter.Parse(schema, example); err != nil {
+			t.Errorf("generated example %q does not parse: %v", example, err)
 		}
 	}
 }

@@ -13,6 +13,8 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/ast"
 	"github.com/expr-lang/expr/vm"
+
+	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 // Field describes one user-visible field in a filter schema.
@@ -115,11 +117,11 @@ func Parse[T any](schema Schema[T], source string) (*Expression[T], error) {
 		expr.Patch(dotPredicatePatcher{}),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("invalid filter: %w", err)
+		return nil, apperrors.Invalidf("invalid filter: %w", err)
 	}
 	tree, err := buildTree(program.Node())
 	if err != nil {
-		return nil, fmt.Errorf("invalid filter: %w", err)
+		return nil, apperrors.Invalidf("invalid filter: %w", err)
 	}
 	return &Expression[T]{source: source, canonical: formatNode(program.Node(), 0), schema: schema, program: program, tree: tree}, nil
 }
