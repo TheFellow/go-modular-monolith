@@ -76,7 +76,10 @@ func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]
 		requirements = append(requirements, requested...)
 	}
 
-	fulfilled, ok := c.menus.FulfillIngredients(ctx, requirements)
+	fulfilled, ok, err := c.menus.FulfillIngredients(ctx, requirements)
+	if err != nil {
+		return nil, nil, err
+	}
 	if !ok {
 		return nil, nil, errors.Invalidf("insufficient stock to fulfill order")
 	}

@@ -149,11 +149,26 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 // deterministic, but the search backtracks when a preferred source would
 // prevent the complete set of requirements from being fulfilled.
 func (c *AvailabilityCalculator) PickIngredients(ctx store.Context, requirements []drinksmodels.RecipeIngredient) ([]PickResult, bool) {
+	picks, ok, err := c.PlanIngredients(ctx, requirements)
+	if err != nil {
+		return nil, false
+	}
+	return picks, ok
+}
+
+// PlanIngredients is the strict fulfillment path used by mutations. Unlike
+// menu readiness, it preserves dependency and conversion errors so callers do
+// not misreport infrastructure failures as insufficient stock.
+func (c *AvailabilityCalculator) PlanIngredients(ctx store.Context, requirements []drinksmodels.RecipeIngredient) ([]PickResult, bool, error) {
 	candidateSets := make([][]PickResult, len(requirements))
 	for i, req := range requirements {
-		candidateSets[i] = c.availableCandidates(ctx, req)
+		var err error
+		candidateSets[i], err = c.availableCandidates(ctx, req)
+		if err != nil {
+			return nil, false, err
+		}
 		if len(candidateSets[i]) == 0 {
-			return nil, false
+			return nil, false, nil
 		}
 	}
 
@@ -198,12 +213,12 @@ func (c *AvailabilityCalculator) PickIngredients(ctx store.Context, requirements
 	}
 
 	if !assign(0) {
-		return nil, false
+		return nil, false, nil
 	}
-	return selected, true
+	return selected, true, nil
 }
 
-func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drinksmodels.RecipeIngredient) []PickResult {
+func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drinksmodels.RecipeIngredient) ([]PickResult, error) {
 	candidates := make([]candidate, 0, 1+len(req.Substitutes))
 	candidates = append(candidates, candidate{
 		id:            req.IngredientID,
@@ -232,19 +247,17 @@ func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drin
 
 	var rules []ingredientsmodels.SubstitutionRule
 	if c.ingredients != nil {
-		// Ingredient substitution lookup is advisory. If that lookup fails we keep
-		// evaluating the explicitly declared recipe substitutes instead of turning
-		// a transient dependency issue into a hard availability error.
 		resolved, err := c.ingredients.SubstitutionsFor(ctx, req.IngredientID)
-		if err == nil {
-			rules = resolved
-			sort.Slice(rules, func(i, j int) bool {
-				if rules[i].QualityImpact.Rank() != rules[j].QualityImpact.Rank() {
-					return rules[i].QualityImpact.Rank() > rules[j].QualityImpact.Rank()
-				}
-				return rules[i].SubstituteID.String() < rules[j].SubstituteID.String()
-			})
+		if err != nil {
+			return nil, err
 		}
+		rules = resolved
+		sort.Slice(rules, func(i, j int) bool {
+			if rules[i].QualityImpact.Rank() != rules[j].QualityImpact.Rank() {
+				return rules[i].QualityImpact.Rank() > rules[j].QualityImpact.Rank()
+			}
+			return rules[i].SubstituteID.String() < rules[j].SubstituteID.String()
+		})
 	}
 
 	rulesBySubstitute := make(map[string]ingredientsmodels.SubstitutionRule, len(rules))
@@ -264,19 +277,16 @@ func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drin
 
 	var picks []PickResult
 	for _, cand := range candidates {
-		// Any stock lookup or unit conversion failure degrades this candidate to
-		// unavailable. From the menu's perspective "could not confirm stock" is
-		// equivalent to "cannot serve this ingredient right now."
 		stock, err := c.inventory.Get(ctx, cand.id)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				continue
 			}
-			continue
+			return nil, err
 		}
 		available, err := stock.Amount.Convert(cand.required.Unit())
 		if err != nil {
-			continue
+			return nil, err
 		}
 		if available.Value() < cand.required.Value() {
 			continue
@@ -291,7 +301,7 @@ func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drin
 		})
 	}
 	if len(picks) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	sort.Slice(picks, func(i, j int) bool {
@@ -314,7 +324,7 @@ func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drin
 	})
 
 	if picks[0].Required.Value() <= 0 {
-		return nil
+		return nil, nil
 	}
-	return picks
+	return picks, nil
 }
