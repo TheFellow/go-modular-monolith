@@ -133,35 +133,21 @@ func (c *Commands) computeUsageForDrink(ctx *middleware.Context, drink *drinksmo
 			continue
 		}
 
-		ingredient, err := c.ingredients.Get(ctx, req.IngredientID)
+		required := req
+		required.Amount = req.Amount.Mul(float64(quantity))
+		pick, ok := c.menus.FulfillIngredient(ctx, required)
+		if !ok {
+			return nil, errors.Invalidf("insufficient stock for ingredient %s: need %s", req.IngredientID.String(), required.Amount.String())
+		}
+		ingredient, err := c.ingredients.Get(ctx, pick.IngredientID)
 		if err != nil {
 			return nil, err
-		}
-		if ingredient.Unit == "" {
-			return nil, errors.Invalidf("ingredient unit is required")
-		}
-		required := req.Amount.Mul(float64(quantity))
-		required, err = required.Convert(ingredient.Unit)
-		if err != nil {
-			return nil, err
-		}
-
-		stock, err := c.inventory.Get(ctx, req.IngredientID)
-		if err != nil {
-			return nil, err
-		}
-		stockAmount, err := stock.Amount.Convert(ingredient.Unit)
-		if err != nil {
-			return nil, err
-		}
-		if stockAmount.Value() < required.Value() {
-			return nil, errors.Invalidf("insufficient stock for ingredient %s: need %s, have %s", req.IngredientID.String(), required.String(), stockAmount.String())
 		}
 
 		out = append(out, events.IngredientUsage{
-			IngredientID: stock.IngredientID,
+			IngredientID: pick.IngredientID,
 			Name:         ingredient.Name,
-			Amount:       required,
+			Amount:       pick.Required,
 		})
 	}
 

@@ -1,37 +1,28 @@
 package handlers
 
 import (
-	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
+	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/availability"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	ordersevents "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
 type OrderCompleted struct {
-	dao    *dao.DAO
-	drinks *drinksq.Queries
+	dao          *dao.DAO
+	availability *availability.AvailabilityCalculator
 }
 
 func NewOrderCompleted(s *store.Store) *OrderCompleted {
 	return &OrderCompleted{
-		dao:    dao.New(s),
-		drinks: drinksq.New(s),
+		dao:          dao.New(s),
+		availability: availability.New(s),
 	}
 }
 
 func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.OrderCompleted) error {
-	if len(e.DepletedIngredients) == 0 {
-		return nil
-	}
-
-	depleted := make(map[string]struct{}, len(e.DepletedIngredients))
-	for _, id := range e.DepletedIngredients {
-		depleted[id.String()] = struct{}{}
-	}
-	if len(depleted) == 0 {
+	if len(e.IngredientUsage) == 0 {
 		return nil
 	}
 
@@ -42,13 +33,11 @@ func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.O
 		changed := false
 		for i := range menu.Items {
 			item := menu.Items[i]
-			if item.Availability == models.AvailabilityUnavailable {
+			status := h.availability.Calculate(ctx, item.DrinkID)
+			if item.Availability == status {
 				continue
 			}
-			if !h.drinkUsesAnyIngredient(ctx, item.DrinkID, depleted) {
-				continue
-			}
-			menu.Items[i].Availability = models.AvailabilityUnavailable
+			menu.Items[i].Availability = status
 			changed = true
 		}
 
@@ -62,23 +51,4 @@ func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.O
 	}
 
 	return nil
-}
-
-func (h *OrderCompleted) drinkUsesAnyIngredient(ctx *middleware.HandlerContext, drinkID entity.DrinkID, ingredientIDs map[string]struct{}) bool {
-	drink, err := h.drinks.Get(ctx, drinkID)
-	if err != nil {
-		return false
-	}
-
-	for _, ri := range drink.Recipe.Ingredients {
-		if _, ok := ingredientIDs[ri.IngredientID.String()]; ok {
-			return true
-		}
-		for _, sub := range ri.Substitutes {
-			if _, ok := ingredientIDs[sub.String()]; ok {
-				return true
-			}
-		}
-	}
-	return false
 }
