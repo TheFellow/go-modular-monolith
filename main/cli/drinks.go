@@ -41,7 +41,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 							return drinksmodels.GlassType(strings.TrimSpace(s)).Validate()
 						},
 					},
-				}, listPagingFlags()...), drinksmodels.ListFilterSchema()),
+				}, listPagingFlags()...)),
 				Action: filterAction(c, drinksmodels.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					pageReq := pagingRequest(cmd)
 					res, err := c.app.Drinks.List(ctx, drinks.ListRequest{

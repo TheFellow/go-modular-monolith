@@ -18,6 +18,8 @@ import (
 )
 
 func TestFilterHelpUsesConcreteSchema(t *testing.T) {
+	t.Parallel()
+
 	var out bytes.Buffer
 	if err := writeFilterHelp(&out, models.ListFilterSchema()); err != nil {
 		t.Fatal(err)
@@ -38,6 +40,8 @@ func TestFilterHelpUsesConcreteSchema(t *testing.T) {
 }
 
 func TestEveryGeneratedFilterExampleParses(t *testing.T) {
+	t.Parallel()
+
 	checkFilterExamples(t, auditmodels.ListFilterSchema())
 	checkFilterExamples(t, drinksmodels.ListFilterSchema())
 	checkFilterExamples(t, models.ListFilterSchema())
@@ -56,6 +60,8 @@ func checkFilterExamples[T any](t *testing.T, schema filter.Schema[T]) {
 }
 
 func TestFilterHelpDoesNotOpenApplicationOrRequireScopeArgument(t *testing.T) {
+	t.Parallel()
+
 	for _, args := range [][]string{
 		{"mixology", "ingredients", "list", "--filter-help"},
 		{"mixology", "audit", "history", "--filter-help"},
@@ -81,6 +87,8 @@ func TestFilterHelpDoesNotOpenApplicationOrRequireScopeArgument(t *testing.T) {
 }
 
 func TestEveryListCommandHasFilterFlags(t *testing.T) {
+	t.Parallel()
+
 	c, err := NewCLI()
 	if err != nil {
 		t.Fatal(err)
@@ -102,6 +110,8 @@ func TestEveryListCommandHasFilterFlags(t *testing.T) {
 }
 
 func TestAuditScopeArgumentRemainsRequiredWithoutFilterHelp(t *testing.T) {
+	t.Parallel()
+
 	for _, scope := range []string{"history", "actor"} {
 		c, err := NewCLI()
 		if err != nil {

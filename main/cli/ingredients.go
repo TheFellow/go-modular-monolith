@@ -31,7 +31,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						Usage:     ingredientscli.CategoryUsage(),
 						Validator: ingredientscli.ValidateCategory,
 					},
-				}, listPagingFlags()...), models.ListFilterSchema()),
+				}, listPagingFlags()...)),
 				Action: filterAction(c, models.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					pageReq := pagingRequest(cmd)
 					res, err := c.app.Ingredients.List(ctx, ingredients.ListRequest{

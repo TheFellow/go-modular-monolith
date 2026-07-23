@@ -27,12 +27,18 @@ type timedView struct {
 }
 
 func TestApplyBstorePushesCheckedDateLiteral(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	db, err := bstore.Open(ctx, filepath.Join(t.TempDir(), "filter.db"), nil, timedRow{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close database: %v", err)
+		}
+	})
 	for _, r := range []timedRow{
 		{CreatedAt: time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)},
 		{CreatedAt: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)},
@@ -58,12 +64,18 @@ func TestApplyBstorePushesCheckedDateLiteral(t *testing.T) {
 }
 
 func TestApplyBstoreCombinesPushdownAndArbitraryBooleanResidual(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	db, err := bstore.Open(ctx, filepath.Join(t.TempDir(), "filter.db"), nil, row{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close database: %v", err)
+		}
+	})
 	for _, r := range []row{
 		{Name: "London gin", Category: "spirit"},
 		{Name: "Old rum", Category: "spirit", Deleted: true},
@@ -93,12 +105,18 @@ func TestApplyBstoreCombinesPushdownAndArbitraryBooleanResidual(t *testing.T) {
 }
 
 func TestApplyBstoreDoesNotPushUnsafeOr(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	db, err := bstore.Open(ctx, filepath.Join(t.TempDir(), "filter.db"), nil, row{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close database: %v", err)
+		}
+	})
 	for _, r := range []row{{Name: "Gin", Category: "spirit"}, {Name: "Beer", Category: "mixer"}} {
 		if err := db.Insert(ctx, &r); err != nil {
 			t.Fatal(err)

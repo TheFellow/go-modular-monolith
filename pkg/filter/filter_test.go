@@ -20,6 +20,8 @@ type view struct {
 }
 
 func TestCanonicalPrecedenceAndBooleanSpellings(t *testing.T) {
+	t.Parallel()
+
 	schema := filter.NewSchema[view]()
 	tests := map[string]string{
 		`deleted or active and name == "x"`:  `deleted || active && name == "x"`,
@@ -38,6 +40,8 @@ func TestCanonicalPrecedenceAndBooleanSpellings(t *testing.T) {
 }
 
 func TestDotAndInfixStringPredicatesAreEquivalent(t *testing.T) {
+	t.Parallel()
+
 	schema := filter.NewSchema[view]()
 	for _, predicate := range []string{"contains", "startsWith", "endsWith", "matches"} {
 		dot, err := filter.Parse(schema, `name.`+predicate+`("gin")`)
@@ -55,6 +59,8 @@ func TestDotAndInfixStringPredicatesAreEquivalent(t *testing.T) {
 }
 
 func TestRejectsRuntimeFailableLiterals(t *testing.T) {
+	t.Parallel()
+
 	type timed struct {
 		At time.Time `expr:"at" filter:"Time"`
 	}
@@ -76,6 +82,8 @@ func TestRejectsRuntimeFailableLiterals(t *testing.T) {
 }
 
 func TestParseAliasesDotSyntaxAndRoundTrip(t *testing.T) {
+	t.Parallel()
+
 	schema := filter.NewSchema[view](`category == "spirit" && name.contains("gin")`)
 	expression, err := filter.Parse(schema, `category == "spirit" and (name contains "gin" or not deleted)`)
 	if err != nil {
@@ -99,6 +107,8 @@ func TestParseAliasesDotSyntaxAndRoundTrip(t *testing.T) {
 }
 
 func TestNestedFieldAndBooleanSymbols(t *testing.T) {
+	t.Parallel()
+
 	expression, err := filter.Parse(filter.NewSchema[view](), `nested.name.startsWith("old") && !deleted`)
 	if err != nil {
 		t.Fatal(err)
@@ -110,6 +120,8 @@ func TestNestedFieldAndBooleanSymbols(t *testing.T) {
 }
 
 func TestRejectsUnknownAndNonFilterConstructs(t *testing.T) {
+	t.Parallel()
+
 	for _, source := range []string{`missing == "x"`, `len(name) > 2`, `1 + 1 == 2`} {
 		if _, err := filter.Parse(filter.NewSchema[view](), source); err == nil {
 			t.Fatalf("Parse(%q) succeeded", source)

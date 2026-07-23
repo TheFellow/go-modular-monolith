@@ -33,7 +33,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						Usage: "Show items with amount <= threshold (per item unit)",
 						Value: -1,
 					},
-				}, listPagingFlags()...), inventorymodels.ListFilterSchema()),
+				}, listPagingFlags()...)),
 				Action: filterAction(c, inventorymodels.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					var req inventory.ListRequest
 					pageReq := pagingRequest(cmd)

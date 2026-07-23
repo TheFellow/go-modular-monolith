@@ -39,7 +39,7 @@ func (c *CLI) menuCommands() *cli.Command {
 							return menumodels.MenuStatus(s).Validate()
 						},
 					},
-				}, listPagingFlags()...), menumodels.ListFilterSchema()),
+				}, listPagingFlags()...)),
 				Action: filterAction(c, menumodels.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					pageReq := pagingRequest(cmd)
 					res, err := c.app.Menus.List(ctx, menus.ListRequest{

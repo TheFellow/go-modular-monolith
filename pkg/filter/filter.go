@@ -51,8 +51,7 @@ func NewSchema[T any](examples ...string) Schema[T] {
 
 func collectFields(t reflect.Type, prefix string) []Field {
 	var out []Field
-	for i := range t.NumField() {
-		f := t.Field(i)
+	for f := range t.Fields() {
 		name := f.Tag.Get("expr")
 		if name == "-" || !f.IsExported() {
 			continue

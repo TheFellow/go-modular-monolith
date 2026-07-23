@@ -105,7 +105,7 @@ func (e *Expression[T]) pushdown(node Node) (pushdown, bool) {
 			}
 			raw = append(raw, item.Value)
 		}
-	default:
+	case KindField, KindUnary, KindBinary:
 		return pushdown{}, false
 	}
 	values := make([]any, len(raw))
@@ -151,7 +151,11 @@ func convertLiteral(value any, target reflect.Type) (any, bool) {
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Float32, reflect.Float64:
 		return v.Convert(target).Interface(), true
-	default:
+	case reflect.Invalid, reflect.Uintptr, reflect.Complex64, reflect.Complex128,
+		reflect.Array, reflect.Chan, reflect.Func, reflect.Interface,
+		reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct,
+		reflect.UnsafePointer:
 		return nil, false
 	}
+	return nil, false
 }

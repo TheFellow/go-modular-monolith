@@ -28,15 +28,15 @@ func listPagingFlags() []cli.Flag {
 	}
 }
 
-func filterFlags[T any](schema appfilter.Schema[T]) []cli.Flag {
+func filterFlags() []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{Name: "filter", Usage: "Filter expression (run with --filter-help for fields and examples)"},
 		&cli.BoolFlag{Name: "filter-help", Usage: "Show filter fields, syntax, and examples, then exit"},
 	}
 }
 
-func appendFilterFlags[T any](flags []cli.Flag, schema appfilter.Schema[T]) []cli.Flag {
-	return append(flags, filterFlags(schema)...)
+func appendFilterFlags(flags []cli.Flag) []cli.Flag {
+	return append(flags, filterFlags()...)
 }
 
 func filterAction[T any](c *CLI, schema appfilter.Schema[T], fn func(*middleware.Context, *cli.Command) error) cli.ActionFunc {

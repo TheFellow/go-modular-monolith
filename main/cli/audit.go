@@ -23,7 +23,7 @@ func (c *CLI) auditCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List audit entries",
-				Flags: appendFilterFlags(auditListFlags(), auditmodels.ListFilterSchema()),
+				Flags: appendFilterFlags(auditListFlags()),
 				Action: filterAction(c, auditmodels.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					req, err := auditListRequest(cmd)
 					if err != nil {
@@ -36,7 +36,7 @@ func (c *CLI) auditCommands() *cli.Command {
 				Name:      "history",
 				Usage:     "List audit entries for an entity",
 				Arguments: []cli.Argument{&cli.StringArgs{Name: "entity", UsageText: "Entity UID (Type::id)", Max: 1}},
-				Flags:     appendFilterFlags(auditHistoryFlags(), auditmodels.ListFilterSchema()),
+				Flags:     appendFilterFlags(auditHistoryFlags()),
 				Action: filterAction(c, auditmodels.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					entityArg, err := requiredStringArg(cmd, "entity")
 					if err != nil {
@@ -58,7 +58,7 @@ func (c *CLI) auditCommands() *cli.Command {
 				Name:      "actor",
 				Usage:     "List audit entries for an actor",
 				Arguments: []cli.Argument{&cli.StringArgs{Name: "actor", UsageText: "Actor (owner|manager|sommelier|bartender|anonymous) or Entity UID", Max: 1}},
-				Flags:     appendFilterFlags(auditHistoryFlags(), auditmodels.ListFilterSchema()),
+				Flags:     appendFilterFlags(auditHistoryFlags()),
 				Action: filterAction(c, auditmodels.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					actorArg, err := requiredStringArg(cmd, "actor")
 					if err != nil {

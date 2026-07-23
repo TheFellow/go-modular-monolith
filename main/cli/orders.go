@@ -117,7 +117,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 							return ordersmodels.OrderStatus(s).Validate()
 						},
 					},
-				}, listPagingFlags()...), ordersmodels.ListFilterSchema()),
+				}, listPagingFlags()...)),
 				Action: filterAction(c, ordersmodels.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					pageReq := pagingRequest(cmd)
 					res, err := c.app.Orders.List(ctx, orders.ListRequest{
