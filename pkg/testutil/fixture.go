@@ -88,11 +88,6 @@ func (f *Fixture) ActorContext(actor string) *middleware.Context {
 	return middleware.NewContext(authn.ToContext(f.ctx, p))
 }
 
-func (f *Fixture) Bootstrap() *Bootstrap {
-	f.T.Helper()
-	return &Bootstrap{fix: f}
-}
-
 func (f *Fixture) Close() error {
 	if f.closed {
 		return nil

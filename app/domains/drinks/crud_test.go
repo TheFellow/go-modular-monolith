@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
@@ -11,11 +12,14 @@ import (
 func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
 	ctx := f.OwnerContext()
 
-	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
-	lemon := b.WithIngredient("Lemon Juice", measurement.UnitOz)
+	lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz,
+	})
+	lemon := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Lemon Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz,
+	})
 
 	created, err := f.Drinks.Create(ctx, &models.Drink{
 		Name:     "Margarita",

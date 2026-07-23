@@ -7,23 +7,31 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestInventory_ListExpressionFilters(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
 
-	targetIngredient := b.WithIngredientModel(models.Ingredient{
+	targetIngredient := testutil.CreateIngredient(t, f, models.Ingredient{
 		Name: "Tonic Water", Category: models.CategoryMixer, Unit: measurement.UnitMl,
 	})
-	decoyIngredient := b.WithIngredientModel(models.Ingredient{
+	decoyIngredient := testutil.CreateIngredient(t, f, models.Ingredient{
 		Name: "Bourbon", Category: models.CategorySpirit, Unit: measurement.UnitOz,
 	})
-	target := b.WithInventory(targetIngredient, 3.5)
-	b.WithInventory(decoyIngredient, 12)
+	target := testutil.SetInventory(t, f, inventorymodels.Update{
+		IngredientID: targetIngredient.ID, Amount: measurement.MustAmount(3.5, targetIngredient.Unit),
+		CostPerUnit: money.NewPriceFromCents(100, currency.USD),
+	})
+	testutil.SetInventory(t, f, inventorymodels.Update{
+		IngredientID: decoyIngredient.ID, Amount: measurement.MustAmount(12, decoyIngredient.Unit),
+		CostPerUnit: money.NewPriceFromCents(100, currency.USD),
+	})
 
 	tests := map[string]string{
 		"id":            fmt.Sprintf("id == %q", target.ID.String()),

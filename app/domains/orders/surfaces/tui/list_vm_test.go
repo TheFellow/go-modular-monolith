@@ -5,10 +5,13 @@ import (
 	"testing"
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	orderstui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/tui"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,10 +20,9 @@ import (
 func TestListViewModel_ShowsOrdersAfterLoad(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
 
-	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
-	drink := b.WithDrink(drinksmodels.Drink{
+	lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name:     "Margarita",
 		Category: drinksmodels.DrinkCategoryCocktail,
 		Recipe: drinksmodels.Recipe{
@@ -32,20 +34,14 @@ func TestListViewModel_ShowsOrdersAfterLoad(t *testing.T) {
 		},
 	})
 
-	menu, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
-	testutil.Ok(t, err)
-	menu, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
-	testutil.Ok(t, err)
-	menu, err = f.Menus.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
-	testutil.Ok(t, err)
-	order, err := f.Orders.Place(f.OwnerContext(), &ordersmodels.Order{
+	menu := testutil.CreateMenu(t, f, "Dinner", testutil.WithDrink(drink), testutil.Published())
+	order := testutil.PlaceOrder(t, f, ordersmodels.Order{
 		MenuID: menu.ID,
 		Items: []ordersmodels.OrderItem{{
 			DrinkID:  drink.ID,
 			Quantity: 2,
 		}},
 	})
-	testutil.Ok(t, err)
 
 	model := tuitest.InitAndLoad(t, orderstui.NewListViewModel(
 		f.App,
@@ -87,10 +83,13 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients().WithStock(100)
 
-	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
-	drink := b.WithDrink(drinksmodels.Drink{
+	lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+	testutil.SetInventory(t, f, inventorymodels.Update{
+		IngredientID: lime.ID, Amount: measurement.MustAmount(100, lime.Unit),
+		CostPerUnit: money.NewPriceFromCents(100, currency.USD),
+	})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name:     "Margarita",
 		Category: drinksmodels.DrinkCategoryCocktail,
 		Recipe: drinksmodels.Recipe{
@@ -102,41 +101,33 @@ func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 		},
 	})
 
-	menu, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
-	testutil.Ok(t, err)
-	menu, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
-	testutil.Ok(t, err)
-	menu, err = f.Menus.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
-	testutil.Ok(t, err)
+	menu := testutil.CreateMenu(t, f, "Dinner", testutil.WithDrink(drink), testutil.Published())
 
-	pending, err := f.Orders.Place(f.OwnerContext(), &ordersmodels.Order{
+	pending := testutil.PlaceOrder(t, f, ordersmodels.Order{
 		MenuID: menu.ID,
 		Items: []ordersmodels.OrderItem{{
 			DrinkID:  drink.ID,
 			Quantity: 1,
 		}},
 	})
-	testutil.Ok(t, err)
 
-	cancelled, err := f.Orders.Place(f.OwnerContext(), &ordersmodels.Order{
+	cancelled := testutil.PlaceOrder(t, f, ordersmodels.Order{
 		MenuID: menu.ID,
 		Items: []ordersmodels.OrderItem{{
 			DrinkID:  drink.ID,
 			Quantity: 1,
 		}},
 	})
-	testutil.Ok(t, err)
-	_, err = f.Orders.Cancel(f.OwnerContext(), &ordersmodels.Order{ID: cancelled.ID})
+	_, err := f.Orders.Cancel(f.OwnerContext(), &ordersmodels.Order{ID: cancelled.ID})
 	testutil.Ok(t, err)
 
-	completed, err := f.Orders.Place(f.OwnerContext(), &ordersmodels.Order{
+	completed := testutil.PlaceOrder(t, f, ordersmodels.Order{
 		MenuID: menu.ID,
 		Items: []ordersmodels.OrderItem{{
 			DrinkID:  drink.ID,
 			Quantity: 1,
 		}},
 	})
-	testutil.Ok(t, err)
 	_, err = f.Orders.Complete(f.OwnerContext(), &ordersmodels.Order{ID: completed.ID})
 	testutil.Ok(t, err)
 
@@ -156,10 +147,9 @@ func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
 
-	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
-	drink := b.WithDrink(drinksmodels.Drink{
+	lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name:     "Margarita",
 		Category: drinksmodels.DrinkCategoryCocktail,
 		Recipe: drinksmodels.Recipe{
@@ -171,20 +161,14 @@ func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 		},
 	})
 
-	menu, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Dinner"})
-	testutil.Ok(t, err)
-	menu, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
-	testutil.Ok(t, err)
-	menu, err = f.Menus.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
-	testutil.Ok(t, err)
-	_, err = f.Orders.Place(f.OwnerContext(), &ordersmodels.Order{
+	menu := testutil.CreateMenu(t, f, "Dinner", testutil.WithDrink(drink), testutil.Published())
+	testutil.PlaceOrder(t, f, ordersmodels.Order{
 		MenuID: menu.ID,
 		Items: []ordersmodels.OrderItem{{
 			DrinkID:  drink.ID,
 			Quantity: 1,
 		}},
 	})
-	testutil.Ok(t, err)
 
 	model := tuitest.InitAndLoad(t, orderstui.NewListViewModel(
 		f.App,

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
@@ -16,28 +16,30 @@ import (
 func TestOrders_ListExpressionFilters(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
+	ctx := f.OwnerContext()
 
-	base := b.WithIngredient("Tequila", measurement.UnitOz)
-	drink := b.WithDrink(drinksmodels.Drink{
+	base := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz,
+	})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name: "Paloma", Category: drinksmodels.DrinkCategoryHighball, Glass: drinksmodels.GlassTypeHighball,
 		Recipe: drinksmodels.Recipe{
 			Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: base.ID, Amount: measurement.MustAmount(2, measurement.UnitOz)}},
 			Steps:       []string{"Build"},
 		},
 	})
-	targetMenu := b.WithPublishedMenu(menumodels.Menu{Name: "Priority Menu"}, drink)
-	decoyMenu := b.WithPublishedMenu(menumodels.Menu{Name: "Walk-in Menu"}, drink)
-	target := b.WithOrder(ordersmodels.Order{
+	targetMenu := testutil.CreateMenu(t, f, "Priority Menu", testutil.WithDrink(drink), testutil.Published())
+	decoyMenu := testutil.CreateMenu(t, f, "Walk-in Menu", testutil.WithDrink(drink), testutil.Published())
+	target := testutil.PlaceOrder(t, f, ordersmodels.Order{
 		MenuID: targetMenu.ID, Notes: "priority table",
 		Items: []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
 	})
-	b.WithOrder(ordersmodels.Order{
+	testutil.PlaceOrder(t, f, ordersmodels.Order{
 		MenuID: decoyMenu.ID, Notes: "walk-in table",
 		Items: []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
 	})
 	var err error
-	target, err = f.Orders.Cancel(f.OwnerContext(), &ordersmodels.Order{ID: target.ID})
+	target, err = f.Orders.Cancel(ctx, &ordersmodels.Order{ID: target.ID})
 	testutil.Ok(t, err)
 
 	tests := map[string]string{

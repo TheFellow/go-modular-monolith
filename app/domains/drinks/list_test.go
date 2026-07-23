@@ -6,6 +6,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
@@ -13,12 +14,13 @@ import (
 func TestDrinks_ListFiltersByName(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
 	ctx := f.OwnerContext()
 
-	base := b.WithIngredient("Tequila", measurement.UnitOz)
+	base := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz,
+	})
 
-	b.WithDrink(models.Drink{
+	testutil.CreateDrink(t, f, models.Drink{
 		Name:     "Margarita",
 		Category: models.DrinkCategoryCocktail,
 		Glass:    models.GlassTypeCoupe,
@@ -29,7 +31,7 @@ func TestDrinks_ListFiltersByName(t *testing.T) {
 			Steps: []string{"Shake"},
 		},
 	})
-	b.WithDrink(models.Drink{
+	testutil.CreateDrink(t, f, models.Drink{
 		Name:     "Cosmopolitan",
 		Category: models.DrinkCategoryCocktail,
 		Glass:    models.GlassTypeMartini,
@@ -40,7 +42,7 @@ func TestDrinks_ListFiltersByName(t *testing.T) {
 			Steps: []string{"Shake"},
 		},
 	})
-	b.WithDrink(models.Drink{
+	testutil.CreateDrink(t, f, models.Drink{
 		Name:     "Old Fashioned",
 		Category: models.DrinkCategoryCocktail,
 		Glass:    models.GlassTypeRocks,
@@ -65,10 +67,11 @@ func TestDrinks_ListFiltersByName(t *testing.T) {
 func TestDrinks_ListExpressionFilters(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
 
-	base := b.WithIngredient("Gin", measurement.UnitOz)
-	target := b.WithDrink(models.Drink{
+	base := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Gin", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz,
+	})
+	target := testutil.CreateDrink(t, f, models.Drink{
 		Name: "Gin Fizz", Category: models.DrinkCategoryHighball, Glass: models.GlassTypeHighball,
 		Description: "Bright sparkling drink",
 		Recipe: models.Recipe{
@@ -76,7 +79,7 @@ func TestDrinks_ListExpressionFilters(t *testing.T) {
 			Steps:       []string{"Shake"}, Garnish: "Lemon twist",
 		},
 	})
-	b.WithDrink(models.Drink{
+	testutil.CreateDrink(t, f, models.Drink{
 		Name: "Old Fashioned", Category: models.DrinkCategoryCocktail, Glass: models.GlassTypeRocks,
 		Description: "Rich stirred drink",
 		Recipe: models.Recipe{

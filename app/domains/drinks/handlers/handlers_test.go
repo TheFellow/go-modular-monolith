@@ -6,9 +6,12 @@ import (
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
@@ -16,18 +19,17 @@ import (
 func TestIngredientDeletedHandlersRemoveDependentsAndPreserveUnrelatedEntities(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
 	ctx := f.OwnerContext()
 
-	target := b.WithIngredient("Target", measurement.UnitOz)
-	other := b.WithIngredient("Other", measurement.UnitOz)
-	targetStock := b.WithInventory(target, 10)
-	otherStock := b.WithInventory(other, 10)
-	affectedA := f.CreateDrink("Affected A").WithIngredient(target, 1).Build()
-	affectedB := f.CreateDrink("Affected B").WithIngredient(target, 1).Build()
-	survivor := f.CreateDrink("Survivor").WithIngredient(other, 1).Build()
-	affectedMenu := b.WithPublishedMenu(menumodels.Menu{Name: "Affected"}, affectedA, survivor, affectedB)
-	unrelatedMenu := b.WithPublishedMenu(menumodels.Menu{Name: "Unrelated"}, survivor)
+	target := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Target", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
+	other := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Other", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
+	targetStock := testutil.SetInventory(t, f, inventorymodels.Update{IngredientID: target.ID, Amount: measurement.MustAmount(10, target.Unit), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
+	otherStock := testutil.SetInventory(t, f, inventorymodels.Update{IngredientID: other.ID, Amount: measurement.MustAmount(10, other.Unit), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
+	affectedA := testutil.CreateDrink(t, f, handlerDrink("Affected A", target.ID))
+	affectedB := testutil.CreateDrink(t, f, handlerDrink("Affected B", target.ID))
+	survivor := testutil.CreateDrink(t, f, handlerDrink("Survivor", other.ID))
+	affectedMenu := testutil.CreateMenu(t, f, "Affected", testutil.WithDrink(affectedA), testutil.WithDrink(survivor), testutil.WithDrink(affectedB), testutil.Published())
+	unrelatedMenu := testutil.CreateMenu(t, f, "Unrelated", testutil.WithDrink(survivor), testutil.Published())
 
 	_, err := f.Ingredients.Delete(ctx, target.ID)
 	testutil.Ok(t, err)
@@ -39,10 +41,10 @@ func TestIngredientDeletedHandlersRemoveDependentsAndPreserveUnrelatedEntities(t
 	testutil.ErrorIsNotFound(t, err)
 	gotSurvivor, err := f.Drinks.Get(ctx, survivor.ID)
 	testutil.Ok(t, err)
-	testutil.Equals(t, gotSurvivor, survivor, testutil.EquateAmounts(0.000001), cmpopts.EquateEmpty())
+	testutil.Equals(t, gotSurvivor, survivor, cmpopts.EquateEmpty())
 	gotOtherStock, err := f.Inventory.Get(ctx, other.ID)
 	testutil.Ok(t, err)
-	testutil.Equals(t, gotOtherStock, otherStock, testutil.EquateAmounts(0.000001))
+	testutil.Equals(t, gotOtherStock, otherStock)
 	gotMenu, err := f.Menus.Get(ctx, affectedMenu.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, menuDrinkIDs(gotMenu), []entity.DrinkID{survivor.ID})
@@ -60,24 +62,23 @@ func TestIngredientDeletedHandlersRemoveDependentsAndPreserveUnrelatedEntities(t
 func TestIngredientUpdatedHandlersAuditEveryDependentWithoutMutatingThem(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
 	ctx := f.OwnerContext()
 
-	target := b.WithIngredient("Target", measurement.UnitOz)
-	other := b.WithIngredient("Other", measurement.UnitOz)
-	affectedA := f.CreateDrink("Affected A").WithIngredient(target, 1).Build()
-	affectedB := f.CreateDrink("Affected B").WithIngredient(target, 1).Build()
-	survivor := f.CreateDrink("Survivor").WithIngredient(other, 1).Build()
-	menuA := b.AddDrinks(b.WithMenu("Menu A"), affectedA, affectedB)
-	menuB := b.AddDrinks(b.WithMenu("Menu B"), affectedA)
-	unrelatedMenu := b.AddDrinks(b.WithMenu("Unrelated"), survivor)
+	target := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Target", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
+	other := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Other", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
+	affectedA := testutil.CreateDrink(t, f, handlerDrink("Affected A", target.ID))
+	affectedB := testutil.CreateDrink(t, f, handlerDrink("Affected B", target.ID))
+	survivor := testutil.CreateDrink(t, f, handlerDrink("Survivor", other.ID))
+	menuA := testutil.CreateMenu(t, f, "Menu A", testutil.WithDrink(affectedA), testutil.WithDrink(affectedB))
+	menuB := testutil.CreateMenu(t, f, "Menu B", testutil.WithDrink(affectedA))
+	unrelatedMenu := testutil.CreateMenu(t, f, "Unrelated", testutil.WithDrink(survivor))
 
 	_, err := f.Ingredients.Update(ctx, &ingredientsmodels.Ingredient{ID: target.ID, Name: "Renamed Target"})
 	testutil.Ok(t, err)
 	for _, want := range []*drinksmodels.Drink{affectedA, affectedB, survivor} {
 		got, err := f.Drinks.Get(ctx, want.ID)
 		testutil.Ok(t, err)
-		testutil.Equals(t, got, want, testutil.EquateAmounts(0.000001), cmpopts.EquateEmpty())
+		testutil.Equals(t, got, want, cmpopts.EquateEmpty())
 	}
 	for _, want := range []*menumodels.Menu{menuA, menuB, unrelatedMenu} {
 		got, err := f.Menus.Get(ctx, want.ID)
@@ -90,6 +91,16 @@ func TestIngredientUpdatedHandlersAuditEveryDependentWithoutMutatingThem(t *test
 		target.ID.EntityUID(), affectedA.ID.EntityUID(), affectedB.ID.EntityUID(),
 		menuA.ID.EntityUID(), menuB.ID.EntityUID(),
 	)
+}
+
+func handlerDrink(name string, ingredientID entity.IngredientID) drinksmodels.Drink {
+	return drinksmodels.Drink{
+		Name: name, Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe,
+		Recipe: drinksmodels.Recipe{
+			Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredientID, Amount: measurement.MustAmount(1, measurement.UnitOz)}},
+			Steps:       []string{"Mix"},
+		},
+	}
 }
 
 func menuDrinkIDs(menu *menumodels.Menu) []entity.DrinkID {

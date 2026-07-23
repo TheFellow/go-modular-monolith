@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -46,7 +47,6 @@ func TestPermissions_Drinks(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			fix := testutil.NewFixture(t)
-			b := fix.Bootstrap()
 			a := fix.App
 			owner := fix.OwnerContext()
 			var ctx *middleware.Context
@@ -56,9 +56,11 @@ func TestPermissions_Drinks(t *testing.T) {
 				ctx = fix.ActorContext(tc.name)
 			}
 
-			base := b.WithIngredient("Lime Juice", measurement.UnitOz)
-			wineExisting := b.WithDrink(drinkForPermissions("Permissions Wine", models.DrinkCategoryWine, base.ID))
-			nonWineExisting := b.WithDrink(drinkForPermissions("Permissions Cocktail", models.DrinkCategoryCocktail, base.ID))
+			base := testutil.CreateIngredient(t, fix, ingredientsmodels.Ingredient{
+				Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz,
+			})
+			wineExisting := testutil.CreateDrink(t, fix, drinkForPermissions("Permissions Wine", models.DrinkCategoryWine, base.ID))
+			nonWineExisting := testutil.CreateDrink(t, fix, drinkForPermissions("Permissions Cocktail", models.DrinkCategoryCocktail, base.ID))
 
 			listed, err := a.Drinks.List(ctx, drinks.ListRequest{})
 			testutil.Ok(t, err)

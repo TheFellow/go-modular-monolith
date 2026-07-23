@@ -15,6 +15,8 @@ import (
 
 var optionalValuePkgPath = reflect.TypeFor[optional.Value[int]]().PkgPath()
 
+const defaultAmountTolerance = 0.000001
+
 // allowOptionalUnexported lets cmp compare every instantiation of
 // optional.Value[T] without exposing the type's invariant-bearing fields.
 func allowOptionalUnexported() cmp.Option {
@@ -24,10 +26,11 @@ func allowOptionalUnexported() cmp.Option {
 }
 
 // Equals fails the test when got and want differ. Application errors are
-// compared through errors.Is, and optional values may retain private fields.
+// compared through errors.Is, measurement amounts allow for floating-point
+// conversion error, and optional values may retain private fields.
 func Equals[T any](t testing.TB, got, want T, opts ...cmp.Option) {
 	t.Helper()
-	all := append([]cmp.Option{cmpopts.EquateErrors(), allowOptionalUnexported()}, opts...)
+	all := append([]cmp.Option{cmpopts.EquateErrors(), equateAmounts(), allowOptionalUnexported()}, opts...)
 	diff := cmp.Diff(want, got, all...)
 	ErrorIf(t, diff != "", "mismatch (-want +got):\n%s", diff)
 }
@@ -52,14 +55,12 @@ func IsFalse(t testing.TB, got bool) {
 	ErrorIf(t, got, "expected false, got true")
 }
 
-// EquateAmounts compares measurement amounts through their public unit and
-// value, allowing for floating-point conversion error.
-func EquateAmounts(tolerance float64) cmp.Option {
+func equateAmounts() cmp.Option {
 	return cmp.Comparer(func(x, y measurement.Amount) bool {
 		if x == nil || y == nil {
 			return x == nil && y == nil
 		}
-		return x.Unit() == y.Unit() && math.Abs(x.Value()-y.Value()) <= tolerance
+		return x.Unit() == y.Unit() && math.Abs(x.Value()-y.Value()) <= defaultAmountTolerance
 	})
 }
 

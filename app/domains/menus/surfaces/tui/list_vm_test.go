@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	menustui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
@@ -16,8 +16,7 @@ import (
 func TestListViewModel_ShowsMenusAfterLoad(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	_, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Happy Hour"})
-	testutil.Ok(t, err)
+	testutil.CreateMenu(t, f, "Happy Hour")
 
 	model := tuitest.InitAndLoad(t, menustui.NewListViewModel(
 		f.App,
@@ -57,17 +56,9 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	ctx := f.OwnerContext()
 
-	draft, err := f.Menus.Create(ctx, &menumodels.Menu{Name: "Draft Menu"})
-	testutil.Ok(t, err)
-
-	published, err := f.Menus.Create(ctx, &menumodels.Menu{Name: "Published Menu"})
-	testutil.Ok(t, err)
-	_, err = f.Menus.Publish(ctx, &menumodels.Menu{ID: published.ID})
-	testutil.Ok(t, err)
-
-	_ = draft
+	testutil.CreateMenu(t, f, "Draft Menu")
+	testutil.CreateMenu(t, f, "Published Menu", testutil.Published())
 
 	model := tuitest.InitAndLoad(t, menustui.NewListViewModel(
 		f.App,
@@ -82,10 +73,9 @@ func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 func TestListViewModel_DetailShowsDrinks(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
 
-	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
-	drink := b.WithDrink(drinksmodels.Drink{
+	lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name:     "Margarita",
 		Category: drinksmodels.DrinkCategoryCocktail,
 		Recipe: drinksmodels.Recipe{
@@ -96,13 +86,7 @@ func TestListViewModel_DetailShowsDrinks(t *testing.T) {
 		},
 	})
 
-	menu, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Summer Menu"})
-	testutil.Ok(t, err)
-	_, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{
-		MenuID:  menu.ID,
-		DrinkID: drink.ID,
-	})
-	testutil.Ok(t, err)
+	testutil.CreateMenu(t, f, "Summer Menu", testutil.WithDrink(drink))
 
 	model := tuitest.InitAndLoad(t, menustui.NewListViewModel(
 		f.App,

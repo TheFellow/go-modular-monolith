@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	drinksM "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
@@ -29,7 +30,6 @@ func TestPermissions_Menu(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			f := testutil.NewFixture(t)
-			b := f.Bootstrap()
 			a := f.App
 			owner := f.OwnerContext()
 			var ctx *middleware.Context
@@ -39,8 +39,10 @@ func TestPermissions_Menu(t *testing.T) {
 				ctx = f.ActorContext(tc.name)
 			}
 
-			base := b.WithIngredient("Menu Permissions Base", measurement.UnitOz)
-			drink := b.WithDrink(drinksM.Drink{
+			base := testutil.CreateIngredient(t, f, ingredientsM.Ingredient{
+				Name: "Menu Permissions Base", Category: ingredientsM.CategoryOther, Unit: measurement.UnitOz,
+			})
+			drink := testutil.CreateDrink(t, f, drinksM.Drink{
 				Name:     "Menu Permissions Drink",
 				Category: drinksM.DrinkCategoryCocktail,
 				Glass:    drinksM.GlassTypeCoupe,
@@ -51,10 +53,10 @@ func TestPermissions_Menu(t *testing.T) {
 					Steps: []string{"Shake"},
 				},
 			})
-			menuForAdd := b.WithMenu("Permissions Add Menu")
-			menuForRemove := b.AddDrinks(b.WithMenu("Permissions Remove Menu"), drink)
-			menuForPublish := b.AddDrinks(b.WithMenu("Permissions Publish Menu"), drink)
-			menuForDraft := b.WithPublishedMenu(menuM.Menu{Name: "Permissions Draft Menu"}, drink)
+			menuForAdd := testutil.CreateMenu(t, f, "Permissions Add Menu")
+			menuForRemove := testutil.CreateMenu(t, f, "Permissions Remove Menu", testutil.WithDrink(drink))
+			menuForPublish := testutil.CreateMenu(t, f, "Permissions Publish Menu", testutil.WithDrink(drink))
+			menuForDraft := testutil.CreateMenu(t, f, "Permissions Draft Menu", testutil.WithDrink(drink), testutil.Published())
 
 			_, err := a.Menus.List(ctx, menus.ListRequest{})
 			testutil.Ok(t, err)
