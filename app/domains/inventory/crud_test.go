@@ -3,6 +3,7 @@ package inventory_test
 import (
 	"testing"
 
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
@@ -15,9 +16,10 @@ import (
 func TestInventory_SetGetAdjustAndRemove(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
 	ctx := f.OwnerContext()
-	ingredient := b.WithIngredient("London Dry Gin", measurement.UnitOz)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "London Dry Gin", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz,
+	})
 
 	count, err := f.Inventory.Count(ctx, inventory.ListRequest{})
 	testutil.Ok(t, err)
@@ -31,17 +33,16 @@ func TestInventory_SetGetAdjustAndRemove(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 	testutil.IsFalse(t, set.ID.IsZero())
-	amountsEqual := testutil.EquateAmounts(0.000001)
 	wantSet := &models.Inventory{
 		ID: set.ID, IngredientID: ingredient.ID,
 		Amount: measurement.MustAmount(10, ingredient.Unit), CostPerUnit: optional.Some(cost),
 		LastUpdated: set.LastUpdated,
 	}
-	testutil.Equals(t, set, wantSet, amountsEqual)
+	testutil.Equals(t, set, wantSet)
 
 	got, err := f.Inventory.Get(ctx, ingredient.ID)
 	testutil.Ok(t, err)
-	testutil.Equals(t, got, set, amountsEqual)
+	testutil.Equals(t, got, set)
 
 	adjusted, err := f.Inventory.Adjust(ctx, &models.Patch{
 		IngredientID: ingredient.ID,
@@ -52,11 +53,11 @@ func TestInventory_SetGetAdjustAndRemove(t *testing.T) {
 	wantAdjusted := *set
 	wantAdjusted.Amount = measurement.MustAmount(12.5, ingredient.Unit)
 	wantAdjusted.LastUpdated = adjusted.LastUpdated
-	testutil.Equals(t, adjusted, &wantAdjusted, amountsEqual)
+	testutil.Equals(t, adjusted, &wantAdjusted)
 
 	got, err = f.Inventory.Get(ctx, ingredient.ID)
 	testutil.Ok(t, err)
-	testutil.Equals(t, got, adjusted, amountsEqual)
+	testutil.Equals(t, got, adjusted)
 
 	_, err = f.Ingredients.Delete(ctx, ingredient.ID)
 	testutil.Ok(t, err)

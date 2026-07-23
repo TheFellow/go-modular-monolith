@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	inventorytui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
@@ -18,7 +19,8 @@ import (
 func TestListViewModel_ShowsInventoryAfterLoad(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	f.Bootstrap().WithBasicIngredients().WithStock(5)
+	tequila := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+	testutil.SetInventory(t, f, models.Update{IngredientID: tequila.ID, Amount: measurement.MustAmount(5, tequila.Unit), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
 
 	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
@@ -64,7 +66,8 @@ func TestListViewModel_ShowsErrorOnFailure(t *testing.T) {
 func TestListViewModel_ShowsStockStatus(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	f.Bootstrap().WithBasicIngredients().WithStock(5)
+	tequila := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+	testutil.SetInventory(t, f, models.Update{IngredientID: tequila.ID, Amount: measurement.MustAmount(5, tequila.Unit), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
 
 	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
@@ -76,9 +79,8 @@ func TestListViewModel_ShowsStockStatus(t *testing.T) {
 func TestListViewModel_ShowsIngredientName(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
 
-	ingredient := b.WithIngredient("Orgeat", measurement.UnitOz)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Orgeat", Category: ingredientsmodels.CategorySyrup, Unit: measurement.UnitOz})
 	_, err := f.Inventory.Set(f.OwnerContext(), &models.Update{
 		IngredientID: ingredient.ID,
 		Amount:       measurement.MustAmount(3, measurement.UnitOz),
@@ -96,7 +98,6 @@ func TestListViewModel_ShowsIngredientName(t *testing.T) {
 func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	f.Bootstrap().WithBasicIngredients().WithStock(5)
 
 	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 30, Height: 20})
@@ -118,7 +119,6 @@ func TestListViewModel_SetSize_ZeroWidth(t *testing.T) {
 func TestListViewModel_SetSize_WideWidth(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	f.Bootstrap().WithBasicIngredients().WithStock(5)
 
 	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
@@ -130,7 +130,6 @@ func TestListViewModel_SetSize_WideWidth(t *testing.T) {
 func TestListViewModel_SetSize_ResizeSequence(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	f.Bootstrap().WithBasicIngredients().WithStock(5)
 
 	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	sizes := []tea.WindowSizeMsg{
@@ -149,7 +148,6 @@ func TestListViewModel_SetSize_ResizeSequence(t *testing.T) {
 func TestListViewModel_ColumnWidths_FitWithinWidth(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	f.Bootstrap().WithBasicIngredients().WithStock(5)
 
 	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	widths := []int{70, 100, 140}
@@ -172,7 +170,6 @@ func TestListViewModel_ColumnWidths_FitWithinWidth(t *testing.T) {
 func TestListViewModel_ColumnWidths_AccountForPadding(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	f.Bootstrap().WithBasicIngredients().WithStock(5)
 
 	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 

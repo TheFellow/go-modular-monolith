@@ -28,7 +28,6 @@ func TestPermissions_Ingredients(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			fix := testutil.NewFixture(t)
-			b := fix.Bootstrap()
 			a := fix.App
 			owner := fix.OwnerContext()
 			var ctx *middleware.Context
@@ -38,7 +37,9 @@ func TestPermissions_Ingredients(t *testing.T) {
 				ctx = fix.ActorContext(tc.name)
 			}
 
-			existing := b.WithIngredient("Permissions Ingredient", measurement.UnitOz)
+			existing := testutil.CreateIngredient(t, fix, models.Ingredient{
+				Name: "Permissions Ingredient", Category: models.CategoryOther, Unit: measurement.UnitOz,
+			})
 
 			_, err := a.Ingredients.List(ctx, ingredients.ListRequest{})
 			testutil.Ok(t, err)

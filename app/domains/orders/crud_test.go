@@ -4,35 +4,42 @@ import (
 	"testing"
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestOrders_PlaceGetCancelAndComplete(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
 	ctx := f.OwnerContext()
 
-	base := b.WithIngredient("Order Base", measurement.UnitOz)
-	initialStock := b.WithInventory(base, 10)
-	drink := b.WithDrink(drinksmodels.Drink{
+	base := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Order Base", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz,
+	})
+	initialStock := testutil.SetInventory(t, f, inventorymodels.Update{
+		IngredientID: base.ID, Amount: measurement.MustAmount(10, base.Unit),
+		CostPerUnit: money.NewPriceFromCents(100, currency.USD),
+	})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name: "Service Cocktail", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe,
 		Recipe: drinksmodels.Recipe{
 			Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: base.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)}},
 			Steps:       []string{"Shake"},
 		},
 	})
-	menu := b.WithPublishedMenu(menumodels.Menu{Name: "Service Menu"}, drink)
+	menu := testutil.CreateMenu(t, f, "Service Menu", testutil.WithDrink(drink), testutil.Published())
 
 	count, err := f.Orders.Count(ctx, orders.ListRequest{})
 	testutil.Ok(t, err)
 	testutil.Equals(t, count, 0)
 
-	cancelledOrder := b.WithOrder(models.Order{
+	cancelledOrder := testutil.PlaceOrder(t, f, models.Order{
 		MenuID: menu.ID, Notes: "cancel me",
 		Items: []models.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
 	})
@@ -45,7 +52,7 @@ func TestOrders_PlaceGetCancelAndComplete(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.Equals(t, cancelledOrder, &wantCancelled)
 
-	completedOrder := b.WithOrder(models.Order{
+	completedOrder := testutil.PlaceOrder(t, f, models.Order{
 		MenuID: menu.ID, Notes: "complete me",
 		Items: []models.OrderItem{{DrinkID: drink.ID, Quantity: 2}},
 	})
@@ -64,7 +71,7 @@ func TestOrders_PlaceGetCancelAndComplete(t *testing.T) {
 	wantStock := *initialStock
 	wantStock.Amount = measurement.MustAmount(8, base.Unit)
 	wantStock.LastUpdated = stock.LastUpdated
-	testutil.Equals(t, stock, &wantStock, testutil.EquateAmounts(0.000001))
+	testutil.Equals(t, stock, &wantStock)
 	count, err = f.Orders.Count(ctx, orders.ListRequest{})
 	testutil.Ok(t, err)
 	testutil.Equals(t, count, 2)

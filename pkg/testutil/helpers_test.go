@@ -50,10 +50,10 @@ func TestCommonAssertionsAcceptExpectedValues(t *testing.T) {
 	testutil.ExpectPanic(t, "boom", func() { panic("boom") })
 }
 
-func TestEquateAmountsAllowsConversionError(t *testing.T) {
+func TestEqualsAllowsAmountConversionError(t *testing.T) {
 	t.Parallel()
 
 	got := measurement.MustAmount(12.500000000000002, measurement.UnitOz)
 	want := measurement.MustAmount(12.5, measurement.UnitOz)
-	testutil.Equals(t, got, want, testutil.EquateAmounts(0.000001))
+	testutil.Equals(t, got, want)
 }

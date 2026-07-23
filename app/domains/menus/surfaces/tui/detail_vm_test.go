@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	menustui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
@@ -17,10 +18,9 @@ import (
 func TestDetailViewModel_ShowsMenuDetails(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
 
-	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
-	drink := b.WithDrink(drinksmodels.Drink{
+	lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name:     "Margarita",
 		Category: drinksmodels.DrinkCategoryCocktail,
 		Recipe: drinksmodels.Recipe{
@@ -31,13 +31,7 @@ func TestDetailViewModel_ShowsMenuDetails(t *testing.T) {
 		},
 	})
 
-	menu, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Summer Menu"})
-	testutil.Ok(t, err)
-	menu, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{
-		MenuID:  menu.ID,
-		DrinkID: drink.ID,
-	})
-	testutil.Ok(t, err)
+	menu := testutil.CreateMenu(t, f, "Summer Menu", testutil.WithDrink(drink))
 
 	detail := menustui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
@@ -69,10 +63,9 @@ func TestDetailViewModel_ShowsEmptyState(t *testing.T) {
 func TestDetailViewModel_SetSize(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
 
-	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
-	drink := b.WithDrink(drinksmodels.Drink{
+	lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name:     "Margarita",
 		Category: drinksmodels.DrinkCategoryCocktail,
 		Recipe: drinksmodels.Recipe{
@@ -83,13 +76,7 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 		},
 	})
 
-	menu, err := f.Menus.Create(f.OwnerContext(), &menumodels.Menu{Name: "Summer Menu"})
-	testutil.Ok(t, err)
-	menu, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{
-		MenuID:  menu.ID,
-		DrinkID: drink.ID,
-	})
-	testutil.Ok(t, err)
+	menu := testutil.CreateMenu(t, f, "Summer Menu", testutil.WithDrink(drink))
 
 	detail := menustui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),

@@ -6,19 +6,15 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestMenus_ListExpressionFilters(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
 
-	target := b.WithPublishedMenu(models.Menu{
-		Name: "Summer Terrace", Description: "Seasonal patio menu",
-	})
-	b.WithMenuModel(models.Menu{Name: "Winter Cellar", Description: "Rich winter menu"})
+	target := testutil.CreateMenu(t, f, "Summer Terrace", testutil.WithDescription("Seasonal patio menu"), testutil.Published())
+	testutil.CreateMenu(t, f, "Winter Cellar", testutil.WithDescription("Rich winter menu"))
 
 	tests := map[string]string{
 		"id":          fmt.Sprintf("id == %q", target.ID.String()),

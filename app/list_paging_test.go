@@ -26,35 +26,27 @@ func TestDomainListsUseCursorPages(t *testing.T) {
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
 
-	ing1, err := f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{Name: "Gin", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
-	testutil.Ok(t, err)
-	ing2, err := f.Ingredients.Create(ctx, &ingredientsmodels.Ingredient{Name: "Tonic", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
-	testutil.Ok(t, err)
+	ing1 := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Gin", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+	ing2 := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tonic", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
 
-	drink1 := f.CreateDrink("Gin One").With("Gin", 1).Build()
-	drink2 := f.CreateDrink("Gin Two").With("Gin", 2).Build()
+	drink1 := testutil.CreateDrink(t, f, drinksmodels.Drink{
+		Name: "Gin One", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe,
+		Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ing1.ID, Amount: measurement.MustAmount(1, ing1.Unit)}}, Steps: []string{"Mix"}},
+	})
+	drink2 := testutil.CreateDrink(t, f, drinksmodels.Drink{
+		Name: "Gin Two", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe,
+		Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ing1.ID, Amount: measurement.MustAmount(2, ing1.Unit)}}, Steps: []string{"Mix"}},
+	})
 
 	price := money.NewPriceFromCents(100, currency.USD)
-	_, err = f.Inventory.Set(ctx, &inventorymodels.Update{IngredientID: ing1.ID, Amount: measurement.MustAmount(10, measurement.UnitOz), CostPerUnit: price})
-	testutil.Ok(t, err)
-	_, err = f.Inventory.Set(ctx, &inventorymodels.Update{IngredientID: ing2.ID, Amount: measurement.MustAmount(20, measurement.UnitOz), CostPerUnit: price})
-	testutil.Ok(t, err)
+	testutil.SetInventory(t, f, inventorymodels.Update{IngredientID: ing1.ID, Amount: measurement.MustAmount(10, measurement.UnitOz), CostPerUnit: price})
+	testutil.SetInventory(t, f, inventorymodels.Update{IngredientID: ing2.ID, Amount: measurement.MustAmount(20, measurement.UnitOz), CostPerUnit: price})
 
-	menu1, err := f.Menus.Create(ctx, &menusmodels.Menu{Name: "First"})
-	testutil.Ok(t, err)
-	_, err = f.Menus.Create(ctx, &menusmodels.Menu{Name: "Second"})
-	testutil.Ok(t, err)
-	menu1, err = f.Menus.AddDrink(ctx, &menusmodels.MenuPatch{MenuID: menu1.ID, DrinkID: drink1.ID})
-	testutil.Ok(t, err)
-	menu1, err = f.Menus.AddDrink(ctx, &menusmodels.MenuPatch{MenuID: menu1.ID, DrinkID: drink2.ID})
-	testutil.Ok(t, err)
-	menu1, err = f.Menus.Publish(ctx, &menusmodels.Menu{ID: menu1.ID})
-	testutil.Ok(t, err)
+	menu1 := testutil.CreateMenu(t, f, "First", testutil.WithDrink(drink1), testutil.WithDrink(drink2), testutil.Published())
+	testutil.CreateMenu(t, f, "Second")
 
-	_, err = f.Orders.Place(ctx, &ordersmodels.Order{MenuID: menu1.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink1.ID, Quantity: 1}}})
-	testutil.Ok(t, err)
-	_, err = f.Orders.Place(ctx, &ordersmodels.Order{MenuID: menu1.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink2.ID, Quantity: 1}}})
-	testutil.Ok(t, err)
+	testutil.PlaceOrder(t, f, ordersmodels.Order{MenuID: menu1.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink1.ID, Quantity: 1}}})
+	testutil.PlaceOrder(t, f, ordersmodels.Order{MenuID: menu1.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink2.ID, Quantity: 1}}})
 
 	assertCursorPages(t, func(cursor paging.Cursor) (paging.Page[*ingredientsmodels.Ingredient], error) {
 		return f.Ingredients.List(ctx, ingredients.ListRequest{Cursor: cursor, Limit: 1})

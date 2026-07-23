@@ -3,6 +3,7 @@ package inventory_test
 import (
 	"testing"
 
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
@@ -13,10 +14,11 @@ import (
 func TestInventory_Set(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
 	ctx := f.OwnerContext()
 
-	ingredient := b.WithIngredient("Vodka", measurement.UnitOz)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Vodka", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz,
+	})
 
 	stock, err := f.Inventory.Set(ctx, &models.Update{
 		IngredientID: ingredient.ID,

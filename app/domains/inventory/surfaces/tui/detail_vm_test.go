@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	inventorytui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
@@ -18,9 +19,8 @@ import (
 func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
 
-	ingredient := b.WithIngredient("Orgeat", measurement.UnitOz)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Orgeat", Category: ingredientsmodels.CategorySyrup, Unit: measurement.UnitOz})
 	price := money.NewPriceFromCents(120, currency.USD)
 	inv, err := f.Inventory.Set(f.OwnerContext(), &models.Update{
 		IngredientID: ingredient.ID,
@@ -62,8 +62,7 @@ func TestDetailViewModel_NilRow(t *testing.T) {
 func TestDetailViewModel_SetSize(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
-	ingredient := b.WithIngredient("Orgeat", measurement.UnitOz)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Orgeat", Category: ingredientsmodels.CategorySyrup, Unit: measurement.UnitOz})
 	price := money.NewPriceFromCents(120, currency.USD)
 	inv, err := f.Inventory.Set(f.OwnerContext(), &models.Update{
 		IngredientID: ingredient.ID,

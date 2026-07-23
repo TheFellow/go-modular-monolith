@@ -5,9 +5,13 @@ import (
 	"time"
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -16,12 +20,16 @@ import (
 func TestMenus_CreateGetUpdateItemsPublishDraftDelete(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
 	ctx := f.OwnerContext()
 
-	base := b.WithIngredient("Menu Base", measurement.UnitOz)
-	b.WithInventory(base, 10)
-	drink := b.WithDrink(drinksmodels.Drink{
+	base := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Menu Base", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz,
+	})
+	testutil.SetInventory(t, f, inventorymodels.Update{
+		IngredientID: base.ID, Amount: measurement.MustAmount(10, base.Unit),
+		CostPerUnit: money.NewPriceFromCents(100, currency.USD),
+	})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name: "House Sour", Category: drinksmodels.DrinkCategorySour, Glass: drinksmodels.GlassTypeCoupe,
 		Recipe: drinksmodels.Recipe{
 			Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: base.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)}},

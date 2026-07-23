@@ -4,10 +4,14 @@ import (
 	"testing"
 
 	drinksM "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventoryM "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersM "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
@@ -31,7 +35,6 @@ func TestPermissions_Orders(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			f := testutil.NewFixture(t)
-			b := f.Bootstrap()
 			a := f.App
 			owner := f.OwnerContext()
 			var ctx *middleware.Context
@@ -41,9 +44,14 @@ func TestPermissions_Orders(t *testing.T) {
 				ctx = f.ActorContext(tc.name)
 			}
 
-			base := b.WithIngredient("Orders Permissions Base", measurement.UnitOz)
-			b.WithInventory(base, 100)
-			drink := b.WithDrink(drinksM.Drink{
+			base := testutil.CreateIngredient(t, f, ingredientsM.Ingredient{
+				Name: "Orders Permissions Base", Category: ingredientsM.CategoryOther, Unit: measurement.UnitOz,
+			})
+			testutil.SetInventory(t, f, inventoryM.Update{
+				IngredientID: base.ID, Amount: measurement.MustAmount(100, base.Unit),
+				CostPerUnit: money.NewPriceFromCents(100, currency.USD),
+			})
+			drink := testutil.CreateDrink(t, f, drinksM.Drink{
 				Name:     "Order Drink",
 				Category: drinksM.DrinkCategoryCocktail,
 				Glass:    drinksM.GlassTypeCoupe,
@@ -54,21 +62,21 @@ func TestPermissions_Orders(t *testing.T) {
 					Steps: []string{"Shake"},
 				},
 			})
-			menu := b.WithMenu("Orders Menu")
-			menu, err := a.Menus.AddDrink(f.OwnerContext(), &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+			menu := testutil.CreateMenu(t, f, "Orders Menu")
+			menu, err := a.Menus.AddDrink(owner, &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 			testutil.Ok(t, err)
-			menu, err = a.Menus.Publish(f.OwnerContext(), &menuM.Menu{ID: menu.ID})
+			menu, err = a.Menus.Publish(owner, &menuM.Menu{ID: menu.ID})
 			testutil.Ok(t, err)
 
-			readOrder := b.WithOrder(ordersM.Order{
+			readOrder := testutil.PlaceOrder(t, f, ordersM.Order{
 				MenuID: menu.ID,
 				Items:  []ordersM.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
 			})
-			completeOrder := b.WithOrder(ordersM.Order{
+			completeOrder := testutil.PlaceOrder(t, f, ordersM.Order{
 				MenuID: menu.ID,
 				Items:  []ordersM.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
 			})
-			cancelOrder := b.WithOrder(ordersM.Order{
+			cancelOrder := testutil.PlaceOrder(t, f, ordersM.Order{
 				MenuID: menu.ID,
 				Items:  []ordersM.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
 			})

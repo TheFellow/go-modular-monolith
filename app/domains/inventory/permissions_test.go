@@ -3,6 +3,7 @@ package inventory_test
 import (
 	"testing"
 
+	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventoryM "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
@@ -31,7 +32,6 @@ func TestPermissions_Inventory(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			f := testutil.NewFixture(t)
-			b := f.Bootstrap()
 			a := f.App
 			owner := f.OwnerContext()
 			var ctx *middleware.Context
@@ -40,8 +40,14 @@ func TestPermissions_Inventory(t *testing.T) {
 			} else {
 				ctx = f.ActorContext(tc.name)
 			}
-			ingredient := b.WithIngredient("Inventory Permissions Ingredient", measurement.UnitOz)
-			b.WithInventory(ingredient, 10)
+			ingredient := testutil.CreateIngredient(t, f, ingredientsM.Ingredient{
+				Name: "Inventory Permissions Ingredient", Category: ingredientsM.CategoryOther, Unit: measurement.UnitOz,
+			})
+			testutil.SetInventory(t, f, inventoryM.Update{
+				IngredientID: ingredient.ID,
+				Amount:       measurement.MustAmount(10, ingredient.Unit),
+				CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
+			})
 
 			_, err := a.Inventory.List(ctx, inventory.ListRequest{})
 			testutil.Ok(t, err)
@@ -65,7 +71,7 @@ func TestPermissions_Inventory(t *testing.T) {
 			if tc.canWrite {
 				wantAdjusted = 11
 			}
-			testutil.Equals(t, adjusted.Amount, measurement.MustAmount(wantAdjusted, ingredient.Unit), testutil.EquateAmounts(0.000001))
+			testutil.Equals(t, adjusted.Amount, measurement.MustAmount(wantAdjusted, ingredient.Unit))
 
 			_, err = a.Inventory.Set(ctx, &inventoryM.Update{
 				IngredientID: ingredient.ID,
@@ -83,7 +89,7 @@ func TestPermissions_Inventory(t *testing.T) {
 			if tc.canWrite {
 				wantSet = 20
 			}
-			testutil.Equals(t, set.Amount, measurement.MustAmount(wantSet, ingredient.Unit), testutil.EquateAmounts(0.000001))
+			testutil.Equals(t, set.Amount, measurement.MustAmount(wantSet, ingredient.Unit))
 		})
 	}
 }

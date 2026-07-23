@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
@@ -22,8 +23,9 @@ func TestDrinks_ABAC_SommelierCanCreateWine(t *testing.T) {
 	t.Parallel()
 
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
-	base := b.WithIngredient("ABAC Base", measurement.UnitOz)
+	base := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "ABAC Base", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz,
+	})
 
 	sommelier := f.ActorContext("sommelier")
 

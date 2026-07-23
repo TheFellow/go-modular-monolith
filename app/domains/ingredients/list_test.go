@@ -13,13 +13,12 @@ import (
 func TestIngredients_ListExpressionFilters(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap()
 
-	target := b.WithIngredientModel(models.Ingredient{
+	target := testutil.CreateIngredient(t, f, models.Ingredient{
 		Name: "Botanical Gin", Category: models.CategorySpirit,
 		Unit: measurement.UnitOz, Description: "Juniper-forward spirit",
 	})
-	b.WithIngredientModel(models.Ingredient{
+	testutil.CreateIngredient(t, f, models.Ingredient{
 		Name: "Seasonal Tonic", Category: models.CategoryMixer,
 		Unit: measurement.UnitMl, Description: "Seasonal mixer",
 	})

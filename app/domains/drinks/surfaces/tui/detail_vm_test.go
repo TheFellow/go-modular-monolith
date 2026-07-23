@@ -6,6 +6,7 @@ import (
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	drinkstui "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/tui"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -17,13 +18,12 @@ import (
 func TestDetailViewModel_ShowsDrinkData(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
 
-	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
-	lemon := b.WithIngredient("Lemon Juice", measurement.UnitOz)
-	mint := b.WithIngredient("Mint", measurement.UnitPiece)
+	lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+	lemon := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lemon Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+	mint := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Mint", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitPiece})
 
-	drink := b.WithDrink(drinksmodels.Drink{
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name:     "Margarita",
 		Category: drinksmodels.DrinkCategoryCocktail,
 		Glass:    drinksmodels.GlassTypeRocks,
@@ -81,10 +81,9 @@ func TestDetailViewModel_NilDrink(t *testing.T) {
 func TestDetailViewModel_SetSize(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
-	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
+	lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
 
-	drink := b.WithDrink(drinksmodels.Drink{
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name:     "Margarita",
 		Category: drinksmodels.DrinkCategoryCocktail,
 		Recipe: drinksmodels.Recipe{
@@ -109,13 +108,12 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 func TestDetailViewModel_BatchFetchesIngredients(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
 
-	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
-	tequila := b.WithIngredient("Tequila", measurement.UnitOz)
-	salt := b.WithIngredient("Salt", measurement.UnitDash)
+	lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+	tequila := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+	salt := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Salt", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitDash})
 
-	drink := b.WithDrink(drinksmodels.Drink{
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name:     "Margarita",
 		Category: drinksmodels.DrinkCategoryCocktail,
 		Recipe: drinksmodels.Recipe{

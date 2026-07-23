@@ -4,13 +4,18 @@ import (
 	"testing"
 
 	auditui "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/tui"
+	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	drinksui "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/tui"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	ingredientsui "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/tui"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	inventoryui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/tui"
-	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	menusui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	ordersui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/tui"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -64,7 +69,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 			name: "drinks create error",
 			view: ViewDrinks,
 			model: func(f *testutil.Fixture) views.ViewModel {
-				f.Bootstrap().WithBasicIngredients()
+				testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 				return tuitest.InitAndLoad(t, drinksui.NewListViewModel(f.App))
 			},
 			activate: func(t testing.TB, model views.ViewModel) views.ViewModel {
@@ -87,7 +92,11 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 			name: "inventory adjust error",
 			view: ViewInventory,
 			model: func(f *testutil.Fixture) views.ViewModel {
-				f.Bootstrap().WithBasicIngredients().WithStock(5)
+				ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+				testutil.SetInventory(t, f, inventorymodels.Update{
+					IngredientID: ingredient.ID, Amount: measurement.MustAmount(5, ingredient.Unit),
+					CostPerUnit: money.NewPriceFromCents(100, currency.USD),
+				})
 				return tuitest.InitAndLoad(t, inventoryui.NewListViewModel(f.App))
 			},
 			activate: func(t testing.TB, model views.ViewModel) views.ViewModel {
@@ -110,18 +119,16 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 			name: "orders cancel dialog",
 			view: ViewOrders,
 			model: func(f *testutil.Fixture) views.ViewModel {
-				drink := f.CreateDrink("Margarita").With("Tequila", 1).Build()
-				menu, err := f.Menus.Create(f.OwnerContext(), &menusmodels.Menu{Name: "Dinner"})
-				testutil.Ok(t, err)
-				menu, err = f.Menus.AddDrink(f.OwnerContext(), &menusmodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
-				testutil.Ok(t, err)
-				menu, err = f.Menus.Publish(f.OwnerContext(), &menusmodels.Menu{ID: menu.ID})
-				testutil.Ok(t, err)
-				_, err = f.Orders.Place(f.OwnerContext(), &ordersmodels.Order{
+				ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+				drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
+					Name: "Margarita", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe,
+					Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, ingredient.Unit)}}, Steps: []string{"Shake"}},
+				})
+				menu := testutil.CreateMenu(t, f, "Dinner", testutil.WithDrink(drink), testutil.Published())
+				testutil.PlaceOrder(t, f, ordersmodels.Order{
 					MenuID: menu.ID,
 					Items:  []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
 				})
-				testutil.Ok(t, err)
 				return tuitest.InitAndLoad(t, ordersui.NewListViewModel(f.App))
 			},
 			activate: func(t testing.TB, model views.ViewModel) views.ViewModel {

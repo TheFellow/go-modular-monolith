@@ -6,6 +6,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	drinkstui "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/tui"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
@@ -15,10 +16,9 @@ import (
 func TestListViewModel_ShowsDrinksAfterLoad(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
 
-	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
-	b.WithDrink(models.Drink{
+	lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+	testutil.CreateDrink(t, f, models.Drink{
 		Name:     "Margarita",
 		Category: models.DrinkCategoryCocktail,
 		Recipe: models.Recipe{
@@ -73,10 +73,9 @@ func TestListViewModel_ShowsErrorOnFailure(t *testing.T) {
 func TestListViewModel_DetailShowsIngredients(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
 
-	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
-	b.WithDrink(models.Drink{
+	lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+	testutil.CreateDrink(t, f, models.Drink{
 		Name:     "Margarita",
 		Category: models.DrinkCategoryCocktail,
 		Recipe: models.Recipe{
@@ -97,10 +96,9 @@ func TestListViewModel_DetailShowsIngredients(t *testing.T) {
 func TestListViewModel_DetailShowsRecipeSteps(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	b := f.Bootstrap().WithBasicIngredients()
 
-	lime := b.WithIngredient("Lime Juice", measurement.UnitOz)
-	b.WithDrink(models.Drink{
+	lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime Juice", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+	testutil.CreateDrink(t, f, models.Drink{
 		Name:     "Margarita",
 		Category: models.DrinkCategoryCocktail,
 		Recipe: models.Recipe{
@@ -126,7 +124,6 @@ func TestListViewModel_DetailShowsRecipeSteps(t *testing.T) {
 func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	f.Bootstrap().WithBasicIngredients()
 
 	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 30, Height: 20})
@@ -148,7 +145,6 @@ func TestListViewModel_SetSize_ZeroWidth(t *testing.T) {
 func TestListViewModel_SetSize_WideWidth(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	f.Bootstrap().WithBasicIngredients()
 
 	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
@@ -160,7 +156,6 @@ func TestListViewModel_SetSize_WideWidth(t *testing.T) {
 func TestListViewModel_SetSize_ResizeSequence(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	f.Bootstrap().WithBasicIngredients()
 
 	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(f.App))
 	sizes := []tea.WindowSizeMsg{
