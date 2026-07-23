@@ -43,6 +43,7 @@ func TestCommandNouns(t *testing.T) {
 	testutil.Equals(t, names, want)
 }
 
+//nolint:paralleltest // urfave CLI mutates shared package-level flag instances while parsing.
 func TestTableOutputUsesCommandWriter(t *testing.T) {
 	c, err := NewCLI()
 	testutil.Ok(t, err)
