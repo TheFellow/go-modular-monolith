@@ -14,7 +14,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
-	"github.com/mjl-/bstore"
 )
 
 func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
@@ -126,10 +125,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 
 	// Dispatch DrinkDeleted event for drink1
 	d := dispatcher.New(f.Store)
-	err = f.Store.Write(ctx, func(tx *bstore.Tx) error {
-		txCtx := ctx.WithTransaction(tx)
-		return d.Dispatch(txCtx, drinksevents.DrinkDeleted{Drink: *drink1, DeletedAt: time.Now().UTC()})
-	})
+	err = d.Dispatch(ctx, drinksevents.DrinkDeleted{Drink: *drink1, DeletedAt: time.Now().UTC()})
 	testutil.Ok(t, err)
 
 	// Verify menu now has only drink2

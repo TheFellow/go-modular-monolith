@@ -52,7 +52,7 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 func TestListViewModel_ShowsErrorOnFailure(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	testutil.Ok(t, f.App.Close())
+	testutil.Ok(t, f.Close())
 
 	model := tuitest.InitAndLoad(t, inventorytui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})

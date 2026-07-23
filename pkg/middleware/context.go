@@ -19,12 +19,17 @@ type Context struct {
 }
 
 func NewContext(parent context.Context) *Context {
+	var tx *bstore.Tx
+	if parentCtx, ok := parent.(*Context); ok {
+		tx = parentCtx.tx
+	}
 	principal := authn.FromContext(parent)
 	parent = log.ToContext(parent, log.FromContext(parent).With(log.Actor(principal)))
 	c := &Context{
 		Context:   parent,
 		events:    make([]any, 0, 4),
 		principal: principal,
+		tx:        tx,
 	}
 
 	return c

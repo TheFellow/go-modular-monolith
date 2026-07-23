@@ -16,6 +16,9 @@ func UnitOfWork(s *store.Store) Middleware {
 		if s == nil {
 			return errors.Internalf("store missing from context")
 		}
+		if tx, ok := ctx.Transaction(); ok && tx != nil {
+			return next(ctx)
+		}
 
 		return s.Write(ctx, func(tx *bstore.Tx) error {
 			txCtx := ctx.WithTransaction(tx)
