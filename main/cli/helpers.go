@@ -151,8 +151,8 @@ func writeJSON(w io.Writer, v any) error {
 	return err
 }
 
-func newTabWriter() *tabwriter.Writer {
-	return tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+func newTabWriter(output io.Writer) *tabwriter.Writer {
+	return tabwriter.NewWriter(output, 0, 0, 2, ' ', 0)
 }
 
 func readJSONInput[T any](cmd *cli.Command) (T, error) {

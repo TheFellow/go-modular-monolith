@@ -48,7 +48,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					if err := clitable.PrintTable(ingredientscli.ToIngredientRows(res.Items)); err != nil {
+					if err := clitable.PrintTable(cmd.Writer, ingredientscli.ToIngredientRows(res.Items)); err != nil {
 						return err
 					}
 					return printNextCursor(cmd.Writer, res.Next)
@@ -75,7 +75,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					return clitable.PrintDetail(ingredientscli.ToIngredientRow(res))
+					return clitable.PrintDetail(cmd.Writer, ingredientscli.ToIngredientRow(res))
 				}),
 			},
 			{
@@ -154,8 +154,8 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					fmt.Println(res.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, res.ID.String())
+					return err
 				}),
 			},
 			{
@@ -242,8 +242,8 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					fmt.Println(res.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, res.ID.String())
+					return err
 				}),
 			},
 			{
@@ -267,8 +267,8 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					fmt.Println(res.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, res.ID.String())
+					return err
 				}),
 			},
 		},

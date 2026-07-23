@@ -52,7 +52,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					if err := clitable.PrintTable(inventorycli.ToInventoryRows(res.Items)); err != nil {
+					if err := clitable.PrintTable(cmd.Writer, inventorycli.ToInventoryRows(res.Items)); err != nil {
 						return err
 					}
 					return printNextCursor(cmd.Writer, res.Next)
@@ -79,7 +79,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					return clitable.PrintDetail(inventorycli.ToInventoryRow(res))
+					return clitable.PrintDetail(cmd.Writer, inventorycli.ToInventoryRow(res))
 				}),
 			},
 			{
@@ -229,8 +229,8 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					fmt.Println(res.IngredientID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, res.IngredientID.String())
+					return err
 				}),
 			},
 			{
@@ -338,8 +338,8 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						return writeJSON(cmd.Writer, res)
 					}
 
-					fmt.Println(res.IngredientID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, res.IngredientID.String())
+					return err
 				}),
 			},
 		},

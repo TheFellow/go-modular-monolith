@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -127,7 +128,7 @@ func (c *CLI) printAuditList(ctx *middleware.Context, cmd *cli.Command, req audi
 	if cmd.Bool("json") {
 		return writeJSON(cmd.Writer, page)
 	}
-	if err := printAuditEntries(page.Items); err != nil {
+	if err := printAuditEntries(cmd.Writer, page.Items); err != nil {
 		return err
 	}
 	return printNextCursor(cmd.Writer, page.Next)
@@ -228,6 +229,6 @@ func parseEntityUID(value string) (cedar.EntityUID, error) {
 	return cedar.NewEntityUID(cedar.EntityType(typ), cedar.String(id)), nil
 }
 
-func printAuditEntries(entries []*auditmodels.AuditEntry) error {
-	return clitable.PrintTable(auditcli.ToAuditRows(entries))
+func printAuditEntries(output io.Writer, entries []*auditmodels.AuditEntry) error {
+	return clitable.PrintTable(output, auditcli.ToAuditRows(entries))
 }

@@ -3,16 +3,15 @@ package table
 import (
 	"fmt"
 	"io"
-	"os"
 	"reflect"
 	"strings"
 	"text/tabwriter"
 	"time"
 )
 
-// PrintTable prints items as a table with headers from struct tags.
-func PrintTable[T any](items []T) error {
-	return printTable(os.Stdout, items)
+// PrintTable prints items to output as a table with headers from struct tags.
+func PrintTable[T any](output io.Writer, items []T) error {
+	return printTable(output, items)
 }
 
 func printTable[T any](output io.Writer, items []T) error {
@@ -59,9 +58,9 @@ func printTable[T any](output io.Writer, items []T) error {
 	return w.Flush()
 }
 
-// PrintDetail prints a single item as key-value pairs.
-func PrintDetail[T any](item T) error {
-	return printDetail(os.Stdout, item)
+// PrintDetail prints a single item to output as key-value pairs.
+func PrintDetail[T any](output io.Writer, item T) error {
+	return printDetail(output, item)
 }
 
 func printDetail[T any](output io.Writer, item T) error {

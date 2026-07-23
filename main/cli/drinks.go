@@ -64,7 +64,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, paging.Page[drinkscli.Drink]{Items: out, Next: res.Next})
 					}
 
-					if err := clitable.PrintTable(drinkscli.ToDrinkRows(res.Items)); err != nil {
+					if err := clitable.PrintTable(cmd.Writer, drinkscli.ToDrinkRows(res.Items)); err != nil {
 						return err
 					}
 					return printNextCursor(cmd.Writer, res.Next)
@@ -91,7 +91,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					return clitable.PrintDetail(drinkscli.ToDrinkRow(res))
+					return clitable.PrintDetail(cmd.Writer, drinkscli.ToDrinkRow(res))
 				}),
 			},
 			{
@@ -125,8 +125,8 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					fmt.Println(res.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, res.ID.String())
+					return err
 				}),
 			},
 			{
@@ -160,8 +160,8 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					fmt.Println(res.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, res.ID.String())
+					return err
 				}),
 			},
 			{
@@ -185,8 +185,8 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
-					fmt.Println(res.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, res.ID.String())
+					return err
 				}),
 			},
 		},

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"reflect"
 	"testing"
 	"time"
@@ -39,6 +41,21 @@ func TestCommandNouns(t *testing.T) {
 
 	want := []string{"drinks", "ingredients", "inventory", "menus", "orders", "audit"}
 	testutil.Equals(t, names, want)
+}
+
+func TestTableOutputUsesCommandWriter(t *testing.T) {
+	c, err := NewCLI()
+	testutil.Ok(t, err)
+	c.dbPath = t.TempDir() + "/writer.db"
+	cmd := c.Command()
+	var out bytes.Buffer
+	leaf := cmd.Command("ingredients").Command("list")
+	leaf.Writer = &out
+	leaf.ErrWriter = &out
+
+	testutil.Ok(t, cmd.Run(context.Background(), []string{"mixology", "ingredients", "list"}))
+	testutil.StringContains(t, out.String(), "ID")
+	testutil.StringContains(t, out.String(), "DESCRIPTION")
 }
 
 func TestTableColumns(t *testing.T) {
