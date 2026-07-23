@@ -70,13 +70,17 @@ func (c *AvailabilityCalculator) CalculateDetail(ctx store.Context, drinkID enti
 	var missing []MissingIngredient
 	var substitutions []AppliedSubstitution
 
+	requirements := make([]drinksmodels.RecipeIngredient, 0, len(drink.Recipe.Ingredients))
 	for _, req := range drink.Recipe.Ingredients {
 		if req.Optional {
 			continue
 		}
+		requirements = append(requirements, req)
+	}
 
-		pick, ok := c.PickIngredient(ctx, req)
-		if !ok {
+	picks, fulfilled := c.PickIngredients(ctx, requirements)
+	if !fulfilled {
+		for _, req := range requirements {
 			hasSub := len(req.Substitutes) > 0
 			if !hasSub && c.ingredients != nil {
 				if rules, err := c.ingredients.SubstitutionsFor(ctx, req.IngredientID); err == nil {
@@ -89,9 +93,12 @@ func (c *AvailabilityCalculator) CalculateDetail(ctx store.Context, drinkID enti
 				Available:     measurement.MustAmount(0, req.Amount.Unit()),
 				HasSubstitute: hasSub,
 			})
-			continue
 		}
+		return Detail{Status: models.AvailabilityUnavailable, Missing: missing}, nil
+	}
 
+	for i, pick := range picks {
+		req := requirements[i]
 		threshold := pick.Required.Mul(3)
 		if pick.Available.Value() < threshold.Value() {
 			limited = true
@@ -106,9 +113,6 @@ func (c *AvailabilityCalculator) CalculateDetail(ctx store.Context, drinkID enti
 		}
 	}
 
-	if len(missing) > 0 {
-		return Detail{Status: models.AvailabilityUnavailable, Missing: missing, Substitutions: substitutions}, nil
-	}
 	if limited {
 		return Detail{Status: models.AvailabilityLimited, Missing: nil, Substitutions: substitutions}, nil
 	}
@@ -133,6 +137,73 @@ type candidate struct {
 }
 
 func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmodels.RecipeIngredient) (PickResult, bool) {
+	picks, ok := c.PickIngredients(ctx, []drinksmodels.RecipeIngredient{req})
+	if !ok {
+		return PickResult{}, false
+	}
+	return picks[0], true
+}
+
+// PickIngredients selects one stock source for each requirement while
+// reserving stock selected by earlier choices. Candidate preferences remain
+// deterministic, but the search backtracks when a preferred source would
+// prevent the complete set of requirements from being fulfilled.
+func (c *AvailabilityCalculator) PickIngredients(ctx store.Context, requirements []drinksmodels.RecipeIngredient) ([]PickResult, bool) {
+	candidateSets := make([][]PickResult, len(requirements))
+	for i, req := range requirements {
+		candidateSets[i] = c.availableCandidates(ctx, req)
+		if len(candidateSets[i]) == 0 {
+			return nil, false
+		}
+	}
+
+	selected := make([]PickResult, len(requirements))
+	reserved := make(map[string]measurement.Amount)
+	var assign func(int) bool
+	assign = func(index int) bool {
+		if index == len(candidateSets) {
+			return true
+		}
+		for _, pick := range candidateSets[index] {
+			key := pick.IngredientID.String()
+			prior, hadPrior := reserved[key]
+			total := pick.Required
+			if hadPrior {
+				converted, err := prior.Convert(pick.Required.Unit())
+				if err != nil {
+					continue
+				}
+				total, err = converted.Add(pick.Required)
+				if err != nil {
+					continue
+				}
+			}
+			available, err := pick.Available.Convert(total.Unit())
+			if err != nil || available.Value() < total.Value() {
+				continue
+			}
+
+			selected[index] = pick
+			reserved[key] = total
+			if assign(index + 1) {
+				return true
+			}
+			if hadPrior {
+				reserved[key] = prior
+			} else {
+				delete(reserved, key)
+			}
+		}
+		return false
+	}
+
+	if !assign(0) {
+		return nil, false
+	}
+	return selected, true
+}
+
+func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drinksmodels.RecipeIngredient) []PickResult {
 	candidates := make([]candidate, 0, 1+len(req.Substitutes))
 	candidates = append(candidates, candidate{
 		id:            req.IngredientID,
@@ -220,7 +291,7 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 		})
 	}
 	if len(picks) == 0 {
-		return PickResult{}, false
+		return nil
 	}
 
 	sort.Slice(picks, func(i, j int) bool {
@@ -242,10 +313,8 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 		return a.IngredientID.String() < b.IngredientID.String()
 	})
 
-	best := picks[0]
-	if best.Required.Value() <= 0 {
-		return PickResult{}, false
+	if picks[0].Required.Value() <= 0 {
+		return nil
 	}
-
-	return best, true
+	return picks
 }

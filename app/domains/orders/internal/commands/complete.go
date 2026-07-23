@@ -61,6 +61,7 @@ func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]
 		id string
 	}
 	usageByIngredient := map[usageKey]events.IngredientUsage{}
+	requirements := make([]drinksmodels.RecipeIngredient, 0)
 
 	for _, item := range o.Items {
 		drink, err := c.drinks.Get(ctx, item.DrinkID)
@@ -68,24 +69,35 @@ func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]
 			return nil, nil, err
 		}
 
-		usage, err := c.computeUsageForDrink(ctx, drink, item.Quantity)
+		requested, err := requirementsForDrink(drink, item.Quantity)
 		if err != nil {
 			return nil, nil, err
 		}
-		for _, u := range usage {
-			k := usageKey{id: u.IngredientID.String()}
-			existing, ok := usageByIngredient[k]
-			if !ok {
-				usageByIngredient[k] = u
-				continue
-			}
-			next, err := existing.Amount.Add(u.Amount)
-			if err != nil {
-				return nil, nil, err
-			}
-			existing.Amount = next
-			usageByIngredient[k] = existing
+		requirements = append(requirements, requested...)
+	}
+
+	fulfilled, ok := c.menus.FulfillIngredients(ctx, requirements)
+	if !ok {
+		return nil, nil, errors.Invalidf("insufficient stock to fulfill order")
+	}
+	for _, pick := range fulfilled {
+		ingredient, err := c.ingredients.Get(ctx, pick.IngredientID)
+		if err != nil {
+			return nil, nil, err
 		}
+		u := events.IngredientUsage{IngredientID: pick.IngredientID, Name: ingredient.Name, Amount: pick.Required}
+		k := usageKey{id: u.IngredientID.String()}
+		existing, ok := usageByIngredient[k]
+		if !ok {
+			usageByIngredient[k] = u
+			continue
+		}
+		next, err := existing.Amount.Add(u.Amount)
+		if err != nil {
+			return nil, nil, err
+		}
+		existing.Amount = next
+		usageByIngredient[k] = existing
 	}
 
 	ingredientUsage := make([]events.IngredientUsage, 0, len(usageByIngredient))
@@ -122,12 +134,12 @@ func (c *Commands) enrichCompletion(ctx *middleware.Context, o models.Order) ([]
 	return ingredientUsage, depleted, nil
 }
 
-func (c *Commands) computeUsageForDrink(ctx *middleware.Context, drink *drinksmodels.Drink, quantity int) ([]events.IngredientUsage, error) {
+func requirementsForDrink(drink *drinksmodels.Drink, quantity int) ([]drinksmodels.RecipeIngredient, error) {
 	if quantity <= 0 {
 		return nil, errors.Invalidf("quantity must be > 0")
 	}
 
-	out := make([]events.IngredientUsage, 0)
+	out := make([]drinksmodels.RecipeIngredient, 0, len(drink.Recipe.Ingredients))
 	for _, req := range drink.Recipe.Ingredients {
 		if req.Optional {
 			continue
@@ -135,22 +147,7 @@ func (c *Commands) computeUsageForDrink(ctx *middleware.Context, drink *drinksmo
 
 		required := req
 		required.Amount = req.Amount.Mul(float64(quantity))
-		pick, ok := c.menus.FulfillIngredient(ctx, required)
-		if !ok {
-			return nil, errors.Invalidf("insufficient stock for ingredient %s: need %s", req.IngredientID.String(), required.Amount.String())
-		}
-		ingredient, err := c.ingredients.Get(ctx, pick.IngredientID)
-		if err != nil {
-			return nil, err
-		}
-
-		out = append(out, events.IngredientUsage{
-			IngredientID: pick.IngredientID,
-			Name:         ingredient.Name,
-			Amount:       pick.Required,
-		})
+		out = append(out, required)
 	}
-
-	sort.Slice(out, func(i, j int) bool { return out[i].IngredientID.String() < out[j].IngredientID.String() })
 	return out, nil
 }

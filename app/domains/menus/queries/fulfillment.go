@@ -24,16 +24,30 @@ type IngredientFulfillment struct {
 // FulfillIngredient selects an in-stock original or substitute using the menu
 // availability policy. False means no candidate can satisfy the requirement.
 func (q *Queries) FulfillIngredient(ctx store.Context, req drinksmodels.RecipeIngredient) (IngredientFulfillment, bool) {
-	pick, ok := q.availability.PickIngredient(ctx, req)
+	picks, ok := q.FulfillIngredients(ctx, []drinksmodels.RecipeIngredient{req})
 	if !ok {
 		return IngredientFulfillment{}, false
 	}
-	return IngredientFulfillment{
-		IngredientID:     pick.IngredientID,
-		Required:         pick.Required,
-		Available:        pick.Available,
-		UsedSubstitution: pick.UsedSubstitution,
-		Ratio:            pick.Ratio,
-		QualityImpact:    pick.QualityImpact,
-	}, true
+	return picks[0], true
+}
+
+// FulfillIngredients plans all requirements together so shared stock is not
+// promised to more than one ingredient in the same operation.
+func (q *Queries) FulfillIngredients(ctx store.Context, requirements []drinksmodels.RecipeIngredient) ([]IngredientFulfillment, bool) {
+	picks, ok := q.availability.PickIngredients(ctx, requirements)
+	if !ok {
+		return nil, false
+	}
+	fulfilled := make([]IngredientFulfillment, len(picks))
+	for i, pick := range picks {
+		fulfilled[i] = IngredientFulfillment{
+			IngredientID:     pick.IngredientID,
+			Required:         pick.Required,
+			Available:        pick.Available,
+			UsedSubstitution: pick.UsedSubstitution,
+			Ratio:            pick.Ratio,
+			QualityImpact:    pick.QualityImpact,
+		}
+	}
+	return fulfilled, true
 }
