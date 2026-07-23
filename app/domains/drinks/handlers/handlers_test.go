@@ -19,13 +19,13 @@ func TestIngredientDeletedHandlersRemoveDependentsAndPreserveUnrelatedEntities(t
 	b := f.Bootstrap()
 	ctx := f.OwnerContext()
 
-	target := b.WithIngredientModel(ingredientsmodels.Ingredient{Name: "Target", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
-	other := b.WithIngredientModel(ingredientsmodels.Ingredient{Name: "Other", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+	target := b.WithIngredient("Target", measurement.UnitOz)
+	other := b.WithIngredient("Other", measurement.UnitOz)
 	targetStock := b.WithInventory(target, 10)
 	otherStock := b.WithInventory(other, 10)
-	affectedA := handlerDrink(b, "Affected A", target)
-	affectedB := handlerDrink(b, "Affected B", target)
-	survivor := handlerDrink(b, "Survivor", other)
+	affectedA := f.CreateDrink("Affected A").WithIngredient(target, 1).Build()
+	affectedB := f.CreateDrink("Affected B").WithIngredient(target, 1).Build()
+	survivor := f.CreateDrink("Survivor").WithIngredient(other, 1).Build()
 	affectedMenu := b.WithPublishedMenu(menumodels.Menu{Name: "Affected"}, affectedA, survivor, affectedB)
 	unrelatedMenu := b.WithPublishedMenu(menumodels.Menu{Name: "Unrelated"}, survivor)
 
@@ -63,17 +63,14 @@ func TestIngredientUpdatedHandlersAuditEveryDependentWithoutMutatingThem(t *test
 	b := f.Bootstrap()
 	ctx := f.OwnerContext()
 
-	target := b.WithIngredientModel(ingredientsmodels.Ingredient{Name: "Target", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
-	other := b.WithIngredientModel(ingredientsmodels.Ingredient{Name: "Other", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
-	affectedA := handlerDrink(b, "Affected A", target)
-	affectedB := handlerDrink(b, "Affected B", target)
-	survivor := handlerDrink(b, "Survivor", other)
-	menuA := b.WithMenu("Menu A")
-	menuA = addDrinks(t, f, menuA, affectedA, affectedB)
-	menuB := b.WithMenu("Menu B")
-	menuB = addDrinks(t, f, menuB, affectedA)
-	unrelatedMenu := b.WithMenu("Unrelated")
-	unrelatedMenu = addDrinks(t, f, unrelatedMenu, survivor)
+	target := b.WithIngredient("Target", measurement.UnitOz)
+	other := b.WithIngredient("Other", measurement.UnitOz)
+	affectedA := f.CreateDrink("Affected A").WithIngredient(target, 1).Build()
+	affectedB := f.CreateDrink("Affected B").WithIngredient(target, 1).Build()
+	survivor := f.CreateDrink("Survivor").WithIngredient(other, 1).Build()
+	menuA := b.AddDrinks(b.WithMenu("Menu A"), affectedA, affectedB)
+	menuB := b.AddDrinks(b.WithMenu("Menu B"), affectedA)
+	unrelatedMenu := b.AddDrinks(b.WithMenu("Unrelated"), survivor)
 
 	_, err := f.Ingredients.Update(ctx, &ingredientsmodels.Ingredient{ID: target.ID, Name: "Renamed Target"})
 	testutil.Ok(t, err)
@@ -93,26 +90,6 @@ func TestIngredientUpdatedHandlersAuditEveryDependentWithoutMutatingThem(t *test
 		target.ID.EntityUID(), affectedA.ID.EntityUID(), affectedB.ID.EntityUID(),
 		menuA.ID.EntityUID(), menuB.ID.EntityUID(),
 	)
-}
-
-func handlerDrink(b *testutil.Bootstrap, name string, ingredient *ingredientsmodels.Ingredient) *drinksmodels.Drink {
-	return b.WithDrink(drinksmodels.Drink{
-		Name: name, Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe,
-		Recipe: drinksmodels.Recipe{
-			Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, ingredient.Unit)}},
-			Steps:       []string{"Mix"},
-		},
-	})
-}
-
-func addDrinks(t *testing.T, f *testutil.Fixture, menu *menumodels.Menu, drinks ...*drinksmodels.Drink) *menumodels.Menu {
-	t.Helper()
-	for _, drink := range drinks {
-		var err error
-		menu, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
-		testutil.Ok(t, err)
-	}
-	return menu
 }
 
 func menuDrinkIDs(menu *menumodels.Menu) []entity.DrinkID {

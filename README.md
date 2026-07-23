@@ -80,6 +80,12 @@ String predicates accept the canonical dot syntax (`name.contains("gin")`, `star
 `endsWith`, and `matches`) as well as Expr's infix spelling (`name contains "gin"`). Expressions
 are type-checked against the command's schema before the query runs.
 
+The parser also produces an application-owned expression tree, keeping the filter contract
+independent of CLI parsing and reusable by the TUI or a future gRPC surface. Conjunctive
+comparisons on mapped fields are pushed into native bstore filters; the complete expression is
+still evaluated as a residual predicate so `or`, `not`, nested fields, and string operations keep
+their exact semantics.
+
 ```bash
 go run ./main/cli drinks list --filter-help
 go run ./main/cli drinks list \
@@ -98,6 +104,25 @@ go tool arch-lint -config=.arch-lint.yaml
 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
 go test ./...
 ```
+
+### Application Test Fixtures
+
+Application tests should start with `f := testutil.NewFixture(t)`. Each fixture creates an
+isolated embedded database, starts a wrapping transaction, and rolls that transaction back from
+`t.Cleanup`. Calls still travel through the real authorization, unit-of-work, event-dispatch, and
+audit pipeline. The bootstrap and builder helpers keep cross-domain setup concise:
+
+```go
+f := testutil.NewFixture(t)
+b := f.Bootstrap()
+lime := b.WithIngredient("Fresh Lime", measurement.UnitOz)
+drink := f.CreateDrink("Daiquiri").WithIngredient(lime, 1).Build()
+menu := b.AddDrinks(b.WithMenu("Classics"), drink)
+```
+
+Use `b.WithPublishedMenu` when publication is part of setup. Handler tests can use
+`f.LatestAuditEntry` and `testutil.AuditTouches` to assert the exact set of entities attributed to
+the originating command.
 
 ## Project Layout
 
@@ -123,13 +148,14 @@ pkg/
   authz/           Cedar policy engine integration
   authn/           Actor definitions (owner, manager, sommelier, bartender, anonymous)
   dispatcher/      Generated event -> handler routing
+  filter/          Typed Expr schemas, transport-neutral trees, bstore translation
   store/           bstore wrapper with metrics & transactions
   telemetry/       Prometheus metrics
   log/             Structured slog logging
   errors/          Typed domain errors with mapped exit codes & TUI styles
   optional/        Minimal generic Value[T] optional type (Some/None/IsSome/Unwrap)
   tui/             Shared Bubble Tea components (forms, dialogs, styles, keys)
-  testutil/        Fixtures, bootstrap helpers, assertion utilities
+  testutil/        Rollback fixtures, domain builders, audit helpers, assertion utilities
 main/
   cli/             CLI + TUI entry point (--tui flag launches the TUI)
   seed/            Database seeder
@@ -190,6 +216,10 @@ constructed fresh for each event dispatch, so `Handling()` may query and store e
 state on the handler receiver for the later `Handle()` call. This lets handlers inspect
 affected entities before mutations begin — used, for example, when `IngredientDeleted` is
 handled by both the Drinks and Menus domains.
+
+The command mutation, every dispatched handler mutation, and the resulting audit entry execute
+inside the same unit-of-work transaction. A failure in any handler rolls the complete operation
+back rather than leaving its domain verticals out of sync.
 
 ## Middleware Pipelines
 
@@ -386,6 +416,9 @@ mixology audit list --principal owner
 
 # Filter by entity
 mixology audit list --entity Mixology::Drink::drk-abc123
+
+# Compose the same fields with the shared expression language
+mixology audit list --filter 'principal.contains("owner") && success'
 
 # View entity history
 mixology audit history Mixology::Drink::drk-abc123

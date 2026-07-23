@@ -5,7 +5,6 @@ import (
 
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventoryauthz "github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menusaudit "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
@@ -22,12 +21,12 @@ func TestDrinkDeletedHandlerRemovesOnlyDeletedDrinkFromMenus(t *testing.T) {
 	f := testutil.NewFixture(t)
 	b := f.Bootstrap()
 	ctx := f.OwnerContext()
-	targetIngredient := menuHandlerIngredient(b, "Target")
-	otherIngredient := menuHandlerIngredient(b, "Other")
+	targetIngredient := b.WithIngredient("Target", measurement.UnitOz)
+	otherIngredient := b.WithIngredient("Other", measurement.UnitOz)
 	b.WithInventory(targetIngredient, 10)
 	b.WithInventory(otherIngredient, 10)
-	target := menuHandlerDrink(b, "Target", targetIngredient)
-	survivor := menuHandlerDrink(b, "Survivor", otherIngredient)
+	target := f.CreateDrink("Target").WithIngredient(targetIngredient, 1).Build()
+	survivor := f.CreateDrink("Survivor").WithIngredient(otherIngredient, 1).Build()
 	affectedMenu := b.WithPublishedMenu(menumodels.Menu{Name: "Affected"}, target, survivor)
 	unrelatedMenu := b.WithPublishedMenu(menumodels.Menu{Name: "Unrelated"}, survivor)
 
@@ -54,15 +53,15 @@ func TestDrinkUpdatedHandlerChangesOnlyAffectedPublishedMenuItems(t *testing.T) 
 	f := testutil.NewFixture(t)
 	b := f.Bootstrap()
 	ctx := f.OwnerContext()
-	base := menuHandlerIngredient(b, "Base")
-	other := menuHandlerIngredient(b, "Other")
-	rare := menuHandlerIngredient(b, "Rare")
+	base := b.WithIngredient("Base", measurement.UnitOz)
+	other := b.WithIngredient("Other", measurement.UnitOz)
+	rare := b.WithIngredient("Rare", measurement.UnitOz)
 	b.WithInventory(base, 10)
 	b.WithInventory(other, 10)
-	target := menuHandlerDrink(b, "Target", base)
-	survivor := menuHandlerDrink(b, "Survivor", other)
+	target := f.CreateDrink("Target").WithIngredient(base, 1).Build()
+	survivor := f.CreateDrink("Survivor").WithIngredient(other, 1).Build()
 	affectedMenu := b.WithPublishedMenu(menumodels.Menu{Name: "Affected"}, target, survivor)
-	draftMenu := addMenuHandlerDrinks(t, f, b.WithMenu("Draft"), target)
+	draftMenu := b.AddDrinks(b.WithMenu("Draft"), target)
 	unrelatedMenu := b.WithPublishedMenu(menumodels.Menu{Name: "Unrelated"}, survivor)
 
 	update := *target
@@ -91,14 +90,14 @@ func TestStockAdjustedHandlerRecalculatesOnlyPublishedMenusUsingIngredient(t *te
 	f := testutil.NewFixture(t)
 	b := f.Bootstrap()
 	ctx := f.OwnerContext()
-	targetIngredient := menuHandlerIngredient(b, "Target")
-	otherIngredient := menuHandlerIngredient(b, "Other")
+	targetIngredient := b.WithIngredient("Target", measurement.UnitOz)
+	otherIngredient := b.WithIngredient("Other", measurement.UnitOz)
 	targetStock := b.WithInventory(targetIngredient, 10)
 	b.WithInventory(otherIngredient, 10)
-	target := menuHandlerDrink(b, "Target", targetIngredient)
-	survivor := menuHandlerDrink(b, "Survivor", otherIngredient)
+	target := f.CreateDrink("Target").WithIngredient(targetIngredient, 1).Build()
+	survivor := f.CreateDrink("Survivor").WithIngredient(otherIngredient, 1).Build()
 	affectedMenu := b.WithPublishedMenu(menumodels.Menu{Name: "Affected"}, target, survivor)
-	draftMenu := addMenuHandlerDrinks(t, f, b.WithMenu("Draft"), target)
+	draftMenu := b.AddDrinks(b.WithMenu("Draft"), target)
 	unrelatedMenu := b.WithPublishedMenu(menumodels.Menu{Name: "Unrelated"}, survivor)
 
 	_, err := f.Inventory.Adjust(ctx, &inventorymodels.Patch{
@@ -126,12 +125,12 @@ func TestMenuPublishedHandlerPersistsAvailabilityAndAuditsMenu(t *testing.T) {
 	f := testutil.NewFixture(t)
 	b := f.Bootstrap()
 	ctx := f.OwnerContext()
-	missing := menuHandlerIngredient(b, "Missing")
-	stocked := menuHandlerIngredient(b, "Stocked")
+	missing := b.WithIngredient("Missing", measurement.UnitOz)
+	stocked := b.WithIngredient("Stocked", measurement.UnitOz)
 	b.WithInventory(stocked, 10)
-	unavailableDrink := menuHandlerDrink(b, "Unavailable", missing)
-	availableDrink := menuHandlerDrink(b, "Available", stocked)
-	menu := addMenuHandlerDrinks(t, f, b.WithMenu("Publish"), unavailableDrink, availableDrink)
+	unavailableDrink := f.CreateDrink("Unavailable").WithIngredient(missing, 1).Build()
+	availableDrink := f.CreateDrink("Available").WithIngredient(stocked, 1).Build()
+	menu := b.AddDrinks(b.WithMenu("Publish"), unavailableDrink, availableDrink)
 
 	published, err := f.Menus.Publish(ctx, &menumodels.Menu{ID: menu.ID})
 	testutil.Ok(t, err)
@@ -143,30 +142,6 @@ func TestMenuPublishedHandlerPersistsAvailabilityAndAuditsMenu(t *testing.T) {
 
 	entry := f.LatestAuditEntry(menusaudit.ActionPublish)
 	testutil.AuditTouches(t, entry, menu.ID.EntityUID())
-}
-
-func menuHandlerIngredient(b *testutil.Bootstrap, name string) *ingredientsmodels.Ingredient {
-	return b.WithIngredientModel(ingredientsmodels.Ingredient{Name: name, Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
-}
-
-func menuHandlerDrink(b *testutil.Bootstrap, name string, ingredient *ingredientsmodels.Ingredient) *drinksmodels.Drink {
-	return b.WithDrink(drinksmodels.Drink{
-		Name: name, Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe,
-		Recipe: drinksmodels.Recipe{
-			Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, ingredient.Unit)}},
-			Steps:       []string{"Mix"},
-		},
-	})
-}
-
-func addMenuHandlerDrinks(t *testing.T, f *testutil.Fixture, menu *menumodels.Menu, drinks ...*drinksmodels.Drink) *menumodels.Menu {
-	t.Helper()
-	for _, drink := range drinks {
-		var err error
-		menu, err = f.Menus.AddDrink(f.OwnerContext(), &menumodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
-		testutil.Ok(t, err)
-	}
-	return menu
 }
 
 func menuHandlerDrinkIDs(menu *menumodels.Menu) []entity.DrinkID {

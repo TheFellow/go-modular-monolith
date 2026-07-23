@@ -122,17 +122,26 @@ func (b *Bootstrap) WithInventory(ingredient *ingredientsmodels.Ingredient, quan
 func (b *Bootstrap) WithPublishedMenu(menu menumodels.Menu, drinks ...*drinksmodels.Drink) *menumodels.Menu {
 	b.fix.T.Helper()
 
-	created := b.WithMenuModel(menu)
-	for _, drink := range drinks {
-		var err error
-		created, err = b.fix.Menus.AddDrink(b.fix.OwnerContext(), &menumodels.MenuPatch{
-			MenuID: created.ID, DrinkID: drink.ID,
-		})
-		Ok(b.fix.T, err)
-	}
+	created := b.AddDrinks(b.WithMenuModel(menu), drinks...)
 	published, err := b.fix.Menus.Publish(b.fix.OwnerContext(), &menumodels.Menu{ID: created.ID})
 	Ok(b.fix.T, err)
 	return published
+}
+
+func (b *Bootstrap) AddDrinks(menu *menumodels.Menu, drinks ...*drinksmodels.Drink) *menumodels.Menu {
+	b.fix.T.Helper()
+	NotNil(b.fix.T, menu)
+
+	updated := menu
+	for _, drink := range drinks {
+		NotNil(b.fix.T, drink)
+		var err error
+		updated, err = b.fix.Menus.AddDrink(b.fix.OwnerContext(), &menumodels.MenuPatch{
+			MenuID: updated.ID, DrinkID: drink.ID,
+		})
+		Ok(b.fix.T, err)
+	}
+	return updated
 }
 
 func (b *Bootstrap) WithOrder(order ordersmodels.Order) *ordersmodels.Order {

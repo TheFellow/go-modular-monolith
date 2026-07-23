@@ -80,12 +80,15 @@ only contain domain logic.
 When something happens, broadcast what happened — not a pointer to go look it up.
 
 Events in this project are "fat": `DrinkCreated` carries the full `Drink` struct, not just an ID.
-This means handlers never need to query back for data. One event, one read, zero round-trips.
+Handlers can react to the changed aggregate without reloading it. A handler may still query its
+own read model to discover dependent entities, such as the menus containing a deleted drink.
 
 When `IngredientDeleted` fires, both the Drinks handler and the Menus handler receive it
 independently. They run in the same transaction. The Drinks handler soft-deletes affected
 recipes. The Menus handler removes affected drinks from menus. Neither knows the other exists.
-They don't cascade — they react in parallel to the same event.
+They don't cascade — the dispatcher invokes each leaf handler for the same event, in order,
+inside the originating command's unit of work. If any handler fails, all command and handler
+writes roll back together.
 
 The dispatcher is generated code. `pkg/dispatcher/gen` scans handler methods via AST and produces
 a type-switch that routes every event to its handlers. When multiple handlers implement
@@ -96,9 +99,9 @@ giving handlers a chance to query data before mutations begin.
 to see the generated routing, then `app/domains/menus/handlers/ingredient-deleted.go` for a
 real handler.
 
-**The takeaway:** Fat events trade a bit of memory for a lot of simplicity. Handlers that don't
-need to query back are handlers that don't have ordering dependencies, cache invalidation
-problems, or N+1 query bugs.
+**The takeaway:** Fat events trade a bit of memory for simpler reactions. Dependent-entity
+queries remain domain-owned, and the prepare-before-handle phase removes mutation-order
+dependencies when several handlers share an event.
 
 ## Lesson 5: Generate the Boring Parts
 
@@ -180,6 +183,14 @@ Each domain has a `surfaces/` directory with `cli/` and `tui/` subdirectories. T
 presentation layers — they map user input to domain calls and format output. They contain zero
 business logic.
 
+List filtering follows the same rule. Public list requests carry a human-readable Expr filter,
+and domain-owned tagged view structs define the accepted schema. `pkg/filter` type-checks the
+expression and converts it into an application-owned tree that can cross CLI, TUI, or future
+gRPC boundaries. Safe conjunctive comparisons are pushed into bstore while the full predicate is
+retained for exact residual evaluation of parentheses, `or`, `not`, nested fields, and string
+operations. Every CLI list command exposes its concrete schema and examples through
+`--filter-help`.
+
 **Where to look:** Pick a domain's `surfaces/cli/` and `surfaces/tui/` side by side. Notice they
 call the same module methods. Then check `main/cli/cli.go` for the `--tui` flag.
 
@@ -191,10 +202,28 @@ core.
 
 Tests should exercise the same code paths as production.
 
-`pkg/testutil` provides a `Fixture` that stands up the full middleware pipeline with an
-isolated temporary database. Tests call the same module methods that the CLI and TUI call. There's no
-mocking of middleware — the test runs through logging, authorization, transactions, and event
-dispatch.
+`pkg/testutil` provides a `Fixture` that stands up the full middleware pipeline with an isolated
+temporary database. Fixture creation opens a wrapping transaction, propagates it through the
+application session, and registers a `t.Cleanup` rollback. Tests can run in parallel without
+leaking state or paying for teardown deletes. They call the same module methods that the CLI and
+TUI call, so logging, authorization, command handling, event dispatch, cross-domain handler
+writes, and audit recording all execute together.
+
+Bootstrap helpers create domain entities through public application operations. The drink
+builder accepts either an ingredient name or a concrete ingredient model, and `AddDrinks`
+attaches any number of drinks to a menu without repeating command plumbing:
+
+```go
+f := testutil.NewFixture(t)
+b := f.Bootstrap()
+lime := b.WithIngredient("Fresh Lime", measurement.UnitOz)
+drink := f.CreateDrink("Daiquiri").WithIngredient(lime, 1).Build()
+menu := b.AddDrinks(b.WithMenu("Classics"), drink)
+```
+
+For cross-domain event tests, `LatestAuditEntry` finds the originating activity and
+`AuditTouches` compares the complete touched-entity set, making accidental mutations and missing
+audit attribution visible.
 
 `ActorContext()` switches between principals so authorization tests are trivial:
 
@@ -202,7 +231,7 @@ dispatch.
 ctx := f.OwnerContext()          // full access
 ctx  = f.ActorContext("bartender") // restricted
 _, err := f.Drinks.Delete(ctx, drinkID)
-testutil.AssertPermission(t, err)
+testutil.ErrorIsPermission(t, err)
 ```
 
 **Where to look:** Any `_test.go` file in `app/domains/*/`. Then `pkg/testutil/fixture.go`.
