@@ -33,14 +33,16 @@ func TestPermissions_Orders(t *testing.T) {
 			f := testutil.NewFixture(t)
 			b := f.Bootstrap()
 			a := f.App
+			owner := f.OwnerContext()
 			var ctx *middleware.Context
 			if tc.name == "owner" {
-				ctx = f.OwnerContext()
+				ctx = owner
 			} else {
 				ctx = f.ActorContext(tc.name)
 			}
 
 			base := b.WithIngredient("Orders Permissions Base", measurement.UnitOz)
+			b.WithInventory(base, 100)
 			drink := b.WithDrink(drinksM.Drink{
 				Name:     "Order Drink",
 				Category: drinksM.DrinkCategoryCocktail,
@@ -58,55 +60,79 @@ func TestPermissions_Orders(t *testing.T) {
 			menu, err = a.Menus.Publish(f.OwnerContext(), &menuM.Menu{ID: menu.ID})
 			testutil.Ok(t, err)
 
-			order, err := a.Orders.Place(f.OwnerContext(), &ordersM.Order{
+			readOrder := b.WithOrder(ordersM.Order{
 				MenuID: menu.ID,
-				Items: []ordersM.OrderItem{
-					{DrinkID: drink.ID, Quantity: 1},
-				},
+				Items:  []ordersM.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
 			})
-			testutil.Ok(t, err)
+			completeOrder := b.WithOrder(ordersM.Order{
+				MenuID: menu.ID,
+				Items:  []ordersM.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
+			})
+			cancelOrder := b.WithOrder(ordersM.Order{
+				MenuID: menu.ID,
+				Items:  []ordersM.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
+			})
 
 			listed, err := a.Orders.List(ctx, orders.ListRequest{})
 			testutil.Ok(t, err)
 			wantCount := 0
 			if tc.canRead {
-				wantCount = 1
+				wantCount = 3
 			}
 			testutil.ErrorIf(t, len(listed.Items) != wantCount, "expected %d visible orders, got %d", wantCount, len(listed.Items))
 
-			_, err = a.Orders.Get(ctx, order.ID)
+			_, err = a.Orders.Get(ctx, readOrder.ID)
 			if tc.canRead {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
 			}
 
 			_, err = a.Orders.Place(ctx, &ordersM.Order{
-				ID:     ordersM.NewOrderID(""),
-				MenuID: menuM.NewMenuID("does-not-exist"),
-				Items: []ordersM.OrderItem{
-					{DrinkID: drinksM.NewDrinkID("does-not-exist"), Quantity: 1},
-				},
+				MenuID: menu.ID,
+				Items:  []ordersM.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
 			})
 			if tc.canManage {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
 			}
 
-			_, err = a.Orders.Complete(ctx, &ordersM.Order{ID: order.ID})
+			_, err = a.Orders.Complete(ctx, &ordersM.Order{ID: completeOrder.ID})
 			if tc.canManage {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
 			}
 
-			_, err = a.Orders.Cancel(ctx, &ordersM.Order{ID: order.ID})
+			_, err = a.Orders.Cancel(ctx, &ordersM.Order{ID: cancelOrder.ID})
 			if tc.canManage {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
 			}
+
+			persistedCount, err := a.Orders.Count(owner, orders.ListRequest{})
+			testutil.Ok(t, err)
+			wantPersistedCount := 3
+			if tc.canManage {
+				wantPersistedCount++
+			}
+			testutil.Equals(t, persistedCount, wantPersistedCount)
+			gotComplete, err := a.Orders.Get(owner, completeOrder.ID)
+			testutil.Ok(t, err)
+			wantCompleteStatus := ordersM.OrderStatusPending
+			if tc.canManage {
+				wantCompleteStatus = ordersM.OrderStatusCompleted
+			}
+			testutil.Equals(t, gotComplete.Status, wantCompleteStatus)
+			gotCancel, err := a.Orders.Get(owner, cancelOrder.ID)
+			testutil.Ok(t, err)
+			wantCancelStatus := ordersM.OrderStatusPending
+			if tc.canManage {
+				wantCancelStatus = ordersM.OrderStatusCancelled
+			}
+			testutil.Equals(t, gotCancel.Status, wantCancelStatus)
 		})
 	}
 }

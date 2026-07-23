@@ -34,5 +34,5 @@ func TestDrinks_ABAC_SommelierCanCreateWine(t *testing.T) {
 
 	cocktail := drinkForPolicy("Negroni", models.DrinkCategoryCocktail, base.ID)
 	_, err = f.Drinks.Create(sommelier, &cocktail)
-	testutil.PermissionTestFail(t, err)
+	testutil.ErrorIsPermission(t, err)
 }

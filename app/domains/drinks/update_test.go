@@ -25,7 +25,7 @@ func TestDrinks_ABAC_SommelierCannotChangeWineToCocktail(t *testing.T) {
 	updated := drinkForPolicy(created.Name, models.DrinkCategoryCocktail, base.ID)
 	updated.ID = created.ID
 	_, err = f.Drinks.Update(sommelier, &updated)
-	testutil.PermissionTestFail(t, err)
+	testutil.ErrorIsPermission(t, err)
 
 	current, err := f.Drinks.Get(owner, created.ID)
 	testutil.Ok(t, err)
