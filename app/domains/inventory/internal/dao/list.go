@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/mjl-/bstore"
@@ -16,6 +17,7 @@ type ListFilter struct {
 	MaxQuantity  optional.Value[float64]
 	MinQuantity  optional.Value[float64]
 	BeforeID     string
+	Expression   *appfilter.Expression[models.ListFilterView]
 }
 
 func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Inventory, error] {
@@ -53,6 +55,9 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[StockRow] {
 	if filter.BeforeID != "" {
 		q = q.FilterLess("InventoryID", filter.BeforeID)
 	}
+	q = appfilter.ApplyBstore(q, filter.Expression, func(r StockRow) models.ListFilterView {
+		return models.ListFilterView{ID: r.InventoryID, IngredientID: r.IngredientID, Quantity: r.Quantity, Unit: r.Unit, LastUpdated: r.LastUpdated}
+	})
 
 	return q
 }

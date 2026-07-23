@@ -4,54 +4,48 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestSome(t *testing.T) {
 	t.Parallel()
 
 	value := optional.Some("hi")
-	if !value.IsSome() || value.IsNone() {
-		t.Fatal("Some value reported the wrong state")
-	}
+	testutil.IsTrue(t, value.IsSome())
+	testutil.IsFalse(t, value.IsNone())
 
 	got, ok := value.Unwrap()
-	if !ok || got != "hi" {
-		t.Fatalf("Unwrap() = %q, %v; want hi, true", got, ok)
-	}
+	testutil.IsTrue(t, ok)
+	testutil.Equals(t, got, "hi")
 }
 
 func TestNone(t *testing.T) {
 	t.Parallel()
 
 	value := optional.None[string]()
-	if value.IsSome() || !value.IsNone() {
-		t.Fatal("None value reported the wrong state")
-	}
+	testutil.IsFalse(t, value.IsSome())
+	testutil.IsTrue(t, value.IsNone())
 
 	got, ok := value.Unwrap()
-	if ok || got != "" {
-		t.Fatalf("Unwrap() = %q, %v; want empty string, false", got, ok)
-	}
+	testutil.IsFalse(t, ok)
+	testutil.Equals(t, got, "")
 }
 
 func TestSomeZeroValue(t *testing.T) {
 	t.Parallel()
 
 	got, ok := optional.Some(0).Unwrap()
-	if !ok || got != 0 {
-		t.Fatalf("Unwrap() = %d, %v; want 0, true", got, ok)
-	}
+	testutil.IsTrue(t, ok)
+	testutil.Equals(t, got, 0)
 }
 
 func TestZeroValueIsNone(t *testing.T) {
 	t.Parallel()
 
 	var value optional.Value[int]
-	if value.IsSome() || !value.IsNone() {
-		t.Fatal("zero value reported the wrong state")
-	}
+	testutil.IsFalse(t, value.IsSome())
+	testutil.IsTrue(t, value.IsNone())
 	got, ok := value.Unwrap()
-	if ok || got != 0 {
-		t.Fatalf("Unwrap() = %d, %v; want 0, false", got, ok)
-	}
+	testutil.IsFalse(t, ok)
+	testutil.Equals(t, got, 0)
 }

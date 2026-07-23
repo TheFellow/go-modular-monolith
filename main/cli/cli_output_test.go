@@ -2,7 +2,6 @@ package main
 
 import (
 	"reflect"
-	"slices"
 	"testing"
 	"time"
 
@@ -23,15 +22,14 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestCommandNouns(t *testing.T) {
 	t.Parallel()
 
 	c, err := NewCLI()
-	if err != nil {
-		t.Fatalf("NewCLI: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	commands := c.Command().Commands
 	names := make([]string, 0, len(commands))
@@ -40,9 +38,7 @@ func TestCommandNouns(t *testing.T) {
 	}
 
 	want := []string{"drinks", "ingredients", "inventory", "menus", "orders", "audit"}
-	if !slices.Equal(names, want) {
-		t.Fatalf("command nouns = %v, want %v", names, want)
-	}
+	testutil.Equals(t, names, want)
 }
 
 func TestTableColumns(t *testing.T) {
@@ -74,9 +70,7 @@ func TestTableColumns(t *testing.T) {
 					got = append(got, column)
 				}
 			}
-			if !slices.Equal(got, tt.want) {
-				t.Fatalf("columns = %v, want %v", got, tt.want)
-			}
+			testutil.Equals(t, got, tt.want)
 		})
 	}
 }
@@ -95,23 +89,20 @@ func TestTableRowsIncludeDerivedValues(t *testing.T) {
 			{}, {},
 		}},
 	})
-	if drink.Category != "cocktail" || drink.Glass != "coupe" || drink.Ingredients != 2 {
-		t.Fatalf("unexpected drink row: %+v", drink)
-	}
+	testutil.Equals(t, drink.Category, "cocktail")
+	testutil.Equals(t, drink.Glass, "coupe")
+	testutil.Equals(t, drink.Ingredients, 2)
 
 	ingredient := ingredientscli.ToIngredientRow(&ingredientsmodels.Ingredient{Description: "Bright and tart"})
-	if ingredient.Desc != "Bright and tart" {
-		t.Fatalf("unexpected ingredient row: %+v", ingredient)
-	}
+	testutil.Equals(t, ingredient.Desc, "Bright and tart")
 
 	inventory := inventorycli.ToInventoryRow(&inventorymodels.Inventory{
 		Amount:      measurement.MustAmount(3.5, measurement.UnitOz),
 		CostPerUnit: optional.Some(price),
 		LastUpdated: startedAt,
 	})
-	if inventory.CostPerUnit != "$12.34" || inventory.LastUpdated != "2026-07-22T12:00:00Z" {
-		t.Fatalf("unexpected inventory row: %+v", inventory)
-	}
+	testutil.Equals(t, inventory.CostPerUnit, "$12.34")
+	testutil.Equals(t, inventory.LastUpdated, "2026-07-22T12:00:00Z")
 
 	menuRows := menuscli.ToMenuItemRows([]menusmodels.MenuItem{{
 		DrinkID:      entity.NewDrinkID(),
@@ -121,24 +112,24 @@ func TestTableRowsIncludeDerivedValues(t *testing.T) {
 		Availability: menusmodels.AvailabilityLimited,
 		SortOrder:    2,
 	}})
-	if len(menuRows) != 1 || menuRows[0].DisplayName != "House Sour" || menuRows[0].Price != "$12.34" || !menuRows[0].Featured || menuRows[0].SortOrder != 2 {
-		t.Fatalf("unexpected menu item rows: %+v", menuRows)
-	}
+	testutil.Equals(t, len(menuRows), 1)
+	testutil.Equals(t, menuRows[0].DisplayName, "House Sour")
+	testutil.Equals(t, menuRows[0].Price, "$12.34")
+	testutil.IsTrue(t, menuRows[0].Featured)
+	testutil.Equals(t, menuRows[0].SortOrder, 2)
 
 	order := orderscli.ToOrderRow(&ordersmodels.Order{
 		Items:       []ordersmodels.OrderItem{{Quantity: 2}, {Quantity: 3}},
 		CompletedAt: optional.Some(completedAt),
 	})
-	if order.Items != 2 || order.TotalQuantity != 5 || order.CompletedAt != "2026-07-22T12:00:01Z" {
-		t.Fatalf("unexpected order row: %+v", order)
-	}
+	testutil.Equals(t, order.Items, 2)
+	testutil.Equals(t, order.TotalQuantity, 5)
+	testutil.Equals(t, order.CompletedAt, "2026-07-22T12:00:01Z")
 	orderItems := orderscli.ToOrderItemRows([]ordersmodels.OrderItem{{Notes: "No garnish"}})
-	if len(orderItems) != 1 || orderItems[0].Notes != "No garnish" {
-		t.Fatalf("unexpected order item rows: %+v", orderItems)
-	}
+	testutil.Equals(t, len(orderItems), 1)
+	testutil.Equals(t, orderItems[0].Notes, "No garnish")
 
 	audit := auditcli.ToAuditRow(&auditmodels.AuditEntry{StartedAt: startedAt, CompletedAt: completedAt})
-	if audit.CompletedAt != "2026-07-22T12:00:01Z" || audit.Duration != "1.5s" {
-		t.Fatalf("unexpected audit row: %+v", audit)
-	}
+	testutil.Equals(t, audit.CompletedAt, "2026-07-22T12:00:01Z")
+	testutil.Equals(t, audit.Duration, "1.5s")
 }

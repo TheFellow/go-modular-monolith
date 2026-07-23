@@ -51,15 +51,11 @@ func TestPageQuery_FillsPagePastDeniedEntities(t *testing.T) {
 		struct{}{},
 		paging.Request{Limit: 2},
 	)
-	if err != nil {
-		t.Fatalf("page query: %v", err)
-	}
-	if len(page.Items) != 2 || page.Items[0].ID.ID != "wine-1" || page.Items[1].ID.ID != "wine-2" {
-		t.Fatalf("expected two visible wine entries, got %#v", page.Items)
-	}
-	if page.Next != "wine-2" {
-		t.Fatalf("expected cursor wine-2, got %q", page.Next)
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, len(page.Items), 2)
+	testutil.Equals(t, page.Items[0].ID.ID, cedar.String("wine-1"))
+	testutil.Equals(t, page.Items[1].ID.ID, cedar.String("wine-2"))
+	testutil.Equals(t, page.Next, paging.Cursor("wine-2"))
 }
 
 func testDrink(id, category string) testEntity {
@@ -148,18 +144,11 @@ func TestQueryLogging_PermissionError_LogsDenied(t *testing.T) {
 		return errors.Permissionf("access denied")
 	})
 
-	if !errors.IsPermission(err) {
-		t.Fatalf("expected permission error, got %v", err)
-	}
-
-	if !logBuf.Contains("query denied") {
-		t.Errorf("expected 'query denied' log, got: %s", logBuf.String())
-	}
+	testutil.ErrorIsPermission(t, err)
+	testutil.StringContains(t, logBuf.String(), "query denied")
 
 	// But it should log the start
-	if !logBuf.Contains("query started") {
-		t.Errorf("expected 'query started' log, got: %s", logBuf.String())
-	}
+	testutil.StringContains(t, logBuf.String(), "query started")
 }
 
 func TestQueryLogging_OtherError_Logs(t *testing.T) {
@@ -179,14 +168,10 @@ func TestQueryLogging_OtherError_Logs(t *testing.T) {
 		return errors.Internalf("database error")
 	})
 
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
+	testutil.NotNil(t, err)
 
 	// Non-permission errors SHOULD be logged
-	if !logBuf.Contains("query failed") {
-		t.Errorf("expected 'query failed' log for non-permission error, got: %s", logBuf.String())
-	}
+	testutil.StringContains(t, logBuf.String(), "query failed")
 }
 
 func TestCommandLogging_PermissionError_LogsDenied(t *testing.T) {
@@ -206,13 +191,8 @@ func TestCommandLogging_PermissionError_LogsDenied(t *testing.T) {
 		return errors.Permissionf("access denied")
 	})
 
-	if !errors.IsPermission(err) {
-		t.Fatalf("expected permission error, got %v", err)
-	}
-
-	if !logBuf.Contains("command denied") {
-		t.Errorf("expected 'command denied' log, got: %s", logBuf.String())
-	}
+	testutil.ErrorIsPermission(t, err)
+	testutil.StringContains(t, logBuf.String(), "command denied")
 }
 
 // --- Full Chain Integration Tests ---
@@ -232,12 +212,8 @@ func TestEntityQuery_AuthorizesLoadedResult(t *testing.T) {
 			ID: cedar.NewEntityUID(cedar.EntityType("Mixology::Drink"), cedar.String("stub")),
 		}, nil
 	}, struct{}{})
-	if !errors.IsPermission(err) {
-		t.Fatalf("expected permission error, got %v", err)
-	}
-	if !executed {
-		t.Fatal("expected entity query to load its result before authorization")
-	}
+	testutil.ErrorIsPermission(t, err)
+	testutil.IsTrue(t, executed)
 }
 
 func TestEntityQuery_ReturnsNotFoundWithoutAuthorization(t *testing.T) {
@@ -251,9 +227,7 @@ func TestEntityQuery_ReturnsNotFoundWithoutAuthorization(t *testing.T) {
 	_, err := middleware.RunEntityQuery(pipeline, mctx, drinksauthz.ActionUpdate, func(_ store.Context, _ struct{}) (testEntity, error) {
 		return testEntity{}, errors.NotFoundf("drink missing")
 	}, struct{}{})
-	if !errors.IsNotFound(err) {
-		t.Fatalf("expected not-found error, got %v", err)
-	}
+	testutil.ErrorIsNotFound(t, err)
 }
 
 func TestTrackActivity_MissingCallbackFailsBeforeCommand(t *testing.T) {
@@ -273,12 +247,8 @@ func TestTrackActivity_MissingCallbackFailsBeforeCommand(t *testing.T) {
 		return nil
 	})
 
-	if !errors.IsInternal(err) {
-		t.Fatalf("expected internal setup error, got %v", err)
-	}
-	if called {
-		t.Fatal("expected command body not to run without a record activity callback")
-	}
+	testutil.ErrorIsInternal(t, err)
+	testutil.IsFalse(t, called)
 }
 
 // --- Test Event Dispatch Through Full Command Chain ---
@@ -321,13 +291,8 @@ func TestDispatchEvents_DispatchesEvents(t *testing.T) {
 		return nil
 	})
 
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if len(dispatcher.dispatched) != 1 {
-		t.Errorf("expected 1 dispatched event, got %d", len(dispatcher.dispatched))
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, len(dispatcher.dispatched), 1)
 }
 
 type cascadingDispatcher struct {
@@ -367,11 +332,6 @@ func TestDispatchEvents_DoesNotCascadeNewEvents(t *testing.T) {
 		ctx.AddEvent(testEvent{Name: "created"})
 		return nil
 	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if len(dispatcher.dispatched) != 1 {
-		t.Errorf("expected 1 dispatched event, got %d", len(dispatcher.dispatched))
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, len(dispatcher.dispatched), 1)
 }

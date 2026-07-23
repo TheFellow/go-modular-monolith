@@ -1,16 +1,19 @@
 package audit_test
 
 import (
+	"fmt"
 	"slices"
 	"testing"
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
+	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
@@ -44,14 +47,10 @@ func TestAudit_ListPageUsesCursorWithoutDuplicates(t *testing.T) {
 		cursor = page.Next
 	}
 
-	if len(got) != 5 {
-		t.Fatalf("expected 5 entries across pages, got %d", len(got))
-	}
+	testutil.Equals(t, len(got), 5)
 	seen := map[string]bool{}
 	for _, id := range got {
-		if seen[id] {
-			t.Fatalf("duplicate entry %q across cursor pages", id)
-		}
+		testutil.IsFalse(t, seen[id])
 		seen[id] = true
 	}
 }
@@ -300,6 +299,65 @@ func TestAudit_ListFiltersByTime(t *testing.T) {
 	beforeEntries, err := f.App.Audit.List(ctx, audit.ListRequest{To: cutoff})
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(beforeEntries.Items) != 1, "expected 1 entry before cutoff, got %d", len(beforeEntries.Items))
+}
+
+func TestAudit_ListExpressionFilters(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+
+	targetIngredient, err := f.Ingredients.Create(f.OwnerContext(), &ingredientsmodels.Ingredient{
+		Name: "Filter Target", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz,
+	})
+	testutil.Ok(t, err)
+	_, err = f.Ingredients.Delete(f.ActorContext("manager"), targetIngredient.ID)
+	testutil.Ok(t, err)
+
+	missingID := entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, cedar.String("missing-filter-target")))
+	_, err = f.Ingredients.Update(f.OwnerContext(), &ingredientsmodels.Ingredient{
+		ID: missingID, Name: "Missing",
+	})
+	testutil.ErrorIsNotFound(t, err)
+
+	page, err := f.Audit.List(f.OwnerContext(), audit.ListRequest{})
+	testutil.Ok(t, err)
+	testutil.Equals(t, len(page.Items), 3)
+
+	var target, failed *auditmodels.AuditEntry
+	for _, entry := range page.Items {
+		if entry.Action == ingredientsauthz.ActionDelete.String() {
+			target = entry
+		}
+		if !entry.Success {
+			failed = entry
+		}
+	}
+	testutil.NotNil(t, target)
+	testutil.NotNil(t, failed)
+	testutil.Equals(t, target.Resource, targetIngredient.ID.EntityUID())
+
+	tests := map[string]struct {
+		expression string
+		want       *auditmodels.AuditEntry
+	}{
+		"id":           {fmt.Sprintf("id == %q", target.ID.String()), target},
+		"action":       {fmt.Sprintf("action == %q", target.Action), target},
+		"resource":     {fmt.Sprintf("resource == %q", target.Resource.String()), target},
+		"principal":    {fmt.Sprintf("principal == %q", target.Principal.String()), target},
+		"started_at":   {fmt.Sprintf("started_at == date(%q)", target.StartedAt.Format(time.RFC3339Nano)), target},
+		"completed_at": {fmt.Sprintf("completed_at == date(%q)", target.CompletedAt.Format(time.RFC3339Nano)), target},
+		"success":      {fmt.Sprintf("success && principal == %q", target.Principal.String()), target},
+		"error":        {`error.contains("not found")`, failed},
+	}
+	for name, test := range tests {
+		ctx := f.ActorContext("owner")
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			page, err := f.Audit.List(ctx, audit.ListRequest{Filter: test.expression})
+			testutil.Ok(t, err)
+			testutil.Equals(t, len(page.Items), 1)
+			testutil.Equals(t, page.Items[0].ID, test.want.ID)
+		})
+	}
 }
 
 func touchesContain(touches []cedar.EntityUID, uid cedar.EntityUID) bool {

@@ -10,6 +10,10 @@ import (
 )
 
 func toRow(o models.Order) OrderRow {
+	var completedAt *time.Time
+	if t, ok := o.CompletedAt.Unwrap(); ok {
+		completedAt = &t
+	}
 	var deletedAt *time.Time
 	if t, ok := o.DeletedAt.Unwrap(); ok {
 		deletedAt = &t
@@ -29,13 +33,19 @@ func toRow(o models.Order) OrderRow {
 		Items:       items,
 		Status:      string(o.Status),
 		CreatedAt:   o.CreatedAt,
-		CompletedAt: o.CompletedAt,
+		CompletedAt: completedAt,
 		Notes:       o.Notes,
 		DeletedAt:   deletedAt,
 	}
 }
 
 func toModel(r OrderRow) models.Order {
+	var completedAt optional.Value[time.Time]
+	if r.CompletedAt != nil {
+		completedAt = optional.Some(*r.CompletedAt)
+	} else {
+		completedAt = optional.None[time.Time]()
+	}
 	var deletedAt optional.Value[time.Time]
 	if r.DeletedAt != nil {
 		deletedAt = optional.Some(*r.DeletedAt)
@@ -57,7 +67,7 @@ func toModel(r OrderRow) models.Order {
 		Items:       items,
 		Status:      models.OrderStatus(r.Status),
 		CreatedAt:   r.CreatedAt,
-		CompletedAt: r.CompletedAt,
+		CompletedAt: completedAt,
 		Notes:       r.Notes,
 		DeletedAt:   deletedAt,
 	}

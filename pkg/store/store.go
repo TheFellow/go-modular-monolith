@@ -43,6 +43,19 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
+func (s *Store) Begin(ctx context.Context, writable bool) (*bstore.Tx, error) {
+	tx, err := s.db.Begin(ctx, writable)
+	if err == nil {
+		registerTransaction(tx)
+	}
+	return tx, err
+}
+
+func (s *Store) Rollback(tx *bstore.Tx) error {
+	unregisterTransaction(tx)
+	return tx.Rollback()
+}
+
 func (s *Store) Read(ctx context.Context, fn func(*bstore.Tx) error) error {
 	start := time.Now()
 	err := s.db.Read(ctx, fn)
@@ -52,7 +65,11 @@ func (s *Store) Read(ctx context.Context, fn func(*bstore.Tx) error) error {
 
 func (s *Store) Write(ctx context.Context, fn func(*bstore.Tx) error) error {
 	start := time.Now()
-	err := s.db.Write(ctx, fn)
+	err := s.db.Write(ctx, func(tx *bstore.Tx) error {
+		registerTransaction(tx)
+		defer unregisterTransaction(tx)
+		return fn(tx)
+	})
 	telemetry.FromContext(ctx).Histogram(telemetry.MetricStoreWriteDuration).ObserveDuration(start)
 	return err
 }

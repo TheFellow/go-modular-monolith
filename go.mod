@@ -9,6 +9,7 @@ require (
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/expr-lang/expr v1.17.8
 	github.com/google/go-cmp v0.7.0
 	github.com/govalues/decimal v0.1.36
 	github.com/mjl-/bstore v0.0.10

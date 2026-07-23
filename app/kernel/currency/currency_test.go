@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
@@ -14,28 +13,18 @@ func TestParseCurrency(t *testing.T) {
 	t.Parallel()
 
 	usd, err := currency.Parse("USD")
-	if err != nil {
-		t.Fatalf("expected USD, got %v", err)
-	}
-	if usd.Code != "USD" {
-		t.Fatalf("expected USD code, got %s", usd.Code)
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, usd.Code, "USD")
 
 	_, err = currency.Parse("unknown")
-	if !errors.IsInvalid(err) {
-		t.Fatalf("expected invalid for unknown currency, got %v", err)
-	}
+	testutil.ErrorIsInvalid(t, err)
 }
 
 func TestCurrencyFormat(t *testing.T) {
 	t.Parallel()
 
-	if got := currency.USD.Format("12.50"); got != "$12.50" {
-		t.Fatalf("expected $12.50, got %q", got)
-	}
-	if got := currency.EUR.Format("12.50"); got != "12.50 €" {
-		t.Fatalf("expected 12.50 €, got %q", got)
-	}
+	testutil.Equals(t, currency.USD.Format("12.50"), "$12.50")
+	testutil.Equals(t, currency.EUR.Format("12.50"), "12.50 €")
 }
 
 func TestCurrencyJSON(t *testing.T) {

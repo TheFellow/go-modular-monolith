@@ -7,6 +7,7 @@ import (
 	inventorydao "github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
@@ -18,11 +19,16 @@ type ListRequest struct {
 
 	// LowStock, when set, lists items with amount value <= LowStock (per item unit).
 	LowStock optional.Value[float64]
+	Filter   string
 	Cursor   paging.Cursor
 	Limit    int
 }
 
 func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*models.Inventory], error) {
+	expression, err := appfilter.Parse(models.ListFilterSchema(), req.Filter)
+	if err != nil {
+		return paging.Page[*models.Inventory]{}, err
+	}
 	if req.Limit == 0 {
 		req.Limit = paging.DefaultLimit
 	}
@@ -34,6 +40,7 @@ func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*mo
 	filter := inventorydao.ListFilter{
 		IngredientID: req.IngredientID,
 		MaxQuantity:  req.LowStock,
+		Expression:   expression,
 	}
 	return middleware.RunPageQuery(
 		m.pipeline, ctx, authz.ActionList,

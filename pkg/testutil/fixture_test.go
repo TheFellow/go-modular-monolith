@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
@@ -22,6 +23,20 @@ func TestFixture_CreateDrinkRoundTrip(t *testing.T) {
 	res, err := fix.Drinks.Get(fix.OwnerContext(), created.ID)
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, res.Name != "Margarita", "expected Margarita, got %q", res.Name)
+}
+
+func TestFixture_BuildsDrinkFromIngredientAndAddsItToMenu(t *testing.T) {
+	t.Parallel()
+
+	f := testutil.NewFixture(t)
+	b := f.Bootstrap()
+	ingredient := b.WithIngredient("Fresh Lime", measurement.UnitOz)
+	drink := f.CreateDrink("Daiquiri").WithIngredient(ingredient, 1.5).Build()
+	menu := b.AddDrinks(b.WithMenu("Classics"), drink)
+
+	testutil.Equals(t, drink.Recipe.Ingredients[0].IngredientID, ingredient.ID)
+	testutil.Equals(t, drink.Recipe.Ingredients[0].Amount, measurement.MustAmount(1.5, measurement.UnitOz), testutil.EquateAmounts(0.000001))
+	testutil.Equals(t, menu.Items[0].DrinkID, drink.ID)
 }
 
 func TestFixture_IsolatedParallelStores(t *testing.T) {

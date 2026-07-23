@@ -1,6 +1,7 @@
 package drinks_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
@@ -59,4 +60,47 @@ func TestDrinks_ListFiltersByName(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(filtered.Items) != 1, "expected 1 drink, got %d", len(filtered.Items))
 	testutil.ErrorIf(t, filtered.Items[0].Name != "Margarita", "expected Margarita, got %q", filtered.Items[0].Name)
+}
+
+func TestDrinks_ListExpressionFilters(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	b := f.Bootstrap()
+
+	base := b.WithIngredient("Gin", measurement.UnitOz)
+	target := b.WithDrink(models.Drink{
+		Name: "Gin Fizz", Category: models.DrinkCategoryHighball, Glass: models.GlassTypeHighball,
+		Description: "Bright sparkling drink",
+		Recipe: models.Recipe{
+			Ingredients: []models.RecipeIngredient{{IngredientID: base.ID, Amount: measurement.MustAmount(2, measurement.UnitOz)}},
+			Steps:       []string{"Shake"}, Garnish: "Lemon twist",
+		},
+	})
+	b.WithDrink(models.Drink{
+		Name: "Old Fashioned", Category: models.DrinkCategoryCocktail, Glass: models.GlassTypeRocks,
+		Description: "Rich stirred drink",
+		Recipe: models.Recipe{
+			Ingredients: []models.RecipeIngredient{{IngredientID: base.ID, Amount: measurement.MustAmount(2, measurement.UnitOz)}},
+			Steps:       []string{"Stir"}, Garnish: "Orange peel",
+		},
+	})
+
+	tests := map[string]string{
+		"id":             fmt.Sprintf("id == %q", target.ID.String()),
+		"name":           `name.contains("Gin")`,
+		"category":       `category == "highball"`,
+		"glass":          `glass == "highball"`,
+		"description":    `description.contains("sparkling")`,
+		"recipe.garnish": `recipe.garnish.startsWith("Lemon")`,
+	}
+	for name, expression := range tests {
+		ctx := f.ActorContext("owner")
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			page, err := f.Drinks.List(ctx, drinks.ListRequest{Filter: expression})
+			testutil.Ok(t, err)
+			testutil.Equals(t, len(page.Items), 1)
+			testutil.Equals(t, page.Items[0].ID, target.ID)
+		})
+	}
 }

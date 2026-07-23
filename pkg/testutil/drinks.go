@@ -10,10 +10,13 @@ import (
 type DrinkBuilder struct {
 	fix         *Fixture
 	name        string
-	ingredients []struct {
-		name   string
-		amount float64
-	}
+	ingredients []drinkBuilderIngredient
+}
+
+type drinkBuilderIngredient struct {
+	model  *ingredientsmodels.Ingredient
+	name   string
+	amount float64
 }
 
 func (f *Fixture) CreateDrink(name string) *DrinkBuilder {
@@ -23,10 +26,14 @@ func (f *Fixture) CreateDrink(name string) *DrinkBuilder {
 
 func (b *DrinkBuilder) With(ingredientName string, amount float64) *DrinkBuilder {
 	b.fix.T.Helper()
-	b.ingredients = append(b.ingredients, struct {
-		name   string
-		amount float64
-	}{name: ingredientName, amount: amount})
+	b.ingredients = append(b.ingredients, drinkBuilderIngredient{name: ingredientName, amount: amount})
+	return b
+}
+
+func (b *DrinkBuilder) WithIngredient(ingredient *ingredientsmodels.Ingredient, amount float64) *DrinkBuilder {
+	b.fix.T.Helper()
+	NotNil(b.fix.T, ingredient)
+	b.ingredients = append(b.ingredients, drinkBuilderIngredient{model: ingredient, amount: amount})
 	return b
 }
 
@@ -35,7 +42,10 @@ func (b *DrinkBuilder) Build() *models.Drink {
 
 	var recipeIngredients []models.RecipeIngredient
 	for _, ing := range b.ingredients {
-		ingredient := b.fix.findOrCreateIngredient(ing.name)
+		ingredient := ing.model
+		if ingredient == nil {
+			ingredient = b.fix.findOrCreateIngredient(ing.name)
+		}
 		recipeIngredients = append(recipeIngredients, models.RecipeIngredient{
 			IngredientID: ingredient.ID,
 			Amount:       measurement.MustAmount(ing.amount, ingredient.Unit),

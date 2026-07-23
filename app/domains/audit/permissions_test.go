@@ -35,8 +35,8 @@ func TestPermissions_Audit(t *testing.T) {
 
 			entries, err := f.Audit.List(ctx, audit.ListRequest{})
 			testutil.Ok(t, err)
-			if !tc.canRead && len(entries.Items) != 0 {
-				t.Fatalf("expected unauthorized audit entries to be elided, got %d", len(entries.Items))
+			if !tc.canRead {
+				testutil.Equals(t, len(entries.Items), 0)
 			}
 		})
 	}

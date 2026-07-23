@@ -26,19 +26,20 @@ func (c *CLI) inventoryCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List stock levels",
-				Flags: append([]cli.Flag{
+				Flags: appendFilterFlags(append([]cli.Flag{
 					JSONFlag,
 					&cli.Float64Flag{
 						Name:  "low-stock",
 						Usage: "Show items with amount <= threshold (per item unit)",
 						Value: -1,
 					},
-				}, listPagingFlags()...),
-				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+				}, listPagingFlags()...)),
+				Action: filterAction(c, inventorymodels.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					var req inventory.ListRequest
 					pageReq := pagingRequest(cmd)
 					req.Cursor = pageReq.Cursor
 					req.Limit = pageReq.Limit
+					req.Filter = cmd.String("filter")
 					if v := cmd.Float64("low-stock"); v >= 0 {
 						req.LowStock = optional.Some(v)
 					}

@@ -73,6 +73,36 @@ func TestDomainListsUseCursorPages(t *testing.T) {
 	}, "ord-not-a-ksuid", func(v *ordersmodels.Order) string { return v.ID.String() })
 }
 
+func TestResidualOrFilterFillsCursorPages(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ctx := f.OwnerContext()
+	_, err := f.Ingredients.List(ctx, ingredients.ListRequest{Filter: `unknown == "value"`})
+	testutil.ErrorIsInvalid(t, err)
+	for _, ingredient := range []ingredientsmodels.Ingredient{
+		{Name: "Needle", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz},
+		{Name: "Hay One", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz},
+		{Name: "Hay Two", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz},
+		{Name: "Other Match", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz},
+		{Name: "Hay Three", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz},
+	} {
+		_, err := f.Ingredients.Create(ctx, &ingredient)
+		testutil.Ok(t, err)
+	}
+
+	const expression = `name == "Needle" || category == "other"`
+	first, err := f.Ingredients.List(ctx, ingredients.ListRequest{Filter: expression, Limit: 1})
+	testutil.Ok(t, err)
+	testutil.ErrorIf(t, len(first.Items) != 1, "first filtered page has %d items", len(first.Items))
+	testutil.StringNonEmpty(t, string(first.Next), "first filtered page missing cursor")
+
+	second, err := f.Ingredients.List(ctx, ingredients.ListRequest{Filter: expression, Cursor: first.Next, Limit: 1})
+	testutil.Ok(t, err)
+	testutil.ErrorIf(t, len(second.Items) != 1, "second filtered page has %d items", len(second.Items))
+	testutil.ErrorIf(t, first.Items[0].ID == second.Items[0].ID, "filtered cursor repeated an item")
+	testutil.ErrorIf(t, second.Next != "", "second filtered page has cursor %q", second.Next)
+}
+
 func assertCursorPages[T any](t *testing.T, list func(paging.Cursor) (paging.Page[T], error), malformed paging.Cursor, id func(T) string) {
 	t.Helper()
 	_, err := list(malformed)

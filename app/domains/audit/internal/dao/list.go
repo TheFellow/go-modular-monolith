@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
+	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
@@ -19,6 +20,7 @@ type ListFilter struct {
 	StartedAfter  time.Time
 	StartedBefore time.Time
 	BeforeID      string
+	Expression    *appfilter.Expression[models.ListFilterView]
 }
 
 // List returns an ordered sequence that remains inside its bstore read
@@ -66,6 +68,14 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[AuditEntryRo
 			return matchesEntityFilterRow(filter.Entity, r)
 		})
 	}
+	q = appfilter.ApplyBstore(q, filter.Expression, func(r AuditEntryRow) models.ListFilterView {
+		return models.ListFilterView{
+			ID: r.ID, Action: r.Action,
+			Resource:  cedar.EntityUID{Type: cedar.EntityType(r.ResourceType), ID: cedar.String(r.ResourceID)}.String(),
+			Principal: cedar.EntityUID{Type: cedar.EntityType(r.PrincipalType), ID: cedar.String(r.PrincipalID)}.String(),
+			StartedAt: r.StartedAt, CompletedAt: r.CompletedAt, Success: r.Success, Error: r.Error,
+		}
+	})
 	q = q.SortDesc("ID")
 	return q
 }

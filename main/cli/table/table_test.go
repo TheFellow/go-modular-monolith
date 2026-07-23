@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 type withStringer string
@@ -23,20 +25,12 @@ func TestPrintTable(t *testing.T) {
 
 	var output bytes.Buffer
 	err := printTable(&output, []row{{ID: "ing-1", Name: "Vodka", Count: 2}})
-	if err != nil {
-		t.Fatalf("PrintTable: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	lines := strings.Split(strings.TrimSpace(output.String()), "\n")
-	if len(lines) != 2 {
-		t.Fatalf("expected 2 lines, got %d", len(lines))
-	}
-	if got := strings.Fields(lines[0]); strings.Join(got, ",") != "ID,NAME,COUNT" {
-		t.Fatalf("unexpected header: %q", lines[0])
-	}
-	if got := strings.Fields(lines[1]); strings.Join(got, ",") != "ing-1,Vodka,2" {
-		t.Fatalf("unexpected row: %q", lines[1])
-	}
+	testutil.Equals(t, len(lines), 2)
+	testutil.Equals(t, strings.Join(strings.Fields(lines[0]), ","), "ID,NAME,COUNT")
+	testutil.Equals(t, strings.Join(strings.Fields(lines[1]), ","), "ing-1,Vodka,2")
 }
 
 func TestPrintTable_Empty(t *testing.T) {
@@ -50,16 +44,10 @@ func TestPrintTable_Empty(t *testing.T) {
 	var output bytes.Buffer
 	var rows []row
 	err := printTable(&output, rows)
-	if err != nil {
-		t.Fatalf("PrintTable: %v", err)
-	}
+	testutil.Ok(t, err)
 	lines := strings.Split(strings.TrimSpace(output.String()), "\n")
-	if len(lines) != 1 {
-		t.Fatalf("expected 1 line, got %d", len(lines))
-	}
-	if got := strings.Fields(lines[0]); strings.Join(got, ",") != "ID,NAME" {
-		t.Fatalf("unexpected header: %q", lines[0])
-	}
+	testutil.Equals(t, len(lines), 1)
+	testutil.Equals(t, strings.Join(strings.Fields(lines[0]), ","), "ID,NAME")
 }
 
 func TestPrintDetail(t *testing.T) {
@@ -82,40 +70,28 @@ func TestPrintDetail(t *testing.T) {
 
 	var output bytes.Buffer
 	err := printDetail(&output, item)
-	if err != nil {
-		t.Fatalf("PrintDetail: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	out := output.String()
 	lines := strings.Split(strings.TrimSpace(out), "\n")
-	if len(lines) != 4 {
-		t.Fatalf("expected 4 lines, got %d", len(lines))
-	}
+	testutil.Equals(t, len(lines), 4)
 	parseLine := func(line string) (string, string) {
 		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
-			t.Fatalf("unexpected line format: %q", line)
-		}
+		testutil.Equals(t, len(parts), 2)
 		return strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 	}
 
 	label, value := parseLine(lines[0])
-	if label != "ID" || value != "ord-1" {
-		t.Fatalf("unexpected id line: %q", lines[0])
-	}
+	testutil.Equals(t, label, "ID")
+	testutil.Equals(t, value, "ord-1")
 	label, value = parseLine(lines[1])
-	if label != "Menu ID" || value != "mnu-1" {
-		t.Fatalf("unexpected menu id line: %q", lines[1])
-	}
+	testutil.Equals(t, label, "Menu ID")
+	testutil.Equals(t, value, "mnu-1")
 	label, value = parseLine(lines[2])
-	if label != "Created At" || value != "2025-02-03T04:05:06Z" {
-		t.Fatalf("unexpected created at line: %q", lines[2])
-	}
+	testutil.Equals(t, label, "Created At")
+	testutil.Equals(t, value, "2025-02-03T04:05:06Z")
 	label, value = parseLine(lines[3])
-	if label != "Status" || value != "pending" {
-		t.Fatalf("unexpected status line: %q", lines[3])
-	}
-	if strings.Contains(out, "Notes:") {
-		t.Fatalf("expected omitempty notes to be skipped")
-	}
+	testutil.Equals(t, label, "Status")
+	testutil.Equals(t, value, "pending")
+	testutil.IsFalse(t, strings.Contains(out, "Notes:"))
 }

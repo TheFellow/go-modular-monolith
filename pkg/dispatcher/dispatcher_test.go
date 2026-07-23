@@ -1,4 +1,4 @@
-package dispatcher
+package dispatcher_test
 
 import (
 	"context"
@@ -9,15 +9,17 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
 func TestDispatcher_DispatchesToHandlers(t *testing.T) {
 	t.Parallel()
 
-	d := New(nil)
+	d := dispatcher.New(nil)
 	base := authn.ToContext(log.ToContext(context.Background(), slog.Default()), authn.Anonymous())
 	ctx := middleware.NewContext(base)
 
@@ -28,9 +30,7 @@ func TestDispatcher_DispatchesToHandlers(t *testing.T) {
 		},
 	}
 	err := d.Dispatch(ctx, event)
-	if err != nil {
-		t.Fatalf("Dispatch: %v", err)
-	}
+	testutil.Ok(t, err)
 }
 
 func TestDispatcher_IgnoresUnknownEvents(t *testing.T) {
@@ -38,10 +38,8 @@ func TestDispatcher_IgnoresUnknownEvents(t *testing.T) {
 
 	type unknownEvent struct{}
 
-	d := New(nil)
+	d := dispatcher.New(nil)
 	base := authn.ToContext(log.ToContext(context.Background(), slog.Default()), authn.Anonymous())
 	ctx := middleware.NewContext(base)
-	if err := d.Dispatch(ctx, unknownEvent{}); err != nil {
-		t.Fatalf("Dispatch: %v", err)
-	}
+	testutil.Ok(t, d.Dispatch(ctx, unknownEvent{}))
 }

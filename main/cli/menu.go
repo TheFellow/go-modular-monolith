@@ -24,7 +24,7 @@ func (c *CLI) menuCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List menus",
-				Flags: append([]cli.Flag{
+				Flags: appendFilterFlags(append([]cli.Flag{
 					JSONFlag,
 					CostsFlag,
 					TargetMarginFlag,
@@ -39,11 +39,12 @@ func (c *CLI) menuCommands() *cli.Command {
 							return menumodels.MenuStatus(s).Validate()
 						},
 					},
-				}, listPagingFlags()...),
-				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+				}, listPagingFlags()...)),
+				Action: filterAction(c, menumodels.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					pageReq := pagingRequest(cmd)
 					res, err := c.app.Menus.List(ctx, menus.ListRequest{
 						Status: menumodels.MenuStatus(cmd.String("status")),
+						Filter: cmd.String("filter"),
 						Cursor: pageReq.Cursor,
 						Limit:  pageReq.Limit,
 					})

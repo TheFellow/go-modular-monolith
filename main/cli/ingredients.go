@@ -23,7 +23,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List ingredients",
-				Flags: append([]cli.Flag{
+				Flags: appendFilterFlags(append([]cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{
 						Name:      "category",
@@ -31,11 +31,12 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						Usage:     ingredientscli.CategoryUsage(),
 						Validator: ingredientscli.ValidateCategory,
 					},
-				}, listPagingFlags()...),
-				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+				}, listPagingFlags()...)),
+				Action: filterAction(c, models.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					pageReq := pagingRequest(cmd)
 					res, err := c.app.Ingredients.List(ctx, ingredients.ListRequest{
 						Category: models.Category(cmd.String("category")),
+						Filter:   cmd.String("filter"),
 						Cursor:   pageReq.Cursor,
 						Limit:    pageReq.Limit,
 					})

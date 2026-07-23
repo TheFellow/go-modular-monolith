@@ -21,10 +21,12 @@ type Pipeline struct {
 func NewPipeline(config PipelineConfig) *Pipeline {
 	return &Pipeline{
 		query: NewChain(
+			SerializeTransaction(),
 			Logging(),
 			Metrics(config.Metrics),
 		),
 		command: NewChain(
+			SerializeTransaction(),
 			Logging(),
 			Metrics(config.Metrics),
 			TrackActivity(config.Store, config.RecordActivity),

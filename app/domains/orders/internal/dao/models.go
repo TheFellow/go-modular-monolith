@@ -3,7 +3,6 @@ package dao
 import (
 	"time"
 
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -13,7 +12,7 @@ type OrderRow struct {
 	Items       []OrderItemRow
 	Status      string    `bstore:"index"`
 	CreatedAt   time.Time `bstore:"index"`
-	CompletedAt optional.Value[time.Time]
+	CompletedAt *time.Time
 	Notes       string
 	DeletedAt   *time.Time
 }

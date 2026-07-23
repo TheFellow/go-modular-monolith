@@ -10,6 +10,10 @@ import (
 )
 
 func toRow(m menumodels.Menu) MenuRow {
+	var publishedAt *time.Time
+	if t, ok := m.PublishedAt.Unwrap(); ok {
+		publishedAt = &t
+	}
 	var deletedAt *time.Time
 	if t, ok := m.DeletedAt.Unwrap(); ok {
 		deletedAt = &t
@@ -40,12 +44,18 @@ func toRow(m menumodels.Menu) MenuRow {
 		Items:       items,
 		Status:      string(m.Status),
 		CreatedAt:   m.CreatedAt,
-		PublishedAt: m.PublishedAt,
+		PublishedAt: publishedAt,
 		DeletedAt:   deletedAt,
 	}
 }
 
 func toModel(r MenuRow) menumodels.Menu {
+	var publishedAt optional.Value[time.Time]
+	if r.PublishedAt != nil {
+		publishedAt = optional.Some(*r.PublishedAt)
+	} else {
+		publishedAt = optional.None[time.Time]()
+	}
 	var deletedAt optional.Value[time.Time]
 	if r.DeletedAt != nil {
 		deletedAt = optional.Some(*r.DeletedAt)
@@ -78,7 +88,7 @@ func toModel(r MenuRow) menumodels.Menu {
 		Items:       items,
 		Status:      menumodels.MenuStatus(r.Status),
 		CreatedAt:   r.CreatedAt,
-		PublishedAt: r.PublishedAt,
+		PublishedAt: publishedAt,
 		DeletedAt:   deletedAt,
 	}
 }

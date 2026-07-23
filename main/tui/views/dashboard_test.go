@@ -1,6 +1,10 @@
 package views
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+)
 
 func TestDashboardLayoutConfig(t *testing.T) {
 	t.Parallel()
@@ -24,9 +28,8 @@ func TestDashboardLayoutConfig(t *testing.T) {
 
 			d := &Dashboard{width: tc.width}
 			cardWidth, columns := d.layoutConfig()
-			if cardWidth != tc.expectedWidth || columns != tc.expectedCols {
-				t.Fatalf("layoutConfig() = (%d, %d), want (%d, %d)", cardWidth, columns, tc.expectedWidth, tc.expectedCols)
-			}
+			testutil.Equals(t, cardWidth, tc.expectedWidth)
+			testutil.Equals(t, columns, tc.expectedCols)
 		})
 	}
 }

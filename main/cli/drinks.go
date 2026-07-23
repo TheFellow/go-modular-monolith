@@ -22,7 +22,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 			{
 				Name:  "list",
 				Usage: "List drinks",
-				Flags: append([]cli.Flag{
+				Flags: appendFilterFlags(append([]cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{Name: "name", Usage: "Filter by exact name match"},
 					&cli.StringFlag{
@@ -41,13 +41,14 @@ func (c *CLI) drinksCommands() *cli.Command {
 							return drinksmodels.GlassType(strings.TrimSpace(s)).Validate()
 						},
 					},
-				}, listPagingFlags()...),
-				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+				}, listPagingFlags()...)),
+				Action: filterAction(c, drinksmodels.ListFilterSchema(), func(ctx *middleware.Context, cmd *cli.Command) error {
 					pageReq := pagingRequest(cmd)
 					res, err := c.app.Drinks.List(ctx, drinks.ListRequest{
 						Name:     cmd.String("name"),
 						Category: drinksmodels.DrinkCategory(cmd.String("category")),
 						Glass:    drinksmodels.GlassType(cmd.String("glass")),
+						Filter:   cmd.String("filter"),
 						Cursor:   pageReq.Cursor,
 						Limit:    pageReq.Limit,
 					})

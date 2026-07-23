@@ -14,7 +14,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/dispatcher"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
-	"github.com/mjl-/bstore"
 )
 
 func TestDrinkUpdatedMenuUpdater_MarksUnavailableWhenNewIngredientOutOfStock(t *testing.T) {
@@ -111,18 +110,12 @@ func TestMenuPublishedValidator_SetsAvailabilityFromInventory(t *testing.T) {
 	d := dispatcher.New(f.Store)
 	menuDAO := menudao.New(f.Store)
 
-	err = f.Store.Write(ctx, func(tx *bstore.Tx) error {
-		txCtx := ctx.WithTransaction(tx)
-
-		updated := *menu
-		updated.Status = menuM.MenuStatusPublished
-		updated.Items[0].Availability = menuM.AvailabilityAvailable
-
-		if err := menuDAO.Update(txCtx, updated); err != nil {
-			return err
-		}
-		return d.Dispatch(txCtx, menuevents.MenuPublished{Menu: updated})
-	})
+	updated := *menu
+	updated.Status = menuM.MenuStatusPublished
+	updated.Items[0].Availability = menuM.AvailabilityAvailable
+	err = menuDAO.Update(ctx, updated)
+	testutil.Ok(t, err)
+	err = d.Dispatch(ctx, menuevents.MenuPublished{Menu: updated})
 	testutil.Ok(t, err)
 
 	got, err := f.Menus.Get(ctx, menu.ID)

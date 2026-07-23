@@ -56,19 +56,11 @@ func TestOrders_PlaceTrimsNotesBeforePersistence(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	if placed.Notes != "rush ticket" {
-		t.Fatalf("placed order notes = %q, want %q", placed.Notes, "rush ticket")
-	}
-	if placed.Items[0].Notes != "no garnish" {
-		t.Fatalf("placed item notes = %q, want %q", placed.Items[0].Notes, "no garnish")
-	}
+	testutil.Equals(t, placed.Notes, "rush ticket")
+	testutil.Equals(t, placed.Items[0].Notes, "no garnish")
 
 	stored, err := f.Orders.Get(f.OwnerContext(), placed.ID)
 	testutil.Ok(t, err)
-	if stored.Notes != "rush ticket" {
-		t.Fatalf("stored order notes = %q, want %q", stored.Notes, "rush ticket")
-	}
-	if stored.Items[0].Notes != "no garnish" {
-		t.Fatalf("stored item notes = %q, want %q", stored.Items[0].Notes, "no garnish")
-	}
+	testutil.Equals(t, stored.Notes, "rush ticket")
+	testutil.Equals(t, stored.Items[0].Notes, "no garnish")
 }

@@ -4,11 +4,11 @@ import (
 	"testing"
 
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/mjl-/bstore"
 )
 
 type testEntity struct {
@@ -49,15 +49,9 @@ func TestRunCommand_AuthorizesLoadedResourceBeforeHandle(t *testing.T) {
 			return in, nil
 		},
 	})
-	if !errors.IsPermission(err) {
-		t.Fatalf("expected permission error, got %v", err)
-	}
-	if !loaded {
-		t.Fatal("expected resource to be loaded before authorization")
-	}
-	if handled {
-		t.Fatal("expected authorization to stop the command before handling")
-	}
+	testutil.ErrorIsPermission(t, err)
+	testutil.IsTrue(t, loaded)
+	testutil.IsFalse(t, handled)
 }
 
 func TestRunCommand_AuthorizesResultAfterHandle(t *testing.T) {
@@ -87,12 +81,8 @@ func TestRunCommand_AuthorizesResultAfterHandle(t *testing.T) {
 			return out, nil
 		},
 	})
-	if !errors.IsPermission(err) {
-		t.Fatalf("expected permission error, got %v", err)
-	}
-	if !handled {
-		t.Fatal("expected command to pass loaded-resource authorization")
-	}
+	testutil.ErrorIsPermission(t, err)
+	testutil.IsTrue(t, handled)
 }
 
 func TestRunCommand_LoaderRunsInTransaction(t *testing.T) {
@@ -100,16 +90,18 @@ func TestRunCommand_LoaderRunsInTransaction(t *testing.T) {
 
 	fix := testutil.NewFixture(t)
 	ctx := fix.OwnerContext()
+	wantTx, ok := ctx.Transaction()
+	testutil.IsTrue(t, ok)
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
 		Store:          fix.Store,
 		RecordActivity: func(*middleware.Context, middlewareevents.Activity) error { return nil },
 	})
 
-	var sawTx bool
+	var gotTx *bstore.Tx
 	_, err := middleware.RunCommand(pipeline, ctx, middleware.CommandSpec[testEntity, testEntity]{
 		Action: drinksauthz.ActionCreate,
 		Load: func(ctx *middleware.Context) (testEntity, error) {
-			_, sawTx = ctx.Transaction()
+			gotTx, _ = ctx.Transaction()
 			return testEntity{
 				ID: cedar.NewEntityUID(cedar.EntityType("Mixology::Drink"), cedar.String("stub")),
 			}, nil
@@ -118,10 +110,6 @@ func TestRunCommand_LoaderRunsInTransaction(t *testing.T) {
 			return in, nil
 		},
 	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if !sawTx {
-		t.Fatalf("expected loader to run within a transaction")
-	}
+	testutil.Ok(t, err)
+	testutil.IsTrue(t, gotTx == wantTx)
 }
