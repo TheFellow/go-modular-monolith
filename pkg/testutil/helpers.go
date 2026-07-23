@@ -2,10 +2,12 @@ package testutil
 
 import (
 	"errors"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -48,6 +50,17 @@ func IsTrue(t testing.TB, got bool) {
 func IsFalse(t testing.TB, got bool) {
 	t.Helper()
 	ErrorIf(t, got, "expected false, got true")
+}
+
+// EquateAmounts compares measurement amounts through their public unit and
+// value, allowing for floating-point conversion error.
+func EquateAmounts(tolerance float64) cmp.Option {
+	return cmp.Comparer(func(x, y measurement.Amount) bool {
+		if x == nil || y == nil {
+			return x == nil && y == nil
+		}
+		return x.Unit() == y.Unit() && math.Abs(x.Value()-y.Value()) <= tolerance
+	})
 }
 
 // Cast asserts that value has type T and returns it.

@@ -15,7 +15,7 @@ type MenuRow struct {
 	Items       []MenuItemRow
 	Status      string    `bstore:"index"`
 	CreatedAt   time.Time `bstore:"index"`
-	PublishedAt optional.Value[time.Time]
+	PublishedAt *time.Time
 	DeletedAt   *time.Time
 }
 

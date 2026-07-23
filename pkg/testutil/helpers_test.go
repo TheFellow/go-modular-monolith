@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
@@ -47,4 +48,12 @@ func TestCommonAssertionsAcceptExpectedValues(t *testing.T) {
 	testutil.ErrorContains(t, errors.New("wrapped detail"), "detail")
 	testutil.StringContains(t, "filter expression", "expression")
 	testutil.ExpectPanic(t, "boom", func() { panic("boom") })
+}
+
+func TestEquateAmountsAllowsConversionError(t *testing.T) {
+	t.Parallel()
+
+	got := measurement.MustAmount(12.500000000000002, measurement.UnitOz)
+	want := measurement.MustAmount(12.5, measurement.UnitOz)
+	testutil.Equals(t, got, want, testutil.EquateAmounts(0.000001))
 }
