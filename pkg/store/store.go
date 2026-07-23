@@ -51,8 +51,17 @@ func (s *Store) Begin(ctx context.Context, writable bool) (*bstore.Tx, error) {
 	return tx, err
 }
 
+// Commit finalizes a transaction created by Begin and releases its
+// serialization state. Callers must use this method instead of Tx.Commit.
+func (s *Store) Commit(tx *bstore.Tx) error {
+	defer unregisterTransaction(tx)
+	return tx.Commit()
+}
+
+// Rollback finalizes a transaction created by Begin and releases its
+// serialization state. Callers must use this method instead of Tx.Rollback.
 func (s *Store) Rollback(tx *bstore.Tx) error {
-	unregisterTransaction(tx)
+	defer unregisterTransaction(tx)
 	return tx.Rollback()
 }
 

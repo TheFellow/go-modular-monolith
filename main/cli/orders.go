@@ -97,8 +97,8 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return writeJSON(cmd.Writer, created)
 					}
 
-					fmt.Println(created.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, created.ID.String())
+					return err
 				}),
 			},
 			{
@@ -132,7 +132,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if cmd.Bool("json") {
 						return writeJSON(cmd.Writer, res)
 					}
-					if err := clitable.PrintTable(orderscli.ToOrderRows(res.Items)); err != nil {
+					if err := clitable.PrintTable(cmd.Writer, orderscli.ToOrderRows(res.Items)); err != nil {
 						return err
 					}
 					return printNextCursor(cmd.Writer, res.Next)
@@ -157,12 +157,14 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if cmd.Bool("json") {
 						return writeJSON(cmd.Writer, res)
 					}
-					if err := clitable.PrintDetail(orderscli.ToOrderDetail(res)); err != nil {
+					if err := clitable.PrintDetail(cmd.Writer, orderscli.ToOrderDetail(res)); err != nil {
 						return err
 					}
 
-					fmt.Println()
-					return clitable.PrintTable(orderscli.ToOrderItemRows(res.Items))
+					if _, err := fmt.Fprintln(cmd.Writer); err != nil {
+						return err
+					}
+					return clitable.PrintTable(cmd.Writer, orderscli.ToOrderItemRows(res.Items))
 				}),
 			},
 			{
@@ -184,8 +186,8 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if cmd.Bool("json") {
 						return writeJSON(cmd.Writer, updated)
 					}
-					fmt.Println(updated.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
+					return err
 				}),
 			},
 			{
@@ -207,8 +209,8 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if cmd.Bool("json") {
 						return writeJSON(cmd.Writer, updated)
 					}
-					fmt.Println(updated.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
+					return err
 				}),
 			},
 		},

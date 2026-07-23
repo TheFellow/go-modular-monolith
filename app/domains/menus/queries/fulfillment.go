@@ -22,18 +22,33 @@ type IngredientFulfillment struct {
 }
 
 // FulfillIngredient selects an in-stock original or substitute using the menu
-// availability policy. False means no candidate can satisfy the requirement.
-func (q *Queries) FulfillIngredient(ctx store.Context, req drinksmodels.RecipeIngredient) (IngredientFulfillment, bool) {
-	pick, ok := q.availability.PickIngredient(ctx, req)
-	if !ok {
-		return IngredientFulfillment{}, false
+// availability policy. False means no candidate can satisfy the requirement;
+// dependency and conversion failures are returned separately.
+func (q *Queries) FulfillIngredient(ctx store.Context, req drinksmodels.RecipeIngredient) (IngredientFulfillment, bool, error) {
+	picks, ok, err := q.FulfillIngredients(ctx, []drinksmodels.RecipeIngredient{req})
+	if err != nil || !ok {
+		return IngredientFulfillment{}, false, err
 	}
-	return IngredientFulfillment{
-		IngredientID:     pick.IngredientID,
-		Required:         pick.Required,
-		Available:        pick.Available,
-		UsedSubstitution: pick.UsedSubstitution,
-		Ratio:            pick.Ratio,
-		QualityImpact:    pick.QualityImpact,
-	}, true
+	return picks[0], true, nil
+}
+
+// FulfillIngredients plans all requirements together so shared stock is not
+// promised to more than one ingredient in the same operation.
+func (q *Queries) FulfillIngredients(ctx store.Context, requirements []drinksmodels.RecipeIngredient) ([]IngredientFulfillment, bool, error) {
+	picks, ok, err := q.availability.PlanIngredients(ctx, requirements)
+	if err != nil || !ok {
+		return nil, false, err
+	}
+	fulfilled := make([]IngredientFulfillment, len(picks))
+	for i, pick := range picks {
+		fulfilled[i] = IngredientFulfillment{
+			IngredientID:     pick.IngredientID,
+			Required:         pick.Required,
+			Available:        pick.Available,
+			UsedSubstitution: pick.UsedSubstitution,
+			Ratio:            pick.Ratio,
+			QualityImpact:    pick.QualityImpact,
+		}
+	}
+	return fulfilled, true, nil
 }

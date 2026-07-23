@@ -70,13 +70,17 @@ func (c *AvailabilityCalculator) CalculateDetail(ctx store.Context, drinkID enti
 	var missing []MissingIngredient
 	var substitutions []AppliedSubstitution
 
+	requirements := make([]drinksmodels.RecipeIngredient, 0, len(drink.Recipe.Ingredients))
 	for _, req := range drink.Recipe.Ingredients {
 		if req.Optional {
 			continue
 		}
+		requirements = append(requirements, req)
+	}
 
-		pick, ok := c.PickIngredient(ctx, req)
-		if !ok {
+	picks, fulfilled := c.PickIngredients(ctx, requirements)
+	if !fulfilled {
+		for _, req := range requirements {
 			hasSub := len(req.Substitutes) > 0
 			if !hasSub && c.ingredients != nil {
 				if rules, err := c.ingredients.SubstitutionsFor(ctx, req.IngredientID); err == nil {
@@ -89,9 +93,12 @@ func (c *AvailabilityCalculator) CalculateDetail(ctx store.Context, drinkID enti
 				Available:     measurement.MustAmount(0, req.Amount.Unit()),
 				HasSubstitute: hasSub,
 			})
-			continue
 		}
+		return Detail{Status: models.AvailabilityUnavailable, Missing: missing}, nil
+	}
 
+	for i, pick := range picks {
+		req := requirements[i]
 		threshold := pick.Required.Mul(3)
 		if pick.Available.Value() < threshold.Value() {
 			limited = true
@@ -106,9 +113,6 @@ func (c *AvailabilityCalculator) CalculateDetail(ctx store.Context, drinkID enti
 		}
 	}
 
-	if len(missing) > 0 {
-		return Detail{Status: models.AvailabilityUnavailable, Missing: missing, Substitutions: substitutions}, nil
-	}
 	if limited {
 		return Detail{Status: models.AvailabilityLimited, Missing: nil, Substitutions: substitutions}, nil
 	}
@@ -133,6 +137,88 @@ type candidate struct {
 }
 
 func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmodels.RecipeIngredient) (PickResult, bool) {
+	picks, ok := c.PickIngredients(ctx, []drinksmodels.RecipeIngredient{req})
+	if !ok {
+		return PickResult{}, false
+	}
+	return picks[0], true
+}
+
+// PickIngredients selects one stock source for each requirement while
+// reserving stock selected by earlier choices. Candidate preferences remain
+// deterministic, but the search backtracks when a preferred source would
+// prevent the complete set of requirements from being fulfilled.
+func (c *AvailabilityCalculator) PickIngredients(ctx store.Context, requirements []drinksmodels.RecipeIngredient) ([]PickResult, bool) {
+	picks, ok, err := c.PlanIngredients(ctx, requirements)
+	if err != nil {
+		return nil, false
+	}
+	return picks, ok
+}
+
+// PlanIngredients is the strict fulfillment path used by mutations. Unlike
+// menu readiness, it preserves dependency and conversion errors so callers do
+// not misreport infrastructure failures as insufficient stock.
+func (c *AvailabilityCalculator) PlanIngredients(ctx store.Context, requirements []drinksmodels.RecipeIngredient) ([]PickResult, bool, error) {
+	candidateSets := make([][]PickResult, len(requirements))
+	for i, req := range requirements {
+		var err error
+		candidateSets[i], err = c.availableCandidates(ctx, req)
+		if err != nil {
+			return nil, false, err
+		}
+		if len(candidateSets[i]) == 0 {
+			return nil, false, nil
+		}
+	}
+
+	selected := make([]PickResult, len(requirements))
+	reserved := make(map[string]measurement.Amount)
+	var assign func(int) bool
+	assign = func(index int) bool {
+		if index == len(candidateSets) {
+			return true
+		}
+		for _, pick := range candidateSets[index] {
+			key := pick.IngredientID.String()
+			prior, hadPrior := reserved[key]
+			total := pick.Required
+			if hadPrior {
+				converted, err := prior.Convert(pick.Required.Unit())
+				if err != nil {
+					continue
+				}
+				total, err = converted.Add(pick.Required)
+				if err != nil {
+					continue
+				}
+			}
+			available, err := pick.Available.Convert(total.Unit())
+			if err != nil || available.Value() < total.Value() {
+				continue
+			}
+
+			selected[index] = pick
+			reserved[key] = total
+			if assign(index + 1) {
+				return true
+			}
+			if hadPrior {
+				reserved[key] = prior
+			} else {
+				delete(reserved, key)
+			}
+		}
+		return false
+	}
+
+	if !assign(0) {
+		return nil, false, nil
+	}
+	return selected, true, nil
+}
+
+func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drinksmodels.RecipeIngredient) ([]PickResult, error) {
 	candidates := make([]candidate, 0, 1+len(req.Substitutes))
 	candidates = append(candidates, candidate{
 		id:            req.IngredientID,
@@ -161,19 +247,17 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 
 	var rules []ingredientsmodels.SubstitutionRule
 	if c.ingredients != nil {
-		// Ingredient substitution lookup is advisory. If that lookup fails we keep
-		// evaluating the explicitly declared recipe substitutes instead of turning
-		// a transient dependency issue into a hard availability error.
 		resolved, err := c.ingredients.SubstitutionsFor(ctx, req.IngredientID)
-		if err == nil {
-			rules = resolved
-			sort.Slice(rules, func(i, j int) bool {
-				if rules[i].QualityImpact.Rank() != rules[j].QualityImpact.Rank() {
-					return rules[i].QualityImpact.Rank() > rules[j].QualityImpact.Rank()
-				}
-				return rules[i].SubstituteID.String() < rules[j].SubstituteID.String()
-			})
+		if err != nil {
+			return nil, err
 		}
+		rules = resolved
+		sort.Slice(rules, func(i, j int) bool {
+			if rules[i].QualityImpact.Rank() != rules[j].QualityImpact.Rank() {
+				return rules[i].QualityImpact.Rank() > rules[j].QualityImpact.Rank()
+			}
+			return rules[i].SubstituteID.String() < rules[j].SubstituteID.String()
+		})
 	}
 
 	rulesBySubstitute := make(map[string]ingredientsmodels.SubstitutionRule, len(rules))
@@ -193,19 +277,16 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 
 	var picks []PickResult
 	for _, cand := range candidates {
-		// Any stock lookup or unit conversion failure degrades this candidate to
-		// unavailable. From the menu's perspective "could not confirm stock" is
-		// equivalent to "cannot serve this ingredient right now."
 		stock, err := c.inventory.Get(ctx, cand.id)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				continue
 			}
-			continue
+			return nil, err
 		}
 		available, err := stock.Amount.Convert(cand.required.Unit())
 		if err != nil {
-			continue
+			return nil, err
 		}
 		if available.Value() < cand.required.Value() {
 			continue
@@ -220,7 +301,7 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 		})
 	}
 	if len(picks) == 0 {
-		return PickResult{}, false
+		return nil, nil
 	}
 
 	sort.Slice(picks, func(i, j int) bool {
@@ -242,10 +323,8 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 		return a.IngredientID.String() < b.IngredientID.String()
 	})
 
-	best := picks[0]
-	if best.Required.Value() <= 0 {
-		return PickResult{}, false
+	if picks[0].Required.Value() <= 0 {
+		return nil, nil
 	}
-
-	return best, true
+	return picks, nil
 }

@@ -80,7 +80,7 @@ func (c *CLI) menuCommands() *cli.Command {
 							}
 						}
 					}
-					if err := clitable.PrintTable(rows); err != nil {
+					if err := clitable.PrintTable(cmd.Writer, rows); err != nil {
 						return err
 					}
 					return printNextCursor(cmd.Writer, res.Next)
@@ -117,7 +117,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					m := *res
-					if err := clitable.PrintDetail(menucli.ToMenuRow(&m)); err != nil {
+					if err := clitable.PrintDetail(cmd.Writer, menucli.ToMenuRow(&m)); err != nil {
 						return err
 					}
 
@@ -128,8 +128,10 @@ func (c *CLI) menuCommands() *cli.Command {
 						}
 
 						if len(an.Items) > 0 {
-							fmt.Println()
-							w := newTabWriter()
+							if _, err := fmt.Fprintln(cmd.Writer); err != nil {
+								return err
+							}
+							w := newTabWriter(cmd.Writer)
 							if _, err := fmt.Fprintln(w, "DRINK_ID\tNAME\tCOST\tPRICE\tMARGIN\tSTATUS"); err != nil {
 								return err
 							}
@@ -166,9 +168,13 @@ func (c *CLI) menuCommands() *cli.Command {
 							}
 						}
 
-						fmt.Println()
-						fmt.Println("Analytics:")
-						w := newTabWriter()
+						if _, err := fmt.Fprintln(cmd.Writer); err != nil {
+							return err
+						}
+						if _, err := fmt.Fprintln(cmd.Writer, "Analytics:"); err != nil {
+							return err
+						}
+						w := newTabWriter(cmd.Writer)
 						if _, err := fmt.Fprintf(w, "Available:\t%d/%d\n", an.AvailableCount, an.TotalCount); err != nil {
 							return err
 						}
@@ -184,8 +190,10 @@ func (c *CLI) menuCommands() *cli.Command {
 						return nil
 					}
 
-					fmt.Println()
-					return clitable.PrintTable(menucli.ToMenuItemRows(m.Items))
+					if _, err := fmt.Fprintln(cmd.Writer); err != nil {
+						return err
+					}
+					return clitable.PrintTable(cmd.Writer, menucli.ToMenuItemRows(m.Items))
 				}),
 			},
 			{
@@ -232,8 +240,8 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*created))
 					}
 
-					fmt.Println(created.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, created.ID.String())
+					return err
 				}),
 			},
 			{
@@ -265,8 +273,8 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
 					}
 
-					fmt.Println(updated.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
+					return err
 				}),
 			},
 			{
@@ -298,8 +306,8 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
 					}
 
-					fmt.Println(updated.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
+					return err
 				}),
 			},
 			{
@@ -323,8 +331,8 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*published))
 					}
 
-					fmt.Println(published.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, published.ID.String())
+					return err
 				}),
 			},
 			{
@@ -348,8 +356,8 @@ func (c *CLI) menuCommands() *cli.Command {
 						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*drafted))
 					}
 
-					fmt.Println(drafted.ID.String())
-					return nil
+					_, err = fmt.Fprintln(cmd.Writer, drafted.ID.String())
+					return err
 				}),
 			},
 		},
