@@ -361,7 +361,10 @@ dialogs with danger styling.
 Every write command executed through `RunCommand` is tracked as an **Activity** and persisted to
 the audit log through an explicit audit writer callback. Domain events continue through the
 dispatcher; audit activity recording is separate from that event flow. Audit reads remain on the
-public audit module, while the writer is private to application bootstrap.
+public audit module, while the writer is private to application bootstrap. Successful activity
+records are written inside the command unit of work, so an audit failure rolls back the command
+and its handlers. Failed commands roll back first, then record their failed activity in a separate
+transaction so the rejected attempt remains visible without preserving partial domain writes.
 
 ```mermaid
 sequenceDiagram
@@ -378,10 +381,15 @@ sequenceDiagram
     UoW->>H: Dispatch domain events
     H->>H: ctx.TouchEntity() for affected entities
     H-->>UoW: Done
-    UoW->>TA: Complete
-    TA->>TA: activity.Complete()
-    TA->>AR: RecordActivity(activity)
-    AR->>DB: Persist AuditEntry
+    alt command succeeds
+        UoW->>AR: Record successful Activity
+        AR->>DB: Persist with domain writes
+        UoW-->>TA: Commit
+    else command fails
+        UoW-->>TA: Roll back
+        TA->>AR: Record failed Activity
+        AR->>DB: Persist failed attempt separately
+    end
 ```
 
 ### Touch Recording

@@ -31,6 +31,7 @@ func NewPipeline(config PipelineConfig) *Pipeline {
 			Metrics(config.Metrics),
 			TrackActivity(config.Store, config.RecordActivity),
 			UnitOfWork(config.Store),
+			recordSuccessfulActivity(config.RecordActivity),
 			DispatchEvents(config.Dispatcher),
 		),
 	}
