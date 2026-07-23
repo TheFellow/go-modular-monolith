@@ -5,7 +5,6 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
@@ -31,9 +30,10 @@ func TestPermissions_Ingredients(t *testing.T) {
 			fix := testutil.NewFixture(t)
 			b := fix.Bootstrap()
 			a := fix.App
+			owner := fix.OwnerContext()
 			var ctx *middleware.Context
 			if tc.name == "owner" {
-				ctx = fix.OwnerContext()
+				ctx = owner
 			} else {
 				ctx = fix.ActorContext(tc.name)
 			}
@@ -41,30 +41,54 @@ func TestPermissions_Ingredients(t *testing.T) {
 			existing := b.WithIngredient("Permissions Ingredient", measurement.UnitOz)
 
 			_, err := a.Ingredients.List(ctx, ingredients.ListRequest{})
-			testutil.PermissionTestPass(t, err)
+			testutil.Ok(t, err)
 
-			_, err = a.Ingredients.Get(ctx, entity.NewIngredientID())
-			testutil.PermissionTestPass(t, err)
+			_, err = a.Ingredients.Get(ctx, existing.ID)
+			testutil.Ok(t, err)
 
-			_, err = a.Ingredients.Create(ctx, &models.Ingredient{})
+			_, err = a.Ingredients.Create(ctx, &models.Ingredient{
+				Name: "Created Ingredient", Category: models.CategoryOther, Unit: measurement.UnitOz,
+			})
 			if tc.canWrite {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
 			}
-
-			_, err = a.Ingredients.Update(ctx, &models.Ingredient{ID: existing.ID, Description: "Updated"})
+			count, err := a.Ingredients.Count(owner, ingredients.ListRequest{})
+			testutil.Ok(t, err)
+			wantCount := 1
 			if tc.canWrite {
-				testutil.PermissionTestPass(t, err)
-			} else {
-				testutil.PermissionTestFail(t, err)
+				wantCount = 2
 			}
+			testutil.Equals(t, count, wantCount)
+
+			update := *existing
+			update.Description = "Updated"
+			_, err = a.Ingredients.Update(ctx, &update)
+			if tc.canWrite {
+				testutil.Ok(t, err)
+			} else {
+				testutil.ErrorIsPermission(t, err)
+			}
+			got, err := a.Ingredients.Get(owner, existing.ID)
+			testutil.Ok(t, err)
+			wantDescription := ""
+			if tc.canWrite {
+				wantDescription = "Updated"
+			}
+			testutil.Equals(t, got.Description, wantDescription)
 
 			_, err = a.Ingredients.Delete(ctx, existing.ID)
 			if tc.canWrite {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
+			}
+			_, err = a.Ingredients.Get(owner, existing.ID)
+			if tc.canWrite {
+				testutil.ErrorIsNotFound(t, err)
+			} else {
+				testutil.Ok(t, err)
 			}
 		})
 	}

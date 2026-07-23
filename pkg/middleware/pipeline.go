@@ -52,5 +52,5 @@ func (c *Chain) Execute(ctx *Context, op Operation, final Next) error {
 			return m(inner, op, prev)
 		}
 	}
-	return next(ctx)
+	return next(ctx.forOperation())
 }

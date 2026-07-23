@@ -24,25 +24,23 @@ func TrackActivity(s *store.Store, recordActivity func(*Context, middlewareevent
 		ctx.activity = activity
 
 		err := next(ctx)
-
-		if activity.Resource.IsZero() {
-			if len(activity.Touches) > 0 {
-				activity.Resource = activity.Touches[0]
-			}
+		// The command pipeline finalizes successful activities inside UnitOfWork.
+		// A non-zero completion time therefore means recording was already
+		// attempted and its result must be returned without a second attempt.
+		if !activity.CompletedAt.IsZero() {
+			return err
 		}
-		activity.Complete(err)
+
+		completeActivity(activity, err)
 
 		record := func(recordCtx *Context) error {
-			if rerr := recordActivity(recordCtx, *activity); rerr != nil {
-				log.FromContext(recordCtx).Error("record activity", log.Err(rerr))
-				if err == nil {
-					return errors.Internalf("record activity: %w", rerr)
-				}
-			}
-			return nil
+			return recordCompletedActivity(recordCtx, recordActivity, *activity, err == nil)
 		}
 
 		if tx, ok := ctx.Transaction(); ok && tx != nil {
+			// The caller owns an injected transaction and its rollback policy. Keep
+			// the activity in that transaction rather than competing for a second
+			// bbolt write transaction while the caller's transaction is still open.
 			if rerr := record(ctx); rerr != nil {
 				return rerr
 			}
@@ -59,4 +57,49 @@ func TrackActivity(s *store.Store, recordActivity func(*Context, middlewareevent
 
 		return err
 	}
+}
+
+// recordSuccessfulActivity runs inside UnitOfWork. Recording before the unit
+// of work returns makes the command, its event handlers, and its success audit
+// entry one atomic write. Failed commands bypass this middleware's recording;
+// TrackActivity records their failure only after UnitOfWork has rolled back.
+func recordSuccessfulActivity(recordActivity func(*Context, middlewareevents.Activity) error) Middleware {
+	return func(ctx *Context, op Operation, next Next) error {
+		if op.Kind != OperationKindCommand {
+			return next(ctx)
+		}
+
+		if err := next(ctx); err != nil {
+			return err
+		}
+
+		activity, ok := ctx.Activity()
+		if !ok {
+			return errors.Internalf("activity missing from command context")
+		}
+		completeActivity(activity, nil)
+		return recordCompletedActivity(ctx, recordActivity, *activity, true)
+	}
+}
+
+func completeActivity(activity *middlewareevents.Activity, err error) {
+	if activity.Resource.IsZero() && len(activity.Touches) > 0 {
+		activity.Resource = activity.Touches[0]
+	}
+	activity.Complete(err)
+}
+
+func recordCompletedActivity(
+	ctx *Context,
+	recordActivity func(*Context, middlewareevents.Activity) error,
+	activity middlewareevents.Activity,
+	commandSucceeded bool,
+) error {
+	if err := recordActivity(ctx, activity); err != nil {
+		log.FromContext(ctx).Error("record activity", log.Err(err))
+		if commandSucceeded {
+			return errors.Internalf("record activity: %w", err)
+		}
+	}
+	return nil
 }

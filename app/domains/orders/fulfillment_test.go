@@ -1,0 +1,123 @@
+package orders_test
+
+import (
+	"testing"
+
+	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	ordersauthz "github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
+	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+)
+
+func TestCompleteOrderUsesCatalogRatioForExplicitSubstitute(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	b := f.Bootstrap()
+	ctx := f.OwnerContext()
+
+	primary := b.WithIngredientModel(ingredientsmodels.Ingredient{
+		Name: "Simple Syrup", Category: ingredientsmodels.CategorySyrup, Unit: measurement.UnitOz,
+	})
+	substitute := b.WithIngredientModel(ingredientsmodels.Ingredient{
+		Name: "Honey Syrup", Category: ingredientsmodels.CategorySyrup, Unit: measurement.UnitOz,
+	})
+	substituteStock := b.WithInventory(substitute, 3)
+	drink := b.WithDrink(drinksmodels.Drink{
+		Name: "Honey Sour", Category: drinksmodels.DrinkCategorySour, Glass: drinksmodels.GlassTypeCoupe,
+		Recipe: drinksmodels.Recipe{
+			Ingredients: []drinksmodels.RecipeIngredient{{
+				IngredientID: primary.ID,
+				Amount:       measurement.MustAmount(2, measurement.UnitOz),
+				Substitutes:  []entity.IngredientID{substitute.ID},
+			}},
+			Steps: []string{"Shake"},
+		},
+	})
+	menu := b.WithPublishedMenu(menumodels.Menu{Name: "Substitution Menu"}, drink)
+	testutil.Equals(t, orderMenuAvailability(menu, drink.ID), menumodels.AvailabilityLimited)
+	order := b.WithOrder(ordersmodels.Order{
+		MenuID: menu.ID,
+		Items:  []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 2}},
+	})
+
+	completed, err := f.Orders.Complete(ctx, &ordersmodels.Order{ID: order.ID})
+	testutil.Ok(t, err)
+	testutil.Equals(t, completed.Status, ordersmodels.OrderStatusCompleted)
+	testutil.IsTrue(t, completed.CompletedAt.IsSome())
+
+	_, err = f.Inventory.Get(ctx, primary.ID)
+	testutil.ErrorIsNotFound(t, err)
+	remaining, err := f.Inventory.Get(ctx, substitute.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, remaining.Amount, measurement.MustAmount(0, substitute.Unit), testutil.EquateAmounts(0.000001))
+	gotMenu, err := f.Menus.Get(ctx, menu.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, orderMenuAvailability(gotMenu, drink.ID), menumodels.AvailabilityUnavailable)
+
+	entry := f.LatestAuditEntry(ordersauthz.ActionComplete)
+	testutil.AuditTouches(t, entry, order.ID.EntityUID(), substituteStock.EntityUID(), menu.ID.EntityUID())
+}
+
+func TestCompleteOrderPrefersHigherQualityCatalogSubstitute(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	b := f.Bootstrap()
+	ctx := f.OwnerContext()
+
+	primary := b.WithIngredientModel(ingredientsmodels.Ingredient{
+		Name: "Bourbon", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz,
+	})
+	rye := b.WithIngredientModel(ingredientsmodels.Ingredient{
+		Name: "Rye Whiskey", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz,
+	})
+	scotch := b.WithIngredientModel(ingredientsmodels.Ingredient{
+		Name: "Scotch", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz,
+	})
+	ryeStock := b.WithInventory(rye, 5)
+	scotchStock := b.WithInventory(scotch, 10)
+	drink := b.WithDrink(drinksmodels.Drink{
+		Name: "Whiskey Cocktail", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeRocks,
+		Recipe: drinksmodels.Recipe{
+			Ingredients: []drinksmodels.RecipeIngredient{{
+				IngredientID: primary.ID,
+				Amount:       measurement.MustAmount(1, measurement.UnitOz),
+				Substitutes:  []entity.IngredientID{scotch.ID},
+			}},
+			Steps: []string{"Stir"},
+		},
+	})
+	menu := b.WithPublishedMenu(menumodels.Menu{Name: "Quality Menu"}, drink)
+	testutil.Equals(t, orderMenuAvailability(menu, drink.ID), menumodels.AvailabilityAvailable)
+	order := b.WithOrder(ordersmodels.Order{
+		MenuID: menu.ID,
+		Items:  []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 2}},
+	})
+
+	_, err := f.Orders.Complete(ctx, &ordersmodels.Order{ID: order.ID})
+	testutil.Ok(t, err)
+	remainingRye, err := f.Inventory.Get(ctx, rye.ID)
+	testutil.Ok(t, err)
+	wantRye := *ryeStock
+	wantRye.Amount = measurement.MustAmount(3, rye.Unit)
+	wantRye.LastUpdated = remainingRye.LastUpdated
+	testutil.Equals(t, remainingRye, &wantRye, testutil.EquateAmounts(0.000001))
+	remainingScotch, err := f.Inventory.Get(ctx, scotch.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, remainingScotch, scotchStock, testutil.EquateAmounts(0.000001))
+
+	entry := f.LatestAuditEntry(ordersauthz.ActionComplete)
+	testutil.AuditTouches(t, entry, order.ID.EntityUID(), ryeStock.EntityUID())
+}
+
+func orderMenuAvailability(menu *menumodels.Menu, drinkID entity.DrinkID) menumodels.Availability {
+	for _, item := range menu.Items {
+		if item.DrinkID == drinkID {
+			return item.Availability
+		}
+	}
+	return ""
+}

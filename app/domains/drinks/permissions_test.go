@@ -48,9 +48,10 @@ func TestPermissions_Drinks(t *testing.T) {
 			fix := testutil.NewFixture(t)
 			b := fix.Bootstrap()
 			a := fix.App
+			owner := fix.OwnerContext()
 			var ctx *middleware.Context
 			if tc.name == "owner" {
-				ctx = fix.OwnerContext()
+				ctx = owner
 			} else {
 				ctx = fix.ActorContext(tc.name)
 			}
@@ -81,64 +82,100 @@ func TestPermissions_Drinks(t *testing.T) {
 
 			_, err = a.Drinks.Get(ctx, wineExisting.ID)
 			if tc.canReadWine {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
 			}
 
 			_, err = a.Drinks.Get(ctx, nonWineExisting.ID)
 			if tc.canReadNonWine {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
 			}
 
 			wineCreate := drinkForPermissions("New Wine", models.DrinkCategoryWine, base.ID)
 			_, err = a.Drinks.Create(ctx, &wineCreate)
 			if tc.canManageWine {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
 			}
 
 			nonWineCreate := drinkForPermissions("New Cocktail", models.DrinkCategoryCocktail, base.ID)
 			_, err = a.Drinks.Create(ctx, &nonWineCreate)
 			if tc.canManageNonWine {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
 			}
+			persistedCount, err := a.Drinks.Count(owner, drinks.ListRequest{})
+			testutil.Ok(t, err)
+			wantPersistedCount := 2
+			if tc.canManageWine {
+				wantPersistedCount++
+			}
+			if tc.canManageNonWine {
+				wantPersistedCount++
+			}
+			testutil.Equals(t, persistedCount, wantPersistedCount)
 
 			wineUpdated := *wineExisting
 			wineUpdated.Description = "Updated"
 			_, err = a.Drinks.Update(ctx, &wineUpdated)
 			if tc.canManageWine {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
 			}
+			gotWine, err := a.Drinks.Get(owner, wineExisting.ID)
+			testutil.Ok(t, err)
+			wantWineDescription := ""
+			if tc.canManageWine {
+				wantWineDescription = "Updated"
+			}
+			testutil.Equals(t, gotWine.Description, wantWineDescription)
 
 			nonWineUpdated := *nonWineExisting
 			nonWineUpdated.Description = "Updated"
 			_, err = a.Drinks.Update(ctx, &nonWineUpdated)
 			if tc.canManageNonWine {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
 			}
+			gotNonWine, err := a.Drinks.Get(owner, nonWineExisting.ID)
+			testutil.Ok(t, err)
+			wantNonWineDescription := ""
+			if tc.canManageNonWine {
+				wantNonWineDescription = "Updated"
+			}
+			testutil.Equals(t, gotNonWine.Description, wantNonWineDescription)
 
 			_, err = a.Drinks.Delete(ctx, wineExisting.ID)
 			if tc.canManageWine {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
+			}
+			_, err = a.Drinks.Get(owner, wineExisting.ID)
+			if tc.canManageWine {
+				testutil.ErrorIsNotFound(t, err)
+			} else {
+				testutil.Ok(t, err)
 			}
 
 			_, err = a.Drinks.Delete(ctx, nonWineExisting.ID)
 			if tc.canManageNonWine {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
+			}
+			_, err = a.Drinks.Get(owner, nonWineExisting.ID)
+			if tc.canManageNonWine {
+				testutil.ErrorIsNotFound(t, err)
+			} else {
+				testutil.Ok(t, err)
 			}
 		})
 	}

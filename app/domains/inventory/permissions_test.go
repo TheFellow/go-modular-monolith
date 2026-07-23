@@ -5,8 +5,9 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventoryM "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
@@ -30,41 +31,59 @@ func TestPermissions_Inventory(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			f := testutil.NewFixture(t)
+			b := f.Bootstrap()
 			a := f.App
+			owner := f.OwnerContext()
 			var ctx *middleware.Context
 			if tc.name == "owner" {
-				ctx = f.OwnerContext()
+				ctx = owner
 			} else {
 				ctx = f.ActorContext(tc.name)
 			}
-			missingID := entity.NewIngredientID()
+			ingredient := b.WithIngredient("Inventory Permissions Ingredient", measurement.UnitOz)
+			b.WithInventory(ingredient, 10)
 
 			_, err := a.Inventory.List(ctx, inventory.ListRequest{})
-			testutil.PermissionTestPass(t, err)
+			testutil.Ok(t, err)
 
-			_, err = a.Inventory.Get(ctx, missingID)
-			testutil.PermissionTestPass(t, err)
+			_, err = a.Inventory.Get(ctx, ingredient.ID)
+			testutil.Ok(t, err)
 
 			_, err = a.Inventory.Adjust(ctx, &inventoryM.Patch{
-				IngredientID: missingID,
+				IngredientID: ingredient.ID,
 				Delta:        optional.Some(measurement.MustAmount(1, measurement.UnitOz)),
 				Reason:       inventoryM.ReasonCorrected,
 			})
 			if tc.canWrite {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
 			}
+			adjusted, err := a.Inventory.Get(owner, ingredient.ID)
+			testutil.Ok(t, err)
+			wantAdjusted := 10.0
+			if tc.canWrite {
+				wantAdjusted = 11
+			}
+			testutil.Equals(t, adjusted.Amount, measurement.MustAmount(wantAdjusted, ingredient.Unit), testutil.EquateAmounts(0.000001))
 
 			_, err = a.Inventory.Set(ctx, &inventoryM.Update{
-				IngredientID: missingID,
-				Amount:       measurement.MustAmount(1, measurement.UnitOz),
+				IngredientID: ingredient.ID,
+				Amount:       measurement.MustAmount(20, measurement.UnitOz),
+				CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
 			})
 			if tc.canWrite {
-				testutil.PermissionTestPass(t, err)
+				testutil.Ok(t, err)
 			} else {
-				testutil.PermissionTestFail(t, err)
+				testutil.ErrorIsPermission(t, err)
 			}
+			set, err := a.Inventory.Get(owner, ingredient.ID)
+			testutil.Ok(t, err)
+			wantSet := 10.0
+			if tc.canWrite {
+				wantSet = 20
+			}
+			testutil.Equals(t, set.Amount, measurement.MustAmount(wantSet, ingredient.Unit), testutil.EquateAmounts(0.000001))
 		})
 	}
 }

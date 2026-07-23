@@ -203,11 +203,11 @@ core.
 Tests should exercise the same code paths as production.
 
 `pkg/testutil` provides a `Fixture` that stands up the full middleware pipeline with an isolated
-temporary database. Fixture creation opens a wrapping transaction, propagates it through the
-application session, and registers a `t.Cleanup` rollback. Tests can run in parallel without
-leaking state or paying for teardown deletes. They call the same module methods that the CLI and
-TUI call, so logging, authorization, command handling, event dispatch, cross-domain handler
-writes, and audit recording all execute together.
+temporary database and registers a `t.Cleanup` close. Tests can run in parallel without leaking
+state or paying for teardown deletes. Each command uses the same unit-of-work transaction and
+fresh event boundary as production. Tests call the same module methods that the CLI and TUI call,
+so logging, authorization, command handling, event dispatch, cross-domain handler writes, and
+audit recording all execute together.
 
 Bootstrap helpers create domain entities through public application operations. The drink
 builder accepts either an ingredient name or a concrete ingredient model, and `AddDrinks`

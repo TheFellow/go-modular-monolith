@@ -159,30 +159,36 @@ func (c *AvailabilityCalculator) PickIngredient(ctx store.Context, req drinksmod
 		})
 	}
 
-	for _, sub := range req.Substitutes {
-		if rule, ok := ingredientsmodels.LookupSubstitution(req.IngredientID, sub); ok {
-			addCandidate(rule.SubstituteID, rule.Ratio, rule.QualityImpact)
-			continue
-		}
-		addCandidate(sub, 1.0, ingredientsmodels.QualitySimilar)
-	}
-
+	var rules []ingredientsmodels.SubstitutionRule
 	if c.ingredients != nil {
 		// Ingredient substitution lookup is advisory. If that lookup fails we keep
 		// evaluating the explicitly declared recipe substitutes instead of turning
 		// a transient dependency issue into a hard availability error.
-		rules, err := c.ingredients.SubstitutionsFor(ctx, req.IngredientID)
+		resolved, err := c.ingredients.SubstitutionsFor(ctx, req.IngredientID)
 		if err == nil {
+			rules = resolved
 			sort.Slice(rules, func(i, j int) bool {
 				if rules[i].QualityImpact.Rank() != rules[j].QualityImpact.Rank() {
 					return rules[i].QualityImpact.Rank() > rules[j].QualityImpact.Rank()
 				}
 				return rules[i].SubstituteID.String() < rules[j].SubstituteID.String()
 			})
-			for _, rule := range rules {
-				addCandidate(rule.SubstituteID, rule.Ratio, rule.QualityImpact)
-			}
 		}
+	}
+
+	rulesBySubstitute := make(map[string]ingredientsmodels.SubstitutionRule, len(rules))
+	for _, rule := range rules {
+		rulesBySubstitute[rule.SubstituteID.String()] = rule
+	}
+	for _, sub := range req.Substitutes {
+		if rule, ok := rulesBySubstitute[sub.String()]; ok {
+			addCandidate(rule.SubstituteID, rule.Ratio, rule.QualityImpact)
+			continue
+		}
+		addCandidate(sub, 1.0, ingredientsmodels.QualitySimilar)
+	}
+	for _, rule := range rules {
+		addCandidate(rule.SubstituteID, rule.Ratio, rule.QualityImpact)
 	}
 
 	var picks []PickResult

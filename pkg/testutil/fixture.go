@@ -15,12 +15,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
-	"github.com/mjl-/bstore"
 )
 
 type Fixture struct {
@@ -38,7 +36,6 @@ type Fixture struct {
 
 	ownerCtx *middleware.Context
 	ctx      context.Context
-	tx       *bstore.Tx
 	closed   bool
 }
 
@@ -56,9 +53,7 @@ func NewFixture(t testing.TB) *Fixture {
 	s, err := store.Open(ctx, path)
 	Ok(t, err)
 	application := app.New(ctx, app.Config{Store: s})
-	tx, err := s.Begin(ctx, true)
-	Ok(t, err)
-	ownerCtx := middleware.NewContext(ctx).WithTransaction(tx)
+	ownerCtx := middleware.NewContext(ctx)
 	a := app.NewSession(ownerCtx, application)
 
 	f := &Fixture{
@@ -76,7 +71,6 @@ func NewFixture(t testing.TB) *Fixture {
 
 		ownerCtx: ownerCtx,
 		ctx:      ctx,
-		tx:       tx,
 	}
 	t.Cleanup(func() { Ok(t, f.Close()) })
 	return f
@@ -91,7 +85,7 @@ func (f *Fixture) ActorContext(actor string) *middleware.Context {
 	f.T.Helper()
 	p, err := authn.ParseActor(actor)
 	Ok(f.T, err)
-	return middleware.NewContext(authn.ToContext(f.ctx, p)).WithTransaction(f.tx)
+	return middleware.NewContext(authn.ToContext(f.ctx, p))
 }
 
 func (f *Fixture) Bootstrap() *Bootstrap {
@@ -104,18 +98,5 @@ func (f *Fixture) Close() error {
 		return nil
 	}
 	f.closed = true
-	rollbackErr := f.rollback()
-	application := f.App.App
-	f.ownerCtx = middleware.NewContext(f.ctx)
-	f.App = app.NewSession(f.ctx, application)
-	return errors.Join(rollbackErr, application.Close())
-}
-
-func (f *Fixture) rollback() error {
-	if f.tx == nil {
-		return nil
-	}
-	tx := f.tx
-	f.tx = nil
-	return f.Store.Rollback(tx)
+	return f.App.Close()
 }

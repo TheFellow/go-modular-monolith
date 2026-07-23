@@ -8,12 +8,14 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
@@ -108,6 +110,22 @@ func (b *testLogBuffer) Count(s string) int {
 	return strings.Count(b.buf.String(), s)
 }
 
+func findTestLogEntry(t *testing.T, b *testLogBuffer, message string) (string, map[string]any) {
+	t.Helper()
+
+	for line := range strings.Lines(b.String()) {
+		var fields map[string]any
+		if err := json.Unmarshal([]byte(line), &fields); err != nil {
+			continue
+		}
+		if fields["msg"] == message {
+			return line, fields
+		}
+	}
+	t.Fatalf("log message %q not found in %s", message, b.String())
+	return "", nil
+}
+
 func newTestContext(logBuf *testLogBuffer, mem *telemetry.MemoryMetrics) *middleware.Context {
 	ctx := context.Background()
 
@@ -123,6 +141,108 @@ func newTestContext(logBuf *testLogBuffer, mem *telemetry.MemoryMetrics) *middle
 
 type testEvent struct {
 	Name string
+}
+
+func TestChainExecute_IsolatesLogsAndActivityWhenContextIsReused(t *testing.T) {
+	t.Parallel()
+
+	baseCtx, s := newTransactionTestStore(t)
+	logBuf := &testLogBuffer{}
+	logger := slog.New(slog.NewJSONHandler(logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	shared := middleware.NewContext(log.ToContext(baseCtx, logger))
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
+		Store:          s,
+		RecordActivity: func(*middleware.Context, middlewareevents.Activity) error { return nil },
+	})
+	resource := testDrink("operation-context", "beer")
+
+	_, err := middleware.RunCommand(pipeline, shared, middleware.CommandSpec[testEntity, testEntity]{
+		Action: drinksauthz.ActionCreate,
+		Load: func(*middleware.Context) (testEntity, error) {
+			return resource, nil
+		},
+		Handle: func(_ *middleware.Context, in testEntity) (testEntity, error) {
+			return in, nil
+		},
+	})
+	testutil.Ok(t, err)
+	_, hasCallerActivity := shared.Activity()
+	testutil.IsFalse(t, hasCallerActivity)
+	testutil.Equals(t, len(shared.Events()), 0)
+
+	_, err = middleware.RunEntityQuery(
+		pipeline,
+		shared,
+		drinksauthz.ActionUpdate,
+		func(store.Context, struct{}) (testEntity, error) { return resource, nil },
+		struct{}{},
+	)
+	testutil.Ok(t, err)
+
+	commandLine, commandFields := findTestLogEntry(t, logBuf, "command completed")
+	testutil.Equals(t, testutil.Cast[string](t, commandFields["action"]), drinksauthz.ActionCreate.String())
+	testutil.Equals(t, testutil.Cast[string](t, commandFields["resource"]), resource.ID.String())
+	testutil.Equals(t, strings.Count(commandLine, `"action"`), 1)
+	testutil.Equals(t, strings.Count(commandLine, `"resource"`), 1)
+
+	queryLine, queryFields := findTestLogEntry(t, logBuf, "query completed")
+	testutil.Equals(t, testutil.Cast[string](t, queryFields["action"]), drinksauthz.ActionUpdate.String())
+	_, hasStaleResource := queryFields["resource"]
+	testutil.IsFalse(t, hasStaleResource)
+	testutil.Equals(t, strings.Count(queryLine, `"action"`), 1)
+	testutil.Equals(t, strings.Count(queryLine, `"resource"`), 0)
+}
+
+func TestChainExecute_IsolatesEventsWithCallerTransaction(t *testing.T) {
+	t.Parallel()
+
+	baseCtx, s := newTransactionTestStore(t)
+	deadlineCtx, cancel := context.WithTimeout(baseCtx, time.Minute)
+	t.Cleanup(cancel)
+	tx, err := s.Begin(deadlineCtx, true)
+	testutil.Ok(t, err)
+	t.Cleanup(func() {
+		if tx != nil {
+			testutil.Ok(t, s.Rollback(tx))
+		}
+	})
+	shared := middleware.NewContext(deadlineCtx).WithTransaction(tx)
+	wantDeadline, ok := deadlineCtx.Deadline()
+	testutil.IsTrue(t, ok)
+	dispatcher := &mockDispatcher{}
+	chain := middleware.NewChain(
+		middleware.SerializeTransaction(),
+		middleware.DispatchEvents(dispatcher),
+	)
+
+	for _, operation := range []struct {
+		action cedar.EntityUID
+		event  testEvent
+	}{
+		{action: drinksauthz.ActionCreate, event: testEvent{Name: "created"}},
+		{action: drinksauthz.ActionUpdate, event: testEvent{Name: "updated"}},
+	} {
+		err = chain.Execute(shared, middleware.CommandOperation(operation.action), func(ctx *middleware.Context) error {
+			gotTx, hasTx := ctx.Transaction()
+			testutil.IsTrue(t, hasTx)
+			testutil.IsTrue(t, gotTx == tx)
+			testutil.Equals(t, ctx.Principal(), authn.Owner())
+			gotDeadline, hasDeadline := ctx.Deadline()
+			testutil.IsTrue(t, hasDeadline)
+			testutil.Equals(t, gotDeadline, wantDeadline)
+			ctx.AddEvent(operation.event)
+			return nil
+		})
+		testutil.Ok(t, err)
+		testutil.Equals(t, len(shared.Events()), 0)
+	}
+
+	testutil.Equals(t, dispatcher.dispatched, []any{
+		testEvent{Name: "created"},
+		testEvent{Name: "updated"},
+	})
+	testutil.Ok(t, s.Rollback(tx))
+	tx = nil
 }
 
 // --- Request Logging Tests (Permission Error Handling) ---
