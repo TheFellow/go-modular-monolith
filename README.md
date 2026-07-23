@@ -50,6 +50,12 @@ go run ./main/cli audit list --limit 20
 # Continue with the cursor printed by the previous command.
 go run ./main/cli audit list --limit 20 --cursor aud-...
 
+# Discover the fields and examples supported by a list command.
+go run ./main/cli ingredients list --filter-help
+# Filters support parentheses, comparisons, membership, and symbolic or word-based logic.
+go run ./main/cli ingredients list --filter 'category == "spirit" && name.contains("gin")'
+go run ./main/cli audit list --filter '!success or started_at >= date("2026-07-01T00:00:00Z")'
+
 # Test authorization boundaries with different roles
 go run ./main/cli --actor bartender menus list
 go run ./main/cli --as anonymous drinks list
@@ -60,6 +66,28 @@ go run ./main/cli --tui
 
 Set `MIXOLOGY_DB=path/to/other.db` to override the database path used by `go run ./main/seed`.
 The CLI hardcodes `data/mixology.db`.
+
+### Filtering Lists
+
+Every list command accepts a reusable `--filter` expression. Run that command with
+`--filter-help` to print its concrete filter fields, field types, supported syntax, and examples
+without opening the database. Filter schemas are defined alongside each domain's public models,
+so the help remains synchronized with the fields accepted by the application.
+
+Filters support `==`, `!=`, `<`, `<=`, `>`, `>=`, `in`, `not in`, parentheses, and Boolean logic.
+Both symbolic and word-based operators are accepted: `&&`/`and`, `||`/`or`, and `!`/`not`.
+String predicates accept the canonical dot syntax (`name.contains("gin")`, `startsWith`,
+`endsWith`, and `matches`) as well as Expr's infix spelling (`name contains "gin"`). Expressions
+are type-checked against the command's schema before the query runs.
+
+```bash
+go run ./main/cli drinks list --filter-help
+go run ./main/cli drinks list \
+  --filter '(category == "cocktail" || category == "tiki") && name.contains("rum")'
+go run ./main/cli inventory list --filter 'quantity <= 5 && unit in ["ml", "oz"]'
+go run ./main/cli audit list \
+  --filter 'started_at >= date("2026-07-01T00:00:00Z") && !success'
+```
 
 ### Run CI Checks Locally
 
