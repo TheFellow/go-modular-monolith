@@ -11,7 +11,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/main/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -45,9 +45,9 @@ func (c *CLI) action(fn func(*middleware.Context, *cli.Command) error) cli.Actio
 	return func(ctx context.Context, cmd *cli.Command) error {
 		mctx, ok := ctx.(*middleware.Context)
 		if !ok {
-			return apperrors.ToCLIExit(fmt.Errorf("expected middleware context"))
+			return errors.ToCLIExit(fmt.Errorf("expected middleware context"))
 		}
-		return apperrors.ToCLIExit(fn(mctx, cmd))
+		return errors.ToCLIExit(fn(mctx, cmd))
 	}
 }
 
@@ -161,7 +161,7 @@ func (c *CLI) Command() *cli.Command {
 			if cmd != nil && cmd.Bool("tui") {
 				args := cmd.Args().Slice()
 				if len(args) > 0 {
-					return ctx, cli.Exit(fmt.Errorf("too many arguments for --tui"), apperrors.ExitUsage)
+					return ctx, cli.Exit(fmt.Errorf("too many arguments for --tui"), errors.ExitUsage)
 				}
 
 				if err := tui.Run(app.NewSession(baseCtx, c.app)); err != nil {
@@ -189,7 +189,7 @@ func (c *CLI) Command() *cli.Command {
 		},
 		ExitErrHandler: func(_ context.Context, _ *cli.Command, _ error) {},
 		OnUsageError: func(_ context.Context, _ *cli.Command, err error, _ bool) error {
-			return cli.Exit(err, apperrors.ExitUsage)
+			return cli.Exit(err, errors.ExitUsage)
 		},
 		Commands: []*cli.Command{
 			c.drinksCommands(),
