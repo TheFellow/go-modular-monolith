@@ -6,7 +6,7 @@ A modular monolith sample that models a cocktail bar domain with explicit bounde
 middleware pipelines, Cedar-based authorization, and event-driven coordination. It ships with
 a CLI and a Bubble Tea TUI, both backed by an embedded bstore (bbolt) database.
 
-For a guided architectural walkthrough, see the [tutorial series](docs/mixology-onboarding.md).
+For a guided architectural walkthrough, see the [tutorial series](https://github.com/TheFellow/go-modular-monolith/issues/23).
 
 ## Development
 
