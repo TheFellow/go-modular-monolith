@@ -17,6 +17,6 @@ type ListFilterView struct {
 func ListFilterSchema() filter.Schema[ListFilterView] {
 	return filter.NewSchema[ListFilterView](
 		`quantity <= 5 && unit == "ml"`,
-		`ingredient_id == "ingredient_123" || quantity == 0`,
+		`ingredient_id.startsWith("ing-") || quantity == 0`,
 	)
 }

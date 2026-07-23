@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"testing"
+	"time"
 
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
@@ -42,6 +43,34 @@ func TestEveryGeneratedFilterExampleParses(t *testing.T) {
 	checkFilterExamples(t, inventorymodels.ListFilterSchema())
 	checkFilterExamples(t, menusmodels.ListFilterSchema())
 	checkFilterExamples(t, ordersmodels.ListFilterSchema())
+}
+
+func TestIdentifierFilterExamplesMatchPersistedFormats(t *testing.T) {
+	t.Parallel()
+
+	inventoryExample := inventorymodels.ListFilterSchema().Examples()[1]
+	inventoryExpression, err := filter.Parse(inventorymodels.ListFilterSchema(), inventoryExample)
+	testutil.Ok(t, err)
+	matched, err := inventoryExpression.Match(inventorymodels.ListFilterView{IngredientID: "ing-example"})
+	testutil.Ok(t, err)
+	testutil.IsTrue(t, matched)
+
+	orderExample := ordersmodels.ListFilterSchema().Examples()[1]
+	orderExpression, err := filter.Parse(ordersmodels.ListFilterSchema(), orderExample)
+	testutil.Ok(t, err)
+	matched, err = orderExpression.Match(ordersmodels.ListFilterView{MenuID: "mnu-example"})
+	testutil.Ok(t, err)
+	testutil.IsTrue(t, matched)
+
+	auditExample := auditmodels.ListFilterSchema().Examples()[1]
+	auditExpression, err := filter.Parse(auditmodels.ListFilterSchema(), auditExample)
+	testutil.Ok(t, err)
+	matched, err = auditExpression.Match(auditmodels.ListFilterView{
+		Action:    `Mixology::Order::Action::"place"`,
+		StartedAt: time.Date(2026, time.July, 2, 0, 0, 0, 0, time.UTC),
+	})
+	testutil.Ok(t, err)
+	testutil.IsTrue(t, matched)
 }
 
 func checkFilterExamples[T any](t *testing.T, schema filter.Schema[T]) {

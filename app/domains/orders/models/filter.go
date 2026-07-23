@@ -17,6 +17,6 @@ type ListFilterView struct {
 func ListFilterSchema() filter.Schema[ListFilterView] {
 	return filter.NewSchema[ListFilterView](
 		`status in ["pending", "completed"] && !notes.contains("test")`,
-		`menu_id == "menu_123" || created_at >= date("2026-07-01T00:00:00Z")`,
+		`menu_id.startsWith("mnu-") || created_at >= date("2026-07-01T00:00:00Z")`,
 	)
 }

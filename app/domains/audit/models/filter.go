@@ -20,6 +20,6 @@ type ListFilterView struct {
 func ListFilterSchema() filter.Schema[ListFilterView] {
 	return filter.NewSchema[ListFilterView](
 		`!success && error.contains("permission")`,
-		`started_at >= date("2026-07-01T00:00:00Z") && (action == "Order::Place" || principal.contains("manager"))`,
+		`started_at >= date("2026-07-01T00:00:00Z") && (action == "Mixology::Order::Action::\"place\"" || principal.contains("manager"))`,
 	)
 }
