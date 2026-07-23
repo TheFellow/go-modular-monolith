@@ -108,9 +108,10 @@ go test ./...
 ### Application Test Fixtures
 
 Application tests should start with `f := testutil.NewFixture(t)`. Each fixture creates an
-isolated embedded database, starts a wrapping transaction, and rolls that transaction back from
-`t.Cleanup`. Calls still travel through the real authorization, unit-of-work, event-dispatch, and
-audit pipeline. The bootstrap and builder helpers keep cross-domain setup concise:
+isolated embedded database that is closed from `t.Cleanup`, so tests can run in parallel while
+every command still uses the production unit-of-work transaction and a fresh event boundary.
+Calls travel through the real authorization, event-dispatch, and audit pipeline. The bootstrap
+and builder helpers keep cross-domain setup concise:
 
 ```go
 f := testutil.NewFixture(t)
@@ -155,7 +156,7 @@ pkg/
   errors/          Typed domain errors with mapped exit codes & TUI styles
   optional/        Minimal generic Value[T] optional type (Some/None/IsSome/Unwrap)
   tui/             Shared Bubble Tea components (forms, dialogs, styles, keys)
-  testutil/        Rollback fixtures, domain builders, audit helpers, assertion utilities
+  testutil/        Isolated app fixtures, domain builders, audit helpers, assertion utilities
 main/
   cli/             CLI + TUI entry point (--tui flag launches the TUI)
   seed/            Database seeder

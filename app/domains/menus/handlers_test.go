@@ -109,16 +109,20 @@ func TestMenuPublishedValidator_SetsAvailabilityFromInventory(t *testing.T) {
 
 	d := dispatcher.New(f.Store)
 	menuDAO := menudao.New(f.Store)
+	tx, err := f.Store.Begin(ctx, true)
+	testutil.Ok(t, err)
+	t.Cleanup(func() { testutil.Ok(t, f.Store.Rollback(tx)) })
+	txCtx := ctx.WithTransaction(tx)
 
 	updated := *menu
 	updated.Status = menuM.MenuStatusPublished
 	updated.Items[0].Availability = menuM.AvailabilityAvailable
-	err = menuDAO.Update(ctx, updated)
+	err = menuDAO.Update(txCtx, updated)
 	testutil.Ok(t, err)
-	err = d.Dispatch(ctx, menuevents.MenuPublished{Menu: updated})
+	err = d.Dispatch(txCtx, menuevents.MenuPublished{Menu: updated})
 	testutil.Ok(t, err)
 
-	got, err := f.Menus.Get(ctx, menu.ID)
+	got, err := f.Menus.Get(txCtx, menu.ID)
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(got.Items) != 1, "expected 1 menu item, got %d", len(got.Items))
 	testutil.ErrorIf(t, got.Items[0].Availability != menuM.AvailabilityUnavailable, "expected unavailable, got %s", got.Items[0].Availability)

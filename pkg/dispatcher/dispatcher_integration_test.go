@@ -125,11 +125,15 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 
 	// Dispatch DrinkDeleted event for drink1
 	d := dispatcher.New(f.Store)
-	err = d.Dispatch(ctx, drinksevents.DrinkDeleted{Drink: *drink1, DeletedAt: time.Now().UTC()})
+	tx, err := f.Store.Begin(ctx, true)
+	testutil.Ok(t, err)
+	t.Cleanup(func() { testutil.Ok(t, f.Store.Rollback(tx)) })
+	txCtx := ctx.WithTransaction(tx)
+	err = d.Dispatch(txCtx, drinksevents.DrinkDeleted{Drink: *drink1, DeletedAt: time.Now().UTC()})
 	testutil.Ok(t, err)
 
 	// Verify menu now has only drink2
-	got, err := a.Menus.Get(ctx, m2.ID)
+	got, err := a.Menus.Get(txCtx, m2.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(got.Items), 1)
 	testutil.Equals(t, got.Items[0].DrinkID, drink2.ID)
