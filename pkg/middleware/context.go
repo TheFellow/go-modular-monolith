@@ -43,6 +43,19 @@ func (c *Context) WithTransaction(tx *bstore.Tx) *Context {
 	return &derived
 }
 
+// forOperation derives the mutable middleware state used by one pipeline
+// execution. Stable request state (parent context, principal, and an optional
+// caller-owned transaction) is preserved, while events and activity always
+// start empty and logging can enrich the derived context without mutating the
+// caller's logger.
+func (c *Context) forOperation() *Context {
+	derived := *c
+	derived.Context = c.Context
+	derived.events = make([]any, 0, 4)
+	derived.activity = nil
+	return &derived
+}
+
 func (c *Context) AddEvent(event any) {
 	c.events = append(c.events, event)
 }
