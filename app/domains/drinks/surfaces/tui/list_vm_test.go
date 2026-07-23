@@ -61,9 +61,7 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 func TestListViewModel_ShowsErrorOnFailure(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	if err := f.App.Close(); err != nil {
-		t.Fatalf("close app: %v", err)
-	}
+	testutil.Ok(t, f.App.Close())
 
 	model := tuitest.InitAndLoad(t, drinkstui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})

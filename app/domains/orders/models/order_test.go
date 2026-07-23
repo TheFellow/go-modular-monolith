@@ -1,20 +1,22 @@
-package models
+package models_test
 
 import (
 	"testing"
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestOrderValidateAcceptsWhitespacePaddedNotesWithoutNormalizing(t *testing.T) {
 	t.Parallel()
 
-	order := Order{
+	order := models.Order{
 		MenuID: menumodels.NewMenuID("menu-1"),
-		Status: OrderStatusPending,
+		Status: models.OrderStatusPending,
 		Notes:  "  rush ticket  ",
-		Items: []OrderItem{
+		Items: []models.OrderItem{
 			{
 				DrinkID:  drinksmodels.NewDrinkID("drink-1"),
 				Quantity: 1,
@@ -23,30 +25,20 @@ func TestOrderValidateAcceptsWhitespacePaddedNotesWithoutNormalizing(t *testing.
 		},
 	}
 
-	if err := order.Validate(); err != nil {
-		t.Fatalf("Validate() error = %v", err)
-	}
-	if order.Notes != "  rush ticket  " {
-		t.Fatalf("Validate() normalized order notes to %q", order.Notes)
-	}
-	if order.Items[0].Notes != "  no garnish  " {
-		t.Fatalf("Validate() normalized item notes to %q", order.Items[0].Notes)
-	}
+	testutil.Ok(t, order.Validate())
+	testutil.Equals(t, order.Notes, "  rush ticket  ")
+	testutil.Equals(t, order.Items[0].Notes, "  no garnish  ")
 }
 
 func TestOrderItemValidateAcceptsWhitespacePaddedNotesWithoutNormalizing(t *testing.T) {
 	t.Parallel()
 
-	item := OrderItem{
+	item := models.OrderItem{
 		DrinkID:  drinksmodels.NewDrinkID("drink-1"),
 		Quantity: 1,
 		Notes:    "  extra cold  ",
 	}
 
-	if err := item.Validate(); err != nil {
-		t.Fatalf("Validate() error = %v", err)
-	}
-	if item.Notes != "  extra cold  " {
-		t.Fatalf("Validate() normalized item notes to %q", item.Notes)
-	}
+	testutil.Ok(t, item.Validate())
+	testutil.Equals(t, item.Notes, "  extra cold  ")
 }

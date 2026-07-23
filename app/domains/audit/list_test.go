@@ -44,14 +44,10 @@ func TestAudit_ListPageUsesCursorWithoutDuplicates(t *testing.T) {
 		cursor = page.Next
 	}
 
-	if len(got) != 5 {
-		t.Fatalf("expected 5 entries across pages, got %d", len(got))
-	}
+	testutil.Equals(t, len(got), 5)
 	seen := map[string]bool{}
 	for _, id := range got {
-		if seen[id] {
-			t.Fatalf("duplicate entry %q across cursor pages", id)
-		}
+		testutil.IsFalse(t, seen[id])
 		seen[id] = true
 	}
 }

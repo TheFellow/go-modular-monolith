@@ -5,67 +5,43 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/govalues/decimal"
 )
 
 func TestPriceValidate(t *testing.T) {
 	t.Parallel()
 
-	if err := (money.NewPriceFromCents(100, currency.USD)).Validate(); err != nil {
-		t.Fatalf("expected valid, got %v", err)
-	}
-	if err := (money.Price{Amount: decimal.MustNew(-1, 0), Currency: currency.USD}).Validate(); !errors.IsInvalid(err) {
-		t.Fatalf("expected invalid, got %v", err)
-	}
+	testutil.Ok(t, (money.NewPriceFromCents(100, currency.USD)).Validate())
+	testutil.ErrorIsInvalid(t, (money.Price{Amount: decimal.MustNew(-1, 0), Currency: currency.USD}).Validate())
 }
 
 func TestPrice_Cents_RoundHalfUp(t *testing.T) {
 	t.Parallel()
 
 	p, err := money.NewPrice("1.025", currency.USD)
-	if err != nil {
-		t.Fatalf("NewPrice: %v", err)
-	}
+	testutil.Ok(t, err)
 	cents, err := p.Cents()
-	if err != nil {
-		t.Fatalf("Cents: %v", err)
-	}
-	if cents != 103 {
-		t.Fatalf("expected 103 cents, got %d", cents)
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, cents, 103)
 
 	p, err = money.NewPrice("1.024", currency.USD)
-	if err != nil {
-		t.Fatalf("NewPrice: %v", err)
-	}
+	testutil.Ok(t, err)
 	cents, err = p.Cents()
-	if err != nil {
-		t.Fatalf("Cents: %v", err)
-	}
-	if cents != 102 {
-		t.Fatalf("expected 102 cents, got %d", cents)
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, cents, 102)
 }
 
 func TestPrice_String_RoundHalfUp(t *testing.T) {
 	t.Parallel()
 
 	p, err := money.NewPrice("1.025", currency.USD)
-	if err != nil {
-		t.Fatalf("NewPrice: %v", err)
-	}
-	if got := p.String(); got != "$1.03" {
-		t.Fatalf("expected $1.03, got %q", got)
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, p.String(), "$1.03")
 
 	p, err = money.NewPrice("1.025", currency.EUR)
-	if err != nil {
-		t.Fatalf("NewPrice: %v", err)
-	}
-	if got := p.String(); got != "1.03 €" {
-		t.Fatalf("expected 1.03 €, got %q", got)
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, p.String(), "1.03 €")
 }
 
 func TestPrice_Mul(t *testing.T) {
@@ -73,20 +49,12 @@ func TestPrice_Mul(t *testing.T) {
 
 	p := money.NewPriceFromCents(100, currency.USD)
 	f, err := decimal.Parse("2.5")
-	if err != nil {
-		t.Fatalf("decimal.Parse: %v", err)
-	}
+	testutil.Ok(t, err)
 	got, err := p.Mul(f)
-	if err != nil {
-		t.Fatalf("Mul: %v", err)
-	}
+	testutil.Ok(t, err)
 	cents, err := got.Cents()
-	if err != nil {
-		t.Fatalf("Cents: %v", err)
-	}
-	if cents != 250 {
-		t.Fatalf("expected 250 cents, got %d", cents)
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, cents, 250)
 }
 
 func TestPrice_SuggestedPrice_CeilToCent(t *testing.T) {
@@ -94,14 +62,8 @@ func TestPrice_SuggestedPrice_CeilToCent(t *testing.T) {
 
 	p := money.NewPriceFromCents(100, currency.USD)
 	got, err := p.SuggestedPrice(0.70)
-	if err != nil {
-		t.Fatalf("SuggestedPrice: %v", err)
-	}
+	testutil.Ok(t, err)
 	cents, err := got.Cents()
-	if err != nil {
-		t.Fatalf("Cents: %v", err)
-	}
-	if cents != 334 {
-		t.Fatalf("expected 334 cents ($3.34), got %d", cents)
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, cents, 334)
 }

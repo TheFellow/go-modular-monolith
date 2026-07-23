@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"strings"
 	"testing"
 
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
@@ -26,11 +25,11 @@ func TestFilterHelpUsesConcreteSchema(t *testing.T) {
 	for _, want := range []string{
 		"category", "Ingredient category", "&& / and", "value.contains", `--filter 'category == "spirit"`,
 	} {
-		testutil.ErrorIf(t, !strings.Contains(text, want), "help does not contain %q:\n%s", want, text)
+		testutil.StringContains(t, text, want)
 	}
 	for _, example := range models.ListFilterSchema().Examples() {
 		_, err := filter.Parse(models.ListFilterSchema(), example)
-		testutil.ErrorIf(t, err != nil, "generated example %q does not parse: %v", example, err)
+		testutil.Ok(t, err)
 	}
 }
 
@@ -49,7 +48,7 @@ func checkFilterExamples[T any](t *testing.T, schema filter.Schema[T]) {
 	t.Helper()
 	for _, example := range schema.Examples() {
 		_, err := filter.Parse(schema, example)
-		testutil.ErrorIf(t, err != nil, "generated example %q does not parse: %v", example, err)
+		testutil.Ok(t, err)
 	}
 }
 
@@ -70,7 +69,7 @@ func TestFilterHelpDoesNotOpenApplicationOrRequireScopeArgument(t *testing.T) {
 		leaf.Writer = &out
 		leaf.ErrWriter = &out
 		testutil.Ok(t, cmd.Run(context.Background(), args))
-		testutil.ErrorIf(t, !strings.Contains(out.String(), "FILTER SYNTAX"), "%v output:\n%s", args, out.String())
+		testutil.StringContains(t, out.String(), "FILTER SYNTAX")
 	}
 }
 

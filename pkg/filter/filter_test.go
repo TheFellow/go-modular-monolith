@@ -31,7 +31,7 @@ func TestCanonicalPrecedenceAndBooleanSpellings(t *testing.T) {
 	}
 	for source, want := range tests {
 		expression, err := filter.Parse(schema, source)
-		testutil.ErrorIf(t, err != nil, "Parse(%q): %v", source, err)
+		testutil.Ok(t, err)
 		testutil.Equals(t, expression.String(), want)
 	}
 }
@@ -66,7 +66,7 @@ func TestRejectsRuntimeFailableLiterals(t *testing.T) {
 		} else {
 			_, err = filter.Parse(filter.NewSchema[view](), source)
 		}
-		testutil.ErrorIf(t, err == nil, "Parse(%q) succeeded", source)
+		testutil.NotNil(t, err)
 	}
 }
 
@@ -83,7 +83,7 @@ func TestParseAliasesDotSyntaxAndRoundTrip(t *testing.T) {
 	testutil.Equals(t, again.String(), want)
 	matched, err := expression.Match(view{Category: "spirit", Name: "London gin"})
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, !matched, "filter did not match")
+	testutil.IsTrue(t, matched)
 }
 
 func TestNestedFieldAndBooleanSymbols(t *testing.T) {
@@ -93,7 +93,7 @@ func TestNestedFieldAndBooleanSymbols(t *testing.T) {
 	testutil.Ok(t, err)
 	matched, err := expression.Match(view{Nested: nested{Name: "old fashioned"}})
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, !matched, "filter did not match")
+	testutil.IsTrue(t, matched)
 }
 
 func TestRejectsUnknownAndNonFilterConstructs(t *testing.T) {
@@ -101,6 +101,6 @@ func TestRejectsUnknownAndNonFilterConstructs(t *testing.T) {
 
 	for _, source := range []string{`missing == "x"`, `len(name) > 2`, `1 + 1 == 2`} {
 		_, err := filter.Parse(filter.NewSchema[view](), source)
-		testutil.ErrorIf(t, err == nil, "Parse(%q) succeeded", source)
+		testutil.NotNil(t, err)
 	}
 }

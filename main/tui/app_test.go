@@ -26,9 +26,7 @@ func TestStatusBarView_UsesWarningStyleForNotFound(t *testing.T) {
 	app.lastError = errors.NotFoundf("ingredient missing")
 
 	expected := app.styles.StatusBar.Render(app.styles.WarningText.Render(app.lastError.Error()))
-	if got := app.statusBarView(); got != expected {
-		t.Fatalf("unexpected status bar output:\n%s", got)
-	}
+	testutil.Equals(t, app.statusBarView(), expected)
 }
 
 func TestStatusBarView_UsesErrorStyleForInvalid(t *testing.T) {
@@ -38,9 +36,7 @@ func TestStatusBarView_UsesErrorStyleForInvalid(t *testing.T) {
 	app.lastError = errors.Invalidf("invalid input")
 
 	expected := app.styles.StatusBar.Render(app.styles.ErrorText.Render(app.lastError.Error()))
-	if got := app.statusBarView(); got != expected {
-		t.Fatalf("unexpected status bar output:\n%s", got)
-	}
+	testutil.Equals(t, app.statusBarView(), expected)
 }
 
 func TestStatusBarView_UsesErrorStyleForPermission(t *testing.T) {
@@ -50,9 +46,7 @@ func TestStatusBarView_UsesErrorStyleForPermission(t *testing.T) {
 	app.lastError = errors.Permissionf("permission denied")
 
 	expected := app.styles.StatusBar.Render(app.styles.ErrorText.Render(app.lastError.Error()))
-	if got := app.statusBarView(); got != expected {
-		t.Fatalf("unexpected status bar output:\n%s", got)
-	}
+	testutil.Equals(t, app.statusBarView(), expected)
 }
 
 func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
@@ -145,10 +139,8 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 			model = updateView(t, model, tea.WindowSizeMsg{Width: 120, Height: 40})
 			model = scenario.activate(t, model)
 
-			handler, ok := model.(views.BackKeyHandler)
-			if !ok || !handler.HandleBackKey() {
-				t.Fatalf("expected %s view to handle back key locally", scenario.view)
-			}
+			handler := testutil.Cast[views.BackKeyHandler](t, model)
+			testutil.IsTrue(t, handler.HandleBackKey())
 
 			app := NewApp(f.App)
 			app.currentView = scenario.view
@@ -156,19 +148,14 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 			app.views[scenario.view] = model
 
 			app = updateAppAndRunCmds(t, app, tea.KeyMsg{Type: tea.KeyEsc})
-			if app.currentView != scenario.view {
-				t.Fatalf("expected first escape to stay on %s, got %s", scenario.view, app.currentView)
-			}
+			testutil.Equals(t, app.currentView, scenario.view)
 
-			handler, ok = app.views[scenario.view].(views.BackKeyHandler)
-			if ok && handler.HandleBackKey() {
-				t.Fatalf("expected first escape to clear local %s state", scenario.view)
+			if handler, ok := app.views[scenario.view].(views.BackKeyHandler); ok {
+				testutil.IsFalse(t, handler.HandleBackKey())
 			}
 
 			app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
-			if app.currentView != ViewDashboard {
-				t.Fatalf("expected second escape to navigate back to dashboard, got %s", app.currentView)
-			}
+			testutil.Equals(t, app.currentView, ViewDashboard)
 		})
 	}
 }
@@ -210,9 +197,7 @@ func TestBackKey_NavigatesWhenDomainHasNoLocalState(t *testing.T) {
 			app.views[scenario.view] = model
 
 			app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
-			if app.currentView != ViewDashboard {
-				t.Fatalf("expected escape to navigate back to dashboard, got %s", app.currentView)
-			}
+			testutil.Equals(t, app.currentView, ViewDashboard)
 		})
 	}
 }
@@ -221,21 +206,14 @@ func updateAppOnce(t testing.TB, app *App, msg tea.Msg) *App {
 	t.Helper()
 
 	model, _ := app.Update(msg)
-	updated, ok := model.(*App)
-	if !ok {
-		t.Fatalf("expected *App, got %T", model)
-	}
-	return updated
+	return testutil.Cast[*App](t, model)
 }
 
 func updateAppAndRunCmds(t testing.TB, app *App, msg tea.Msg) *App {
 	t.Helper()
 
 	model, cmd := app.Update(msg)
-	updated, ok := model.(*App)
-	if !ok {
-		t.Fatalf("expected *App, got %T", model)
-	}
+	updated := testutil.Cast[*App](t, model)
 	for _, msg := range tuitest.RunCmds(cmd) {
 		updated = updateAppAndRunCmds(t, updated, msg)
 	}

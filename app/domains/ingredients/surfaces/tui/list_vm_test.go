@@ -20,9 +20,7 @@ func TestListViewModel_ShowsIngredientsAfterLoad(t *testing.T) {
 		Category: ingredientsmodels.CategoryMixer,
 		Unit:     measurement.UnitMl,
 	})
-	if err != nil {
-		t.Fatalf("create ingredient: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	model := tuitest.InitAndLoad(t, ingredientstui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
@@ -56,9 +54,7 @@ func TestListViewModel_ShowsEmptyState(t *testing.T) {
 func TestListViewModel_ShowsErrorOnFailure(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	if err := f.App.Close(); err != nil {
-		t.Fatalf("close app: %v", err)
-	}
+	testutil.Ok(t, f.App.Close())
 
 	model := tuitest.InitAndLoad(t, ingredientstui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
@@ -75,9 +71,7 @@ func TestListViewModel_ShowsCategoryAndUnit(t *testing.T) {
 		Category: ingredientsmodels.CategoryMixer,
 		Unit:     measurement.UnitMl,
 	})
-	if err != nil {
-		t.Fatalf("create ingredient: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	model := tuitest.InitAndLoad(t, ingredientstui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
@@ -94,9 +88,7 @@ func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 		Category: ingredientsmodels.CategoryMixer,
 		Unit:     measurement.UnitMl,
 	})
-	if err != nil {
-		t.Fatalf("create ingredient: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	model := tuitest.InitAndLoad(t, ingredientstui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 30, Height: 20})
@@ -123,9 +115,7 @@ func TestListViewModel_SetSize_WideWidth(t *testing.T) {
 		Category: ingredientsmodels.CategoryMixer,
 		Unit:     measurement.UnitMl,
 	})
-	if err != nil {
-		t.Fatalf("create ingredient: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	model := tuitest.InitAndLoad(t, ingredientstui.NewListViewModel(f.App))
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
@@ -142,9 +132,7 @@ func TestListViewModel_SetSize_ResizeSequence(t *testing.T) {
 		Category: ingredientsmodels.CategoryMixer,
 		Unit:     measurement.UnitMl,
 	})
-	if err != nil {
-		t.Fatalf("create ingredient: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	model := tuitest.InitAndLoad(t, ingredientstui.NewListViewModel(f.App))
 	sizes := []tea.WindowSizeMsg{

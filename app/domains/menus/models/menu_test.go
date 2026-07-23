@@ -1,19 +1,20 @@
-package models
+package models_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+)
 
 func TestMenuValidateAcceptsWhitespacePaddedNameWithoutNormalizing(t *testing.T) {
 	t.Parallel()
 
-	menu := Menu{
+	menu := models.Menu{
 		Name:   "  Dinner Service  ",
-		Status: MenuStatusDraft,
+		Status: models.MenuStatusDraft,
 	}
 
-	if err := menu.Validate(); err != nil {
-		t.Fatalf("Validate() error = %v", err)
-	}
-	if menu.Name != "  Dinner Service  " {
-		t.Fatalf("Validate() normalized name to %q", menu.Name)
-	}
+	testutil.Ok(t, menu.Validate())
+	testutil.Equals(t, menu.Name, "  Dinner Service  ")
 }

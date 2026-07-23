@@ -28,18 +28,14 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 		Category: ingredientsM.CategorySpirit,
 		Unit:     measurement.UnitOz,
 	})
-	if err != nil {
-		t.Fatalf("create ingredient: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	_, err = a.Inventory.Set(ctx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Amount:       measurement.MustAmount(10, ingredient.Unit),
 		CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
 	})
-	if err != nil {
-		t.Fatalf("set stock: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	drink, err := a.Drinks.Create(ctx, &drinksM.Drink{
 		Name:     "Margarita",
@@ -52,46 +48,28 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 			Steps: []string{"Shake with ice"},
 		},
 	})
-	if err != nil {
-		t.Fatalf("create drink: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	m0, err := a.Menus.Create(ctx, &menuM.Menu{Name: "Happy Hour"})
-	if err != nil {
-		t.Fatalf("create menu: %v", err)
-	}
+	testutil.Ok(t, err)
 	m1, err := a.Menus.AddDrink(ctx, &menuM.MenuPatch{MenuID: m0.ID, DrinkID: drink.ID})
-	if err != nil {
-		t.Fatalf("add drink: %v", err)
-	}
+	testutil.Ok(t, err)
 	m2, err := a.Menus.Publish(ctx, &menuM.Menu{ID: m1.ID})
-	if err != nil {
-		t.Fatalf("publish menu: %v", err)
-	}
-	if len(m2.Items) != 1 || m2.Items[0].Availability != menuM.AvailabilityAvailable {
-		t.Fatalf("expected initial availability available, got %+v", m2.Items)
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, len(m2.Items), 1)
+	testutil.Equals(t, m2.Items[0].Availability, menuM.AvailabilityAvailable)
 
 	_, err = a.Inventory.Set(ctx, &inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Amount:       measurement.MustAmount(0, ingredient.Unit),
 		CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
 	})
-	if err != nil {
-		t.Fatalf("set stock to zero: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	got, err := a.Menus.Get(ctx, m2.ID)
-	if err != nil {
-		t.Fatalf("get menu: %v", err)
-	}
-
-	if len(got.Items) != 1 {
-		t.Fatalf("expected 1 menu item, got %d", len(got.Items))
-	}
-	if got.Items[0].Availability != menuM.AvailabilityUnavailable {
-		t.Fatalf("expected menu item availability unavailable, got %q", got.Items[0].Availability)
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, len(got.Items), 1)
+	testutil.Equals(t, got.Items[0].Availability, menuM.AvailabilityUnavailable)
 }
 
 func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
@@ -106,9 +84,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 		Category: ingredientsM.CategorySpirit,
 		Unit:     measurement.UnitOz,
 	})
-	if err != nil {
-		t.Fatalf("create ingredient: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	// Create two drinks
 	drink1, err := a.Drinks.Create(ctx, &drinksM.Drink{
@@ -122,9 +98,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 			Steps: []string{"Stir with ice"},
 		},
 	})
-	if err != nil {
-		t.Fatalf("create drink1: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	drink2, err := a.Drinks.Create(ctx, &drinksM.Drink{
 		Name:     "Cosmopolitan",
@@ -137,29 +111,18 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 			Steps: []string{"Shake with ice"},
 		},
 	})
-	if err != nil {
-		t.Fatalf("create drink2: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	// Create a menu with both drinks
 	m0, err := a.Menus.Create(ctx, &menuM.Menu{Name: "Cocktail Menu"})
-	if err != nil {
-		t.Fatalf("create menu: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	m1, err := a.Menus.AddDrink(ctx, &menuM.MenuPatch{MenuID: m0.ID, DrinkID: drink1.ID})
-	if err != nil {
-		t.Fatalf("add drink1: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	m2, err := a.Menus.AddDrink(ctx, &menuM.MenuPatch{MenuID: m1.ID, DrinkID: drink2.ID})
-	if err != nil {
-		t.Fatalf("add drink2: %v", err)
-	}
-
-	if len(m2.Items) != 2 {
-		t.Fatalf("expected 2 menu items, got %d", len(m2.Items))
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, len(m2.Items), 2)
 
 	// Dispatch DrinkDeleted event for drink1
 	d := dispatcher.New(f.Store)
@@ -167,21 +130,11 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 		txCtx := ctx.WithTransaction(tx)
 		return d.Dispatch(txCtx, drinksevents.DrinkDeleted{Drink: *drink1, DeletedAt: time.Now().UTC()})
 	})
-	if err != nil {
-		t.Fatalf("dispatch: %v", err)
-	}
+	testutil.Ok(t, err)
 
 	// Verify menu now has only drink2
 	got, err := a.Menus.Get(ctx, m2.ID)
-	if err != nil {
-		t.Fatalf("get menu: %v", err)
-	}
-
-	if len(got.Items) != 1 {
-		t.Fatalf("expected 1 menu item after delete, got %d", len(got.Items))
-	}
-
-	if got.Items[0].DrinkID.String() != drink2.ID.String() {
-		t.Fatalf("expected remaining item to be drink2, got %s", got.Items[0].DrinkID.String())
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, len(got.Items), 1)
+	testutil.Equals(t, got.Items[0].DrinkID, drink2.ID)
 }

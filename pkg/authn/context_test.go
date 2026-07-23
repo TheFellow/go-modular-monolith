@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestContextRoundTrip(t *testing.T) {
@@ -12,17 +13,12 @@ func TestContextRoundTrip(t *testing.T) {
 
 	want := authn.Owner()
 	ctx := authn.ToContext(context.Background(), want)
-	if got := authn.FromContext(ctx); got != want {
-		t.Fatalf("principal = %s, want %s", got, want)
-	}
+	testutil.Equals(t, authn.FromContext(ctx), want)
 }
 
 func TestFromContextPanicsWithoutPrincipal(t *testing.T) {
 	t.Parallel()
-	defer func() {
-		if recover() == nil {
-			t.Fatal("expected missing principal to panic")
-		}
-	}()
-	authn.FromContext(context.Background())
+	testutil.ExpectPanic(t, "no principal in context", func() {
+		authn.FromContext(context.Background())
+	})
 }

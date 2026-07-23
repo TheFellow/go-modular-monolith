@@ -33,34 +33,31 @@ func TestKindMappings(t *testing.T) {
 		{errors.KindInternal, "Internal", "internal error", http.StatusInternalServerError, codes.Internal, errors.ExitInternal, errors.TUIStyleError, func() error { return errors.Internalf("detail") }, errors.IsInternal},
 	}
 
-	if got := len(errors.AllKinds()); got != len(tests) {
-		t.Fatalf("AllKinds() returned %d kinds, want %d", got, len(tests))
-	}
+	testutil.Equals(t, len(errors.AllKinds()), len(tests))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			spec := errors.SpecFor(tt.kind)
-			if spec.Kind != tt.kind || spec.Name != tt.name || spec.Message != tt.message ||
-				spec.HTTPStatus != tt.httpStatus || spec.GRPCCode != tt.grpcCode ||
-				spec.CLIExitCode != tt.cliCode || spec.TUIStyle != tt.tuiStyle {
-				t.Fatalf("SpecFor(%v) = %+v", tt.kind, spec)
-			}
+			testutil.Equals(t, spec.Kind, tt.kind)
+			testutil.Equals(t, spec.Name, tt.name)
+			testutil.Equals(t, spec.Message, tt.message)
+			testutil.Equals(t, spec.HTTPStatus, tt.httpStatus)
+			testutil.Equals(t, spec.GRPCCode, tt.grpcCode)
+			testutil.Equals(t, spec.CLIExitCode, tt.cliCode)
+			testutil.Equals(t, spec.TUIStyle, tt.tuiStyle)
 
 			err := tt.newError()
-			if !tt.isKind(err) {
-				t.Fatalf("kind checker rejected %T", err)
-			}
+			testutil.IsTrue(t, tt.isKind(err))
 
 			var appErr *errors.Error
 			testutil.ErrorAs(t, err, &appErr)
-			if appErr.Kind() != tt.kind || appErr.HTTPStatus() != tt.httpStatus ||
-				appErr.GRPCCode() != tt.grpcCode || appErr.CLIExitCode() != tt.cliCode ||
-				appErr.TUIStyle() != tt.tuiStyle {
-				t.Fatalf("shared error has unexpected mappings: kind=%v HTTP=%d gRPC=%v CLI=%d TUI=%v",
-					appErr.Kind(), appErr.HTTPStatus(), appErr.GRPCCode(), appErr.CLIExitCode(), appErr.TUIStyle())
-			}
+			testutil.Equals(t, appErr.Kind(), tt.kind)
+			testutil.Equals(t, appErr.HTTPStatus(), tt.httpStatus)
+			testutil.Equals(t, appErr.GRPCCode(), tt.grpcCode)
+			testutil.Equals(t, appErr.CLIExitCode(), tt.cliCode)
+			testutil.Equals(t, appErr.TUIStyle(), tt.tuiStyle)
 		})
 	}
 }
@@ -70,9 +67,7 @@ func TestSpecForUnknownKindFallsBackToInternal(t *testing.T) {
 
 	got := errors.SpecFor(errors.Kind(255))
 	want := errors.SpecFor(errors.KindInternal)
-	if got != want {
-		t.Fatalf("SpecFor(unknown) = %+v, want %+v", got, want)
-	}
+	testutil.Equals(t, got, want)
 }
 
 func TestConstructorUnwrap(t *testing.T) {
@@ -83,28 +78,20 @@ func TestConstructorUnwrap(t *testing.T) {
 
 	testutil.ErrorIsInternal(t, err)
 	testutil.ErrorIs(t, err, cause)
-	if !errors.Is(errors.Unwrap(err), cause) {
-		t.Fatalf("Unwrap() = %v, want %v", errors.Unwrap(err), cause)
-	}
+	testutil.ErrorIs(t, errors.Unwrap(err), cause)
 }
 
 func TestUserMessages(t *testing.T) {
 	t.Parallel()
 
 	invalid := errors.Invalidf("name is required")
-	if got := invalid.UserMessage(); got != "name is required" {
-		t.Fatalf("invalid UserMessage() = %q", got)
-	}
+	testutil.Equals(t, invalid.UserMessage(), "name is required")
 
 	internal := errors.Internalf("database password leaked")
-	if got := internal.UserMessage(); got != "internal error" {
-		t.Fatalf("internal UserMessage() = %q", got)
-	}
+	testutil.Equals(t, internal.UserMessage(), "internal error")
 
 	internal = internal.WithUserMessage("Please try again")
-	if got := internal.UserMessage(); got != "Please try again" {
-		t.Fatalf("overridden UserMessage() = %q", got)
-	}
+	testutil.Equals(t, internal.UserMessage(), "Please try again")
 }
 
 func TestSurfaceAdaptersUseSafeMessage(t *testing.T) {
@@ -113,26 +100,18 @@ func TestSurfaceAdaptersUseSafeMessage(t *testing.T) {
 	err := errors.Internalf("database password leaked")
 
 	tuiErr := errors.ToTUIError(err)
-	if tuiErr.Message != "internal error" {
-		t.Fatalf("TUI message = %q", tuiErr.Message)
-	}
+	testutil.Equals(t, tuiErr.Message, "internal error")
 
 	cliErr := errors.ToCLIExit(err)
 	var exitErr cli.ExitCoder
-	ok := errors.As(cliErr, &exitErr)
-	if !ok {
-		t.Fatalf("ToCLIExit() returned %T", cliErr)
-	}
-	if exitErr.ExitCode() != errors.ExitInternal || cliErr.Error() != "internal error" {
-		t.Fatalf("CLI error = %q code=%d", cliErr.Error(), exitErr.ExitCode())
-	}
+	testutil.ErrorAs(t, cliErr, &exitErr)
+	testutil.Equals(t, exitErr.ExitCode(), errors.ExitInternal)
+	testutil.Equals(t, cliErr.Error(), "internal error")
 }
 
 func TestWrappedKind(t *testing.T) {
 	t.Parallel()
 
 	err := fmt.Errorf("outer: %w", errors.Invalidf("name is required"))
-	if !errors.IsInvalid(err) {
-		t.Fatalf("IsInvalid(%v) = false", err)
-	}
+	testutil.ErrorIsInvalid(t, err)
 }

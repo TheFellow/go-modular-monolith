@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
@@ -49,15 +48,9 @@ func TestRunCommand_AuthorizesLoadedResourceBeforeHandle(t *testing.T) {
 			return in, nil
 		},
 	})
-	if !errors.IsPermission(err) {
-		t.Fatalf("expected permission error, got %v", err)
-	}
-	if !loaded {
-		t.Fatal("expected resource to be loaded before authorization")
-	}
-	if handled {
-		t.Fatal("expected authorization to stop the command before handling")
-	}
+	testutil.ErrorIsPermission(t, err)
+	testutil.IsTrue(t, loaded)
+	testutil.IsFalse(t, handled)
 }
 
 func TestRunCommand_AuthorizesResultAfterHandle(t *testing.T) {
@@ -87,12 +80,8 @@ func TestRunCommand_AuthorizesResultAfterHandle(t *testing.T) {
 			return out, nil
 		},
 	})
-	if !errors.IsPermission(err) {
-		t.Fatalf("expected permission error, got %v", err)
-	}
-	if !handled {
-		t.Fatal("expected command to pass loaded-resource authorization")
-	}
+	testutil.ErrorIsPermission(t, err)
+	testutil.IsTrue(t, handled)
 }
 
 func TestRunCommand_LoaderRunsInTransaction(t *testing.T) {
@@ -118,10 +107,6 @@ func TestRunCommand_LoaderRunsInTransaction(t *testing.T) {
 			return in, nil
 		},
 	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if !sawTx {
-		t.Fatalf("expected loader to run within a transaction")
-	}
+	testutil.Ok(t, err)
+	testutil.IsTrue(t, sawTx)
 }

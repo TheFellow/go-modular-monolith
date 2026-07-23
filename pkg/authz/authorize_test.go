@@ -6,7 +6,7 @@ import (
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/authz"
-	errorspkg "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -20,9 +20,7 @@ func TestAuthorizeWithEntity_AllowsAnonymousList(t *testing.T) {
 		}),
 	}
 	err := authz.AuthorizeWithEntity(authn.Anonymous(), drinksauthz.ActionList, resource)
-	if err != nil {
-		t.Fatalf("expected allow, got %v", err)
-	}
+	testutil.Ok(t, err)
 }
 
 func TestAuthorizeWithEntity_DeniesAnonymousCreate(t *testing.T) {
@@ -36,9 +34,7 @@ func TestAuthorizeWithEntity_DeniesAnonymousCreate(t *testing.T) {
 	}
 
 	err := authz.AuthorizeWithEntity(authn.Anonymous(), drinksauthz.ActionCreate, resource)
-	if !errorspkg.IsPermission(err) {
-		t.Fatalf("expected IsPermission, got %v", err)
-	}
+	testutil.ErrorIsPermission(t, err)
 }
 
 func TestAuthorizeWithEntity_AllowsOwnerCreate(t *testing.T) {
@@ -52,7 +48,5 @@ func TestAuthorizeWithEntity_AllowsOwnerCreate(t *testing.T) {
 	}
 
 	err := authz.AuthorizeWithEntity(authn.Owner(), drinksauthz.ActionCreate, resource)
-	if err != nil {
-		t.Fatalf("expected allow, got %v", err)
-	}
+	testutil.Ok(t, err)
 }
