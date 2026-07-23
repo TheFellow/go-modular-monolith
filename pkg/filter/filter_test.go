@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/filter"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 type nested struct {
@@ -30,12 +31,8 @@ func TestCanonicalPrecedenceAndBooleanSpellings(t *testing.T) {
 	}
 	for source, want := range tests {
 		expression, err := filter.Parse(schema, source)
-		if err != nil {
-			t.Fatalf("Parse(%q): %v", source, err)
-		}
-		if expression.String() != want {
-			t.Errorf("Parse(%q).String() = %q, want %q", source, expression.String(), want)
-		}
+		testutil.ErrorIf(t, err != nil, "Parse(%q): %v", source, err)
+		testutil.Equals(t, expression.String(), want)
 	}
 }
 
@@ -45,16 +42,10 @@ func TestDotAndInfixStringPredicatesAreEquivalent(t *testing.T) {
 	schema := filter.NewSchema[view]()
 	for _, predicate := range []string{"contains", "startsWith", "endsWith", "matches"} {
 		dot, err := filter.Parse(schema, `name.`+predicate+`("gin")`)
-		if err != nil {
-			t.Fatal(err)
-		}
+		testutil.Ok(t, err)
 		infix, err := filter.Parse(schema, `name `+predicate+` "gin"`)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if dot.String() != infix.String() {
-			t.Errorf("%s: dot=%q infix=%q", predicate, dot, infix)
-		}
+		testutil.Ok(t, err)
+		testutil.Equals(t, dot.String(), infix.String())
 	}
 }
 
@@ -75,9 +66,7 @@ func TestRejectsRuntimeFailableLiterals(t *testing.T) {
 		} else {
 			_, err = filter.Parse(filter.NewSchema[view](), source)
 		}
-		if err == nil {
-			t.Errorf("Parse(%q) succeeded", source)
-		}
+		testutil.ErrorIf(t, err == nil, "Parse(%q) succeeded", source)
 	}
 }
 
@@ -86,45 +75,32 @@ func TestParseAliasesDotSyntaxAndRoundTrip(t *testing.T) {
 
 	schema := filter.NewSchema[view](`category == "spirit" && name.contains("gin")`)
 	expression, err := filter.Parse(schema, `category == "spirit" and (name contains "gin" or not deleted)`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	testutil.Ok(t, err)
 	const want = `category == "spirit" && (name.contains("gin") || !deleted)`
-	if expression.String() != want {
-		t.Fatalf("canonical = %q, want %q", expression.String(), want)
-	}
+	testutil.Equals(t, expression.String(), want)
 	again, err := filter.Parse(schema, expression.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if again.String() != want {
-		t.Fatalf("round trip = %q", again.String())
-	}
+	testutil.Ok(t, err)
+	testutil.Equals(t, again.String(), want)
 	matched, err := expression.Match(view{Category: "spirit", Name: "London gin"})
-	if err != nil || !matched {
-		t.Fatalf("matched=%v err=%v", matched, err)
-	}
+	testutil.Ok(t, err)
+	testutil.ErrorIf(t, !matched, "filter did not match")
 }
 
 func TestNestedFieldAndBooleanSymbols(t *testing.T) {
 	t.Parallel()
 
 	expression, err := filter.Parse(filter.NewSchema[view](), `nested.name.startsWith("old") && !deleted`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	testutil.Ok(t, err)
 	matched, err := expression.Match(view{Nested: nested{Name: "old fashioned"}})
-	if err != nil || !matched {
-		t.Fatalf("matched=%v err=%v", matched, err)
-	}
+	testutil.Ok(t, err)
+	testutil.ErrorIf(t, !matched, "filter did not match")
 }
 
 func TestRejectsUnknownAndNonFilterConstructs(t *testing.T) {
 	t.Parallel()
 
 	for _, source := range []string{`missing == "x"`, `len(name) > 2`, `1 + 1 == 2`} {
-		if _, err := filter.Parse(filter.NewSchema[view](), source); err == nil {
-			t.Fatalf("Parse(%q) succeeded", source)
-		}
+		_, err := filter.Parse(filter.NewSchema[view](), source)
+		testutil.ErrorIf(t, err == nil, "Parse(%q) succeeded", source)
 	}
 }
