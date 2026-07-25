@@ -197,6 +197,7 @@ func (c *CLI) Command() *cli.Command {
 			c.inventoryCommands(),
 			c.menuCommands(),
 			c.ordersCommands(),
+			c.tagsCommands(),
 			c.auditCommands(),
 		},
 	}

@@ -109,6 +109,9 @@ func TestEveryListCommandHasFilterFlags(t *testing.T) {
 	c, err := NewCLI()
 	testutil.Ok(t, err)
 	for _, noun := range c.Command().Commands {
+		if noun.Name == "tags" { // Cross-cutting tag operations, not a domain entity list.
+			continue
+		}
 		for _, command := range noun.Commands {
 			if command.Name != "list" {
 				continue

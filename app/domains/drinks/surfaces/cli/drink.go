@@ -7,16 +7,18 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 type Drink struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Category    string `json:"category,omitempty"`
-	Glass       string `json:"glass,omitempty"`
-	Description string `json:"description,omitempty"`
-	Recipe      Recipe `json:"recipe"`
+	ID          string               `json:"id"`
+	Name        string               `json:"name"`
+	Category    string               `json:"category,omitempty"`
+	Glass       string               `json:"glass,omitempty"`
+	Description string               `json:"description,omitempty"`
+	Recipe      Recipe               `json:"recipe"`
+	Tags        tag.CanonicalStrings `json:"tags"`
 }
 
 func FromDomainDrink(d models.Drink) Drink {
@@ -27,6 +29,7 @@ func FromDomainDrink(d models.Drink) Drink {
 		Glass:       string(d.Glass),
 		Description: d.Description,
 		Recipe:      FromDomainRecipe(d.Recipe),
+		Tags:        d.Tags.Canonical(),
 	}
 }
 

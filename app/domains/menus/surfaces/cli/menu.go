@@ -2,16 +2,18 @@ package cli
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 )
 
 type Menu struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	Description string     `json:"description,omitempty"`
-	Status      string     `json:"status"`
-	CreatedAt   string     `json:"created_at"`
-	PublishedAt *string    `json:"published_at,omitempty"`
-	Items       []MenuItem `json:"items,omitempty"`
+	ID          string               `json:"id"`
+	Name        string               `json:"name"`
+	Description string               `json:"description,omitempty"`
+	Status      string               `json:"status"`
+	CreatedAt   string               `json:"created_at"`
+	PublishedAt *string              `json:"published_at,omitempty"`
+	Items       []MenuItem           `json:"items,omitempty"`
+	Tags        tag.CanonicalStrings `json:"tags"`
 }
 
 type MenuItem struct {
@@ -42,6 +44,7 @@ func FromDomainMenu(m models.Menu) Menu {
 		CreatedAt:   m.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		PublishedAt: publishedAt,
 		Items:       items,
+		Tags:        m.Tags.Canonical(),
 	}
 }
 

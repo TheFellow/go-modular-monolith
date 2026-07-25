@@ -1,13 +1,17 @@
 package cli
 
-import "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+import (
+	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+)
 
 type DrinkRow struct {
-	ID          string `table:"ID" json:"id"`
-	Name        string `table:"NAME" json:"name"`
-	Category    string `table:"CATEGORY" json:"category"`
-	Glass       string `table:"GLASS" json:"glass"`
-	Ingredients int    `table:"INGREDIENTS" json:"ingredients"`
+	ID          string               `table:"ID" json:"id"`
+	Name        string               `table:"NAME" json:"name"`
+	Category    string               `table:"CATEGORY" json:"category"`
+	Glass       string               `table:"GLASS" json:"glass"`
+	Ingredients int                  `table:"INGREDIENTS" json:"ingredients"`
+	Tags        tag.CanonicalStrings `table:"TAGS" json:"tags"`
 }
 
 func ToDrinkRow(d *models.Drink) DrinkRow {
@@ -20,6 +24,7 @@ func ToDrinkRow(d *models.Drink) DrinkRow {
 		Category:    string(d.Category),
 		Glass:       string(d.Glass),
 		Ingredients: len(d.Recipe.Ingredients),
+		Tags:        d.Tags.Canonical(),
 	}
 }
 

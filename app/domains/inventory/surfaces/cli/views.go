@@ -12,15 +12,18 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 type InventoryRow struct {
-	IngredientID string   `table:"INGREDIENT_ID" json:"ingredient_id"`
-	Quantity     Quantity `table:"QUANTITY" json:"quantity"`
-	Unit         string   `table:"UNIT" json:"unit"`
-	CostPerUnit  string   `table:"COST_PER_UNIT" json:"cost_per_unit,omitempty"`
-	LastUpdated  string   `table:"LAST_UPDATED" json:"last_updated"`
+	ID           string               `table:"ID" json:"id"`
+	IngredientID string               `table:"INGREDIENT_ID" json:"ingredient_id"`
+	Quantity     Quantity             `table:"QUANTITY" json:"quantity"`
+	Unit         string               `table:"UNIT" json:"unit"`
+	CostPerUnit  string               `table:"COST_PER_UNIT" json:"cost_per_unit,omitempty"`
+	LastUpdated  string               `table:"LAST_UPDATED" json:"last_updated"`
+	Tags         tag.CanonicalStrings `table:"TAGS" json:"tags"`
 }
 
 type InventoryInput struct {
@@ -46,11 +49,13 @@ func ToInventoryRow(s *models.Inventory) InventoryRow {
 		costPerUnit = cost.String()
 	}
 	return InventoryRow{
+		ID:           s.ID.String(),
 		IngredientID: s.IngredientID.String(),
 		Quantity:     Quantity(s.Amount.Value()),
 		Unit:         string(s.Amount.Unit()),
 		CostPerUnit:  costPerUnit,
 		LastUpdated:  formatTime(s.LastUpdated),
+		Tags:         s.Tags.Canonical(),
 	}
 }
 

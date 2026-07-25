@@ -7,17 +7,19 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 type MenuRow struct {
-	ID          string `table:"ID" json:"id,omitempty"`
-	Name        string `table:"NAME" json:"name"`
-	Status      string `table:"STATUS" json:"status,omitempty"`
-	Items       string `table:"ITEMS" json:"items,omitempty"`
-	CreatedAt   string `table:"CREATED_AT" json:"created_at,omitempty"`
-	PublishedAt string `table:"PUBLISHED_AT" json:"published_at,omitempty"`
-	Desc        string `table:"-" json:"description,omitempty"`
+	ID          string               `table:"ID" json:"id,omitempty"`
+	Name        string               `table:"NAME" json:"name"`
+	Status      string               `table:"STATUS" json:"status,omitempty"`
+	Items       string               `table:"ITEMS" json:"items,omitempty"`
+	CreatedAt   string               `table:"CREATED_AT" json:"created_at,omitempty"`
+	PublishedAt string               `table:"PUBLISHED_AT" json:"published_at,omitempty"`
+	Desc        string               `table:"-" json:"description,omitempty"`
+	Tags        tag.CanonicalStrings `table:"TAGS" json:"tags"`
 }
 
 type MenuItemRow struct {
@@ -45,6 +47,7 @@ func ToMenuRow(m *models.Menu) MenuRow {
 		CreatedAt:   formatTime(m.CreatedAt),
 		PublishedAt: publishedAt,
 		Desc:        m.Description,
+		Tags:        m.Tags.Canonical(),
 	}
 }
 

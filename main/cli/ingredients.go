@@ -12,6 +12,7 @@ import (
 	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/urfave/cli/v3"
 )
 
@@ -45,7 +46,9 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, res)
+						return writeJSON(cmd.Writer, paging.Page[ingredientscli.IngredientRow]{
+							Items: ingredientscli.ToIngredientRows(res.Items), Next: res.Next,
+						})
 					}
 
 					if err := clitable.PrintTable(cmd.Writer, ingredientscli.ToIngredientRows(res.Items)); err != nil {
@@ -72,7 +75,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, res)
+						return writeJSON(cmd.Writer, ingredientscli.ToIngredientRow(res))
 					}
 
 					return clitable.PrintDetail(cmd.Writer, ingredientscli.ToIngredientRow(res))

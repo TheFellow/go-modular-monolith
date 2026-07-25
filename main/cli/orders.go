@@ -12,6 +12,7 @@ import (
 	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/urfave/cli/v3"
 )
 
@@ -94,7 +95,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, created)
+						return writeJSON(cmd.Writer, orderscli.ToOrderView(created))
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, created.ID.String())
@@ -130,7 +131,9 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, res)
+						return writeJSON(cmd.Writer, paging.Page[orderscli.OrderRow]{
+							Items: orderscli.ToOrderRows(res.Items), Next: res.Next,
+						})
 					}
 					if err := clitable.PrintTable(cmd.Writer, orderscli.ToOrderRows(res.Items)); err != nil {
 						return err
@@ -155,7 +158,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, res)
+						return writeJSON(cmd.Writer, orderscli.ToOrderView(res))
 					}
 					if err := clitable.PrintDetail(cmd.Writer, orderscli.ToOrderDetail(res)); err != nil {
 						return err
@@ -184,7 +187,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, updated)
+						return writeJSON(cmd.Writer, orderscli.ToOrderView(updated))
 					}
 					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
 					return err
@@ -207,7 +210,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, updated)
+						return writeJSON(cmd.Writer, orderscli.ToOrderView(updated))
 					}
 					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
 					return err

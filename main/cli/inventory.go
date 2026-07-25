@@ -15,6 +15,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/urfave/cli/v3"
 )
 
@@ -49,7 +50,9 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, res)
+						return writeJSON(cmd.Writer, paging.Page[inventorycli.InventoryRow]{
+							Items: inventorycli.ToInventoryRows(res.Items), Next: res.Next,
+						})
 					}
 
 					if err := clitable.PrintTable(cmd.Writer, inventorycli.ToInventoryRows(res.Items)); err != nil {
@@ -76,7 +79,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, res)
+						return writeJSON(cmd.Writer, inventorycli.ToInventoryRow(res))
 					}
 
 					return clitable.PrintDetail(cmd.Writer, inventorycli.ToInventoryRow(res))

@@ -3,8 +3,29 @@
 package entity
 
 import (
+	"strings"
+
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	cedar "github.com/cedar-policy/cedar-go"
 )
+
+// ParseID infers an entity type from a globally unique ID prefix and validates
+// the complete ID. Every generated entity prefix is recognized, including
+// entity types that individual application features may not support.
+func ParseID(id string) (cedar.EntityUID, error) {
+	prefix, _, ok := strings.Cut(id, "-")
+	if !ok {
+		return cedar.EntityUID{}, errors.Invalidf("invalid entity id: %s", id)
+	}
+	switch prefix {
+{{- range . }}
+	case Prefix{{ .Name }}:
+		return parseID(Type{{ .Name }}, Prefix{{ .Name }}, id)
+{{- end }}
+	default:
+		return cedar.EntityUID{}, errors.Invalidf("unsupported entity id prefix: %s", prefix)
+	}
+}
 
 {{- range . }}
 

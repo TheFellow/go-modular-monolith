@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"reflect"
 	"testing"
 	"time"
@@ -23,6 +24,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
@@ -39,7 +41,7 @@ func TestCommandNouns(t *testing.T) {
 		names = append(names, command.Name)
 	}
 
-	want := []string{"drinks", "ingredients", "inventory", "menus", "orders", "audit"}
+	want := []string{"drinks", "ingredients", "inventory", "menus", "orders", "tags", "audit"}
 	testutil.Equals(t, names, want)
 }
 
@@ -67,12 +69,12 @@ func TestTableColumns(t *testing.T) {
 		row  any
 		want []string
 	}{
-		{"drink", drinkscli.DrinkRow{}, []string{"ID", "NAME", "CATEGORY", "GLASS", "INGREDIENTS"}},
-		{"ingredient", ingredientscli.IngredientRow{}, []string{"ID", "NAME", "CATEGORY", "UNIT", "DESCRIPTION"}},
-		{"inventory", inventorycli.InventoryRow{}, []string{"INGREDIENT_ID", "QUANTITY", "UNIT", "COST_PER_UNIT", "LAST_UPDATED"}},
-		{"menu", menuscli.MenuRow{}, []string{"ID", "NAME", "STATUS", "ITEMS", "CREATED_AT", "PUBLISHED_AT"}},
+		{"drink", drinkscli.DrinkRow{}, []string{"ID", "NAME", "CATEGORY", "GLASS", "INGREDIENTS", "TAGS"}},
+		{"ingredient", ingredientscli.IngredientRow{}, []string{"ID", "NAME", "CATEGORY", "UNIT", "DESCRIPTION", "TAGS"}},
+		{"inventory", inventorycli.InventoryRow{}, []string{"ID", "INGREDIENT_ID", "QUANTITY", "UNIT", "COST_PER_UNIT", "LAST_UPDATED", "TAGS"}},
+		{"menu", menuscli.MenuRow{}, []string{"ID", "NAME", "STATUS", "ITEMS", "CREATED_AT", "PUBLISHED_AT", "TAGS"}},
 		{"menu item", menuscli.MenuItemRow{}, []string{"DRINK_ID", "DISPLAY_NAME", "PRICE", "FEATURED", "AVAILABILITY", "SORT_ORDER"}},
-		{"order", orderscli.OrderRow{}, []string{"ID", "MENU_ID", "STATUS", "ITEMS", "TOTAL_QUANTITY", "CREATED_AT", "COMPLETED_AT"}},
+		{"order", orderscli.OrderRow{}, []string{"ID", "MENU_ID", "STATUS", "ITEMS", "TOTAL_QUANTITY", "CREATED_AT", "COMPLETED_AT", "TAGS"}},
 		{"order item", orderscli.OrderItemRow{}, []string{"DRINK_ID", "QUANTITY", "NOTES"}},
 		{"audit", auditcli.AuditRow{}, []string{"ID", "STARTED_AT", "COMPLETED_AT", "DURATION", "ACTION", "RESOURCE", "PRINCIPAL", "SUCCESS", "TOUCHES", "ERROR"}},
 	}
@@ -106,21 +108,28 @@ func TestTableRowsIncludeDerivedValues(t *testing.T) {
 		Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{
 			{}, {},
 		}},
+		Tags: tag.Tags{{Key: "region", Value: "west"}, {Key: "featured"}},
 	})
 	testutil.Equals(t, drink.Category, "cocktail")
 	testutil.Equals(t, drink.Glass, "coupe")
 	testutil.Equals(t, drink.Ingredients, 2)
+	testutil.Equals(t, drink.Tags.String(), "featured, region=west")
 
-	ingredient := ingredientscli.ToIngredientRow(&ingredientsmodels.Ingredient{Description: "Bright and tart"})
+	ingredient := ingredientscli.ToIngredientRow(&ingredientsmodels.Ingredient{
+		Description: "Bright and tart", Tags: tag.Tags{{Key: "seasonal"}},
+	})
 	testutil.Equals(t, ingredient.Desc, "Bright and tart")
+	testutil.Equals(t, ingredient.Tags.String(), "seasonal")
 
 	inventory := inventorycli.ToInventoryRow(&inventorymodels.Inventory{
 		Amount:      measurement.MustAmount(3.5, measurement.UnitOz),
 		CostPerUnit: optional.Some(price),
 		LastUpdated: startedAt,
+		Tags:        tag.Tags{{Key: "region", Value: "west"}},
 	})
 	testutil.Equals(t, inventory.CostPerUnit, "$12.34")
 	testutil.Equals(t, inventory.LastUpdated, "2026-07-22T12:00:00Z")
+	testutil.Equals(t, inventory.Tags.String(), "region=west")
 
 	menuRows := menuscli.ToMenuItemRows([]menusmodels.MenuItem{{
 		DrinkID:      entity.NewDrinkID(),
@@ -139,10 +148,12 @@ func TestTableRowsIncludeDerivedValues(t *testing.T) {
 	order := orderscli.ToOrderRow(&ordersmodels.Order{
 		Items:       []ordersmodels.OrderItem{{Quantity: 2}, {Quantity: 3}},
 		CompletedAt: optional.Some(completedAt),
+		Tags:        tag.Tags{{Key: "rush"}},
 	})
 	testutil.Equals(t, order.Items, 2)
 	testutil.Equals(t, order.TotalQuantity, 5)
 	testutil.Equals(t, order.CompletedAt, "2026-07-22T12:00:01Z")
+	testutil.Equals(t, order.Tags.String(), "rush")
 	orderItems := orderscli.ToOrderItemRows([]ordersmodels.OrderItem{{Notes: "No garnish"}})
 	testutil.Equals(t, len(orderItems), 1)
 	testutil.Equals(t, orderItems[0].Notes, "No garnish")
@@ -150,4 +161,24 @@ func TestTableRowsIncludeDerivedValues(t *testing.T) {
 	audit := auditcli.ToAuditRow(&auditmodels.AuditEntry{StartedAt: startedAt, CompletedAt: completedAt})
 	testutil.Equals(t, audit.CompletedAt, "2026-07-22T12:00:01Z")
 	testutil.Equals(t, audit.Duration, "1.5s")
+}
+
+func TestEntityJSONViewsExposeCanonicalTags(t *testing.T) {
+	t.Parallel()
+
+	tags := tag.Tags{{Key: "region", Value: "west"}, {Key: "featured"}}
+	views := []any{
+		drinkscli.FromDomainDrink(drinksmodels.Drink{Tags: tags}),
+		ingredientscli.ToIngredientRow(&ingredientsmodels.Ingredient{Tags: tags}),
+		inventorycli.ToInventoryRow(&inventorymodels.Inventory{
+			Amount: measurement.MustAmount(0, measurement.UnitOz), Tags: tags,
+		}),
+		menuscli.FromDomainMenu(menusmodels.Menu{Tags: tags}),
+		orderscli.ToOrderView(&ordersmodels.Order{Tags: tags}),
+	}
+	for _, view := range views {
+		encoded, err := json.Marshal(view)
+		testutil.Ok(t, err)
+		testutil.StringContains(t, string(encoded), `"tags":["featured","region=west"]`)
+	}
 }

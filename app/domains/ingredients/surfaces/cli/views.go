@@ -7,15 +7,17 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 type IngredientRow struct {
-	ID       string `table:"ID" json:"id,omitempty"`
-	Name     string `table:"NAME" json:"name"`
-	Category string `table:"CATEGORY" json:"category"`
-	Unit     string `table:"UNIT" json:"unit"`
-	Desc     string `table:"DESCRIPTION" json:"description,omitempty"`
+	ID       string               `table:"ID" json:"id,omitempty"`
+	Name     string               `table:"NAME" json:"name"`
+	Category string               `table:"CATEGORY" json:"category"`
+	Unit     string               `table:"UNIT" json:"unit"`
+	Desc     string               `table:"DESCRIPTION" json:"description,omitempty"`
+	Tags     tag.CanonicalStrings `table:"TAGS" json:"tags"`
 }
 
 func ToIngredientRow(i *models.Ingredient) IngredientRow {
@@ -28,6 +30,7 @@ func ToIngredientRow(i *models.Ingredient) IngredientRow {
 		Category: string(i.Category),
 		Unit:     string(i.Unit),
 		Desc:     i.Description,
+		Tags:     i.Tags.Canonical(),
 	}
 }
 

@@ -85,6 +85,19 @@ func (t Tag) String() string {
 // key-sorted copies and do not mutate their receiver.
 type Tags []Tag
 
+// CanonicalStrings is a JSON-friendly tag list whose text form is compact and
+// deterministic for table and detail views.
+type CanonicalStrings []string
+
+func (values CanonicalStrings) String() string {
+	return strings.Join(values, ", ")
+}
+
+// Canonical returns key-sorted, user-facing tag spellings.
+func (tags Tags) Canonical() CanonicalStrings {
+	return CanonicalStrings(tags.Strings())
+}
+
 // Validate checks every tag and rejects duplicate keys.
 func (tags Tags) Validate() error {
 	seen := make(map[string]struct{}, len(tags))
