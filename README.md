@@ -56,6 +56,11 @@ go run ./main/cli ingredients list --filter-help
 go run ./main/cli ingredients list --filter 'category == "spirit" && name.contains("gin")'
 go run ./main/cli audit list --filter '!success or started_at >= date("2026-07-01T00:00:00Z")'
 
+# Attach a label or key/value tag to any operational entity.
+go run ./main/cli tags add drk-abc123 featured
+go run ./main/cli tags add drk-abc123 audience=sommelier
+go run ./main/cli tags list drk-abc123
+
 # Test authorization boundaries with different roles
 go run ./main/cli --actor bartender menus list
 go run ./main/cli --as anonymous drinks list
@@ -95,6 +100,64 @@ go run ./main/cli audit list \
   --filter 'started_at >= date("2026-07-01T00:00:00Z") && !success'
 ```
 
+The five operational lists also expose their hydrated tags as the `tags` field. Match the
+canonical label or `key=value` spelling exactly:
+
+```bash
+go run ./main/cli ingredients list --filter 'tags contains "seasonal"'
+go run ./main/cli drinks list --filter 'tags contains "audience=sommelier"'
+go run ./main/cli inventory list \
+  --filter 'tags contains "low-stock" || tags contains "location=cellar"'
+go run ./main/cli menus list --filter 'tags contains "service=dinner"'
+go run ./main/cli orders list --filter 'tags contains "priority"'
+```
+
+### Cross-Domain Tags
+
+Drinks, ingredients, inventory, menus, and orders can all carry user-authored tags. Audit entries
+cannot be tagged: the audit log remains an append-only record rather than another operational
+entity. Tags have either a label form (`featured`) or a key/value form (`region=west`). Outer
+whitespace is trimmed on input, spelling and case are otherwise preserved, keys are limited to 64
+Unicode characters, and values to 256. Keys and filters are case-sensitive. Keys cannot contain
+`=` or control characters; the first `=` separates the key from its optional value.
+
+An entity has at most one value for a key. Adding the same key replaces its value, adding the
+already-current value is a successful no-op, and removing a missing key is also successful. Remove
+by key regardless of its current value:
+
+```bash
+mixology tags add drk-abc123 featured
+mixology tags add drk-abc123 region=west
+mixology tags list drk-abc123
+mixology tags remove drk-abc123 featured
+mixology tags remove drk-abc123 region
+```
+
+Add, remove, and list infer the domain from the entity ID prefix. Add and remove report whether
+the state changed, while all ordinary operational list tables and entity detail output include
+the current, key-sorted tags. Add `--json` to any tag command for structured output.
+
+Tag persistence is a central polymorphic association keyed by Cedar entity type, entity ID, and
+tag key; domain rows do not duplicate that storage. Each domain still owns loading its entities.
+Its DAO fetches associations for the query's candidate rows in one type-scoped query, inside the
+same read transaction as the domain rows, then applies tag-dependent residual filters. This
+preserves a consistent snapshot and avoids an N+1 query per item. Soft-deleted domain rows retain their tags;
+the one hard-delete path, inventory cleanup after an ingredient deletion, removes the inventory
+associations in the same unit-of-work transaction.
+
+Application bootstrap connects these responsibilities with a tag-target registry. Each owning
+domain registers a loader for its complete entity state and its own `get`, `tag`, and `untag`
+actions, so the tagging application service can orchestrate a uniform workflow without importing
+another domain's private persistence. Tag and untag permissions intentionally match that domain's
+ordinary mutation permissions. Both operations use the normal command pipeline and therefore
+produce audit activities (including successful idempotent operations).
+
+Tags also flow into every taggable entity's native Cedar `String` tags. Policies can test a label
+with `resource.hasTag("featured")` or safely read a value with `resource.hasTag("audience") &&
+resource.getTag("audience") == "sommelier"`. The drinks policy demonstrates ABAC by granting a
+sommelier read access when an end user attaches `audience=sommelier`; the meaning belongs entirely
+to that Cedar policy. The application itself reserves no tag keys or values.
+
 ### Run CI Checks Locally
 
 ```bash
@@ -130,7 +193,7 @@ the originating command.
 
 ```
 app/
-  kernel/          Shared value types (entity IDs, money, measurement, currency, quality)
+  kernel/          Shared value types (entity IDs, tags, money, measurement, currency, quality)
   domains/         One package per bounded context
     <ctx>/
       module.go        Public API (commands + queries)
@@ -145,6 +208,7 @@ app/
       internal/
         commands/      Write logic (not importable by other domains)
         dao/           bstore persistence
+    tagging/        Cross-domain tag associations, registry, and authorized application service
 pkg/
   middleware/      Operation pipelines (logging, metrics, authz, UoW, activity)
   authz/           Cedar policy engine integration
@@ -184,11 +248,17 @@ graph LR
         Menu[Menu<br/>Curation]
         Orders[Orders<br/>Consumption]
         Audit[Audit<br/>Activity Log]
+        Tags[Tagging<br/>Cross-Cutting Metadata]
 
         Ingredients --> Drinks
         Inventory --> Menu
         Drinks --> Menu
         Menu --> Orders
+        Tags -.-> Ingredients
+        Tags -.-> Drinks
+        Tags -.-> Inventory
+        Tags -.-> Menu
+        Tags -.-> Orders
     end
 ```
 
@@ -304,7 +374,8 @@ denied entities as normal filtering and return only the visible subset.
 | Inventory | Stock levels | Ingredients | StockAdjusted |
 | Menu | Published menus | Drinks, Inventory | MenuCreated, DrinkAddedToMenu, DrinkRemovedFromMenu, MenuPublished, MenuDrafted |
 | Orders | Customer orders | Menu, Drinks, Inventory | OrderPlaced, OrderCompleted, OrderCancelled |
-| Audit | Activity log, audit entries | - | - |
+| Audit | Activity log, audit entries (not taggable) | - | - |
+| Tagging | Polymorphic tag associations and tag workflow | Domain-owned target loaders | - |
 
 ## Code Generation
 
@@ -314,7 +385,7 @@ invoked by `//go:generate go run ./gen` in the parent package.
 | Generator | Scans | Produces |
 |-----------|-------|----------|
 | `pkg/dispatcher/gen` | `*/events/*.go` for event structs, `*/handlers/*.go` for handler methods (AST) | `dispatcher_gen.go` — type-switch `Dispatch()` wiring all event-to-handler relationships |
-| `pkg/authz/gen` | `*/authz/` directories for embedded `.cedar` policy files | `policies_gen.go` — assembles all domain policies into a single `PolicySet` |
+| `pkg/authz/gen` | `*/authz/` Cedar schemas and policies | `policies_gen.go` plus per-domain Cedar action/entity models and tests, including native `String` entity tags |
 | `app/kernel/entity/gen` | `Entities` slice in `entities.go` | Strongly-typed IDs (`DrinkID`, `MenuID`, etc.) with parse/validate/format methods |
 | `pkg/errors/gen` | `AllKinds()` taxonomy in `kind.go` | Per-kind error constructors (`Invalidf`, `NotFoundf`, etc.) and matching `testutil` assertion helpers |
 
@@ -347,7 +418,11 @@ surface.
 
 ## Terminal UI
 
-The TUI (`go run ./main/cli --tui`) provides a Bubble Tea interface for all six domains.
+The TUI (`go run ./main/cli --tui`) provides seven dashboard workspaces: the five operational
+domains, audit, and tags. Press `[7]` from the Dashboard to open the Tags workspace, enter any
+supported entity ID, and choose Inspect, Add or replace, or Remove. Adds accept `key` or
+`key=value`; removals accept the key. Operational entity detail views also display their current
+tags.
 
 Every domain surface supports list/detail navigation, with write workflows where the domain
 has useful TUI operations: drinks and ingredients support create/edit/delete, inventory supports
@@ -436,7 +511,7 @@ mixology audit history Mixology::Drink::drk-abc123
 
 ## CLI Usage Notes
 
-- IDs are typed and must include the entity prefix: drinks use `drk-`, ingredients `ing-`, menus `mnu-`, orders `ord-` (inventory IDs are derived as `inv-<ingredient-id>` and audit entries use `aud-`).
+- IDs are typed and must include the entity prefix: drinks use `drk-`, ingredients `ing-`, menus `mnu-`, orders `ord-` (inventory uses `inv-` and audit entries use `aud-`). The cross-domain tag commands infer the entity type from this prefix and accept the five operational prefixes; `aud-` is explicitly unsupported.
 - Commands that accept IDs use `--id` for the command's primary entity and `--<entity>-id` for cross-entity references (for example, `--menu-id`, `--drink-id`, `--ingredient-id`). Malformed IDs return an "invalid <entity> id prefix" error with exit code 10.
 
 ```bash
