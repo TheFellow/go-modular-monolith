@@ -33,6 +33,8 @@ func (o Order) EntityUID() cedar.EntityUID {
 	return o.ID.EntityUID()
 }
 
+func (o *Order) SetTags(tags tag.Tags) { o.Tags = tags }
+
 func (o Order) CedarEntity() cedar.Entity {
 	return orderauthz.Order{
 		UID: o.ID.EntityUID(), MenuID: o.MenuID.EntityUID(), Status: string(o.Status), Tags: o.Tags.Map(),

@@ -30,6 +30,8 @@ func (i Ingredient) EntityUID() cedar.EntityUID {
 	return i.ID.EntityUID()
 }
 
+func (i *Ingredient) SetTags(tags tag.Tags) { i.Tags = tags }
+
 func (i Ingredient) CedarEntity() cedar.Entity {
 	return ingredientauthz.Ingredient{
 		UID: i.ID.EntityUID(), Name: i.Name, Category: string(i.Category), Unit: string(i.Unit), Tags: i.Tags.Map(),

@@ -201,12 +201,12 @@ func (c *CLI) menuCommands() *cli.Command {
 				Arguments: []cli.Argument{
 					&cli.StringArgs{Name: "name", UsageText: "Menu name", Max: 1},
 				},
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					TemplateFlag,
 					StdinFlag,
 					FileFlag,
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
 						return writeJSON(cmd.Writer, menucli.TemplateCreate())
@@ -230,7 +230,9 @@ func (c *CLI) menuCommands() *cli.Command {
 						input = &menumodels.Menu{Name: args[0]}
 					}
 
-					created, err := c.app.Menus.Create(ctx, input)
+					created, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*menumodels.Menu, error) {
+						return c.app.Menus.Create(ctx, input)
+					})
 					if err != nil {
 						return err
 					}
@@ -246,11 +248,11 @@ func (c *CLI) menuCommands() *cli.Command {
 			{
 				Name:  "add-drink",
 				Usage: "Add a drink to a menu",
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
 					&cli.StringFlag{Name: "drink-id", Usage: "Drink ID", Required: true},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					menuID, err := entity.ParseMenuID(cmd.String("menu-id"))
 					if err != nil {
@@ -260,9 +262,10 @@ func (c *CLI) menuCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					updated, err := c.app.Menus.AddDrink(ctx, &menumodels.MenuPatch{
-						MenuID:  menuID,
-						DrinkID: drinkID,
+					updated, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*menumodels.Menu, error) {
+						return c.app.Menus.AddDrink(ctx, &menumodels.MenuPatch{
+							MenuID: menuID, DrinkID: drinkID,
+						})
 					})
 					if err != nil {
 						return err
@@ -279,11 +282,11 @@ func (c *CLI) menuCommands() *cli.Command {
 			{
 				Name:  "remove-drink",
 				Usage: "Remove a drink from a menu",
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
 					&cli.StringFlag{Name: "drink-id", Usage: "Drink ID", Required: true},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					menuID, err := entity.ParseMenuID(cmd.String("menu-id"))
 					if err != nil {
@@ -293,9 +296,10 @@ func (c *CLI) menuCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					updated, err := c.app.Menus.RemoveDrink(ctx, &menumodels.MenuPatch{
-						MenuID:  menuID,
-						DrinkID: drinkID,
+					updated, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*menumodels.Menu, error) {
+						return c.app.Menus.RemoveDrink(ctx, &menumodels.MenuPatch{
+							MenuID: menuID, DrinkID: drinkID,
+						})
 					})
 					if err != nil {
 						return err
@@ -312,16 +316,18 @@ func (c *CLI) menuCommands() *cli.Command {
 			{
 				Name:  "publish",
 				Usage: "Publish a menu",
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					menuID, err := entity.ParseMenuID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
-					published, err := c.app.Menus.Publish(ctx, &menumodels.Menu{ID: menuID})
+					published, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*menumodels.Menu, error) {
+						return c.app.Menus.Publish(ctx, &menumodels.Menu{ID: menuID})
+					})
 					if err != nil {
 						return err
 					}
@@ -337,16 +343,18 @@ func (c *CLI) menuCommands() *cli.Command {
 			{
 				Name:  "draft",
 				Usage: "Return a published menu to draft status",
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					menuID, err := entity.ParseMenuID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
-					drafted, err := c.app.Menus.Draft(ctx, &menumodels.Menu{ID: menuID})
+					drafted, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*menumodels.Menu, error) {
+						return c.app.Menus.Draft(ctx, &menumodels.Menu{ID: menuID})
+					})
 					if err != nil {
 						return err
 					}

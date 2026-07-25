@@ -27,6 +27,8 @@ func (s Inventory) EntityUID() cedar.EntityUID {
 	return cedar.NewEntityUID(InventoryEntityType, s.ID.EntityUID().ID)
 }
 
+func (s *Inventory) SetTags(tags tag.Tags) { s.Tags = tags }
+
 func (s Inventory) CedarEntity() cedar.Entity {
 	return inventoryauthz.Inventory{
 		UID: s.EntityUID(), IngredientID: s.IngredientID.EntityUID(), Unit: string(s.Amount.Unit()), Tags: s.Tags.Map(),

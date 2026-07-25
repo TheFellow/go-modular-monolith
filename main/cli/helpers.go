@@ -14,10 +14,13 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/mjl-/bstore"
 	"github.com/urfave/cli/v3"
 )
 
@@ -37,6 +40,62 @@ func filterFlags() []cli.Flag {
 
 func appendFilterFlags(flags []cli.Flag) []cli.Flag {
 	return append(flags, filterFlags()...)
+}
+
+func tagsFlag() cli.Flag {
+	return &cli.StringFlag{
+		Name:  "tags",
+		Usage: "Complete tag set as CSV (for example: region=east,env=dev,terraform)",
+	}
+}
+
+func appendTagsFlag(flags []cli.Flag) []cli.Flag {
+	return append(flags, tagsFlag())
+}
+
+type taggableEntity interface {
+	EntityUID() cedar.EntityUID
+	SetTags(tag.Tags)
+}
+
+// runTaggedMutation keeps a domain mutation and its optional complete tag-set
+// replacement in one caller-owned transaction. Parsing happens first so bad
+// input cannot execute the domain mutation. An omitted flag preserves tags;
+// an explicitly empty flag replaces them with the empty set.
+func runTaggedMutation[T taggableEntity](
+	c *CLI,
+	ctx *middleware.Context,
+	cmd *cli.Command,
+	mutate func(*middleware.Context) (T, error),
+) (T, error) {
+	var zero T
+	if !cmd.IsSet("tags") {
+		return mutate(ctx)
+	}
+
+	desired, err := tag.ParseCollection(cmd.String("tags"))
+	if err != nil {
+		return zero, err
+	}
+
+	var result T
+	err = c.app.Store.Write(ctx, func(tx *bstore.Tx) error {
+		txCtx := ctx.WithTransaction(tx)
+		result, err = mutate(txCtx)
+		if err != nil {
+			return err
+		}
+		replaced, err := c.app.Tags.Replace(txCtx, result.EntityUID(), desired)
+		if err != nil {
+			return err
+		}
+		result.SetTags(replaced.Tags)
+		return nil
+	})
+	if err != nil {
+		return zero, err
+	}
+	return result, nil
 }
 
 func filterAction[T any](c *CLI, schema appfilter.Schema[T], fn func(*middleware.Context, *cli.Command) error) cli.ActionFunc {

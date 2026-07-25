@@ -25,15 +25,15 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "place",
 				Usage: "Place an order",
 				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "items", UsageText: "<drink-id>:<qty> [<drink-id>:<qty>...]", Max: 0},
+					&cli.StringArgs{Name: "items", UsageText: "<drink-id>:<qty> [<drink-id>:<qty>...]", Max: -1},
 				},
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					TemplateFlag,
 					StdinFlag,
 					FileFlag,
 					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID"},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
 						return writeJSON(cmd.Writer, orderscli.TemplatePlace())
@@ -89,7 +89,9 @@ func (c *CLI) ordersCommands() *cli.Command {
 						}
 					}
 
-					created, err := c.app.Orders.Place(ctx, input)
+					created, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
+						return c.app.Orders.Place(ctx, input)
+					})
 					if err != nil {
 						return err
 					}
@@ -173,16 +175,18 @@ func (c *CLI) ordersCommands() *cli.Command {
 			{
 				Name:  "complete",
 				Usage: "Complete an order",
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					orderID, err := entity.ParseOrderID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
-					updated, err := c.app.Orders.Complete(ctx, &ordersmodels.Order{ID: orderID})
+					updated, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
+						return c.app.Orders.Complete(ctx, &ordersmodels.Order{ID: orderID})
+					})
 					if err != nil {
 						return err
 					}
@@ -196,16 +200,18 @@ func (c *CLI) ordersCommands() *cli.Command {
 			{
 				Name:  "cancel",
 				Usage: "Cancel an order",
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					orderID, err := entity.ParseOrderID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
-					updated, err := c.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: orderID})
+					updated, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
+						return c.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: orderID})
+					})
 					if err != nil {
 						return err
 					}

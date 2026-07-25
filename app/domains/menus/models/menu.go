@@ -32,6 +32,8 @@ func (m Menu) EntityUID() cedar.EntityUID {
 	return m.ID.EntityUID()
 }
 
+func (m *Menu) SetTags(tags tag.Tags) { m.Tags = tags }
+
 func (m Menu) CedarEntity() cedar.Entity {
 	return menuauthz.Menu{
 		UID: m.ID.EntityUID(), Name: m.Name, Status: string(m.Status), Tags: m.Tags.Map(),

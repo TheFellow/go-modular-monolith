@@ -31,6 +31,8 @@ func (d Drink) EntityUID() cedar.EntityUID {
 	return d.ID.EntityUID()
 }
 
+func (d *Drink) SetTags(tags tag.Tags) { d.Tags = tags }
+
 func (d Drink) CedarEntity() cedar.Entity {
 	return drinkauthz.Drink{
 		UID: d.ID.EntityUID(), Name: d.Name, Category: string(d.Category),

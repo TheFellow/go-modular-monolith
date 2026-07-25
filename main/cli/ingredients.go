@@ -87,7 +87,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Arguments: []cli.Argument{
 					&cli.StringArgs{Name: "name", UsageText: "Ingredient name", Max: 1},
 				},
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					TemplateFlag,
 					StdinFlag,
@@ -109,7 +109,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						Aliases: []string{"d"},
 						Usage:   "Description",
 					},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
 						return writeJSON(cmd.Writer, ingredientscli.TemplateCreate())
@@ -148,7 +148,9 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						}
 					}
 
-					res, err := c.app.Ingredients.Create(ctx, input)
+					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*models.Ingredient, error) {
+						return c.app.Ingredients.Create(ctx, input)
+					})
 					if err != nil {
 						return err
 					}
@@ -164,7 +166,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 			{
 				Name:  "update",
 				Usage: "Update an ingredient",
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					TemplateFlag,
 					StdinFlag,
@@ -192,7 +194,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						Aliases: []string{"d"},
 						Usage:   "Description",
 					},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
 						return writeJSON(cmd.Writer, ingredientscli.TemplateUpdate())
@@ -236,7 +238,9 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						}
 					}
 
-					res, err := c.app.Ingredients.Update(ctx, input)
+					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*models.Ingredient, error) {
+						return c.app.Ingredients.Update(ctx, input)
+					})
 					if err != nil {
 						return err
 					}

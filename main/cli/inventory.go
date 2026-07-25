@@ -88,7 +88,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 			{
 				Name:  "adjust",
 				Usage: "Patch stock quantity and/or cost",
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					TemplateFlag,
 					StdinFlag,
@@ -112,7 +112,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						Name:  "cost-per-unit",
 						Usage: "Cost per unit in ingredient unit (e.g. \"$1.23\" or \"USD 1.23\")",
 					},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
 						return writeJSON(cmd.Writer, inventorycli.TemplateAdjust())
@@ -223,7 +223,9 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						}
 					}
 
-					res, err := c.app.Inventory.Adjust(ctx, patch)
+					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
+						return c.app.Inventory.Adjust(ctx, patch)
+					})
 					if err != nil {
 						return err
 					}
@@ -239,7 +241,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 			{
 				Name:  "set",
 				Usage: "Set stock quantity",
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					TemplateFlag,
 					StdinFlag,
@@ -250,7 +252,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						Name:  "cost-per-unit",
 						Usage: "Cost per unit in ingredient unit (e.g. \"$1.23\" or \"USD 1.23\")",
 					},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
 						return writeJSON(cmd.Writer, inventorycli.TemplateSet())
@@ -332,7 +334,9 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						}
 					}
 
-					res, err := c.app.Inventory.Set(ctx, update)
+					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
+						return c.app.Inventory.Set(ctx, update)
+					})
 					if err != nil {
 						return err
 					}
