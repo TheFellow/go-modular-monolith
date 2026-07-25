@@ -5,6 +5,7 @@ import (
 
 	orderauthz "github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -25,6 +26,7 @@ type Order struct {
 	CompletedAt optional.Value[time.Time]
 	Notes       string
 	DeletedAt   optional.Value[time.Time]
+	Tags        tag.Tags
 }
 
 func (o Order) EntityUID() cedar.EntityUID {
@@ -33,7 +35,7 @@ func (o Order) EntityUID() cedar.EntityUID {
 
 func (o Order) CedarEntity() cedar.Entity {
 	return orderauthz.Order{
-		UID: o.ID.EntityUID(), MenuID: o.MenuID.EntityUID(), Status: string(o.Status),
+		UID: o.ID.EntityUID(), MenuID: o.MenuID.EntityUID(), Status: string(o.Status), Tags: o.Tags.Map(),
 	}.CedarEntity()
 }
 

@@ -107,8 +107,8 @@ func TestMenuPublishedValidator_SetsAvailabilityFromInventory(t *testing.T) {
 	menu, err = f.Menus.AddDrink(ctx, &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
 
-	d := dispatcher.New(f.Store)
-	menuDAO := menudao.New(f.Store)
+	d := dispatcher.New(f.Store, f.App.Tags)
+	menuDAO := menudao.New(f.Store, f.App.Tags)
 	tx, err := f.Store.Begin(ctx, true)
 	testutil.Ok(t, err)
 	t.Cleanup(func() { testutil.Ok(t, f.Store.Rollback(tx)) })

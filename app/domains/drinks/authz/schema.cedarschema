@@ -6,7 +6,7 @@ namespace Mixology {
         Category: String,
         Glass: String,
         Description: String
-    };
+    } tags String;
 }
 
 namespace Mixology::Drink {

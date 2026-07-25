@@ -106,7 +106,7 @@ func renderModuleModels(tree *ast.Schema, moduleName string) ([]byte, error) {
 	fmt.Fprintf(&b, "func (m %s) CedarEntity() cedar.Entity {\n", goEntity)
 	if hasTags {
 		b.WriteString("\ttags := make(cedar.RecordMap, len(m.Tags))\n")
-		b.WriteString("\tfor key, value := range m.Tags {\n\t\ttags[key] = cedar.String(value)\n\t}\n\n")
+		b.WriteString("\tfor key, value := range m.Tags {\n\t\ttags[cedar.String(key)] = cedar.String(value)\n\t}\n\n")
 	}
 	fmt.Fprintf(&b, "\treturn cedar.Entity{\n\t\tUID: cedar.NewEntityUID(%sType, m.UID.ID),\n", goEntity)
 	b.WriteString("\t\tParents: cedar.NewEntityUIDSet(),\n\t\tAttributes: cedar.NewRecord(cedar.RecordMap{\n")

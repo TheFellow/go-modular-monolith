@@ -34,7 +34,7 @@ func TestListFilter_IDs(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	list := queries.New(f.Store).List(f.OwnerContext(), dao.ListFilter{
+	list := queries.New(f.Store, f.App.Tags).List(f.OwnerContext(), dao.ListFilter{
 		IDs: []entity.IngredientID{ing1.ID, ing3.ID},
 	})
 

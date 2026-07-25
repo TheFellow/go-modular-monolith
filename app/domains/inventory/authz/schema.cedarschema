@@ -5,7 +5,7 @@ namespace Mixology {
     entity Inventory {
         IngredientID: Ingredient,
         Unit: String
-    };
+    } tags String;
 }
 
 namespace Mixology::Inventory {

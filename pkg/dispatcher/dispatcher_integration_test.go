@@ -124,7 +124,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	testutil.Equals(t, len(m2.Items), 2)
 
 	// Dispatch DrinkDeleted event for drink1
-	d := dispatcher.New(f.Store)
+	d := dispatcher.New(f.Store, f.App.Tags)
 	tx, err := f.Store.Begin(ctx, true)
 	testutil.Ok(t, err)
 	t.Cleanup(func() { testutil.Ok(t, f.Store.Rollback(tx)) })

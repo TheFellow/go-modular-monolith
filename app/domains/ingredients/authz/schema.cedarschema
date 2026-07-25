@@ -5,7 +5,7 @@ namespace Mixology {
         Name: String,
         Category: String,
         Unit: String
-    };
+    } tags String;
 }
 
 namespace Mixology::Ingredient {

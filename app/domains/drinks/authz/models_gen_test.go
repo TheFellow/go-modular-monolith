@@ -15,6 +15,7 @@ func TestDrinkCedarEntity(t *testing.T) {
 
 	model := moduleauthz.Drink{
 		UID:         cedar.NewEntityUID("Wrong::Type", "test-id"),
+		Tags:        map[string]string{"audience": "members", "featured": ""},
 		Category:    "test-category",
 		Description: "test-description",
 		Glass:       "test-glass",
@@ -31,7 +32,10 @@ func TestDrinkCedarEntity(t *testing.T) {
 			moduleauthz.DrinkGlassAttr:       cedar.String("test-glass"),
 			moduleauthz.DrinkNameAttr:        cedar.String("test-name"),
 		}),
-		Tags: cedar.NewRecord(nil),
+		Tags: cedar.NewRecord(cedar.RecordMap{
+			"audience": cedar.String("members"),
+			"featured": cedar.String(""),
+		}),
 	}
 
 	testutil.Equals(t, got, want)

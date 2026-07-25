@@ -4,6 +4,7 @@ import (
 	drinksevents "github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
@@ -12,9 +13,9 @@ type DrinkDeleted struct {
 	dao *dao.DAO
 }
 
-func NewDrinkDeleted(s *store.Store) *DrinkDeleted {
+func NewDrinkDeleted(s *store.Store, tags tag.Repository) *DrinkDeleted {
 	return &DrinkDeleted{
-		dao: dao.New(s),
+		dao: dao.New(s, tags),
 	}
 }
 

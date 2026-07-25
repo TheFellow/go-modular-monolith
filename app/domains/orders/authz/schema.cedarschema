@@ -5,7 +5,7 @@ namespace Mixology {
     entity Order {
         MenuID: Menu,
         Status: String
-    };
+    } tags String;
 }
 
 namespace Mixology::Order {

@@ -2,6 +2,7 @@ package queries
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/internal/dao"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
@@ -9,6 +10,6 @@ type Queries struct {
 	dao *dao.DAO
 }
 
-func New(s *store.Store) *Queries {
-	return &Queries{dao: dao.New(s)}
+func New(s *store.Store, tags tag.Repository) *Queries {
+	return &Queries{dao: dao.New(s, tags)}
 }

@@ -8,6 +8,7 @@ import (
 	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
 
@@ -23,11 +24,21 @@ type ListFilter struct {
 func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Inventory, error] {
 	return func(yield func(*models.Inventory, error) bool) {
 		err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-			for row, err := range d.query(tx, filter).SortDesc("InventoryID").All() {
-				if err != nil {
-					return store.MapError(err, "iterate stock")
-				}
+			rows, err := d.query(tx, filter).SortDesc("InventoryID").List()
+			if err != nil {
+				return store.MapError(err, "list stock")
+			}
+			ids := make([]cedar.String, len(rows))
+			for i := range rows {
+				ids[i] = cedar.String(rows[i].InventoryID)
+			}
+			tagsByTarget, err := d.tags.ListTypeTx(tx, entity.TypeInventory, ids)
+			if err != nil {
+				return err
+			}
+			for _, row := range rows {
 				stock := toModel(row)
+				stock.Tags = tagsByTarget[stock.EntityUID()]
 				if !yield(&stock, nil) {
 					return nil
 				}

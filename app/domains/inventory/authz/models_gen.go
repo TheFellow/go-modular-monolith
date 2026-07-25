@@ -28,12 +28,18 @@ var (
 // Inventory is the Cedar-facing authorization model for Mixology::Inventory.
 type Inventory struct {
 	UID          cedar.EntityUID
+	Tags         map[string]string
 	IngredientID cedar.EntityUID
 	Unit         string
 }
 
 // CedarEntity converts m to the entity shape declared in schema.cedarschema.
 func (m Inventory) CedarEntity() cedar.Entity {
+	tags := make(cedar.RecordMap, len(m.Tags))
+	for key, value := range m.Tags {
+		tags[cedar.String(key)] = cedar.String(value)
+	}
+
 	return cedar.Entity{
 		UID:     cedar.NewEntityUID(InventoryType, m.UID.ID),
 		Parents: cedar.NewEntityUIDSet(),
@@ -41,6 +47,6 @@ func (m Inventory) CedarEntity() cedar.Entity {
 			InventoryIngredientIDAttr: cedar.EntityUID(m.IngredientID),
 			InventoryUnitAttr:         cedar.String(m.Unit),
 		}),
-		Tags: cedar.NewRecord(nil),
+		Tags: cedar.NewRecord(tags),
 	}
 }

@@ -90,7 +90,7 @@ namespace Mixology::Drink {
 	for _, want := range []string{
 		`Tags map[string]string`,
 		`tags := make(cedar.RecordMap, len(m.Tags))`,
-		`tags[key] = cedar.String(value)`,
+		`tags[cedar.String(key)] = cedar.String(value)`,
 		`Tags: cedar.NewRecord(tags)`,
 	} {
 		testutil.ErrorIf(t, !strings.Contains(normalized, want), "generated source missing %q:\n%s", want, got)

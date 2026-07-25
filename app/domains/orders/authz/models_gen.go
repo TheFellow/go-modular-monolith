@@ -29,12 +29,18 @@ var (
 // Order is the Cedar-facing authorization model for Mixology::Order.
 type Order struct {
 	UID    cedar.EntityUID
+	Tags   map[string]string
 	MenuID cedar.EntityUID
 	Status string
 }
 
 // CedarEntity converts m to the entity shape declared in schema.cedarschema.
 func (m Order) CedarEntity() cedar.Entity {
+	tags := make(cedar.RecordMap, len(m.Tags))
+	for key, value := range m.Tags {
+		tags[cedar.String(key)] = cedar.String(value)
+	}
+
 	return cedar.Entity{
 		UID:     cedar.NewEntityUID(OrderType, m.UID.ID),
 		Parents: cedar.NewEntityUIDSet(),
@@ -42,6 +48,6 @@ func (m Order) CedarEntity() cedar.Entity {
 			OrderMenuIDAttr: cedar.EntityUID(m.MenuID),
 			OrderStatusAttr: cedar.String(m.Status),
 		}),
-		Tags: cedar.NewRecord(nil),
+		Tags: cedar.NewRecord(tags),
 	}
 }
