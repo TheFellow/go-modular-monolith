@@ -37,7 +37,7 @@ func TestDetailViewModel_ShowsIngredientFields(t *testing.T) {
 	testutil.ErrorIf(t, !strings.Contains(view, "Unit: ml"), "expected unit in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Description"), "expected description label in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Bubbly"), "expected description text in view, got:\n%s", view)
-	testutil.ErrorIf(t, !strings.Contains(view, "Tags: seasonal, supplier=local"), "expected sorted tags in view, got:\n%s", view)
+	testutil.ErrorIf(t, !strings.Contains(view, "Tags: seasonal,supplier=local"), "expected canonical tags in view, got:\n%s", view)
 }
 
 func TestDetailViewModel_NilIngredient(t *testing.T) {

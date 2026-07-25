@@ -54,7 +54,7 @@ func TestDetailViewModel_ShowsOrderData(t *testing.T) {
 	testutil.ErrorIf(t, !strings.Contains(view, order.ID.String()), "expected order id in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Dinner"), "expected menu name in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Pending"), "expected status in view, got:\n%s", view)
-	testutil.ErrorIf(t, !strings.Contains(view, "Tags: rush, table=12"), "expected sorted tags in view, got:\n%s", view)
+	testutil.ErrorIf(t, !strings.Contains(view, "Tags: rush,table=12"), "expected canonical tags in view, got:\n%s", view)
 }
 
 func TestDetailViewModel_ShowsLineItems(t *testing.T) {

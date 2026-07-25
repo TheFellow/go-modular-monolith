@@ -2,7 +2,9 @@
 package tag
 
 import (
+	"encoding/csv"
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 	"unicode"
@@ -90,12 +92,69 @@ type Tags []Tag
 type CanonicalStrings []string
 
 func (values CanonicalStrings) String() string {
-	return strings.Join(values, ", ")
+	return formatFields(values)
 }
 
 // Canonical returns key-sorted, user-facing tag spellings.
 func (tags Tags) Canonical() CanonicalStrings {
 	return CanonicalStrings(tags.Strings())
+}
+
+// ParseCollection parses a CSV record of canonical tag spellings. Spaces
+// following delimiters are ignored, while spaces within quoted fields are
+// preserved according to encoding/csv's rules. Empty input represents an
+// empty collection.
+func ParseCollection(value string) (Tags, error) {
+	if strings.TrimSpace(value) == "" {
+		return Tags{}, nil
+	}
+
+	reader := csv.NewReader(strings.NewReader(value))
+	reader.TrimLeadingSpace = true
+	fields, err := reader.Read()
+	if err != nil {
+		return nil, errors.Invalidf("invalid tag collection: %w", err)
+	}
+	if _, err := reader.Read(); err != io.EOF {
+		if err == nil {
+			return nil, errors.Invalidf("invalid tag collection: expected one CSV record")
+		}
+		return nil, errors.Invalidf("invalid tag collection: %w", err)
+	}
+
+	tags := make(Tags, 0, len(fields))
+	for _, field := range fields {
+		t, err := Parse(field)
+		if err != nil {
+			return nil, err
+		}
+		tags = append(tags, t)
+	}
+	if err := tags.Validate(); err != nil {
+		return nil, err
+	}
+	return tags.Sorted(), nil
+}
+
+// FormatCollection validates tags and returns their deterministic,
+// key-sorted representation as one CSV record.
+func FormatCollection(tags Tags) (string, error) {
+	if err := tags.Validate(); err != nil {
+		return "", err
+	}
+	return tags.Canonical().String(), nil
+}
+
+func formatFields(fields []string) string {
+	if len(fields) == 0 {
+		return ""
+	}
+
+	var output strings.Builder
+	writer := csv.NewWriter(&output)
+	_ = writer.Write(fields) // strings.Builder writes cannot fail.
+	writer.Flush()
+	return strings.TrimSuffix(output.String(), "\n")
 }
 
 // Validate checks every tag and rejects duplicate keys.

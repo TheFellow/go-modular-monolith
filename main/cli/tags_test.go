@@ -49,19 +49,19 @@ func TestTagsCLIWorkflowsPersistAndAuthorize(t *testing.T) {
 
 	out, err = runTagsCLI(dbPath, "owner", "tags", "add", targets.drink, "region=west")
 	testutil.Ok(t, err)
-	testutil.StringContains(t, out, "featured, region=west (changed)")
+	testutil.StringContains(t, out, "featured,region=west (changed)")
 
 	out, err = runTagsCLI(dbPath, "owner", "tags", "add", targets.drink, "region=east")
 	testutil.Ok(t, err)
-	testutil.StringContains(t, out, "featured, region=east (changed)")
+	testutil.StringContains(t, out, "featured,region=east (changed)")
 
 	out, err = runTagsCLI(dbPath, "owner", "tags", "add", targets.drink, "region=east")
 	testutil.Ok(t, err)
-	testutil.StringContains(t, out, "featured, region=east (unchanged)")
+	testutil.StringContains(t, out, "featured,region=east (unchanged)")
 
 	out, err = runTagsCLI(dbPath, "owner", "tags", "list", targets.drink)
 	testutil.Ok(t, err)
-	testutil.Equals(t, out, targets.drink+": featured, region=east\n")
+	testutil.Equals(t, out, targets.drink+": featured,region=east\n")
 
 	out, err = runTagsCLI(dbPath, "owner", "tags", "remove", targets.drink, "missing")
 	testutil.Ok(t, err)
@@ -102,7 +102,7 @@ func TestTagsCLIWorkflowsPersistAndAuthorize(t *testing.T) {
 	testutil.Equals(t, doc.EntityID, targets.drink)
 	testutil.NotNil(t, doc.Changed)
 	testutil.IsFalse(t, *doc.Changed)
-	testutil.Equals(t, doc.Tags.String(), "featured, target=drink")
+	testutil.Equals(t, doc.Tags.String(), "featured,target=drink")
 
 	// These are separate CLI/application lifecycles over the same database, so
 	// the final list demonstrates persistence rather than in-memory state.
@@ -111,7 +111,7 @@ func TestTagsCLIWorkflowsPersistAndAuthorize(t *testing.T) {
 	doc = tagsOutput{}
 	testutil.Ok(t, json.Unmarshal([]byte(out), &doc))
 	testutil.Nil(t, doc.Changed)
-	testutil.Equals(t, doc.Tags.String(), "featured, target=drink")
+	testutil.Equals(t, doc.Tags.String(), "featured,target=drink")
 
 	for _, tc := range []struct {
 		noun string

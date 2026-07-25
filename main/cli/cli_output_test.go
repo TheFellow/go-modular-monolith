@@ -113,7 +113,7 @@ func TestTableRowsIncludeDerivedValues(t *testing.T) {
 	testutil.Equals(t, drink.Category, "cocktail")
 	testutil.Equals(t, drink.Glass, "coupe")
 	testutil.Equals(t, drink.Ingredients, 2)
-	testutil.Equals(t, drink.Tags.String(), "featured, region=west")
+	testutil.Equals(t, drink.Tags.String(), "featured,region=west")
 
 	ingredient := ingredientscli.ToIngredientRow(&ingredientsmodels.Ingredient{
 		Description: "Bright and tart", Tags: tag.Tags{{Key: "seasonal"}},

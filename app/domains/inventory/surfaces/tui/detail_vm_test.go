@@ -50,7 +50,7 @@ func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
 	testutil.ErrorIf(t, !strings.Contains(view, row.Quantity), "expected quantity in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, row.Cost), "expected cost in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "LOW"), "expected status in view, got:\n%s", view)
-	testutil.ErrorIf(t, !strings.Contains(view, "Tags: counted, zone=bar"), "expected sorted tags in view, got:\n%s", view)
+	testutil.ErrorIf(t, !strings.Contains(view, "Tags: counted,zone=bar"), "expected canonical tags in view, got:\n%s", view)
 }
 
 func TestDetailViewModel_NilRow(t *testing.T) {

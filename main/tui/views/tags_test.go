@@ -26,18 +26,18 @@ func TestTagsWorkspace_InspectAddReplaceNoOpAndRemove(t *testing.T) {
 
 	setTagForm(t, vm, ingredient.ID.String(), tagOperationAdd, "region=west")
 	vm = submitTags(t, vm)
-	assertTagResult(t, vm, true, "region=west, seasonal", "changed")
+	assertTagResult(t, vm, true, "region=west,seasonal", "changed")
 
 	setTagForm(t, vm, ingredient.ID.String(), tagOperationAdd, "region=east")
 	vm = submitTags(t, vm)
-	assertTagResult(t, vm, true, "region=east, seasonal", "changed")
+	assertTagResult(t, vm, true, "region=east,seasonal", "changed")
 
 	vm = submitTags(t, vm)
-	assertTagResult(t, vm, false, "region=east, seasonal", "unchanged")
+	assertTagResult(t, vm, false, "region=east,seasonal", "unchanged")
 
 	setTagForm(t, vm, ingredient.ID.String(), tagOperationInspect, "")
 	vm = submitTags(t, vm)
-	assertTagResult(t, vm, false, "region=east, seasonal", "inspected")
+	assertTagResult(t, vm, false, "region=east,seasonal", "inspected")
 
 	setTagForm(t, vm, ingredient.ID.String(), tagOperationRemove, "region")
 	vm = submitTags(t, vm)
