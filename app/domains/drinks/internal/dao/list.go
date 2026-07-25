@@ -41,6 +41,13 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Drink
 			for _, row := range rows {
 				drink := toModel(row)
 				drink.Tags = tagsByTarget[drink.EntityUID()]
+				matched, err := filter.Expression.Match(listFilterView(row, drink.Tags.Strings()))
+				if err != nil {
+					return err
+				}
+				if !matched {
+					continue
+				}
 				if !yield(&drink, nil) {
 					return nil
 				}
@@ -114,12 +121,14 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[DrinkRow] {
 			return r.DeletedAt == nil
 		})
 	}
-	q = appfilter.ApplyBstore(q, filter.Expression, func(r DrinkRow) models.ListFilterView {
-		return models.ListFilterView{
-			ID: r.ID, Name: r.Name, Category: r.Category, Glass: r.Glass, Description: r.Description,
-			Recipe: models.RecipeFilterView{Garnish: r.Recipe.Garnish},
-		}
-	})
+	q = appfilter.ApplyBstorePushdowns(q, filter.Expression)
 
 	return q
+}
+
+func listFilterView(r DrinkRow, tags []string) models.ListFilterView {
+	return models.ListFilterView{
+		ID: r.ID, Name: r.Name, Category: r.Category, Glass: r.Glass, Description: r.Description, Tags: tags,
+		Recipe: models.RecipeFilterView{Garnish: r.Recipe.Garnish},
+	}
 }

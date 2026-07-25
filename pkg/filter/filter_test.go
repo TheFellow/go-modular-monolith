@@ -20,6 +20,21 @@ type view struct {
 	Nested   nested `expr:"nested"`
 }
 
+func TestCollectionContainsSyntax(t *testing.T) {
+	t.Parallel()
+
+	for _, source := range []string{`tags contains "region=west"`, `tags.contains("region=west")`} {
+		expression, err := filter.Parse(filter.NewSchema[taggedView](), source)
+		testutil.Ok(t, err)
+		matched, err := expression.Match(taggedView{Tags: []string{"featured", "region=west"}})
+		testutil.Ok(t, err)
+		testutil.IsTrue(t, matched)
+		matched, err = expression.Match(taggedView{Tags: []string{"region=east"}})
+		testutil.Ok(t, err)
+		testutil.IsFalse(t, matched)
+	}
+}
+
 func TestCanonicalPrecedenceAndBooleanSpellings(t *testing.T) {
 	t.Parallel()
 

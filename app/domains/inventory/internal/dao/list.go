@@ -39,6 +39,13 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Inven
 			for _, row := range rows {
 				stock := toModel(row)
 				stock.Tags = tagsByTarget[stock.EntityUID()]
+				matched, err := filter.Expression.Match(listFilterView(row, stock.Tags.Strings()))
+				if err != nil {
+					return err
+				}
+				if !matched {
+					continue
+				}
 				if !yield(&stock, nil) {
 					return nil
 				}
@@ -66,9 +73,11 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[StockRow] {
 	if filter.BeforeID != "" {
 		q = q.FilterLess("InventoryID", filter.BeforeID)
 	}
-	q = appfilter.ApplyBstore(q, filter.Expression, func(r StockRow) models.ListFilterView {
-		return models.ListFilterView{ID: r.InventoryID, IngredientID: r.IngredientID, Quantity: r.Quantity, Unit: r.Unit, LastUpdated: r.LastUpdated}
-	})
+	q = appfilter.ApplyBstorePushdowns(q, filter.Expression)
 
 	return q
+}
+
+func listFilterView(r StockRow, tags []string) models.ListFilterView {
+	return models.ListFilterView{ID: r.InventoryID, IngredientID: r.IngredientID, Quantity: r.Quantity, Unit: r.Unit, LastUpdated: r.LastUpdated, Tags: tags}
 }

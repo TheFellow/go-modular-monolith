@@ -38,6 +38,13 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Menu,
 			for _, row := range rows {
 				menu := toModel(row)
 				menu.Tags = tagsByTarget[menu.EntityUID()]
+				matched, err := filter.Expression.Match(listFilterView(row, menu.Tags.Strings()))
+				if err != nil {
+					return err
+				}
+				if !matched {
+					continue
+				}
 				if !yield(&menu, nil) {
 					return nil
 				}
@@ -63,8 +70,10 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[MenuRow] {
 			return r.DeletedAt == nil
 		})
 	}
-	q = appfilter.ApplyBstore(q, filter.Expression, func(r MenuRow) models.ListFilterView {
-		return models.ListFilterView{ID: r.ID, Name: r.Name, Description: r.Description, Status: r.Status, CreatedAt: r.CreatedAt}
-	})
+	q = appfilter.ApplyBstorePushdowns(q, filter.Expression)
 	return q
+}
+
+func listFilterView(r MenuRow, tags []string) models.ListFilterView {
+	return models.ListFilterView{ID: r.ID, Name: r.Name, Description: r.Description, Status: r.Status, CreatedAt: r.CreatedAt, Tags: tags}
 }

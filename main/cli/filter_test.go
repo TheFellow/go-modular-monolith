@@ -24,7 +24,8 @@ func TestFilterHelpUsesConcreteSchema(t *testing.T) {
 	testutil.Ok(t, writeFilterHelp(&out, models.ListFilterSchema()))
 	text := out.String()
 	for _, want := range []string{
-		"category", "Ingredient category", "&& / and", "value.contains", `--filter 'category == "spirit"`,
+		"category", "Ingredient category", "tags", "Tags (key or key=value)", "&& / and", "value.contains",
+		`--filter 'category == "spirit"`, `--filter 'tags contains "featured"`,
 	} {
 		testutil.StringContains(t, text, want)
 	}

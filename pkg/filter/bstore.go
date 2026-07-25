@@ -11,6 +11,27 @@ import (
 // filters; the complete expression is retained as FilterFn so arbitrary OR,
 // NOT, parentheses, derived fields, and string predicates stay exact.
 func ApplyBstore[Row, View any](q *bstore.Query[Row], expression *Expression[View], project func(Row) View) *bstore.Query[Row] {
+	q = ApplyBstorePushdowns(q, expression)
+	if expression == nil {
+		return q
+	}
+	return q.FilterFn(func(row Row) bool {
+		matched, err := expression.Match(project(row))
+		if err != nil {
+			// Parse only admits statically checked, non-failing constructs. A
+			// runtime error is therefore a programmer/invariant failure and must
+			// never be disguised as an ordinary non-match.
+			panic(err)
+		}
+		return matched
+	})
+}
+
+// ApplyBstorePushdowns adds only the safe persisted-field constraints from an
+// expression to a bstore query. Callers use this staged form when the complete
+// filter view depends on data that must be hydrated after rows are fetched.
+// They must subsequently call Expression.Match with that complete view.
+func ApplyBstorePushdowns[Row, View any](q *bstore.Query[Row], expression *Expression[View]) *bstore.Query[Row] {
 	if expression == nil {
 		return q
 	}
@@ -34,16 +55,7 @@ func ApplyBstore[Row, View any](q *bstore.Query[Row], expression *Expression[Vie
 			q = q.FilterNotEqual(p.column, p.values...)
 		}
 	}
-	return q.FilterFn(func(row Row) bool {
-		matched, err := expression.Match(project(row))
-		if err != nil {
-			// Parse only admits statically checked, non-failing constructs. A
-			// runtime error is therefore a programmer/invariant failure and must
-			// never be disguised as an ordinary non-match.
-			panic(err)
-		}
-		return matched
-	})
+	return q
 }
 
 type pushdown struct {

@@ -27,6 +27,11 @@ type timedView struct {
 	CreatedAt time.Time `expr:"created_at" filter:"Creation time" filter-column:"CreatedAt"`
 }
 
+type taggedView struct {
+	Category string   `expr:"category" filter:"Category" filter-column:"Category"`
+	Tags     []string `expr:"tags" filter:"Tags"`
+}
+
 func TestApplyBstorePushesCheckedDateLiteral(t *testing.T) {
 	t.Parallel()
 
@@ -101,4 +106,35 @@ func TestApplyBstoreDoesNotPushUnsafeOr(t *testing.T) {
 	rows, err := q.List()
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(rows), 2)
+}
+
+func TestApplyBstorePushdownsDefersCompleteEvaluation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	db, err := bstore.Open(ctx, filepath.Join(t.TempDir(), "filter.db"), nil, row{})
+	testutil.Ok(t, err)
+	t.Cleanup(func() { testutil.Ok(t, db.Close()) })
+	for _, r := range []row{
+		{Name: "Gin", Category: "spirit"},
+		{Name: "Rum", Category: "spirit"},
+		{Name: "Beer", Category: "mixer"},
+	} {
+		testutil.Ok(t, db.Insert(ctx, &r))
+	}
+
+	expression, err := filter.Parse(filter.NewSchema[taggedView](), `category == "spirit" && tags contains "featured"`)
+	testutil.Ok(t, err)
+	rows, err := filter.ApplyBstorePushdowns(bstore.QueryDB[row](ctx, db), expression).List()
+	testutil.Ok(t, err)
+	// The persisted conjunct is pushed, while the tag-dependent residual is
+	// deliberately left for evaluation after callers hydrate tags.
+	testutil.Equals(t, len(rows), 2)
+
+	matched, err := expression.Match(taggedView{Category: rows[0].Category, Tags: []string{"featured"}})
+	testutil.Ok(t, err)
+	testutil.IsTrue(t, matched)
+	matched, err = expression.Match(taggedView{Category: rows[1].Category})
+	testutil.Ok(t, err)
+	testutil.IsFalse(t, matched)
 }
