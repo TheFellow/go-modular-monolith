@@ -100,8 +100,8 @@ go run ./main/cli audit list \
   --filter 'started_at >= date("2026-07-01T00:00:00Z") && !success'
 ```
 
-The five operational lists also expose their hydrated tags as the `tags` field. Match the
-canonical label or `key=value` spelling exactly:
+The five operational lists also expose their hydrated tags as the `tags` field. Match one
+canonical label or `key=value` spelling exactly, rather than the whole CSV collection:
 
 ```bash
 go run ./main/cli ingredients list --filter 'tags contains "seasonal"'
@@ -121,6 +121,21 @@ whitespace is trimmed on input, spelling and case are otherwise preserved, keys 
 Unicode characters, and values to 256. Keys and filters are case-sensitive. Keys cannot contain
 `=` or control characters; the first `=` separates the key from its optional value.
 
+Tags are cross-cutting user metadata. The application reserves no keys or values and gives none
+of them special meaning; a policy or other consumer may choose how to interpret them. A collection
+is one CSV record whose fields are canonical tags, using Go's standard-library CSV quoting. Spaces
+after separators are accepted, and quoted fields represent commas and quotes inside a tag.
+Canonical output sorts by key, so collections round-trip semantically and their canonical spelling
+is stable. An empty value is the label form: `terraform=` canonicalizes to `terraform`.
+
+```text
+region=east, env=dev, terraform=
+=> env=dev,region=east,terraform
+
+"place=east, coast","note=said ""hello""",equation=a=b
+=> equation=a=b,"note=said ""hello""","place=east, coast"
+```
+
 An entity has at most one value for a key. Adding the same key replaces its value, adding the
 already-current value is a successful no-op, and removing a missing key is also successful. Remove
 by key regardless of its current value:
@@ -135,7 +150,28 @@ mixology tags remove drk-abc123 region
 
 Add, remove, and list infer the domain from the entity ID prefix. Add and remove report whether
 the state changed, while all ordinary operational list tables and entity detail output include
-the current, key-sorted tags. Add `--json` to any tag command for structured output.
+the current, key-sorted tags. Add `--json` to any tag command for structured output; JSON keeps
+collections as arrays of canonical tag strings, not as CSV text.
+
+Every applicable non-delete mutation under `drinks`, `ingredients`, `inventory`, `menus`, and
+`orders` also accepts the same `--tags` flag. It replaces the entity's complete tag set. Omitting
+the flag preserves the current tags, while an explicit `--tags=` clears them. For example, a drink
+update still reads its required JSON document from a file (or stdin), with tags supplied alongside
+that input:
+
+```bash
+mixology drinks update --file ./drink.json -tags="region=east, env=dev, terraform="
+mixology inventory adjust --ingredient-id ing-abc123 --delta -0.5 --reason used \
+  --tags='location=cellar,low-stock'
+mixology menus publish --id mnu-abc123 --tags='service=dinner'
+mixology orders complete --id ord-abc123 --tags=
+```
+
+The domain mutation and complete-set replacement commit atomically: invalid tag input or denied tag
+authorization also rolls back the domain change. Replacement checks the owning domain's tag and/or
+untag permissions for its delta and records one auditable replacement command. The top-level
+`tags add`, `tags remove`, and `tags list` commands remain available when an incremental change is
+more convenient.
 
 Tag persistence is a central polymorphic association keyed by Cedar entity type, entity ID, and
 tag key; domain rows do not duplicate that storage. Each domain still owns loading its entities.
