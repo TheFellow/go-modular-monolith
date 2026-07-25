@@ -23,6 +23,8 @@ var (
 	ActionGet    = cedar.NewEntityUID(ActionType, "get")
 	ActionList   = cedar.NewEntityUID(ActionType, "list")
 	ActionSet    = cedar.NewEntityUID(ActionType, "set")
+	ActionTag    = cedar.NewEntityUID(ActionType, "tag")
+	ActionUntag  = cedar.NewEntityUID(ActionType, "untag")
 )
 
 // Inventory is the Cedar-facing authorization model for Mixology::Inventory.

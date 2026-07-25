@@ -105,7 +105,8 @@ func TestTagsMapRoundTrip(t *testing.T) {
 func TestFromMapRejectsKeysThatCollideAfterTrimming(t *testing.T) {
 	t.Parallel()
 
-	_, err := tag.FromMap(map[string]string{"region": "west", " region ": "east"})
+	untrimmed := " region "
+	_, err := tag.FromMap(map[string]string{"region": "west", untrimmed: "east"})
 	testutil.ErrorIsInvalid(t, err)
 }
 

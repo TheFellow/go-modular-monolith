@@ -9,7 +9,7 @@ namespace Mixology {
 }
 
 namespace Mixology::Order {
-    action list, get, place, complete, cancel appliesTo {
+    action list, get, place, complete, cancel, tag, untag appliesTo {
         principal: Mixology::Actor,
         resource: Mixology::Order,
         context: {}

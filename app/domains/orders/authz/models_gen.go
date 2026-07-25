@@ -24,6 +24,8 @@ var (
 	ActionGet      = cedar.NewEntityUID(ActionType, "get")
 	ActionList     = cedar.NewEntityUID(ActionType, "list")
 	ActionPlace    = cedar.NewEntityUID(ActionType, "place")
+	ActionTag      = cedar.NewEntityUID(ActionType, "tag")
+	ActionUntag    = cedar.NewEntityUID(ActionType, "untag")
 )
 
 // Order is the Cedar-facing authorization model for Mixology::Order.

@@ -12,16 +12,20 @@ import (
 )
 
 type Module struct {
-	queries  *queries.Queries
-	commands *commands.Commands
-	pipeline *middleware.Pipeline
+	queries   *queries.Queries
+	analytics *queries.AnalyticsCalculator
+	commands  *commands.Commands
+	pipeline  *middleware.Pipeline
 }
 
-func NewModule(ctx context.Context, s *store.Store, tags *tagging.Repository, pipeline *middleware.Pipeline) *Module {
+func NewModule(ctx context.Context, s *store.Store, tags *tagging.Repository, targets *tagging.Registry, pipeline *middleware.Pipeline) *Module {
 	dao.Register(ctx, s)
-	return &Module{
-		queries:  queries.New(s, tags),
-		commands: commands.New(s, tags),
-		pipeline: pipeline,
+	m := &Module{
+		queries:   queries.New(s, tags),
+		analytics: queries.NewAnalyticsCalculator(s, tags),
+		commands:  commands.New(s, tags),
+		pipeline:  pipeline,
 	}
+	m.registerTagTarget(targets)
+	return m
 }

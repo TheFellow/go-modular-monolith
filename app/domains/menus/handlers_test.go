@@ -9,6 +9,7 @@ import (
 	menuevents "github.com/TheFellow/go-modular-monolith/app/domains/menus/events"
 	menudao "github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
@@ -107,8 +108,9 @@ func TestMenuPublishedValidator_SetsAvailabilityFromInventory(t *testing.T) {
 	menu, err = f.Menus.AddDrink(ctx, &menuM.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
 
-	d := dispatcher.New(f.Store, f.App.Tags)
-	menuDAO := menudao.New(f.Store, f.App.Tags)
+	tags := tagging.NewRepository(f.Store)
+	d := dispatcher.New(f.Store, tags)
+	menuDAO := menudao.New(f.Store, tags)
 	tx, err := f.Store.Begin(ctx, true)
 	testutil.Ok(t, err)
 	t.Cleanup(func() { testutil.Ok(t, f.Store.Rollback(tx)) })

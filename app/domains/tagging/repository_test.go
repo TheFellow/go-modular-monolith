@@ -163,7 +163,7 @@ func TestRepositoryValidatesTargetsAndTags(t *testing.T) {
 		{name: "empty key", target: validDrink, value: tag.Tag{}},
 		{name: "untrimmed value", target: validDrink, value: tag.Tag{Key: "valid", Value: " west "}},
 	}
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // Subtests share one repository and store.
 		t.Run(tt.name, func(t *testing.T) {
 			var gotErr error
 			err := s.Write(ctx, func(tx *bstore.Tx) error {

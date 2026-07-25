@@ -50,7 +50,9 @@ permit(
     action in [
         Mixology::Drink::Action::"create",
         Mixology::Drink::Action::"update",
-        Mixology::Drink::Action::"delete"
+        Mixology::Drink::Action::"delete",
+        Mixology::Drink::Action::"tag",
+        Mixology::Drink::Action::"untag"
     ],
     resource is Mixology::Drink
 );
@@ -61,7 +63,9 @@ permit(
     action in [
         Mixology::Drink::Action::"create",
         Mixology::Drink::Action::"update",
-        Mixology::Drink::Action::"delete"
+        Mixology::Drink::Action::"delete",
+        Mixology::Drink::Action::"tag",
+        Mixology::Drink::Action::"untag"
     ],
     resource is Mixology::Drink
 ) when {
@@ -74,7 +78,9 @@ permit(
     action in [
         Mixology::Drink::Action::"create",
         Mixology::Drink::Action::"update",
-        Mixology::Drink::Action::"delete"
+        Mixology::Drink::Action::"delete",
+        Mixology::Drink::Action::"tag",
+        Mixology::Drink::Action::"untag"
     ],
     resource is Mixology::Drink
 ) when {

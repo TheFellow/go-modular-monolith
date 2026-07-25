@@ -17,6 +17,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
@@ -27,7 +28,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 func TestOperationalEntitiesHydrateTagsThroughGetListAndCedar(t *testing.T) {
@@ -56,17 +56,12 @@ func TestOperationalEntitiesHydrateTagsThroughGetListAndCedar(t *testing.T) {
 
 	want := tag.Tags{{Key: "audience", Value: "members"}, {Key: "featured"}}
 	targets := []cedar.EntityUID{ingredient.EntityUID(), drink.EntityUID(), stock.EntityUID(), menu.EntityUID(), order.EntityUID()}
-	testutil.Ok(t, f.Store.Write(ctx, func(tx *bstore.Tx) error {
-		txCtx := ctx.WithTransaction(tx)
-		for _, target := range targets {
-			for _, value := range want {
-				if _, err := f.App.Tags.Upsert(txCtx, target, value); err != nil {
-					return err
-				}
-			}
+	for _, target := range targets {
+		for _, value := range want {
+			_, err := f.App.Tags.Upsert(ctx, target, value)
+			testutil.Ok(t, err)
 		}
-		return nil
-	}))
+	}
 
 	gotIngredient, err := f.Ingredients.Get(ctx, ingredient.ID)
 	testutil.Ok(t, err)
@@ -118,20 +113,17 @@ func TestTagAssociationsRemainIsolatedAndFollowDeletionSemantics(t *testing.T) {
 		CostPerUnit: money.NewPriceFromCents(100, currency.USD),
 	})
 	value := tag.Tag{Key: "lifecycle", Value: "test"}
-	testutil.Ok(t, f.Store.Write(ctx, func(tx *bstore.Tx) error {
-		txCtx := ctx.WithTransaction(tx)
-		if _, err := f.App.Tags.Upsert(txCtx, ingredient.EntityUID(), value); err != nil {
-			return err
-		}
-		_, err := f.App.Tags.Upsert(txCtx, stock.EntityUID(), value)
-		return err
-	}))
+	_, err := f.App.Tags.Upsert(ctx, ingredient.EntityUID(), value)
+	testutil.Ok(t, err)
+	_, err = f.App.Tags.Upsert(ctx, stock.EntityUID(), value)
+	testutil.Ok(t, err)
 
-	_, err := f.Ingredients.Delete(ctx, ingredient.ID)
+	_, err = f.Ingredients.Delete(ctx, ingredient.ID)
 	testutil.Ok(t, err)
-	ingredientTags, err := f.App.Tags.List(ctx, ingredient.EntityUID())
+	repository := tagging.NewRepository(f.Store)
+	ingredientTags, err := repository.List(ctx, ingredient.EntityUID())
 	testutil.Ok(t, err)
-	stockTags, err := f.App.Tags.List(ctx, stock.EntityUID())
+	stockTags, err := repository.List(ctx, stock.EntityUID())
 	testutil.Ok(t, err)
 	testutil.Equals(t, ingredientTags, tag.Tags{value})
 	testutil.Equals(t, stockTags, tag.Tags(nil))
@@ -154,10 +146,8 @@ func TestHydratedTagsPersistAcrossApplicationRestart(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 	want := tag.Tags{{Key: "region", Value: "west"}}
-	testutil.Ok(t, s.Write(baseCtx, func(tx *bstore.Tx) error {
-		_, err := first.Tags.Upsert(requestCtx.WithTransaction(tx), ingredient.EntityUID(), want[0])
-		return err
-	}))
+	_, err = first.Tags.Upsert(requestCtx, ingredient.EntityUID(), want[0])
+	testutil.Ok(t, err)
 	testutil.Ok(t, first.Close())
 
 	s, err = store.Open(baseCtx, path)

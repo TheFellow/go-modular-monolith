@@ -19,7 +19,9 @@ permit(
         Mixology::Menu::Action::"add_drink",
         Mixology::Menu::Action::"remove_drink",
         Mixology::Menu::Action::"publish",
-        Mixology::Menu::Action::"draft"
+        Mixology::Menu::Action::"draft",
+        Mixology::Menu::Action::"tag",
+        Mixology::Menu::Action::"untag"
     ],
     resource is Mixology::Menu
 );

@@ -18,7 +18,7 @@ import (
 
 type App struct {
 	Store *store.Store
-	Tags  *tagging.Repository
+	Tags  *tagging.Module
 
 	Audit       *audit.Module
 	Drinks      *drinks.Module
@@ -35,6 +35,7 @@ func New(ctx context.Context, config Config) *App {
 	audit.RegisterSchema(ctx, s)
 	tagging.RegisterSchema(ctx, s)
 	tags := tagging.NewRepository(s)
+	targets := tagging.NewRegistry()
 	auditWriter := audit.NewWriter(s)
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
 		Store:          s,
@@ -43,15 +44,21 @@ func New(ctx context.Context, config Config) *App {
 		RecordActivity: auditWriter.RecordActivity,
 	})
 
+	drinksModule := drinks.NewModule(ctx, s, tags, targets, pipeline)
+	ingredientsModule := ingredients.NewModule(ctx, s, tags, targets, pipeline)
+	inventoryModule := inventory.NewModule(ctx, s, tags, targets, pipeline)
+	menusModule := menus.NewModule(ctx, s, tags, targets, pipeline)
+	ordersModule := orders.NewModule(ctx, s, tags, targets, pipeline)
+
 	return &App{
 		Store:       s,
-		Tags:        tags,
+		Tags:        tagging.NewModule(tags, targets, pipeline),
 		Audit:       audit.NewModule(s, pipeline),
-		Drinks:      drinks.NewModule(ctx, s, tags, pipeline),
-		Ingredients: ingredients.NewModule(ctx, s, tags, pipeline),
-		Inventory:   inventory.NewModule(ctx, s, tags, pipeline),
-		Menus:       menus.NewModule(ctx, s, tags, pipeline),
-		Orders:      orders.NewModule(ctx, s, tags, pipeline),
+		Drinks:      drinksModule,
+		Ingredients: ingredientsModule,
+		Inventory:   inventoryModule,
+		Menus:       menusModule,
+		Orders:      ordersModule,
 	}
 }
 

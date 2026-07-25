@@ -9,6 +9,7 @@ import (
 	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventoryM "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
@@ -124,7 +125,7 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	testutil.Equals(t, len(m2.Items), 2)
 
 	// Dispatch DrinkDeleted event for drink1
-	d := dispatcher.New(f.Store, f.App.Tags)
+	d := dispatcher.New(f.Store, tagging.NewRepository(f.Store))
 	tx, err := f.Store.Begin(ctx, true)
 	testutil.Ok(t, err)
 	t.Cleanup(func() { testutil.Ok(t, f.Store.Rollback(tx)) })

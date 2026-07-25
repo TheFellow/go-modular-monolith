@@ -24,6 +24,8 @@ var (
 	ActionDelete = cedar.NewEntityUID(ActionType, "delete")
 	ActionGet    = cedar.NewEntityUID(ActionType, "get")
 	ActionList   = cedar.NewEntityUID(ActionType, "list")
+	ActionTag    = cedar.NewEntityUID(ActionType, "tag")
+	ActionUntag  = cedar.NewEntityUID(ActionType, "untag")
 	ActionUpdate = cedar.NewEntityUID(ActionType, "update")
 )
 

@@ -8,7 +8,7 @@ import (
 
 type StockRow struct {
 	IngredientID string
-	InventoryID  string
+	InventoryID  string `bstore:"index"`
 	Quantity     float64
 	Unit         string
 	CostPerUnit  *money.Price

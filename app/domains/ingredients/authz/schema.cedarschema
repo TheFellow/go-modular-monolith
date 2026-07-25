@@ -9,7 +9,7 @@ namespace Mixology {
 }
 
 namespace Mixology::Ingredient {
-    action list, get, create, update, delete appliesTo {
+    action list, get, create, update, delete, tag, untag appliesTo {
         principal: Mixology::Actor,
         resource: Mixology::Ingredient,
         context: {}
