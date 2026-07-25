@@ -50,6 +50,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Title.Render(menu.Name),
 		d.styles.Muted.Render("ID: " + menu.ID.String()),
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
+		d.styles.Subtitle.Render("Tags: ") + tagLabel(menu.Tags.Canonical().String()),
 	}
 
 	if strings.TrimSpace(menu.Description) != "" {
@@ -71,6 +72,13 @@ func (d *DetailViewModel) View() string {
 		content = lipgloss.NewStyle().Width(d.width).Render(content)
 	}
 	return content
+}
+
+func tagLabel(value string) string {
+	if value == "" {
+		return "(none)"
+	}
+	return value
 }
 
 func (d *DetailViewModel) renderItems(items []models.MenuItem) ([]string, error) {

@@ -209,6 +209,23 @@ func TestBackKey_NavigatesWhenDomainHasNoLocalState(t *testing.T) {
 	}
 }
 
+func TestDashboard_NavigatesToTagsShowsHelpAndBack(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	app := NewApp(f.App)
+
+	app = updateAppAndRunCmds(t, app, keyRunes("7"))
+	testutil.Equals(t, app.currentView, ViewTags)
+	testutil.ErrorIf(t, app.currentViewModel().View() == "", "expected tags workspace")
+
+	app = updateAppAndRunCmds(t, app, keyRunes("?"))
+	testutil.IsTrue(t, app.showHelp)
+	testutil.ErrorIf(t, app.helpHeight() == 0, "expected expanded tags help")
+
+	app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
+	testutil.Equals(t, app.currentView, ViewDashboard)
+}
+
 func updateAppOnce(t testing.TB, app *App, msg tea.Msg) *App {
 	t.Helper()
 

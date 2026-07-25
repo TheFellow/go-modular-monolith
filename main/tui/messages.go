@@ -25,4 +25,5 @@ const (
 	ViewMenus       = views.ViewMenus
 	ViewOrders      = views.ViewOrders
 	ViewAudit       = views.ViewAudit
+	ViewTags        = views.ViewTags
 )

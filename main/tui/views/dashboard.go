@@ -109,6 +109,8 @@ func (d *Dashboard) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 			return d, navigateTo(ViewOrders)
 		case key.Matches(msg, d.keys.Nav6):
 			return d, navigateTo(ViewAudit)
+		case key.Matches(msg, d.keys.Nav7):
+			return d, navigateTo(ViewTags)
 		case key.Matches(msg, d.keys.Refresh):
 			d.loading = true
 			d.err = nil
@@ -165,7 +167,7 @@ func (d *Dashboard) View() string {
 func (d *Dashboard) ShortHelp() []key.Binding {
 	return []key.Binding{
 		d.keys.Nav1, d.keys.Nav2, d.keys.Nav3,
-		d.keys.Nav4, d.keys.Nav5, d.keys.Nav6,
+		d.keys.Nav4, d.keys.Nav5, d.keys.Nav6, d.keys.Nav7,
 		d.keys.Refresh,
 	}
 }
@@ -174,7 +176,7 @@ func (d *Dashboard) ShortHelp() []key.Binding {
 func (d *Dashboard) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{d.keys.Nav1, d.keys.Nav2, d.keys.Nav3},
-		{d.keys.Nav4, d.keys.Nav5, d.keys.Nav6},
+		{d.keys.Nav4, d.keys.Nav5, d.keys.Nav6, d.keys.Nav7},
 		{d.keys.Refresh, d.keys.Help, d.keys.Quit},
 	}
 }
@@ -326,6 +328,7 @@ func (d *Dashboard) renderCountCards() []dashboardCard {
 		{key: "4", title: "Menus", desc: d.menuSubtitle(data), count: formatCount(data.MenuCount)},
 		{key: "5", title: "Orders", desc: d.ordersSubtitle(data), count: formatCount(data.OrderCount)},
 		{key: "6", title: "Audit", desc: "Inspect audit logs", count: d.auditCountLabel(data)},
+		{key: "7", title: "Tags", desc: "Tag any entity", count: ""},
 	}
 }
 

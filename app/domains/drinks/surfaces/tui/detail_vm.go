@@ -75,6 +75,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + drink.ID.String()),
 		d.styles.Subtitle.Render("Category: ") + string(drink.Category),
 		d.styles.Subtitle.Render("Glass: ") + string(drink.Glass),
+		d.styles.Subtitle.Render("Tags: ") + tagLabel(drink.Tags.Canonical().String()),
 	}
 
 	if drink.Description != "" {
@@ -109,6 +110,13 @@ func (d *DetailViewModel) View() string {
 		content = lipgloss.NewStyle().Width(d.width).Render(content)
 	}
 	return content
+}
+
+func tagLabel(value string) string {
+	if value == "" {
+		return "(none)"
+	}
+	return value
 }
 
 func (d *DetailViewModel) renderIngredients(items []models.RecipeIngredient) ([]string, error) {

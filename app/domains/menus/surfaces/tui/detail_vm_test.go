@@ -9,6 +9,7 @@ import (
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	menustui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
@@ -32,6 +33,7 @@ func TestDetailViewModel_ShowsMenuDetails(t *testing.T) {
 	})
 
 	menu := testutil.CreateMenu(t, f, "Summer Menu", testutil.WithDrink(drink))
+	menu.Tags = tag.Tags{{Key: "region", Value: "patio"}, {Key: "seasonal"}}
 
 	detail := menustui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
@@ -45,6 +47,7 @@ func TestDetailViewModel_ShowsMenuDetails(t *testing.T) {
 	testutil.ErrorIf(t, !strings.Contains(view, "Margarita"), "expected view to contain drink name, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Draft"), "expected view to contain status badge, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, menu.ID.String()), "expected view to contain menu id, got:\n%s", view)
+	testutil.ErrorIf(t, !strings.Contains(view, "Tags: region=patio, seasonal"), "expected sorted tags in view, got:\n%s", view)
 }
 
 func TestDetailViewModel_ShowsEmptyState(t *testing.T) {

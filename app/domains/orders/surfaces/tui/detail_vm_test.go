@@ -9,6 +9,7 @@ import (
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	orderstui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
@@ -40,6 +41,7 @@ func TestDetailViewModel_ShowsOrderData(t *testing.T) {
 			Quantity: 2,
 		}},
 	})
+	order.Tags = tag.Tags{{Key: "table", Value: "12"}, {Key: "rush"}}
 
 	detail := orderstui.NewDetailViewModel(
 		tuitest.DefaultListViewStyles[tui.ListViewStyles](),
@@ -52,6 +54,7 @@ func TestDetailViewModel_ShowsOrderData(t *testing.T) {
 	testutil.ErrorIf(t, !strings.Contains(view, order.ID.String()), "expected order id in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Dinner"), "expected menu name in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Pending"), "expected status in view, got:\n%s", view)
+	testutil.ErrorIf(t, !strings.Contains(view, "Tags: rush, table=12"), "expected sorted tags in view, got:\n%s", view)
 }
 
 func TestDetailViewModel_ShowsLineItems(t *testing.T) {
