@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"strings"
 	"testing"
 
 	drinkauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
@@ -111,6 +112,65 @@ func TestTagsMutateEveryOperationalTargetIdempotently(t *testing.T) {
 			testutil.AuditTouches(t, untagEntry, target.uid)
 		})
 	}
+}
+
+func TestTagsReplaceReconcilesCompleteSet(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	target := operationalTagTargets(t, f)[1]
+	ctx := f.OwnerContext()
+
+	_, err := f.App.Tags.Replace(ctx, target.uid, tag.Tags{
+		{Key: "remove", Value: "old"},
+		{Key: "update", Value: "old"},
+	})
+	testutil.Ok(t, err)
+
+	desired := tag.Tags{
+		{Key: "update", Value: "new"},
+		{Key: "add", Value: "new"},
+	}
+	replaced, err := f.App.Tags.Replace(ctx, target.uid, desired)
+	testutil.Ok(t, err)
+	testutil.IsTrue(t, replaced.Changed)
+	testutil.Equals(t, replaced.Target, target.uid)
+	testutil.Equals(t, replaced.Tags, desired.Sorted())
+	entry := f.LatestAuditEntry(target.tagAction)
+	testutil.Equals(t, entry.Resource, target.uid)
+	testutil.AuditTouches(t, entry, target.uid)
+
+	unchanged, err := f.App.Tags.Replace(ctx, target.uid, desired)
+	testutil.Ok(t, err)
+	testutil.IsFalse(t, unchanged.Changed)
+	testutil.Equals(t, unchanged.Tags, desired.Sorted())
+	testutil.Equals(t, len(f.LatestAuditEntry(target.tagAction).Touches), 0)
+
+	cleared, err := f.App.Tags.Replace(ctx, target.uid, tag.Tags{})
+	testutil.Ok(t, err)
+	testutil.IsTrue(t, cleared.Changed)
+	testutil.Equals(t, cleared.Tags, tag.Tags(nil))
+	clearEntry := f.LatestAuditEntry(target.tagAction)
+	testutil.Equals(t, clearEntry.Action, target.tagAction.String())
+	testutil.AuditTouches(t, clearEntry, target.uid)
+}
+
+func TestTagsReplaceDeniedRemovalRollsBack(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	target := operationalTagTargets(t, f)[0]
+	initial := tag.Tags{
+		{Key: "keep", Value: "safe"},
+		{Key: "remove", Value: "protected"},
+	}
+	_, err := f.App.Tags.Replace(f.OwnerContext(), target.uid, initial)
+	testutil.Ok(t, err)
+
+	_, err = f.App.Tags.Replace(f.ActorContext("bartender"), target.uid, tag.Tags{{Key: "keep", Value: "safe"}})
+	testutil.ErrorIsPermission(t, err)
+	testutil.IsTrue(t, strings.Contains(err.Error(), "untag"))
+	persisted, listErr := tagging.NewRepository(f.Store).List(f.OwnerContext(), target.uid)
+	testutil.Ok(t, listErr)
+	testutil.Equals(t, persisted, initial)
 }
 
 func TestTagPermissionsMirrorDomainMutations(t *testing.T) {

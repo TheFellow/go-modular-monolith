@@ -125,6 +125,60 @@ func TestRepositoryRemoveAndDeleteTargetAreIdempotent(t *testing.T) {
 	testutil.Equals(t, got, tag.Tags{{Key: "a", Value: "other"}})
 }
 
+func TestRepositoryReplaceReconcilesCompleteSet(t *testing.T) {
+	t.Parallel()
+
+	repo, s, ctx := newRepository(t)
+	target := entity.NewDrinkID().EntityUID()
+	other := entity.NewDrinkID().EntityUID()
+	upsert(t, s, ctx, repo, target, tag.Tag{Key: "keep", Value: "same"})
+	upsert(t, s, ctx, repo, target, tag.Tag{Key: "remove", Value: "old"})
+	upsert(t, s, ctx, repo, target, tag.Tag{Key: "update", Value: "old"})
+	upsert(t, s, ctx, repo, other, tag.Tag{Key: "untouched"})
+
+	desired := tag.Tags{
+		{Key: "update", Value: "new"},
+		{Key: "add", Value: "new"},
+		{Key: "keep", Value: "same"},
+	}
+	changed := replace(t, s, ctx, repo, target, desired)
+	testutil.IsTrue(t, changed)
+	got, err := repo.List(ctx, target)
+	testutil.Ok(t, err)
+	testutil.Equals(t, got, desired.Sorted())
+
+	changed = replace(t, s, ctx, repo, target, desired)
+	testutil.IsFalse(t, changed)
+	changed = replace(t, s, ctx, repo, target, tag.Tags{})
+	testutil.IsTrue(t, changed)
+	got, err = repo.List(ctx, target)
+	testutil.Ok(t, err)
+	testutil.Equals(t, got, tag.Tags(nil))
+	got, err = repo.List(ctx, other)
+	testutil.Ok(t, err)
+	testutil.Equals(t, got, tag.Tags{{Key: "untouched"}})
+}
+
+func TestRepositoryReplaceValidatesBeforeMutation(t *testing.T) {
+	t.Parallel()
+
+	repo, s, ctx := newRepository(t)
+	target := entity.NewDrinkID().EntityUID()
+	upsert(t, s, ctx, repo, target, tag.Tag{Key: "existing", Value: "safe"})
+
+	err := s.Write(ctx, func(tx *bstore.Tx) error {
+		_, err := repo.Replace(testContext{Context: ctx, tx: tx}, target, tag.Tags{
+			{Key: "duplicate", Value: "first"},
+			{Key: "duplicate", Value: "second"},
+		})
+		return err
+	})
+	testutil.ErrorIsInvalid(t, err)
+	got, listErr := repo.List(ctx, target)
+	testutil.Ok(t, listErr)
+	testutil.Equals(t, got, tag.Tags{{Key: "existing", Value: "safe"}})
+}
+
 func TestRepositoryChangesRollBackWithOwningTransaction(t *testing.T) {
 	t.Parallel()
 
@@ -210,6 +264,18 @@ func remove(t *testing.T, s *store.Store, ctx testContext, repo *tagging.Reposit
 	err := s.Write(ctx, func(tx *bstore.Tx) error {
 		var err error
 		changed, err = repo.Remove(testContext{Context: ctx, tx: tx}, target, key)
+		return err
+	})
+	testutil.Ok(t, err)
+	return changed
+}
+
+func replace(t *testing.T, s *store.Store, ctx testContext, repo *tagging.Repository, target cedar.EntityUID, desired tag.Tags) bool {
+	t.Helper()
+	changed := false
+	err := s.Write(ctx, func(tx *bstore.Tx) error {
+		var err error
+		changed, err = repo.Replace(testContext{Context: ctx, tx: tx}, target, desired)
 		return err
 	})
 	testutil.Ok(t, err)

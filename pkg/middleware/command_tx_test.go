@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
+	ingredientauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
@@ -22,6 +23,7 @@ import (
 type testEntity struct {
 	ID         cedar.EntityUID
 	Attributes cedar.RecordMap
+	Tags       cedar.RecordMap
 }
 
 func (e testEntity) CedarEntity() cedar.Entity {
@@ -29,7 +31,7 @@ func (e testEntity) CedarEntity() cedar.Entity {
 		UID:        e.ID,
 		Parents:    cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(e.Attributes),
-		Tags:       cedar.NewRecord(nil),
+		Tags:       cedar.NewRecord(e.Tags),
 	}
 }
 
@@ -254,6 +256,93 @@ func TestRunCommand_AuthorizesResultAfterHandle(t *testing.T) {
 	})
 	testutil.ErrorIsPermission(t, err)
 	testutil.IsTrue(t, handled)
+}
+
+func TestRunCommand_AuthorizationActionsRequireEveryActionBeforeHandle(t *testing.T) {
+	t.Parallel()
+
+	fix := testutil.NewFixture(t)
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
+		Store:          fix.Store,
+		RecordActivity: func(*middleware.Context, middlewareevents.Activity) error { return nil },
+	})
+
+	handled := false
+	_, err := middleware.RunCommand(pipeline, fix.ActorContext("manager"), middleware.CommandSpec[testEntity, testEntity]{
+		Action: drinksauthz.ActionTag,
+		AuthorizationActions: func(testEntity) []cedar.EntityUID {
+			return []cedar.EntityUID{drinksauthz.ActionTag, ingredientauthz.ActionTag}
+		},
+		Load: func(*middleware.Context) (testEntity, error) {
+			return testEntity{
+				ID:         cedar.NewEntityUID(drinksauthz.DrinkType, "stub"),
+				Attributes: cedar.RecordMap{"Category": cedar.String("wine")},
+			}, nil
+		},
+		Handle: func(_ *middleware.Context, in testEntity) (testEntity, error) {
+			handled = true
+			return in, nil
+		},
+	})
+	testutil.ErrorIsPermission(t, err)
+	testutil.IsFalse(t, handled)
+}
+
+func TestRunCommand_AuthorizationActionsRequireEveryActionAfterHandle(t *testing.T) {
+	t.Parallel()
+
+	fix := testutil.NewFixture(t)
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
+		Store:          fix.Store,
+		RecordActivity: func(*middleware.Context, middlewareevents.Activity) error { return nil },
+	})
+
+	handled := false
+	_, err := middleware.RunCommand(pipeline, fix.ActorContext("sommelier"), middleware.CommandSpec[testEntity, testEntity]{
+		Action: drinksauthz.ActionTag,
+		AuthorizationActions: func(testEntity) []cedar.EntityUID {
+			return []cedar.EntityUID{drinksauthz.ActionGet, drinksauthz.ActionUpdate}
+		},
+		Load: func(*middleware.Context) (testEntity, error) {
+			return testEntity{
+				ID:         cedar.NewEntityUID(drinksauthz.DrinkType, "stub"),
+				Attributes: cedar.RecordMap{"Category": cedar.String("wine")},
+				Tags:       cedar.RecordMap{"audience": cedar.String("sommelier")},
+			}, nil
+		},
+		Handle: func(_ *middleware.Context, out testEntity) (testEntity, error) {
+			handled = true
+			out.Attributes["Category"] = cedar.String("beer")
+			return out, nil
+		},
+	})
+	testutil.ErrorIsPermission(t, err)
+	testutil.IsTrue(t, handled)
+}
+
+func TestRunCommand_EmptyAuthorizationActionsFailClosed(t *testing.T) {
+	t.Parallel()
+
+	fix := testutil.NewFixture(t)
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
+		Store:          fix.Store,
+		RecordActivity: func(*middleware.Context, middlewareevents.Activity) error { return nil },
+	})
+
+	handled := false
+	_, err := middleware.RunCommand(pipeline, fix.OwnerContext(), middleware.CommandSpec[testEntity, testEntity]{
+		Action:               drinksauthz.ActionTag,
+		AuthorizationActions: func(testEntity) []cedar.EntityUID { return nil },
+		Load: func(*middleware.Context) (testEntity, error) {
+			return testEntity{ID: cedar.NewEntityUID(drinksauthz.DrinkType, "stub")}, nil
+		},
+		Handle: func(_ *middleware.Context, in testEntity) (testEntity, error) {
+			handled = true
+			return in, nil
+		},
+	})
+	testutil.ErrorIsInternal(t, err)
+	testutil.IsFalse(t, handled)
 }
 
 func TestRunCommand_LoaderRunsInTransaction(t *testing.T) {

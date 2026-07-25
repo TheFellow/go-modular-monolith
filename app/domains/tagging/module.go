@@ -75,6 +75,47 @@ func (m *Module) Set(ctx *middleware.Context, target cedar.EntityUID, value tag.
 	return m.Upsert(ctx, target, value)
 }
 
+// Replace makes desired the target's complete tag set. Adding or changing
+// values requires the owning domain's tag action; removing keys requires its
+// untag action. Mixed changes require both actions against the before and
+// after states. The replacement is recorded as one stable tag activity;
+// untag is an additional authorization requirement rather than a second
+// activity.
+func (m *Module) Replace(ctx *middleware.Context, target cedar.EntityUID, desired tag.Tags) (Result, error) {
+	registration, err := m.resolve(target)
+	if err != nil {
+		return Result{}, err
+	}
+	if err := desired.Validate(); err != nil {
+		return Result{}, err
+	}
+	desired = desired.Sorted()
+
+	return middleware.RunCommand(m.pipeline, ctx, middleware.CommandSpec[targetState, Result]{
+		Action: registration.TagAction,
+		AuthorizationActions: func(current targetState) []cedar.EntityUID {
+			return replaceActions(registration, current.tags, desired)
+		},
+		Load: func(ctx *middleware.Context) (targetState, error) {
+			return loadState(ctx, registration, target)
+		},
+		Handle: func(ctx *middleware.Context, _ targetState) (Result, error) {
+			changed, err := m.repository.Replace(ctx, target, desired)
+			if err != nil {
+				return Result{}, err
+			}
+			state, err := loadState(ctx, registration, target)
+			if err != nil {
+				return Result{}, err
+			}
+			if changed {
+				ctx.TouchEntity(target)
+			}
+			return resultFromState(state, changed), nil
+		},
+	})
+}
+
 // Remove deletes the tag identified by key. A missing key is a successful
 // no-op.
 func (m *Module) Remove(ctx *middleware.Context, target cedar.EntityUID, key string) (Result, error) {
@@ -144,4 +185,30 @@ func loadState(ctx store.Context, registration Target, target cedar.EntityUID) (
 
 func resultFromState(state targetState, changed bool) Result {
 	return Result{Target: state.target, Tags: state.tags, Changed: changed, entity: state.entity}
+}
+
+func replaceActions(registration Target, current, desired tag.Tags) []cedar.EntityUID {
+	currentByKey := current.Map()
+	desiredByKey := desired.Map()
+	requiresTag := false
+	requiresUntag := false
+	for key, value := range desiredByKey {
+		if existing, ok := currentByKey[key]; !ok || existing != value {
+			requiresTag = true
+		}
+	}
+	for key := range currentByKey {
+		if _, ok := desiredByKey[key]; !ok {
+			requiresUntag = true
+		}
+	}
+
+	actions := make([]cedar.EntityUID, 0, 2)
+	if requiresTag || !requiresUntag {
+		actions = append(actions, registration.TagAction)
+	}
+	if requiresUntag {
+		actions = append(actions, registration.UntagAction)
+	}
+	return actions
 }

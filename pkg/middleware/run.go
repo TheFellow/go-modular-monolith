@@ -80,8 +80,11 @@ func RunEntityQuery[Req any, Res CedarEntity](
 // CommandSpec names the command orchestration steps RunCommand performs.
 type CommandSpec[In CedarEntity, Out CedarEntity] struct {
 	Action cedar.EntityUID
-	Load   func(*Context) (In, error)
-	Handle CommandHandler[In, Out]
+	// AuthorizationActions optionally derives the complete set of actions that
+	// must authorize the loaded and resulting states. Nil uses Action.
+	AuthorizationActions func(In) []cedar.EntityUID
+	Load                 func(*Context) (In, error)
+	Handle               CommandHandler[In, Out]
 }
 
 func RunCommand[In CedarEntity, Out CedarEntity](pipeline *Pipeline, ctx *Context, spec CommandSpec[In, Out]) (Out, error) {
@@ -98,7 +101,14 @@ func RunCommand[In CedarEntity, Out CedarEntity](pipeline *Pipeline, ctx *Contex
 			activity.Resource = inputEntity.UID
 		}
 
-		handle := AuthorizeCommand(spec.Action, spec.Handle)
+		actions := []cedar.EntityUID{spec.Action}
+		if spec.AuthorizationActions != nil {
+			actions = spec.AuthorizationActions(input)
+		}
+		if len(actions) == 0 {
+			return errors.Internalf("command authorization actions are required")
+		}
+		handle := authorizeCommandActions(actions, spec.Handle)
 		res, err := handle(c, input)
 		if err != nil {
 			return err
@@ -112,4 +122,29 @@ func RunCommand[In CedarEntity, Out CedarEntity](pipeline *Pipeline, ctx *Contex
 		return nil
 	})
 	return out, err
+}
+
+func authorizeCommandActions[In CedarEntity, Out CedarEntity](
+	actions []cedar.EntityUID,
+	next CommandHandler[In, Out],
+) CommandHandler[In, Out] {
+	return func(ctx *Context, in In) (Out, error) {
+		var zero Out
+		for _, action := range actions {
+			if err := authz.AuthorizeWithEntity(ctx.Principal(), action, in.CedarEntity()); err != nil {
+				return zero, err
+			}
+		}
+
+		out, err := next(ctx, in)
+		if err != nil {
+			return zero, err
+		}
+		for _, action := range actions {
+			if err := authz.AuthorizeWithEntity(ctx.Principal(), action, out.CedarEntity()); err != nil {
+				return zero, err
+			}
+		}
+		return out, nil
+	}
 }

@@ -128,6 +128,70 @@ func (r *Repository) Upsert(ctx store.Context, target cedar.EntityUID, value tag
 	return changed, nil
 }
 
+// Replace makes desired the target's complete tag set. It reports whether any
+// association was added, updated, or removed.
+func (r *Repository) Replace(ctx store.Context, target cedar.EntityUID, desired tag.Tags) (bool, error) {
+	if err := validateTarget(target); err != nil {
+		return false, err
+	}
+	if err := desired.Validate(); err != nil {
+		return false, err
+	}
+	desired = desired.Sorted()
+
+	changed := false
+	err := store.Write(ctx, func(tx *bstore.Tx) error {
+		rows, err := bstore.QueryTx[entityTagRow](tx).
+			FilterEqual("EntityType", string(target.Type)).
+			FilterEqual("EntityID", string(target.ID)).
+			List()
+		if err != nil {
+			return err
+		}
+
+		remaining := make(map[string]entityTagRow, len(rows))
+		for _, row := range rows {
+			remaining[row.Key] = row
+		}
+		for _, value := range desired {
+			row, exists := remaining[value.Key]
+			if !exists {
+				row = entityTagRow{
+					EntityType: string(target.Type),
+					EntityID:   string(target.ID),
+					Key:        value.Key,
+					Value:      value.Value,
+				}
+				if err := tx.Insert(&row); err != nil {
+					return err
+				}
+				changed = true
+				continue
+			}
+			delete(remaining, value.Key)
+			if row.Value == value.Value {
+				continue
+			}
+			row.Value = value.Value
+			if err := tx.Update(&row); err != nil {
+				return err
+			}
+			changed = true
+		}
+		for _, row := range remaining {
+			if err := tx.Delete(&row); err != nil {
+				return err
+			}
+			changed = true
+		}
+		return nil
+	})
+	if err != nil {
+		return false, store.MapError(err, "replace tags for %s", target)
+	}
+	return changed, nil
+}
+
 // Remove deletes the target's tag with key. It reports whether an association
 // was removed; a missing key is a successful no-op.
 func (r *Repository) Remove(ctx store.Context, target cedar.EntityUID, key string) (bool, error) {
