@@ -7,6 +7,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -19,15 +20,18 @@ type Inventory struct {
 	Amount       measurement.Amount
 	CostPerUnit  optional.Value[money.Price]
 	LastUpdated  time.Time
+	Tags         tag.Tags
 }
 
 func (s Inventory) EntityUID() cedar.EntityUID {
 	return cedar.NewEntityUID(InventoryEntityType, s.ID.EntityUID().ID)
 }
 
+func (s *Inventory) SetTags(tags tag.Tags) { s.Tags = tags }
+
 func (s Inventory) CedarEntity() cedar.Entity {
 	return inventoryauthz.Inventory{
-		UID: s.EntityUID(), IngredientID: s.IngredientID.EntityUID(), Unit: string(s.Amount.Unit()),
+		UID: s.EntityUID(), IngredientID: s.IngredientID.EntityUID(), Unit: string(s.Amount.Unit()), Tags: s.Tags.Map(),
 	}.CedarEntity()
 }
 

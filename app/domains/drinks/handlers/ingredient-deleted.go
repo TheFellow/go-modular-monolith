@@ -5,6 +5,7 @@ import (
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	ingredientsevents "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -17,10 +18,10 @@ type IngredientDeleted struct {
 	affectedDrinks []*drinksmodels.Drink
 }
 
-func NewIngredientDeleted(s *store.Store) *IngredientDeleted {
+func NewIngredientDeleted(s *store.Store, tags tag.Repository) *IngredientDeleted {
 	return &IngredientDeleted{
-		drinkDAO:     dao.New(s),
-		drinkQueries: queries.New(s),
+		drinkDAO:     dao.New(s, tags),
+		drinkQueries: queries.New(s, tags),
 	}
 }
 

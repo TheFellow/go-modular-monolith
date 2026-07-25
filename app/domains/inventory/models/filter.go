@@ -12,11 +12,13 @@ type ListFilterView struct {
 	Quantity     float64   `expr:"quantity" filter:"Quantity on hand" filter-column:"Quantity"`
 	Unit         string    `expr:"unit" filter:"Measurement unit" filter-column:"Unit"`
 	LastUpdated  time.Time `expr:"last_updated" filter:"Last update timestamp" filter-column:"LastUpdated"`
+	Tags         []string  `expr:"tags" filter:"Tags (key or key=value)"`
 }
 
 func ListFilterSchema() filter.Schema[ListFilterView] {
 	return filter.NewSchema[ListFilterView](
 		`quantity <= 5 && unit == "ml"`,
 		`ingredient_id.startsWith("ing-") || quantity == 0`,
+		`tags contains "featured" || tags contains "region=west"`,
 	)
 }

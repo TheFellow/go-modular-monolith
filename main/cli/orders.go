@@ -12,6 +12,7 @@ import (
 	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/urfave/cli/v3"
 )
 
@@ -24,15 +25,15 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "place",
 				Usage: "Place an order",
 				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "items", UsageText: "<drink-id>:<qty> [<drink-id>:<qty>...]", Max: 0},
+					&cli.StringArgs{Name: "items", UsageText: "<drink-id>:<qty> [<drink-id>:<qty>...]", Max: -1},
 				},
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					TemplateFlag,
 					StdinFlag,
 					FileFlag,
 					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID"},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
 						return writeJSON(cmd.Writer, orderscli.TemplatePlace())
@@ -88,13 +89,15 @@ func (c *CLI) ordersCommands() *cli.Command {
 						}
 					}
 
-					created, err := c.app.Orders.Place(ctx, input)
+					created, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
+						return c.app.Orders.Place(ctx, input)
+					})
 					if err != nil {
 						return err
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, created)
+						return writeJSON(cmd.Writer, orderscli.ToOrderView(created))
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, created.ID.String())
@@ -130,7 +133,9 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, res)
+						return writeJSON(cmd.Writer, paging.Page[orderscli.OrderRow]{
+							Items: orderscli.ToOrderRows(res.Items), Next: res.Next,
+						})
 					}
 					if err := clitable.PrintTable(cmd.Writer, orderscli.ToOrderRows(res.Items)); err != nil {
 						return err
@@ -155,7 +160,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, res)
+						return writeJSON(cmd.Writer, orderscli.ToOrderView(res))
 					}
 					if err := clitable.PrintDetail(cmd.Writer, orderscli.ToOrderDetail(res)); err != nil {
 						return err
@@ -170,21 +175,23 @@ func (c *CLI) ordersCommands() *cli.Command {
 			{
 				Name:  "complete",
 				Usage: "Complete an order",
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					orderID, err := entity.ParseOrderID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
-					updated, err := c.app.Orders.Complete(ctx, &ordersmodels.Order{ID: orderID})
+					updated, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
+						return c.app.Orders.Complete(ctx, &ordersmodels.Order{ID: orderID})
+					})
 					if err != nil {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, updated)
+						return writeJSON(cmd.Writer, orderscli.ToOrderView(updated))
 					}
 					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
 					return err
@@ -193,21 +200,23 @@ func (c *CLI) ordersCommands() *cli.Command {
 			{
 				Name:  "cancel",
 				Usage: "Cancel an order",
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					orderID, err := entity.ParseOrderID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
-					updated, err := c.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: orderID})
+					updated, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
+						return c.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: orderID})
+					})
 					if err != nil {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, updated)
+						return writeJSON(cmd.Writer, orderscli.ToOrderView(updated))
 					}
 					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
 					return err

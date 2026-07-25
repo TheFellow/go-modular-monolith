@@ -27,18 +27,26 @@ var (
 	ActionList        = cedar.NewEntityUID(ActionType, "list")
 	ActionPublish     = cedar.NewEntityUID(ActionType, "publish")
 	ActionRemoveDrink = cedar.NewEntityUID(ActionType, "remove_drink")
+	ActionTag         = cedar.NewEntityUID(ActionType, "tag")
+	ActionUntag       = cedar.NewEntityUID(ActionType, "untag")
 	ActionUpdate      = cedar.NewEntityUID(ActionType, "update")
 )
 
 // Menu is the Cedar-facing authorization model for Mixology::Menu.
 type Menu struct {
 	UID    cedar.EntityUID
+	Tags   map[string]string
 	Name   string
 	Status string
 }
 
 // CedarEntity converts m to the entity shape declared in schema.cedarschema.
 func (m Menu) CedarEntity() cedar.Entity {
+	tags := make(cedar.RecordMap, len(m.Tags))
+	for key, value := range m.Tags {
+		tags[cedar.String(key)] = cedar.String(value)
+	}
+
 	return cedar.Entity{
 		UID:     cedar.NewEntityUID(MenuType, m.UID.ID),
 		Parents: cedar.NewEntityUIDSet(),
@@ -46,6 +54,6 @@ func (m Menu) CedarEntity() cedar.Entity {
 			MenuNameAttr:   cedar.String(m.Name),
 			MenuStatusAttr: cedar.String(m.Status),
 		}),
-		Tags: cedar.NewRecord(nil),
+		Tags: cedar.NewRecord(tags),
 	}
 }

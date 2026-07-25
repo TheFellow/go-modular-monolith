@@ -24,7 +24,8 @@ func TestFilterHelpUsesConcreteSchema(t *testing.T) {
 	testutil.Ok(t, writeFilterHelp(&out, models.ListFilterSchema()))
 	text := out.String()
 	for _, want := range []string{
-		"category", "Ingredient category", "&& / and", "value.contains", `--filter 'category == "spirit"`,
+		"category", "Ingredient category", "tags", "Tags (key or key=value)", "&& / and", "value.contains",
+		`--filter 'category == "spirit"`, `--filter 'tags contains "featured"`,
 	} {
 		testutil.StringContains(t, text, want)
 	}
@@ -108,6 +109,9 @@ func TestEveryListCommandHasFilterFlags(t *testing.T) {
 	c, err := NewCLI()
 	testutil.Ok(t, err)
 	for _, noun := range c.Command().Commands {
+		if noun.Name == "tags" { // Cross-cutting tag operations, not a domain entity list.
+			continue
+		}
 		for _, command := range noun.Commands {
 			if command.Name != "list" {
 				continue

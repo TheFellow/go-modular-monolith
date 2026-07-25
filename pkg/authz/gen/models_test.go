@@ -62,3 +62,80 @@ namespace Mixology::Drink {
 			"generated authz code depends on the kernel entity generator:\n%s", source)
 	}
 }
+
+func TestRenderModuleModelsWithStringTags(t *testing.T) {
+	t.Parallel()
+
+	const src = `
+namespace Mixology {
+    entity Actor;
+    entity Drink { Name: String } tags String;
+}
+namespace Mixology::Drink {
+    action get appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::Drink,
+        context: {}
+    };
+}`
+
+	var parsed schema.Schema
+	testutil.Ok(t, parsed.UnmarshalCedar([]byte(src)))
+	_, err := parsed.Resolve()
+	testutil.Ok(t, err)
+
+	got, err := renderModuleModels(parsed.AST(), "drinks")
+	testutil.Ok(t, err)
+	normalized := strings.Join(strings.Fields(string(got)), " ")
+	for _, want := range []string{
+		`Tags map[string]string`,
+		`tags := make(cedar.RecordMap, len(m.Tags))`,
+		`tags[cedar.String(key)] = cedar.String(value)`,
+		`Tags: cedar.NewRecord(tags)`,
+	} {
+		testutil.ErrorIf(t, !strings.Contains(normalized, want), "generated source missing %q:\n%s", want, got)
+	}
+
+	generatedTests, err := renderModuleModelTests(parsed.AST(), "drinks",
+		"github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz")
+	testutil.Ok(t, err)
+	testSource := strings.Join(strings.Fields(string(generatedTests)), " ")
+	for _, want := range []string{
+		`Tags: map[string]string{"audience": "members", "featured": ""}`,
+		`"audience": cedar.String("members")`,
+		`"featured": cedar.String("")`,
+	} {
+		testutil.ErrorIf(t, !strings.Contains(testSource, want), "generated test source missing %q:\n%s", want, generatedTests)
+	}
+}
+
+func TestRenderModuleModelsRejectsUnsupportedTagTypes(t *testing.T) {
+	t.Parallel()
+
+	const src = `
+namespace Mixology {
+    entity Actor;
+    entity Drink tags Long;
+}
+namespace Mixology::Drink {
+    action get appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::Drink,
+        context: {}
+    };
+}`
+
+	var parsed schema.Schema
+	testutil.Ok(t, parsed.UnmarshalCedar([]byte(src)))
+	_, err := parsed.Resolve()
+	testutil.Ok(t, err)
+
+	_, err = renderModuleModels(parsed.AST(), "drinks")
+	testutil.ErrorIf(t, err == nil, "expected unsupported tag type error")
+	testutil.ErrorIf(t, !strings.Contains(err.Error(), "Long"), "error does not identify unsupported type: %v", err)
+	testutil.ErrorIf(t, !strings.Contains(err.Error(), "only String is supported"), "unexpected error: %v", err)
+
+	_, err = renderModuleModelTests(parsed.AST(), "drinks", "example.com/drinks/authz")
+	testutil.ErrorIf(t, err == nil, "expected unsupported tag type error")
+	testutil.ErrorIf(t, !strings.Contains(err.Error(), "only String is supported"), "unexpected error: %v", err)
+}

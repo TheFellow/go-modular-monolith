@@ -6,6 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
+	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
@@ -34,7 +35,7 @@ func TestListFilter_IDs(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	list := queries.New(f.Store).List(f.OwnerContext(), dao.ListFilter{
+	list := queries.New(f.Store, tagging.NewRepository(f.Store)).List(f.OwnerContext(), dao.ListFilter{
 		IDs: []entity.IngredientID{ing1.ID, ing3.ID},
 	})
 

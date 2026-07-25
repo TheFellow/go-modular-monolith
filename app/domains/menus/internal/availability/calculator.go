@@ -11,6 +11,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
@@ -21,11 +22,11 @@ type AvailabilityCalculator struct {
 	ingredients *ingredientsq.Queries
 }
 
-func New(s *store.Store) *AvailabilityCalculator {
+func New(s *store.Store, tags tag.Repository) *AvailabilityCalculator {
 	return &AvailabilityCalculator{
-		drinks:      drinksq.New(s),
-		inventory:   inventoryq.New(s),
-		ingredients: ingredientsq.New(s),
+		drinks:      drinksq.New(s, tags),
+		inventory:   inventoryq.New(s, tags),
+		ingredients: ingredientsq.New(s, tags),
 	}
 }
 

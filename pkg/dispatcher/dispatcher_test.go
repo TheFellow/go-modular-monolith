@@ -19,7 +19,7 @@ import (
 func TestDispatcher_DispatchesToHandlers(t *testing.T) {
 	t.Parallel()
 
-	d := dispatcher.New(nil)
+	d := dispatcher.New(nil, nil)
 	base := authn.ToContext(log.ToContext(context.Background(), slog.Default()), authn.Anonymous())
 	ctx := middleware.NewContext(base)
 
@@ -38,7 +38,7 @@ func TestDispatcher_IgnoresUnknownEvents(t *testing.T) {
 
 	type unknownEvent struct{}
 
-	d := dispatcher.New(nil)
+	d := dispatcher.New(nil, nil)
 	base := authn.ToContext(log.ToContext(context.Background(), slog.Default()), authn.Anonymous())
 	ctx := middleware.NewContext(base)
 	testutil.Ok(t, d.Dispatch(ctx, unknownEvent{}))

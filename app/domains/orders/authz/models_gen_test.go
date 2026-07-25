@@ -15,6 +15,7 @@ func TestOrderCedarEntity(t *testing.T) {
 
 	model := moduleauthz.Order{
 		UID:    cedar.NewEntityUID("Wrong::Type", "test-id"),
+		Tags:   map[string]string{"audience": "members", "featured": ""},
 		MenuID: cedar.NewEntityUID("Test::Reference", "test-menuid"),
 		Status: "test-status",
 	}
@@ -27,7 +28,10 @@ func TestOrderCedarEntity(t *testing.T) {
 			moduleauthz.OrderMenuIDAttr: cedar.NewEntityUID("Test::Reference", "test-menuid"),
 			moduleauthz.OrderStatusAttr: cedar.String("test-status"),
 		}),
-		Tags: cedar.NewRecord(nil),
+		Tags: cedar.NewRecord(cedar.RecordMap{
+			"audience": cedar.String("members"),
+			"featured": cedar.String(""),
+		}),
 	}
 
 	testutil.Equals(t, got, want)

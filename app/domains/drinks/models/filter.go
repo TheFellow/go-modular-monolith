@@ -12,6 +12,7 @@ type ListFilterView struct {
 	Category    string           `expr:"category" filter:"Drink category" filter-column:"Category"`
 	Glass       string           `expr:"glass" filter:"Glass type" filter-column:"Glass"`
 	Description string           `expr:"description" filter:"Drink description" filter-column:"Description"`
+	Tags        []string         `expr:"tags" filter:"Tags (key or key=value)"`
 	Recipe      RecipeFilterView `expr:"recipe"`
 }
 
@@ -19,5 +20,6 @@ func ListFilterSchema() filter.Schema[ListFilterView] {
 	return filter.NewSchema[ListFilterView](
 		`category == "cocktail" && name.contains("gin")`,
 		`glass in ["coupe", "rocks"] || recipe.garnish.startsWith("lemon")`,
+		`tags contains "featured" || tags contains "region=west"`,
 	)
 }

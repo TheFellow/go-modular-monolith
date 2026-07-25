@@ -6,11 +6,11 @@ namespace Mixology {
         Category: String,
         Glass: String,
         Description: String
-    };
+    } tags String;
 }
 
 namespace Mixology::Drink {
-    action list, get, create, update, delete appliesTo {
+    action list, get, create, update, delete, tag, untag appliesTo {
         principal: Mixology::Actor,
         resource: Mixology::Drink,
         context: {}

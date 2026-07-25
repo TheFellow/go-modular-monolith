@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
 
@@ -25,11 +26,28 @@ type ListFilter struct {
 func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Drink, error] {
 	return func(yield func(*models.Drink, error) bool) {
 		err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-			for row, err := range d.query(tx, filter).SortDesc("ID").All() {
-				if err != nil {
-					return store.MapError(err, "iterate drinks")
-				}
+			rows, err := d.query(tx, filter).SortDesc("ID").List()
+			if err != nil {
+				return store.MapError(err, "list drinks")
+			}
+			ids := make([]cedar.String, len(rows))
+			for i := range rows {
+				ids[i] = cedar.String(rows[i].ID)
+			}
+			tagsByTarget, err := d.tags.ListTypeTx(tx, entity.TypeDrink, ids)
+			if err != nil {
+				return err
+			}
+			for _, row := range rows {
 				drink := toModel(row)
+				drink.Tags = tagsByTarget[drink.EntityUID()]
+				matched, err := filter.Expression.Match(listFilterView(row, drink.Tags.Strings()))
+				if err != nil {
+					return err
+				}
+				if !matched {
+					continue
+				}
 				if !yield(&drink, nil) {
 					return nil
 				}
@@ -63,9 +81,18 @@ func (d *DAO) ListByIngredient(ctx store.Context, ingredientID entity.Ingredient
 		if err != nil {
 			return store.MapError(err, "list drinks by ingredient %s", ingredientID.String())
 		}
+		ids := make([]cedar.String, len(rows))
+		for i := range rows {
+			ids[i] = cedar.String(rows[i].ID)
+		}
+		tagsByTarget, err := d.tags.ListTypeTx(tx, entity.TypeDrink, ids)
+		if err != nil {
+			return err
+		}
 		drinks := make([]*models.Drink, 0, len(rows))
 		for _, r := range rows {
 			d := toModel(r)
+			d.Tags = tagsByTarget[d.EntityUID()]
 			drinks = append(drinks, &d)
 		}
 		out = drinks
@@ -94,12 +121,14 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[DrinkRow] {
 			return r.DeletedAt == nil
 		})
 	}
-	q = appfilter.ApplyBstore(q, filter.Expression, func(r DrinkRow) models.ListFilterView {
-		return models.ListFilterView{
-			ID: r.ID, Name: r.Name, Category: r.Category, Glass: r.Glass, Description: r.Description,
-			Recipe: models.RecipeFilterView{Garnish: r.Recipe.Garnish},
-		}
-	})
+	q = appfilter.ApplyBstorePushdowns(q, filter.Expression)
 
 	return q
+}
+
+func listFilterView(r DrinkRow, tags []string) models.ListFilterView {
+	return models.ListFilterView{
+		ID: r.ID, Name: r.Name, Category: r.Category, Glass: r.Glass, Description: r.Description, Tags: tags,
+		Recipe: models.RecipeFilterView{Garnish: r.Recipe.Garnish},
+	}
 }

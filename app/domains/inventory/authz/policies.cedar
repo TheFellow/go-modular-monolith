@@ -15,7 +15,9 @@ permit(
     principal == Mixology::Actor::"manager",
     action in [
         Mixology::Inventory::Action::"adjust",
-        Mixology::Inventory::Action::"set"
+        Mixology::Inventory::Action::"set",
+        Mixology::Inventory::Action::"tag",
+        Mixology::Inventory::Action::"untag"
     ],
     resource is Mixology::Inventory
 );

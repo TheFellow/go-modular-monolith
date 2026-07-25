@@ -114,6 +114,7 @@ func Parse[T any](schema Schema[T], source string) (*Expression[T], error) {
 		expr.AsBool(),
 		expr.Optimize(false),
 		expr.Patch(dotPredicatePatcher{}),
+		expr.Patch(collectionContainsPatcher{fields: collectionFields(schema)}),
 	)
 	if err != nil {
 		return nil, errors.Invalidf("invalid filter: %w", err)
@@ -157,4 +158,36 @@ func (dotPredicatePatcher) Visit(node *ast.Node) {
 		return
 	}
 	ast.Patch(node, &ast.BinaryNode{Operator: property.Value, Left: member.Node, Right: call.Arguments[0]})
+}
+
+type collectionContainsPatcher struct {
+	fields map[string]struct{}
+}
+
+func collectionFields[T any](schema Schema[T]) map[string]struct{} {
+	fields := make(map[string]struct{})
+	for _, field := range schema.fields {
+		if field.Type.Kind() == reflect.Slice || field.Type.Kind() == reflect.Array {
+			fields[field.Name] = struct{}{}
+		}
+	}
+	return fields
+}
+
+// Visit preserves the user-facing "collection contains value" spelling while
+// compiling it to Expr's equivalent "value in collection" operation. String
+// contains expressions are left untouched.
+func (p collectionContainsPatcher) Visit(node *ast.Node) {
+	binary, ok := (*node).(*ast.BinaryNode)
+	if !ok || binary.Operator != "contains" {
+		return
+	}
+	name, ok := fieldPath(binary.Left)
+	if !ok {
+		return
+	}
+	if _, ok := p.fields[name]; !ok {
+		return
+	}
+	ast.Patch(node, &ast.BinaryNode{Operator: "in", Left: binary.Right, Right: binary.Left})
 }

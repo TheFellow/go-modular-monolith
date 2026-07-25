@@ -24,12 +24,15 @@ var (
 	ActionDelete = cedar.NewEntityUID(ActionType, "delete")
 	ActionGet    = cedar.NewEntityUID(ActionType, "get")
 	ActionList   = cedar.NewEntityUID(ActionType, "list")
+	ActionTag    = cedar.NewEntityUID(ActionType, "tag")
+	ActionUntag  = cedar.NewEntityUID(ActionType, "untag")
 	ActionUpdate = cedar.NewEntityUID(ActionType, "update")
 )
 
 // Ingredient is the Cedar-facing authorization model for Mixology::Ingredient.
 type Ingredient struct {
 	UID      cedar.EntityUID
+	Tags     map[string]string
 	Category string
 	Name     string
 	Unit     string
@@ -37,6 +40,11 @@ type Ingredient struct {
 
 // CedarEntity converts m to the entity shape declared in schema.cedarschema.
 func (m Ingredient) CedarEntity() cedar.Entity {
+	tags := make(cedar.RecordMap, len(m.Tags))
+	for key, value := range m.Tags {
+		tags[cedar.String(key)] = cedar.String(value)
+	}
+
 	return cedar.Entity{
 		UID:     cedar.NewEntityUID(IngredientType, m.UID.ID),
 		Parents: cedar.NewEntityUIDSet(),
@@ -45,6 +53,6 @@ func (m Ingredient) CedarEntity() cedar.Entity {
 			IngredientNameAttr:     cedar.String(m.Name),
 			IngredientUnitAttr:     cedar.String(m.Unit),
 		}),
-		Tags: cedar.NewRecord(nil),
+		Tags: cedar.NewRecord(tags),
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	ordersevents "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
@@ -14,10 +15,10 @@ type OrderCompleted struct {
 	availability *availability.AvailabilityCalculator
 }
 
-func NewOrderCompleted(s *store.Store) *OrderCompleted {
+func NewOrderCompleted(s *store.Store, tags tag.Repository) *OrderCompleted {
 	return &OrderCompleted{
-		dao:          dao.New(s),
-		availability: availability.New(s),
+		dao:          dao.New(s, tags),
+		availability: availability.New(s, tags),
 	}
 }
 

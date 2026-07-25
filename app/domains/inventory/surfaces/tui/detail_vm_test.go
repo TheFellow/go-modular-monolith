@@ -10,6 +10,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
@@ -28,6 +29,7 @@ func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
 		CostPerUnit:  price,
 	})
 	testutil.Ok(t, err)
+	inv.Tags = tag.Tags{{Key: "zone", Value: "bar"}, {Key: "counted"}}
 
 	row := inventorytui.InventoryRow{
 		Inventory:  *inv,
@@ -48,6 +50,7 @@ func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
 	testutil.ErrorIf(t, !strings.Contains(view, row.Quantity), "expected quantity in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, row.Cost), "expected cost in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "LOW"), "expected status in view, got:\n%s", view)
+	testutil.ErrorIf(t, !strings.Contains(view, "Tags: counted,zone=bar"), "expected canonical tags in view, got:\n%s", view)
 }
 
 func TestDetailViewModel_NilRow(t *testing.T) {

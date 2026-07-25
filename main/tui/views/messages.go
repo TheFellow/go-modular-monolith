@@ -27,6 +27,7 @@ const (
 	ViewMenus
 	ViewOrders
 	ViewAudit
+	ViewTags
 )
 
 // String returns the display name for the view.
@@ -46,6 +47,8 @@ func (v View) String() string {
 		return "orders"
 	case ViewAudit:
 		return "audit"
+	case ViewTags:
+		return "tags"
 	default:
 		return "unknown"
 	}

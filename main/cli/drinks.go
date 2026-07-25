@@ -97,15 +97,12 @@ func (c *CLI) drinksCommands() *cli.Command {
 			{
 				Name:  "create",
 				Usage: "Create a new drink",
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "args", Max: 0},
-				},
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					TemplateFlag,
 					StdinFlag,
 					FileFlag,
 					JSONFlag,
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
 						return writeJSON(cmd.Writer, drinkscli.TemplateCreateDrink())
@@ -116,7 +113,9 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return err
 					}
 
-					res, err := c.app.Drinks.Create(ctx, &created)
+					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*drinksmodels.Drink, error) {
+						return c.app.Drinks.Create(ctx, &created)
+					})
 					if err != nil {
 						return err
 					}
@@ -132,15 +131,12 @@ func (c *CLI) drinksCommands() *cli.Command {
 			{
 				Name:  "update",
 				Usage: "Update a drink",
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "args", Max: 0},
-				},
-				Flags: []cli.Flag{
+				Flags: appendTagsFlag([]cli.Flag{
 					TemplateFlag,
 					StdinFlag,
 					FileFlag,
 					JSONFlag,
-				},
+				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
 						return writeJSON(cmd.Writer, drinkscli.TemplateUpdateDrink())
@@ -151,7 +147,9 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return err
 					}
 
-					res, err := c.app.Drinks.Update(ctx, &updated)
+					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*drinksmodels.Drink, error) {
+						return c.app.Drinks.Update(ctx, &updated)
+					})
 					if err != nil {
 						return err
 					}

@@ -174,6 +174,8 @@ func (a *App) currentViewModel() views.ViewModel {
 		vm = ordersui.NewListViewModel(a.app)
 	case ViewAudit:
 		vm = auditui.NewListViewModel(a.app)
+	case ViewTags:
+		vm = views.NewTags(a.app)
 	default:
 		a.currentView = ViewDashboard
 		vm = views.NewDashboard(a.app)
@@ -305,7 +307,7 @@ func (a *App) renderTooSmallWarning() string {
 
 func isValidView(view View) bool {
 	switch view {
-	case ViewDashboard, ViewDrinks, ViewIngredients, ViewInventory, ViewMenus, ViewOrders, ViewAudit:
+	case ViewDashboard, ViewDrinks, ViewIngredients, ViewInventory, ViewMenus, ViewOrders, ViewAudit, ViewTags:
 		return true
 	default:
 		return false
@@ -328,6 +330,8 @@ func viewTitle(view View) string {
 		return "Orders"
 	case ViewAudit:
 		return "Audit"
+	case ViewTags:
+		return "Tags"
 	default:
 		return "Unknown"
 	}

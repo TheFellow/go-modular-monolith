@@ -7,32 +7,40 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 type OrderRow struct {
-	ID            string `table:"ID" json:"id"`
-	MenuID        string `table:"MENU_ID" json:"menu_id"`
-	Status        string `table:"STATUS" json:"status"`
-	Items         int    `table:"ITEMS" json:"items"`
-	TotalQuantity int    `table:"TOTAL_QUANTITY" json:"total_quantity"`
-	CreatedAt     string `table:"CREATED_AT" json:"created_at"`
-	CompletedAt   string `table:"COMPLETED_AT" json:"completed_at,omitempty"`
+	ID            string               `table:"ID" json:"id"`
+	MenuID        string               `table:"MENU_ID" json:"menu_id"`
+	Status        string               `table:"STATUS" json:"status"`
+	Items         int                  `table:"ITEMS" json:"items"`
+	TotalQuantity int                  `table:"TOTAL_QUANTITY" json:"total_quantity"`
+	CreatedAt     string               `table:"CREATED_AT" json:"created_at"`
+	CompletedAt   string               `table:"COMPLETED_AT" json:"completed_at,omitempty"`
+	Tags          tag.CanonicalStrings `table:"TAGS" json:"tags"`
 }
 
 type OrderDetail struct {
-	ID          string `table:"-" json:"id"`
-	MenuID      string `table:"-" json:"menu_id"`
-	Status      string `table:"-" json:"status"`
-	CreatedAt   string `table:"-" json:"created_at"`
-	CompletedAt string `table:"-" json:"completed_at,omitempty"`
-	Notes       string `table:"-" json:"notes,omitempty"`
+	ID          string               `table:"-" json:"id"`
+	MenuID      string               `table:"-" json:"menu_id"`
+	Status      string               `table:"-" json:"status"`
+	CreatedAt   string               `table:"-" json:"created_at"`
+	CompletedAt string               `table:"-" json:"completed_at,omitempty"`
+	Notes       string               `table:"-" json:"notes,omitempty"`
+	Tags        tag.CanonicalStrings `table:"-" json:"tags"`
 }
 
 type OrderItemRow struct {
 	DrinkID  string `table:"DRINK_ID" json:"drink_id"`
 	Quantity int    `table:"QUANTITY" json:"quantity"`
 	Notes    string `table:"NOTES" json:"notes,omitempty"`
+}
+
+type OrderView struct {
+	OrderDetail
+	Items []OrderItemRow `json:"items"`
 }
 
 type OrderInput struct {
@@ -60,6 +68,7 @@ func ToOrderRow(o *models.Order) OrderRow {
 		TotalQuantity: totalQuantity,
 		CreatedAt:     formatTime(o.CreatedAt),
 		CompletedAt:   completedAt,
+		Tags:          o.Tags.Canonical(),
 	}
 }
 
@@ -86,6 +95,7 @@ func ToOrderDetail(o *models.Order) OrderDetail {
 		CreatedAt:   formatTime(o.CreatedAt),
 		CompletedAt: completed,
 		Notes:       o.Notes,
+		Tags:        o.Tags.Canonical(),
 	}
 }
 
@@ -99,6 +109,13 @@ func ToOrderItemRows(items []models.OrderItem) []OrderItemRow {
 		})
 	}
 	return rows
+}
+
+func ToOrderView(o *models.Order) OrderView {
+	if o == nil {
+		return OrderView{}
+	}
+	return OrderView{OrderDetail: ToOrderDetail(o), Items: ToOrderItemRows(o.Items)}
 }
 
 func TemplatePlace() OrderInput {

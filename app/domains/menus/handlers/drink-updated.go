@@ -5,6 +5,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/availability"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
@@ -14,10 +15,10 @@ type DrinkUpdated struct {
 	availability *availability.AvailabilityCalculator
 }
 
-func NewDrinkUpdated(s *store.Store) *DrinkUpdated {
+func NewDrinkUpdated(s *store.Store, tags tag.Repository) *DrinkUpdated {
 	return &DrinkUpdated{
-		dao:          dao.New(s),
-		availability: availability.New(s),
+		dao:          dao.New(s, tags),
+		availability: availability.New(s, tags),
 	}
 }
 

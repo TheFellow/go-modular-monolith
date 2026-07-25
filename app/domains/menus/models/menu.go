@@ -6,6 +6,7 @@ import (
 	menuauthz "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -24,15 +25,18 @@ type Menu struct {
 	CreatedAt   time.Time
 	PublishedAt optional.Value[time.Time]
 	DeletedAt   optional.Value[time.Time]
+	Tags        tag.Tags
 }
 
 func (m Menu) EntityUID() cedar.EntityUID {
 	return m.ID.EntityUID()
 }
 
+func (m *Menu) SetTags(tags tag.Tags) { m.Tags = tags }
+
 func (m Menu) CedarEntity() cedar.Entity {
 	return menuauthz.Menu{
-		UID: m.ID.EntityUID(), Name: m.Name, Status: string(m.Status),
+		UID: m.ID.EntityUID(), Name: m.Name, Status: string(m.Status), Tags: m.Tags.Map(),
 	}.CedarEntity()
 }
 

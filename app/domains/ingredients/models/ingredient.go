@@ -8,6 +8,7 @@ import (
 	ingredientauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -22,15 +23,18 @@ type Ingredient struct {
 	Unit        measurement.Unit
 	Description string
 	DeletedAt   optional.Value[time.Time]
+	Tags        tag.Tags
 }
 
 func (i Ingredient) EntityUID() cedar.EntityUID {
 	return i.ID.EntityUID()
 }
 
+func (i *Ingredient) SetTags(tags tag.Tags) { i.Tags = tags }
+
 func (i Ingredient) CedarEntity() cedar.Entity {
 	return ingredientauthz.Ingredient{
-		UID: i.ID.EntityUID(), Name: i.Name, Category: string(i.Category), Unit: string(i.Unit),
+		UID: i.ID.EntityUID(), Name: i.Name, Category: string(i.Category), Unit: string(i.Unit), Tags: i.Tags.Map(),
 	}.CedarEntity()
 }
 

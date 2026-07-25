@@ -5,11 +5,11 @@ namespace Mixology {
     entity Inventory {
         IngredientID: Ingredient,
         Unit: String
-    };
+    } tags String;
 }
 
 namespace Mixology::Inventory {
-    action list, get, adjust, set appliesTo {
+    action list, get, adjust, set, tag, untag appliesTo {
         principal: Mixology::Actor,
         resource: Mixology::Inventory,
         context: {}

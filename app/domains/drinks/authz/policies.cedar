@@ -32,6 +32,21 @@ permit(
     resource.Category == "wine"
 };
 
+// End users can extend sommelier access to an individual drink by tagging it
+// with an audience selected in policy. Tags themselves remain ordinary data:
+// their authorization meaning comes exclusively from authored Cedar policy.
+permit(
+    principal == Mixology::Actor::"sommelier",
+    action in [
+        Mixology::Drink::Action::"list",
+        Mixology::Drink::Action::"get"
+    ],
+    resource is Mixology::Drink
+) when {
+    resource.hasTag("audience") &&
+    resource.getTag("audience") == "sommelier"
+};
+
 // Bartenders can read non-wine drinks.
 permit(
     principal == Mixology::Actor::"bartender",
@@ -50,7 +65,9 @@ permit(
     action in [
         Mixology::Drink::Action::"create",
         Mixology::Drink::Action::"update",
-        Mixology::Drink::Action::"delete"
+        Mixology::Drink::Action::"delete",
+        Mixology::Drink::Action::"tag",
+        Mixology::Drink::Action::"untag"
     ],
     resource is Mixology::Drink
 );
@@ -61,7 +78,9 @@ permit(
     action in [
         Mixology::Drink::Action::"create",
         Mixology::Drink::Action::"update",
-        Mixology::Drink::Action::"delete"
+        Mixology::Drink::Action::"delete",
+        Mixology::Drink::Action::"tag",
+        Mixology::Drink::Action::"untag"
     ],
     resource is Mixology::Drink
 ) when {
@@ -74,7 +93,9 @@ permit(
     action in [
         Mixology::Drink::Action::"create",
         Mixology::Drink::Action::"update",
-        Mixology::Drink::Action::"delete"
+        Mixology::Drink::Action::"delete",
+        Mixology::Drink::Action::"tag",
+        Mixology::Drink::Action::"untag"
     ],
     resource is Mixology::Drink
 ) when {

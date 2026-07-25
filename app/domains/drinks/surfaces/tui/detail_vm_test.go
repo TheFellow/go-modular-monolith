@@ -9,6 +9,7 @@ import (
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
@@ -44,6 +45,7 @@ func TestDetailViewModel_ShowsDrinkData(t *testing.T) {
 			Garnish: "Lime wheel",
 		},
 		Description: "Tart and bright",
+		Tags:        tag.Tags{{Key: "region", Value: "west"}, {Key: "featured"}},
 	})
 
 	detail := drinkstui.NewDetailViewModel(
@@ -63,6 +65,7 @@ func TestDetailViewModel_ShowsDrinkData(t *testing.T) {
 	testutil.ErrorIf(t, !strings.Contains(view, "subs: Lemon Juice"), "expected substitutes in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Shake with ice"), "expected recipe steps in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Lime wheel"), "expected garnish in view, got:\n%s", view)
+	testutil.ErrorIf(t, !strings.Contains(view, "Tags: featured,region=west"), "expected canonical tags in view, got:\n%s", view)
 }
 
 func TestDetailViewModel_NilDrink(t *testing.T) {

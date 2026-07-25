@@ -12,11 +12,13 @@ type ListFilterView struct {
 	Description string    `expr:"description" filter:"Menu description" filter-column:"Description"`
 	Status      string    `expr:"status" filter:"Menu status" filter-column:"Status"`
 	CreatedAt   time.Time `expr:"created_at" filter:"Creation timestamp" filter-column:"CreatedAt"`
+	Tags        []string  `expr:"tags" filter:"Tags (key or key=value)"`
 }
 
 func ListFilterSchema() filter.Schema[ListFilterView] {
 	return filter.NewSchema[ListFilterView](
 		`status == "published" && name.contains("summer")`,
 		`status == "draft" || created_at >= date("2026-07-01T00:00:00Z")`,
+		`tags contains "featured" || tags contains "region=west"`,
 	)
 }

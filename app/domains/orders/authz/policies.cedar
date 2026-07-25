@@ -34,7 +34,9 @@ permit(
     action in [
         Mixology::Order::Action::"place",
         Mixology::Order::Action::"complete",
-        Mixology::Order::Action::"cancel"
+        Mixology::Order::Action::"cancel",
+        Mixology::Order::Action::"tag",
+        Mixology::Order::Action::"untag"
     ],
     resource is Mixology::Order
 );
@@ -44,7 +46,9 @@ permit(
     action in [
         Mixology::Order::Action::"place",
         Mixology::Order::Action::"complete",
-        Mixology::Order::Action::"cancel"
+        Mixology::Order::Action::"cancel",
+        Mixology::Order::Action::"tag",
+        Mixology::Order::Action::"untag"
     ],
     resource is Mixology::Order
 );

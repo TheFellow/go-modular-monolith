@@ -7,6 +7,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
 
@@ -23,11 +24,28 @@ type ListFilter struct {
 func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Order, error] {
 	return func(yield func(*models.Order, error) bool) {
 		err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-			for row, err := range d.query(tx, filter).SortDesc("ID").All() {
-				if err != nil {
-					return store.MapError(err, "iterate orders")
-				}
+			rows, err := d.query(tx, filter).SortDesc("ID").List()
+			if err != nil {
+				return store.MapError(err, "list orders")
+			}
+			ids := make([]cedar.String, len(rows))
+			for i := range rows {
+				ids[i] = cedar.String(rows[i].ID)
+			}
+			tagsByTarget, err := d.tags.ListTypeTx(tx, entity.TypeOrder, ids)
+			if err != nil {
+				return err
+			}
+			for _, row := range rows {
 				order := toModel(row)
+				order.Tags = tagsByTarget[order.EntityUID()]
+				matched, err := filter.Expression.Match(listFilterView(row, order.Tags.Strings()))
+				if err != nil {
+					return err
+				}
+				if !matched {
+					continue
+				}
 				if !yield(&order, nil) {
 					return nil
 				}
@@ -56,8 +74,10 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[OrderRow] {
 			return r.DeletedAt == nil
 		})
 	}
-	q = appfilter.ApplyBstore(q, filter.Expression, func(r OrderRow) models.ListFilterView {
-		return models.ListFilterView{ID: r.ID, MenuID: r.MenuID, Status: r.Status, CreatedAt: r.CreatedAt, Notes: r.Notes}
-	})
+	q = appfilter.ApplyBstorePushdowns(q, filter.Expression)
 	return q
+}
+
+func listFilterView(r OrderRow, tags []string) models.ListFilterView {
+	return models.ListFilterView{ID: r.ID, MenuID: r.MenuID, Status: r.Status, CreatedAt: r.CreatedAt, Notes: r.Notes, Tags: tags}
 }

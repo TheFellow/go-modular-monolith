@@ -21,6 +21,7 @@ type KeyMap struct {
 	Nav4 key.Binding // Menus
 	Nav5 key.Binding // Orders
 	Nav6 key.Binding // Audit
+	Nav7 key.Binding // Tags
 
 	// List navigation (used by list views)
 	Up          key.Binding
@@ -64,6 +65,7 @@ type DashboardKeys struct {
 	Nav4    key.Binding
 	Nav5    key.Binding
 	Nav6    key.Binding
+	Nav7    key.Binding
 	Refresh key.Binding
 	Help    key.Binding
 	Quit    key.Binding
@@ -107,6 +109,10 @@ func newKeyMap() KeyMap {
 		Nav6: key.NewBinding(
 			key.WithKeys("6"),
 			key.WithHelp("6", "audit"),
+		),
+		Nav7: key.NewBinding(
+			key.WithKeys("7"),
+			key.WithHelp("7", "tags"),
 		),
 		Up: key.NewBinding(
 			key.WithKeys("up", "k"),
@@ -198,7 +204,7 @@ func (k KeyMap) ShortHelp() []key.Binding {
 // FullHelp returns bindings shown in the expanded help view.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Nav1, k.Nav2, k.Nav3, k.Nav4, k.Nav5, k.Nav6},
+		{k.Nav1, k.Nav2, k.Nav3, k.Nav4, k.Nav5, k.Nav6, k.Nav7},
 		{k.Up, k.Down, k.Enter, k.Refresh},
 		{k.Back, k.Help, k.Quit},
 	}
@@ -248,6 +254,7 @@ func dashboardKeysFrom(k KeyMap) DashboardKeys {
 		Nav4:    k.Nav4,
 		Nav5:    k.Nav5,
 		Nav6:    k.Nav6,
+		Nav7:    k.Nav7,
 		Refresh: k.Refresh,
 		Help:    k.Help,
 		Quit:    k.Quit,

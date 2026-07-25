@@ -15,7 +15,7 @@ require (
 	github.com/mjl-/bstore v0.0.10
 	github.com/prometheus/client_golang v1.23.2
 	github.com/segmentio/ksuid v1.0.2
-	github.com/urfave/cli/v3 v3.6.1
+	github.com/urfave/cli/v3 v3.10.0
 	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.61.0
 	go.opentelemetry.io/otel/metric v1.39.0
