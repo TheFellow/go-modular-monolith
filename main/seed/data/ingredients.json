@@ -5,7 +5,8 @@
     "category": "spirit",
     "unit": "oz",
     "description": "Unaged agave spirit",
-    "stock": { "quantity": 25.0, "cost": "$28.00" }
+    "tags": ["origin=mexico", "base-spirit"],
+    "stock": { "quantity": 25.0, "cost": "$28.00", "tags": ["location=back-bar"] }
   },
   {
     "key": "vodka",
@@ -21,7 +22,8 @@
     "category": "spirit",
     "unit": "oz",
     "description": "Juniper-forward gin",
-    "stock": { "quantity": 25.0, "cost": "$30.00" }
+    "tags": ["botanical", "base-spirit"],
+    "stock": { "quantity": 25.0, "cost": "$30.00", "tags": ["location=back-bar"] }
   },
   {
     "key": "bourbon",
@@ -29,7 +31,8 @@
     "category": "spirit",
     "unit": "oz",
     "description": "American whiskey",
-    "stock": { "quantity": 25.0, "cost": "$35.00" }
+    "tags": ["origin=usa", "base-spirit"],
+    "stock": { "quantity": 25.0, "cost": "$35.00", "tags": ["premium", "location=back-bar"] }
   },
   {
     "key": "rum_white",
@@ -61,7 +64,8 @@
     "category": "juice",
     "unit": "oz",
     "description": "Fresh squeezed",
-    "stock": { "quantity": 16.0, "cost": "$4.00" }
+    "tags": ["fresh", "perishable"],
+    "stock": { "quantity": 16.0, "cost": "$4.00", "tags": ["location=prep-fridge", "reorder-soon"] }
   },
   {
     "key": "lemon_juice",
@@ -125,7 +129,8 @@
     "category": "garnish",
     "unit": "piece",
     "description": "Mint sprigs",
-    "stock": { "quantity": 100, "cost": "$0.15" }
+    "tags": ["fresh", "perishable"],
+    "stock": { "quantity": 100, "cost": "$0.15", "tags": ["location=prep-fridge"] }
   },
   {
     "key": "lime_wheel",
