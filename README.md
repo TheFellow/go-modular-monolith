@@ -467,9 +467,10 @@ surface.
 
 The TUI (`go run ./main/cli --tui`) provides seven dashboard workspaces: the five operational
 domains, audit, and tags. Press `[7]` from the Dashboard to open the Tags workspace, enter any
-supported entity ID, and choose Inspect, Add or replace, or Remove. Adds accept `key` or
-`key=value`; removals accept the key. Operational entity detail views also display their current
-tags.
+supported entity ID, and choose Inspect, Add or replace, or Remove. The same workspace provides
+Show exact tag, Show all values for key, and Usage summary operations without requiring an entity
+ID. Adds and exact discovery accept `key` or `key=value`; removals and key-wide discovery accept
+the key. Operational entity detail views also display their current tags.
 
 Every domain surface supports list/detail navigation, with write workflows where the domain
 has useful TUI operations: drinks and ingredients support create/edit/delete, inventory supports

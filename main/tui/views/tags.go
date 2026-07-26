@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/TheFellow/go-modular-monolith/app"
+	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
@@ -17,6 +18,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type tagOperation string
@@ -25,15 +27,20 @@ const (
 	tagOperationInspect tagOperation = "inspect"
 	tagOperationAdd     tagOperation = "add"
 	tagOperationRemove  tagOperation = "remove"
+	tagOperationShow    tagOperation = "show"
+	tagOperationShowKey tagOperation = "show-key"
+	tagOperationSummary tagOperation = "summary"
 )
 
 // TagsLoadedMsg carries the result of an authorized tag operation.
 type TagsLoadedMsg struct {
-	EntityID  string
-	Tags      tag.Tags
-	Operation tagOperation
-	Changed   bool
-	Err       error
+	EntityID   string
+	Tags       tag.Tags
+	Operation  tagOperation
+	Changed    bool
+	References []tagging.Reference
+	Summaries  []tagging.Summary
+	Err        error
 }
 
 // Tags is the cross-domain workspace for inspecting and mutating entity tags.
@@ -54,11 +61,14 @@ type Tags struct {
 }
 
 func NewTags(application *app.Session) *Tags {
-	entityID := forms.NewTextField("Entity ID", forms.WithRequired(), forms.WithPlaceholder("e.g., drk-..."))
+	entityID := forms.NewTextField("Entity ID", forms.WithPlaceholder("Required for inspect/add/remove; e.g., drk-..."))
 	operation := forms.NewSelectField("Operation", []forms.SelectOption{
 		{Label: "Inspect", Value: tagOperationInspect},
 		{Label: "Add or replace", Value: tagOperationAdd},
 		{Label: "Remove", Value: tagOperationRemove},
+		{Label: "Show exact tag", Value: tagOperationShow},
+		{Label: "Show all values for key", Value: tagOperationShowKey},
+		{Label: "Usage summary", Value: tagOperationSummary},
 	}, forms.WithRequired())
 	value := forms.NewTextField("Tag / key", forms.WithPlaceholder("Add: key or key=value • Remove: key"))
 	vm := &Tags{
@@ -66,7 +76,7 @@ func NewTags(application *app.Session) *Tags {
 		entityID: entityID, operation: operation, value: value,
 		form: forms.New(styles.App.Form, keys.App.Form, entityID, operation, value),
 	}
-	vm.spinner = components.NewSpinner("Updating tags...", vm.styles.Subtitle)
+	vm.spinner = components.NewSpinner("Working with tags...", vm.styles.Subtitle)
 	return vm
 }
 
@@ -104,8 +114,8 @@ func (m *Tags) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 
 func (m *Tags) View() string {
 	header := m.styles.Title.Render("Entity Tags")
-	subtitle := m.styles.Subtitle.Render("Inspect, add, replace, or remove user-authored tags on any operational entity")
-	parts := []string{header, subtitle, "", m.form.View(), "", m.styles.InfoText.Render("Submit with ctrl+s • Tags use key or key=value • Removal uses key")}
+	subtitle := m.styles.Subtitle.Render("Manage entity tags or discover active tag usage across domains")
+	parts := []string{header, subtitle, "", m.form.View(), "", m.styles.InfoText.Render("Submit with ctrl+s • Show exact uses key or key=value • Show key uses a key")}
 	if m.loading {
 		parts = append(parts, "", m.spinner.View())
 	} else if m.err != nil {
@@ -139,27 +149,38 @@ func (m *Tags) submit() tea.Cmd {
 		m.err = errors.Invalidf("%v", err)
 		return nil
 	}
-	rawID := strings.TrimSpace(stringValue(m.entityID.Value()))
-	target, err := entity.ParseID(rawID)
-	if err != nil {
-		m.err = err
-		return nil
-	}
 	operation, ok := m.operation.Value().(tagOperation)
 	if !ok {
 		m.err = errors.Invalidf("operation is required")
 		return nil
 	}
 	rawValue := strings.TrimSpace(stringValue(m.value.Value()))
+	rawID := strings.TrimSpace(stringValue(m.entityID.Value()))
+	var target cedar.EntityUID
+	var err error
 	var parsed tag.Tag
 	switch operation {
-	case tagOperationInspect:
-	case tagOperationAdd:
-		parsed, err = tag.Parse(rawValue)
-	case tagOperationRemove:
-		parsed, err = tag.New(rawValue, "")
-	default:
-		err = errors.Invalidf("unsupported tag operation: %s", operation)
+	case tagOperationInspect, tagOperationAdd, tagOperationRemove:
+		if rawID == "" {
+			err = errors.Invalidf("entity ID is required")
+		} else {
+			target, err = entity.ParseID(rawID)
+		}
+	}
+	if err == nil {
+		switch operation {
+		case tagOperationAdd:
+			parsed, err = tag.Parse(rawValue)
+		case tagOperationRemove:
+			parsed, err = tag.New(rawValue, "")
+		case tagOperationShow:
+			parsed, err = tag.Parse(rawValue)
+		case tagOperationShowKey:
+			parsed, err = tag.New(rawValue, "")
+		case tagOperationInspect, tagOperationSummary:
+		default:
+			err = errors.Invalidf("unsupported tag operation: %s", operation)
+		}
 	}
 	if err != nil {
 		m.err = err
@@ -179,12 +200,38 @@ func (m *Tags) submit() tea.Cmd {
 		case tagOperationRemove:
 			result, runErr := m.app.Tags.Remove(m.context(), target, parsed.Key)
 			msg.Tags, msg.Changed, msg.Err = result.Tags, result.Changed, runErr
+		case tagOperationShow:
+			msg.References, msg.Err = m.app.Tags.Show(m.context(), parsed, true)
+		case tagOperationShowKey:
+			msg.References, msg.Err = m.app.Tags.Show(m.context(), parsed, false)
+		case tagOperationSummary:
+			msg.Summaries, msg.Err = m.app.Tags.Summary(m.context())
 		}
 		return msg
 	})
 }
 
 func (m *Tags) renderResult() string {
+	if m.result.Operation == tagOperationShow || m.result.Operation == tagOperationShowKey {
+		lines := []string{"ENTITY TYPE  ENTITY ID  TAG"}
+		for _, row := range m.result.References {
+			lines = append(lines, fmt.Sprintf("%-11s  %s  %s", row.EntityType, row.EntityID, row.Tag))
+		}
+		if len(m.result.References) == 0 {
+			lines = append(lines, "(none)")
+		}
+		return m.styles.Card.Render(strings.Join(lines, "\n"))
+	}
+	if m.result.Operation == tagOperationSummary {
+		lines := []string{"TAG  TOTAL  DRINKS  INGREDIENTS  INVENTORY  MENUS  ORDERS"}
+		for _, row := range m.result.Summaries {
+			lines = append(lines, fmt.Sprintf("%s  %d  %d  %d  %d  %d  %d", row.Tag, row.Total, row.Drinks, row.Ingredients, row.Inventory, row.Menus, row.Orders))
+		}
+		if len(m.result.Summaries) == 0 {
+			lines = append(lines, "(none)")
+		}
+		return m.styles.Card.Render(strings.Join(lines, "\n"))
+	}
 	values := m.result.Tags.Canonical().String()
 	if values == "" {
 		values = "(none)"

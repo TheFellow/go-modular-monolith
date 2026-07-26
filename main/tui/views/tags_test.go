@@ -81,6 +81,40 @@ func TestTagsWorkspace_ReportsValidationNotFoundAndPermissionErrors(t *testing.T
 	testutil.ErrorIf(t, !strings.Contains(vm.View(), "Error:"), "expected rendered error, got:\n%s", vm.View())
 }
 
+func TestTagsWorkspace_ShowAndSummary(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Discovery Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
+	})
+	_, err := f.App.Tags.Upsert(f.OwnerContext(), ingredient.EntityUID(), tag.Tag{Key: "region", Value: "west"})
+	testutil.Ok(t, err)
+	_, err = f.App.Tags.Upsert(f.OwnerContext(), ingredient.EntityUID(), tag.Tag{Key: "featured"})
+	testutil.Ok(t, err)
+
+	vm := initializedTags(t, f.App)
+	setTagForm(t, vm, "", tagOperationShow, "region=west")
+	vm = submitTags(t, vm)
+	for _, expected := range []string{"ENTITY TYPE", "Ingredient", ingredient.ID.String(), "region=west"} {
+		testutil.StringContains(t, vm.View(), expected)
+	}
+
+	setTagForm(t, vm, "", tagOperationShowKey, "region")
+	vm = submitTags(t, vm)
+	testutil.StringContains(t, vm.View(), "region=west")
+
+	setTagForm(t, vm, "", tagOperationSummary, "")
+	vm = submitTags(t, vm)
+	for _, expected := range []string{"TOTAL", "INGREDIENTS", "featured", "region=west"} {
+		testutil.StringContains(t, vm.View(), expected)
+	}
+
+	denied := initializedTags(t, app.NewSession(f.ActorContext("bartender"), f.App.App))
+	setTagForm(t, denied, "", tagOperationSummary, "")
+	denied = submitTags(t, denied)
+	testutil.ErrorIsPermission(t, denied.err)
+}
+
 func TestTagsWorkspace_HelpDescribesFormWorkflow(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
