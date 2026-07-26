@@ -197,6 +197,7 @@ func (m *Tags) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 				return m, m.selectType()
 			case tagsModePickingEntity:
 				return m, m.selectEntity()
+			case tagsModeEnteringValue, tagsModeLoading, tagsModeResults:
 			}
 		}
 		if key.Matches(typed, m.keys.Submit) && m.mode == tagsModeEnteringValue {
@@ -282,7 +283,10 @@ func (m *Tags) selectOperation() tea.Cmd {
 		m.mode = tagsModePickingType
 		return nil
 	case tagOperationShow, tagOperationShowKey:
-		m.value.SetValue("")
+		if err := m.value.SetValue(""); err != nil {
+			m.err = err
+			return nil
+		}
 		m.mode = tagsModeEnteringValue
 		return m.form.Init()
 	case tagOperationSummary:
@@ -319,7 +323,10 @@ func (m *Tags) selectEntity() tea.Cmd {
 		m.mode = tagsModeLoading
 		return tea.Batch(m.spinner.Init(), m.runOperation(tag.Tag{}))
 	}
-	m.value.SetValue("")
+	if err := m.value.SetValue(""); err != nil {
+		m.err = err
+		return nil
+	}
 	m.mode = tagsModeEnteringValue
 	return m.form.Init()
 }
@@ -419,21 +426,22 @@ func (m *Tags) loadEntities(entityType cedar.EntityType) tea.Cmd {
 }
 
 func (m *Tags) setResultTable(result tagResultMsg) {
-	if result.operation == tagOperationSummary {
+	switch result.operation {
+	case tagOperationSummary:
 		m.results.SetColumns(summaryColumns(m.width))
 		rows := make([]table.Row, 0, len(result.summaries))
 		for _, v := range result.summaries {
 			rows = append(rows, table.Row{v.Tag, fmt.Sprint(v.Total), fmt.Sprint(v.Drinks), fmt.Sprint(v.Ingredients), fmt.Sprint(v.Inventory), fmt.Sprint(v.Menus), fmt.Sprint(v.Orders)})
 		}
 		m.results.SetRows(rows)
-	} else if result.operation == tagOperationShow || result.operation == tagOperationShowKey {
+	case tagOperationShow, tagOperationShowKey:
 		m.results.SetColumns(referenceColumns(m.width))
 		rows := make([]table.Row, 0, len(result.references))
 		for _, v := range result.references {
 			rows = append(rows, table.Row{v.EntityType, v.EntityID, v.Tag})
 		}
 		m.results.SetRows(rows)
-	} else {
+	case tagOperationInspect, tagOperationAdd, tagOperationRemove:
 		m.results.SetColumns([]table.Column{{Title: "ENTITY", Width: 34}, {Title: "TAGS", Width: max(m.width-40, 30)}, {Title: "RESULT", Width: 10}})
 		state := "inspected"
 		if result.operation != tagOperationInspect {
@@ -463,9 +471,9 @@ func summaryColumns(width int) []table.Column {
 
 func tagTableStyles(s styles.Styles) table.Styles {
 	result := table.DefaultStyles()
-	result.Header = s.ListView.Title.Copy().Padding(0, 1)
-	result.Cell = s.ListView.Muted.Copy().Padding(0, 1)
-	result.Selected = s.ListView.Selected.Copy().Padding(0, 1)
+	result.Header = s.ListView.Title.Padding(0, 1)
+	result.Cell = s.ListView.Muted.Padding(0, 1)
+	result.Selected = s.ListView.Selected.Padding(0, 1)
 	return result
 }
 
@@ -484,6 +492,8 @@ func (m *Tags) setSize(width, height int) {
 
 func (m *Tags) back() {
 	switch m.mode {
+	case tagsModeBrowsing, tagsModePickingType, tagsModeLoading, tagsModeResults:
+		m.mode = tagsModeBrowsing
 	case tagsModePickingEntity:
 		m.picker.Title = "Select entity type"
 		m.picker.SetItems(entityTypeItems())
@@ -494,8 +504,6 @@ func (m *Tags) back() {
 		} else {
 			m.mode = tagsModeBrowsing
 		}
-	default:
-		m.mode = tagsModeBrowsing
 	}
 	m.err, m.result = nil, nil
 }
