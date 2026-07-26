@@ -171,7 +171,18 @@ The domain mutation and complete-set replacement commit atomically: invalid tag 
 authorization also rolls back the domain change. Replacement checks the owning domain's tag and/or
 untag permissions for its delta and records one auditable replacement command. The top-level
 `tags add`, `tags remove`, and `tags list` commands remain available when an incremental change is
-more convenient.
+more convenient. Tag discovery is available independently of a particular entity:
+
+```bash
+mixology tags show audience=sommelier # exact key and value
+mixology tags show --key audience     # every value for a key
+mixology tags summary                 # usage by tag and entity type
+```
+
+`show` and `summary` use tagging-domain permissions of their own. Granting those actions permits
+discovery of matching entity types and IDs without applying the referenced domains' read policies.
+Both commands omit associations retained for soft-deleted entities; summary orders tags by total
+active usage (then by tag for a stable tie-break).
 
 Tag persistence is a central polymorphic association keyed by Cedar entity type, entity ID, and
 tag key; domain rows do not duplicate that storage. Each domain still owns loading its entities.
