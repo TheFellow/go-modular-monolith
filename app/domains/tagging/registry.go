@@ -14,6 +14,11 @@ import (
 // state, including its current tags.
 type LoadTarget func(store.Context, cedar.String) (TargetState, error)
 
+// ActiveTargets returns the subset of ids whose entities are currently
+// active. Implementations query their owning domain in bulk and do not
+// perform authorization.
+type ActiveTargets func(store.Context, []cedar.String) (map[cedar.String]struct{}, error)
+
 // TargetState is the complete domain-owned state needed by tag orchestration.
 type TargetState struct {
 	Entity cedar.Entity
@@ -28,6 +33,7 @@ type Target struct {
 	TagAction   cedar.EntityUID
 	UntagAction cedar.EntityUID
 	Load        LoadTarget
+	Active      ActiveTargets
 }
 
 // Registry lets operational domains register tag behavior without making the
@@ -44,7 +50,7 @@ func NewRegistry() *Registry {
 // Register adds one operational target type. Duplicate and incomplete
 // registrations are programmer errors and panic during application assembly.
 func (r *Registry) Register(target Target) {
-	if r == nil || target.Type == "" || target.GetAction.IsZero() || target.TagAction.IsZero() || target.UntagAction.IsZero() || target.Load == nil {
+	if r == nil || target.Type == "" || target.GetAction.IsZero() || target.TagAction.IsZero() || target.UntagAction.IsZero() || target.Load == nil || target.Active == nil {
 		panic("tagging: incomplete target registration")
 	}
 	r.mu.Lock()

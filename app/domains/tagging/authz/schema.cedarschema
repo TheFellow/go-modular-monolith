@@ -1,0 +1,17 @@
+namespace Mixology {
+    entity Actor enum ["owner", "manager", "sommelier", "bartender", "anonymous"];
+
+    entity TagDiscovery {
+        Key: String,
+        Value: String,
+        Exact: Bool
+    };
+}
+
+namespace Mixology::TagDiscovery {
+    action show, summary appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::TagDiscovery,
+        context: {}
+    };
+}
