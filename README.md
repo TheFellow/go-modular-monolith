@@ -171,7 +171,18 @@ The domain mutation and complete-set replacement commit atomically: invalid tag 
 authorization also rolls back the domain change. Replacement checks the owning domain's tag and/or
 untag permissions for its delta and records one auditable replacement command. The top-level
 `tags add`, `tags remove`, and `tags list` commands remain available when an incremental change is
-more convenient.
+more convenient. Tag discovery is available independently of a particular entity:
+
+```bash
+mixology tags show audience=sommelier # exact key and value
+mixology tags show --key audience     # every value for a key
+mixology tags summary                 # usage by tag and entity type
+```
+
+`show` and `summary` use tagging-domain permissions of their own. Granting those actions permits
+discovery of matching entity types and IDs without applying the referenced domains' read policies.
+Both commands omit associations retained for soft-deleted entities; summary orders tags by total
+active usage (then by tag for a stable tie-break).
 
 Tag persistence is a central polymorphic association keyed by Cedar entity type, entity ID, and
 tag key; domain rows do not duplicate that storage. Each domain still owns loading its entities.
@@ -456,9 +467,12 @@ surface.
 
 The TUI (`go run ./main/cli --tui`) provides seven dashboard workspaces: the five operational
 domains, audit, and tags. Press `[7]` from the Dashboard to open the Tags workspace, enter any
-supported entity ID, and choose Inspect, Add or replace, or Remove. Adds accept `key` or
-`key=value`; removals accept the key. Operational entity detail views also display their current
-tags.
+tag operation from the list, and press Enter. Inspect, Add or replace, and Remove open an entity
+type picker followed by a searchable active-entity picker, so IDs never need to be entered by hand.
+Show exact tag, Show all values for key, and Usage summary render navigable, aligned result tables;
+Escape returns to the operation list. Adds and exact discovery accept `key` or `key=value`, while
+removals and key-wide discovery accept the key. Operational entity detail views also display their
+current tags.
 
 Every domain surface supports list/detail navigation, with write workflows where the domain
 has useful TUI operations: drinks and ingredients support create/edit/delete, inventory supports

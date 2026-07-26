@@ -1,12 +1,23 @@
 package tagging
 
 import (
+	"sort"
+
+	taggingauthz "github.com/TheFellow/go-modular-monolith/app/domains/tagging/authz"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 )
+
+type discoveryResult[T any] struct {
+	value  T
+	entity cedar.Entity
+}
+
+func (r discoveryResult[T]) CedarEntity() cedar.Entity { return r.entity }
 
 // Result is the current tag state after a mutation.
 type Result struct {
@@ -163,6 +174,146 @@ func (m *Module) List(ctx *middleware.Context, target cedar.EntityUID) (tag.Tags
 		return nil, err
 	}
 	return state.tags, nil
+}
+
+// Show returns active entity references matching an exact tag, or every value
+// of its key when exact is false. Authorization belongs solely to the tagging
+// domain and is not repeated against the referenced entities.
+func (m *Module) Show(ctx *middleware.Context, value tag.Tag, exact bool) ([]Reference, error) {
+	if err := value.Validate(); err != nil {
+		return nil, err
+	}
+	resource := taggingauthz.TagDiscovery{
+		UID: cedar.NewEntityUID(taggingauthz.TagDiscoveryType, "show"),
+		Key: value.Key, Value: value.Value, Exact: exact,
+	}
+	result, err := middleware.RunEntityQuery(m.pipeline, ctx, taggingauthz.ActionShow,
+		func(queryCtx store.Context, _ struct{}) (discoveryResult[[]Reference], error) {
+			associations, err := m.repository.find(queryCtx, value, exact)
+			if err != nil {
+				return discoveryResult[[]Reference]{}, err
+			}
+			active, err := m.activeAssociations(queryCtx, associations)
+			if err != nil {
+				return discoveryResult[[]Reference]{}, err
+			}
+			refs := make([]Reference, 0, len(active))
+			for _, association := range active {
+				refs = append(refs, Reference{
+					EntityType: entityTypeName(association.target.Type),
+					EntityID:   string(association.target.ID),
+					Tag:        association.tag.String(),
+				})
+			}
+			return discoveryResult[[]Reference]{value: refs, entity: resource.CedarEntity()}, nil
+		}, struct{}{})
+	if err != nil {
+		return nil, err
+	}
+	return result.value, nil
+}
+
+// Summary aggregates active associations by canonical tag.
+func (m *Module) Summary(ctx *middleware.Context) ([]Summary, error) {
+	resource := taggingauthz.TagDiscovery{
+		UID: cedar.NewEntityUID(taggingauthz.TagDiscoveryType, "summary"),
+	}
+	result, err := middleware.RunEntityQuery(m.pipeline, ctx, taggingauthz.ActionSummary,
+		func(queryCtx store.Context, _ struct{}) (discoveryResult[[]Summary], error) {
+			associations, err := m.repository.all(queryCtx)
+			if err != nil {
+				return discoveryResult[[]Summary]{}, err
+			}
+			active, err := m.activeAssociations(queryCtx, associations)
+			if err != nil {
+				return discoveryResult[[]Summary]{}, err
+			}
+			byTag := make(map[string]*Summary)
+			for _, association := range active {
+				canonical := association.tag.String()
+				row := byTag[canonical]
+				if row == nil {
+					row = &Summary{Tag: canonical}
+					byTag[canonical] = row
+				}
+				row.Total++
+				switch association.target.Type {
+				case entity.TypeDrink:
+					row.Drinks++
+				case entity.TypeIngredient:
+					row.Ingredients++
+				case entity.TypeInventory:
+					row.Inventory++
+				case entity.TypeMenu:
+					row.Menus++
+				case entity.TypeOrder:
+					row.Orders++
+				}
+			}
+			rows := make([]Summary, 0, len(byTag))
+			for _, row := range byTag {
+				rows = append(rows, *row)
+			}
+			sort.Slice(rows, func(i, j int) bool {
+				if rows[i].Total != rows[j].Total {
+					return rows[i].Total > rows[j].Total
+				}
+				return rows[i].Tag < rows[j].Tag
+			})
+			return discoveryResult[[]Summary]{value: rows, entity: resource.CedarEntity()}, nil
+		}, struct{}{})
+	if err != nil {
+		return nil, err
+	}
+	return result.value, nil
+}
+
+func (m *Module) activeAssociations(ctx store.Context, associations []association) ([]association, error) {
+	idsByType := make(map[cedar.EntityType][]cedar.String)
+	seen := make(map[cedar.EntityUID]struct{})
+	for _, association := range associations {
+		if _, ok := seen[association.target]; ok {
+			continue
+		}
+		seen[association.target] = struct{}{}
+		idsByType[association.target.Type] = append(idsByType[association.target.Type], association.target.ID)
+	}
+	activeByType := make(map[cedar.EntityType]map[cedar.String]struct{}, len(idsByType))
+	for entityType, ids := range idsByType {
+		registration, err := m.registry.resolve(entityType)
+		if err != nil {
+			return nil, err
+		}
+		active, err := registration.Active(ctx, ids)
+		if err != nil {
+			return nil, err
+		}
+		activeByType[entityType] = active
+	}
+	result := make([]association, 0, len(associations))
+	for _, association := range associations {
+		if _, active := activeByType[association.target.Type][association.target.ID]; active {
+			result = append(result, association)
+		}
+	}
+	return result, nil
+}
+
+func entityTypeName(value cedar.EntityType) string {
+	switch value {
+	case entity.TypeDrink:
+		return "Drink"
+	case entity.TypeIngredient:
+		return "Ingredient"
+	case entity.TypeInventory:
+		return "Inventory"
+	case entity.TypeMenu:
+		return "Menu"
+	case entity.TypeOrder:
+		return "Order"
+	default:
+		return string(value)
+	}
 }
 
 func (m *Module) resolve(target cedar.EntityUID) (Target, error) {

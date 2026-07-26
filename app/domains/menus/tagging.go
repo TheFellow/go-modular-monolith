@@ -11,6 +11,7 @@ import (
 func (m *Module) registerTagTarget(targets *tagging.Registry) {
 	targets.Register(tagging.Target{
 		Type: entity.TypeMenu, GetAction: authz.ActionGet, TagAction: authz.ActionTag, UntagAction: authz.ActionUntag,
+		Active: m.queries.ActiveIDs,
 		Load: func(ctx store.Context, raw cedar.String) (tagging.TargetState, error) {
 			id, err := entity.ParseMenuID(string(raw))
 			if err != nil {

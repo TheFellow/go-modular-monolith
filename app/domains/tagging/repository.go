@@ -13,6 +13,65 @@ import (
 	"github.com/mjl-/bstore"
 )
 
+type association struct {
+	target cedar.EntityUID
+	tag    tag.Tag
+}
+
+// find returns associations matching key and, when exact is true, value.
+func (r *Repository) find(ctx store.Context, value tag.Tag, exact bool) ([]association, error) {
+	if err := value.Validate(); err != nil {
+		return nil, err
+	}
+	var result []association
+	err := r.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+		query := bstore.QueryTx[entityTagRow](tx).FilterEqual("Key", value.Key)
+		if exact {
+			query.FilterEqual("Value", value.Value)
+		}
+		rows, err := query.SortAsc("EntityType", "EntityID").List()
+		if err != nil {
+			return err
+		}
+		result = make([]association, 0, len(rows))
+		for _, row := range rows {
+			result = append(result, association{
+				target: cedar.NewEntityUID(cedar.EntityType(row.EntityType), cedar.String(row.EntityID)),
+				tag:    tag.Tag{Key: row.Key, Value: row.Value},
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, store.MapError(err, "find tag %q", value.String())
+	}
+	return result, nil
+}
+
+// all returns every persisted association. Callers are responsible for
+// removing associations whose owning entity is no longer active.
+func (r *Repository) all(ctx store.Context) ([]association, error) {
+	var result []association
+	err := r.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+		rows, err := bstore.QueryTx[entityTagRow](tx).SortAsc("Key", "Value", "EntityType", "EntityID").List()
+		if err != nil {
+			return err
+		}
+		result = make([]association, 0, len(rows))
+		for _, row := range rows {
+			result = append(result, association{
+				target: cedar.NewEntityUID(cedar.EntityType(row.EntityType), cedar.String(row.EntityID)),
+				tag:    tag.Tag{Key: row.Key, Value: row.Value},
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, store.MapError(err, "list tag associations")
+	}
+	return result, nil
+}
+
 // Repository stores tags independently of the entity's owning domain.
 type Repository struct {
 	store *store.Store

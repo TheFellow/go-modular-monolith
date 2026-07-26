@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app"
@@ -15,6 +16,7 @@ import (
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
@@ -80,6 +82,27 @@ func TestTagsCLIWorkflowsPersistAndAuthorize(t *testing.T) {
 		testutil.StringContains(t, out, "target="+name)
 	}
 
+	for _, id := range all {
+		_, err = runTagsCLI(dbPath, "owner", "tags", "add", id, "shared=visible")
+		testutil.Ok(t, err)
+	}
+	out, err = runTagsCLI(dbPath, "owner", "tags", "show", "shared=visible")
+	testutil.Ok(t, err)
+	testutil.StringContains(t, out, "ENTITY TYPE")
+	for _, id := range all {
+		testutil.StringContains(t, out, id)
+	}
+
+	out, err = runTagsCLI(dbPath, "owner", "tags", "show", "--key", "target")
+	testutil.Ok(t, err)
+	for name, id := range all {
+		testutil.StringContains(t, out, id)
+		testutil.StringContains(t, out, "target="+name)
+	}
+
+	_, err = runTagsCLI(dbPath, "bartender", "tags", "show", "shared=visible")
+	assertCLIExitCode(t, err, errors.ExitPermission)
+
 	_, err = runTagsCLI(dbPath, "bartender", "tags", "add", targets.ingredient, "denied")
 	assertCLIExitCode(t, err, errors.ExitPermission)
 	out, err = runTagsCLI(dbPath, "owner", "tags", "list", targets.ingredient)
@@ -102,7 +125,7 @@ func TestTagsCLIWorkflowsPersistAndAuthorize(t *testing.T) {
 	testutil.Equals(t, doc.EntityID, targets.drink)
 	testutil.NotNil(t, doc.Changed)
 	testutil.IsFalse(t, *doc.Changed)
-	testutil.Equals(t, doc.Tags.String(), "featured,target=drink")
+	testutil.Equals(t, doc.Tags.String(), "featured,shared=visible,target=drink")
 
 	// These are separate CLI/application lifecycles over the same database, so
 	// the final list demonstrates persistence rather than in-memory state.
@@ -111,7 +134,7 @@ func TestTagsCLIWorkflowsPersistAndAuthorize(t *testing.T) {
 	doc = tagsOutput{}
 	testutil.Ok(t, json.Unmarshal([]byte(out), &doc))
 	testutil.Nil(t, doc.Changed)
-	testutil.Equals(t, doc.Tags.String(), "featured,target=drink")
+	testutil.Equals(t, doc.Tags.String(), "featured,shared=visible,target=drink")
 
 	for _, tc := range []struct {
 		noun string
@@ -136,6 +159,32 @@ func TestTagsCLIWorkflowsPersistAndAuthorize(t *testing.T) {
 	testutil.StringContains(t, out, "ID:")
 	testutil.StringContains(t, out, targets.inventory)
 	testutil.StringContains(t, out, "Tags:")
+
+	softDeleteCLIDrink(t, dbPath, targets.drink)
+	out, err = runTagsCLI(dbPath, "owner", "tags", "show", "shared=visible")
+	testutil.Ok(t, err)
+	testutil.ErrorIf(t, strings.Contains(out, targets.drink), "deleted drink appeared in tag discovery: %s", out)
+	for name, id := range all {
+		if name != "drink" {
+			testutil.StringContains(t, out, id)
+		}
+	}
+
+	out, err = runTagsCLI(dbPath, "owner", "tags", "summary")
+	testutil.Ok(t, err)
+	testutil.StringContains(t, out, "TAG")
+	testutil.StringContains(t, out, "shared=visible")
+	out, err = runTagsCLI(dbPath, "owner", "tags", "summary", "--json")
+	testutil.Ok(t, err)
+	var summaries []tagging.Summary
+	testutil.Ok(t, json.Unmarshal([]byte(out), &summaries))
+	testutil.Equals(t, summaries[0].Tag, "shared=visible")
+	testutil.Equals(t, summaries[0].Total, 4)
+	testutil.Equals(t, summaries[0].Drinks, 0)
+	testutil.Equals(t, summaries[0].Ingredients, 1)
+	testutil.Equals(t, summaries[0].Inventory, 1)
+	testutil.Equals(t, summaries[0].Menus, 1)
+	testutil.Equals(t, summaries[0].Orders, 1)
 }
 
 func runTagsCLI(dbPath, actor string, args ...string) (string, error) {
@@ -213,4 +262,18 @@ func seedCLITagTargets(t *testing.T, dbPath string) cliTagTargets {
 		menu: menu.ID.String(), order: order.ID.String(), ingredientID: ingredient.ID.String(),
 		auditEntry: entity.NewAuditEntryID().String(),
 	}
+}
+
+func softDeleteCLIDrink(t *testing.T, dbPath, rawID string) {
+	t.Helper()
+	ctx := authn.ToContext(context.Background(), authn.Owner())
+	ctx = pkglog.ToContext(ctx, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s, err := store.Open(ctx, dbPath)
+	testutil.Ok(t, err)
+	a := app.New(ctx, app.Config{Store: s})
+	id, err := entity.ParseDrinkID(rawID)
+	testutil.Ok(t, err)
+	_, err = a.Drinks.Delete(middleware.NewContext(ctx), id)
+	testutil.Ok(t, err)
+	testutil.Ok(t, a.Close())
 }

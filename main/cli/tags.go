@@ -7,6 +7,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -24,6 +25,60 @@ func (c *CLI) tagsCommands() *cli.Command {
 		Name:  "tags",
 		Usage: "Manage entity tags",
 		Commands: []*cli.Command{
+			{
+				Name:      "show",
+				Usage:     "Show active entities referencing a tag",
+				UsageText: "mixology tags show [--json] <key[=value]>\n   or: mixology tags show [--json] --key <key>",
+				Arguments: []cli.Argument{&cli.StringArg{Name: "tag", UsageText: "<key[=value]>"}},
+				Flags: []cli.Flag{
+					JSONFlag,
+					&cli.StringFlag{Name: "key", Usage: "Match every value for this tag key"},
+				},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					rawTag := strings.TrimSpace(cmd.StringArg("tag"))
+					rawKey := strings.TrimSpace(cmd.String("key"))
+					if rawTag == "" && rawKey == "" {
+						return cli.Exit("tag argument or --key is required", errors.ExitUsage)
+					}
+					if rawTag != "" && rawKey != "" {
+						return cli.Exit("tag argument and --key cannot be used together", errors.ExitUsage)
+					}
+					exact := rawTag != ""
+					var value tag.Tag
+					var err error
+					if exact {
+						value, err = tag.Parse(rawTag)
+					} else {
+						value, err = tag.New(rawKey, "")
+					}
+					if err != nil {
+						return err
+					}
+					rows, err := c.app.Tags.Show(ctx, value, exact)
+					if err != nil {
+						return err
+					}
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, rows)
+					}
+					return clitable.PrintTable(cmd.Writer, rows)
+				}),
+			},
+			{
+				Name:  "summary",
+				Usage: "Summarize active tag usage",
+				Flags: []cli.Flag{JSONFlag},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					rows, err := c.app.Tags.Summary(ctx)
+					if err != nil {
+						return err
+					}
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, rows)
+					}
+					return clitable.PrintTable(cmd.Writer, rows)
+				}),
+			},
 			{
 				Name:      "add",
 				Usage:     "Add or replace a tag",

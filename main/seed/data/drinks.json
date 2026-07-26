@@ -4,6 +4,7 @@
     "category": "cocktail",
     "glass": "coupe",
     "description": "The classic tequila sour with lime and orange liqueur",
+    "tags": ["featured", "style=sour"],
     "recipe": {
       "ingredients": [
         { "key": "tequila", "amount": 2.0, "unit": "oz" },
@@ -23,6 +24,7 @@
     "category": "cocktail",
     "glass": "coupe",
     "description": "A perfectly balanced rum sour",
+    "tags": ["audience=sommelier", "style=sour"],
     "recipe": {
       "ingredients": [
         { "key": "rum_white", "amount": 2.0, "unit": "oz" },
@@ -42,6 +44,7 @@
     "category": "highball",
     "glass": "highball",
     "description": "The quintessential refresher",
+    "tags": ["easy-drinking", "service=high-volume"],
     "recipe": {
       "ingredients": [
         { "key": "gin", "amount": 2.0, "unit": "oz" },
@@ -61,6 +64,7 @@
     "category": "cocktail",
     "glass": "rocks",
     "description": "The original cocktail - whiskey, sugar, bitters",
+    "tags": ["spirit-forward", "style=classic"],
     "recipe": {
       "ingredients": [
         { "key": "bourbon", "amount": 2.0, "unit": "oz" },
@@ -81,6 +85,7 @@
     "category": "cocktail",
     "glass": "rocks",
     "description": "Equal parts bitter perfection",
+    "tags": ["audience=sommelier", "bitter", "featured"],
     "recipe": {
       "ingredients": [
         { "key": "gin", "amount": 1.0, "unit": "oz" },
@@ -100,6 +105,7 @@
     "category": "cocktail",
     "glass": "highball",
     "description": "Cuban classic with rum and fresh mint",
+    "tags": ["refreshing", "season=summer"],
     "recipe": {
       "ingredients": [
         { "key": "rum_white", "amount": 2.0, "unit": "oz" },

@@ -257,6 +257,68 @@ func TestTagListUsesDomainReadPermission(t *testing.T) {
 	testutil.Equals(t, values, tag.Tags{{Key: "visible", Value: "yes"}})
 }
 
+func TestTagDiscoveryFindsAndSummarizesActiveTargets(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	targets := operationalTagTargets(t, f)
+	ctx := f.OwnerContext()
+
+	for _, target := range targets {
+		_, err := f.App.Tags.Upsert(ctx, target.uid, tag.Tag{Key: "common"})
+		testutil.Ok(t, err)
+	}
+	for _, target := range targets[:2] {
+		_, err := f.App.Tags.Upsert(ctx, target.uid, tag.Tag{Key: "region", Value: "west"})
+		testutil.Ok(t, err)
+	}
+	_, err := f.App.Tags.Upsert(ctx, targets[2].uid, tag.Tag{Key: "region", Value: "east"})
+	testutil.Ok(t, err)
+
+	exact, err := f.App.Tags.Show(ctx, tag.Tag{Key: "region", Value: "west"}, true)
+	testutil.Ok(t, err)
+	testutil.Equals(t, len(exact), 2)
+	for _, reference := range exact {
+		testutil.Equals(t, reference.Tag, "region=west")
+	}
+	wide, err := f.App.Tags.Show(ctx, tag.Tag{Key: "region"}, false)
+	testutil.Ok(t, err)
+	testutil.Equals(t, len(wide), 3)
+	testutil.Equals(t, wide[0].Tag, "region=west")
+	testutil.Equals(t, wide[1].Tag, "region=west")
+	testutil.Equals(t, wide[2].Tag, "region=east")
+
+	summary, err := f.App.Tags.Summary(ctx)
+	testutil.Ok(t, err)
+	testutil.Equals(t, summary[0], tagging.Summary{
+		Tag: "common", Total: 5, Drinks: 1, Ingredients: 1, Inventory: 1, Menus: 1, Orders: 1,
+	})
+	testutil.Equals(t, summary[1].Tag, "region=west")
+	testutil.Equals(t, summary[1].Total, 2)
+	testutil.Equals(t, summary[2].Tag, "region=east")
+	testutil.Equals(t, summary[2].Total, 1)
+
+	drinkID, err := entity.ParseDrinkID(string(targets[1].uid.ID))
+	testutil.Ok(t, err)
+	_, err = f.App.Drinks.Delete(ctx, drinkID)
+	testutil.Ok(t, err)
+	common, err := f.App.Tags.Show(ctx, tag.Tag{Key: "common"}, true)
+	testutil.Ok(t, err)
+	testutil.Equals(t, len(common), 4)
+	for _, reference := range common {
+		testutil.ErrorIf(t, reference.EntityID == drinkID.String(), "deleted drink appeared in discovery")
+	}
+	summary, err = f.App.Tags.Summary(ctx)
+	testutil.Ok(t, err)
+	testutil.Equals(t, summary[0], tagging.Summary{
+		Tag: "common", Total: 4, Ingredients: 1, Inventory: 1, Menus: 1, Orders: 1,
+	})
+
+	_, err = f.App.Tags.Show(f.ActorContext("bartender"), tag.Tag{Key: "common"}, true)
+	testutil.ErrorIsPermission(t, err)
+	_, err = f.App.Tags.Summary(f.ActorContext("bartender"))
+	testutil.ErrorIsPermission(t, err)
+}
+
 func TestTagsRejectUnsupportedInvalidAndMissingTargets(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
