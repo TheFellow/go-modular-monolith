@@ -1,13 +1,157 @@
 package tuitest
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+// Driver deterministically exercises a complete Bubble Tea model. Unlike the
+// focused view helpers below, it renders after every update, including each
+// message produced by a command. This mirrors the event-loop boundary where
+// intermediate-state rendering failures occur without requiring terminal I/O
+// or scheduling goroutines in tests.
+type Driver struct {
+	t       testing.TB
+	model   tea.Model
+	screen  string
+	history []string
+	width   int
+	height  int
+}
+
+const commandDrainLimit = 10_000
+
+// NewDriver initializes a root model and completely drains its startup work.
+func NewDriver(t testing.TB, model tea.Model) *Driver {
+	t.Helper()
+	d := &Driver{t: t, model: model}
+	d.render()
+	remaining := commandDrainLimit
+	d.drain(model.Init(), &remaining)
+	return d
+}
+
+// Send routes one message through the root model and drains all resulting work.
+func (d *Driver) Send(msg tea.Msg) {
+	d.t.Helper()
+	remaining := commandDrainLimit
+	d.send(msg, &remaining)
+}
+
+func (d *Driver) send(msg tea.Msg, drained *int) {
+	model, cmd := d.model.Update(msg)
+	d.model = model
+	d.render()
+	d.drain(cmd, drained)
+}
+
+// Press sends a Bubble Tea key by its conventional name (for example "esc",
+// "enter", "ctrl+s", or a string of runes).
+func (d *Driver) Press(name string) {
+	d.t.Helper()
+	var msg tea.KeyMsg
+	switch name {
+	case "esc":
+		msg = tea.KeyMsg{Type: tea.KeyEsc}
+	case "enter":
+		msg = tea.KeyMsg{Type: tea.KeyEnter}
+	case "ctrl+s":
+		msg = tea.KeyMsg{Type: tea.KeyCtrlS}
+	case "up":
+		msg = tea.KeyMsg{Type: tea.KeyUp}
+	case "down":
+		msg = tea.KeyMsg{Type: tea.KeyDown}
+	case "end":
+		msg = tea.KeyMsg{Type: tea.KeyEnd}
+	default:
+		msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(name)}
+	}
+	d.Send(msg)
+}
+
+// Resize delivers the same message emitted by Bubble Tea for terminal changes.
+func (d *Driver) Resize(width, height int) {
+	d.t.Helper()
+	d.width, d.height = width, height
+	remaining := commandDrainLimit
+	d.send(tea.WindowSizeMsg{Width: width, Height: height}, &remaining)
+}
+
+func (d *Driver) Model() tea.Model { return d.model }
+func (d *Driver) Screen() string   { return d.screen }
+
+// History returns every rendered frame, including intermediate command frames.
+func (d *Driver) History() []string { return append([]string(nil), d.history...) }
+
+func (d *Driver) RequireText(values ...string) {
+	d.t.Helper()
+	for _, value := range values {
+		if !strings.Contains(d.screen, value) {
+			d.t.Fatalf("screen does not contain %q:\n%s", value, d.screen)
+		}
+	}
+}
+
+func (d *Driver) RequireViewport(width, height int) {
+	d.t.Helper()
+	if got := lipgloss.Width(d.screen); got > width {
+		d.t.Fatalf("screen width %d exceeds viewport %d:\n%s", got, width, d.screen)
+	}
+	if got := lipgloss.Height(d.screen); got > height {
+		d.t.Fatalf("screen height %d exceeds viewport %d:\n%s", got, height, d.screen)
+	}
+}
+
+func (d *Driver) render() {
+	d.screen = d.model.View()
+	d.history = append(d.history, d.screen)
+	if d.width > 0 && lipgloss.Width(d.screen) > d.width {
+		d.t.Fatalf("rendered frame width %d exceeds viewport %d:\n%s", lipgloss.Width(d.screen), d.width, d.screen)
+	}
+	if d.height > 0 && lipgloss.Height(d.screen) > d.height {
+		d.t.Fatalf("rendered frame height %d exceeds viewport %d:\n%s", lipgloss.Height(d.screen), d.height, d.screen)
+	}
+}
+
+func (d *Driver) drain(cmd tea.Cmd, remaining *int) {
+	if cmd == nil {
+		return
+	}
+	if *remaining <= 0 {
+		d.t.Fatalf("Bubble Tea command drain exceeded %d messages", commandDrainLimit)
+	}
+	*remaining--
+	msg := cmd()
+	if msg == nil {
+		return
+	}
+	if batch, ok := msg.(tea.BatchMsg); ok {
+		for _, nested := range batch {
+			d.drain(nested, remaining)
+		}
+		return
+	}
+	if _, ok := msg.(tea.QuitMsg); ok {
+		return
+	}
+	// Spinner ticks deliberately schedule themselves forever. One frame is
+	// sufficient for deterministic workflow tests; domain-result commands in
+	// the same batch are still drained normally.
+	if _, ok := msg.(spinner.TickMsg); ok {
+		return
+	}
+	if _, ok := msg.(cursor.BlinkMsg); ok {
+		return
+	}
+	d.send(msg, remaining)
+}
 
 type listViewStyles interface {
 	~struct {
