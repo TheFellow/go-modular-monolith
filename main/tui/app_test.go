@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"testing"
 
 	auditui "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/tui"
@@ -16,6 +17,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -23,6 +25,49 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+func TestE2E_DashboardAndTagResultTransitionsStayWithinViewport(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "E2E Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
+	})
+	for i := range 10 {
+		_, err := f.App.Tags.Upsert(f.OwnerContext(), ingredient.EntityUID(), tag.Tag{
+			Key: fmt.Sprintf("e2e-%d", i),
+		})
+		testutil.Ok(t, err)
+	}
+
+	driver := tuitest.NewDriver(t, NewApp(f.App))
+	const width, height = MinWidth, MinHeight
+	driver.Resize(width, height)
+	driver.RequireText("Dashboard", "Recent Activity")
+
+	driver.Press("7")
+	driver.Resize(100, 40)
+	driver.RequireText("Mixology > Tags", "Inspect entity tags", "Tag usage summary")
+	for range 5 {
+		driver.Press("down")
+	}
+	driver.Press("enter")
+	driver.RequireText("Tag usage summary", "TOTAL", "INGREDIENTS", "e2e-0")
+
+	driver.Press("esc")
+	driver.RequireText("Inspect entity tags", "Show exact tag")
+	for range 2 {
+		driver.Press("up")
+	}
+	driver.Press("enter")
+	driver.Press("e2e-0")
+	driver.Press("ctrl+s")
+	driver.RequireText("Show exact tag", "ENTITY TYPE", ingredient.ID.String(), "e2e-0")
+
+	driver.Press("esc")
+	driver.RequireText("Inspect entity tags")
+	driver.Press("esc")
+	driver.RequireText("Mixology > Dashboard")
+}
 
 func TestStatusBarView_UsesWarningStyleForNotFound(t *testing.T) {
 	t.Parallel()
