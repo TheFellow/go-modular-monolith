@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 //go:embed errors.go.tpl testutil.go.tpl
@@ -23,14 +23,14 @@ func main() {
 	wd, err := os.Getwd()
 	must(err)
 
-	kinds := perrors.AllKinds()
-	specs := make([]perrors.Spec, 0, len(kinds))
+	kinds := errors.AllKinds()
+	specs := make([]errors.Spec, 0, len(kinds))
 	for _, kind := range kinds {
-		specs = append(specs, perrors.SpecFor(kind))
+		specs = append(specs, errors.SpecFor(kind))
 	}
 
 	data := struct {
-		Kinds []perrors.Spec
+		Kinds []errors.Spec
 	}{
 		Kinds: specs,
 	}

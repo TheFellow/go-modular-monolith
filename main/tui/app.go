@@ -18,7 +18,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
-	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 const (
@@ -277,14 +277,14 @@ func (a *App) helpHeight() int {
 func (a *App) statusBarView() string {
 	var content string
 	if a.lastError != nil {
-		tuiErr := perrors.ToTUIError(a.lastError)
+		tuiErr := errors.ToTUIError(a.lastError)
 		var style lipgloss.Style
 		switch tuiErr.Style {
-		case perrors.TUIStyleWarning:
+		case errors.TUIStyleWarning:
 			style = a.styles.WarningText
-		case perrors.TUIStyleInfo:
+		case errors.TUIStyleInfo:
 			style = a.styles.InfoText
-		case perrors.TUIStyleError:
+		case errors.TUIStyleError:
 			style = a.styles.ErrorText
 		default:
 			style = a.styles.ErrorText

@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	stderrors "errors"
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -50,7 +49,7 @@ func (f *cliE2E) Run(args ...string) cliResult {
 	if err != nil {
 		result.ExitCode = errors.ExitGeneral
 		var exit cli.ExitCoder
-		if stderrors.As(err, &exit) {
+		if errors.As(err, &exit) {
 			result.ExitCode = exit.ExitCode()
 		}
 	}
