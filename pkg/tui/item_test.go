@@ -1,9 +1,9 @@
-package mvvm_test
+package tui_test
 
 import (
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/mvvm"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
 type listItem interface {
@@ -16,7 +16,7 @@ func TestListItemPresentsAndPreservesTypedValue(t *testing.T) {
 	t.Parallel()
 
 	type record struct{ ID int }
-	item := mvvm.NewListItem(record{ID: 42}, "Title", "Description", "search terms")
+	item := tui.NewListItem(record{ID: 42}, "Title", "Description", "search terms")
 
 	var _ listItem = item
 	if item.Value != (record{ID: 42}) {
@@ -30,7 +30,7 @@ func TestListItemPresentsAndPreservesTypedValue(t *testing.T) {
 func TestListItemDefaultsFilterValueToTitle(t *testing.T) {
 	t.Parallel()
 
-	item := mvvm.NewListItem(struct{}{}, "Title", "Description", "")
+	item := tui.NewListItem(struct{}{}, "Title", "Description", "")
 
 	if item.FilterValue() != "Title" {
 		t.Fatalf("FilterValue() = %q, want title", item.FilterValue())

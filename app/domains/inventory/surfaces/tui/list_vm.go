@@ -53,7 +53,7 @@ type ListViewModel struct {
 	adjust      *AdjustInventoryVM
 	set         *SetInventoryVM
 	tags        *components.TagEditor
-	spinner     components.Spinner
+	spinner     tui.Spinner
 	loading     bool
 	err         error
 	width       int
@@ -81,7 +81,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		detail:     NewDetailViewModel(tuistyles.App.ListView),
 		loading:    true,
 	}
-	vm.spinner = components.NewSpinner("Loading inventory...", vm.styles.Subtitle)
+	vm.spinner = tui.NewSpinner("Loading inventory...", vm.styles.Subtitle)
 	return vm
 }
 

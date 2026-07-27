@@ -19,11 +19,11 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -105,7 +105,7 @@ type Tags struct {
 	results    table.Model
 	form       *forms.Form
 	value      *forms.TextField
-	spinner    components.Spinner
+	spinner    tui.Spinner
 
 	mode      tagsMode
 	operation tagOperation
@@ -141,7 +141,7 @@ func NewTags(application *app.Session) *Tags {
 		operations: operations, picker: picker, results: results,
 		value: value, form: forms.New(styles.App.Form, keys.App.Form, value),
 	}
-	vm.spinner = components.NewSpinner("Working with tags...", vm.styles.Subtitle)
+	vm.spinner = tui.NewSpinner("Working with tags...", vm.styles.Subtitle)
 	return vm
 }
 

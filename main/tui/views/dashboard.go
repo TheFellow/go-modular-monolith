@@ -18,11 +18,11 @@ import (
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
-	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
 // Dashboard is the main navigation hub of the TUI.
@@ -34,7 +34,7 @@ type Dashboard struct {
 	height int
 
 	loading bool
-	spinner components.Spinner
+	spinner tui.Spinner
 	data    *DashboardData
 	err     error
 }
@@ -79,7 +79,7 @@ func NewDashboard(app *app.Session) *Dashboard {
 		keys:    keys.App.Dashboard,
 		loading: true,
 	}
-	d.spinner = components.NewSpinner("Loading dashboard...", d.styles.Subtitle)
+	d.spinner = tui.NewSpinner("Loading dashboard...", d.styles.Subtitle)
 	return d
 }
 

@@ -1,20 +1,19 @@
-package components
+package tui
 
 import (
 	"fmt"
 
-	sharedtui "github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/paginator"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-// ListDetail is the standard presentation shell for searchable list/detail
-// screens. Domain ViewModels retain loading commands, typed selection, detail
-// rendering, and workflows; this component owns the recurring terminal state.
+// ListDetail owns the recurring terminal state for searchable list/detail
+// screens. Callers retain loading commands, typed selection, detail rendering,
+// and workflow state.
 type ListDetail struct {
-	styles  sharedtui.ListViewStyles
+	styles  ListViewStyles
 	list    list.Model
 	spinner Spinner
 	loading bool
@@ -25,7 +24,7 @@ type ListDetail struct {
 	detailW int
 }
 
-func NewListDetail(title, loadingLabel string, styles sharedtui.ListViewStyles) *ListDetail {
+func NewListDetail(title, loadingLabel string, styles ListViewStyles) *ListDetail {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
 	delegate.Styles.SelectedTitle = styles.Selected
@@ -69,9 +68,9 @@ func (m *ListDetail) SetSize(width, height int) (listWidth, detailWidth int) {
 		return 0, 0
 	}
 
-	listWidth, detailWidth = sharedtui.SplitListDetailWidths(width)
-	listWidth = sharedtui.PaneContentWidth(m.styles.ListPane, listWidth)
-	detailWidth = sharedtui.PaneContentWidth(m.styles.DetailPane, detailWidth)
+	listWidth, detailWidth = SplitListDetailWidths(width)
+	listWidth = PaneContentWidth(m.styles.ListPane, listWidth)
+	detailWidth = PaneContentWidth(m.styles.DetailPane, detailWidth)
 	m.list.SetSize(listWidth, height)
 	m.listW, m.detailW = listWidth, detailWidth
 	return listWidth, detailWidth
@@ -100,8 +99,8 @@ func (m *ListDetail) View(detail string) string {
 	if m.err != nil {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
 	}
-	listView = m.styles.ListPane.Width(sharedtui.PaneStyleWidth(m.styles.ListPane, m.listW)).Render(listView)
-	detail = m.styles.DetailPane.Width(sharedtui.PaneStyleWidth(m.styles.DetailPane, m.detailW)).Render(detail)
+	listView = m.styles.ListPane.Width(PaneStyleWidth(m.styles.ListPane, m.listW)).Render(listView)
+	detail = m.styles.DetailPane.Width(PaneStyleWidth(m.styles.DetailPane, m.detailW)).Render(detail)
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detail)
 }
 

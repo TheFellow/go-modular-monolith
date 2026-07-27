@@ -53,7 +53,7 @@ type ListViewModel struct {
 	edit    *EditDrinkVM
 	tags    *components.TagEditor
 	dialog  *dialog.ConfirmDialog
-	spinner components.Spinner
+	spinner tui.Spinner
 	loading bool
 	err     error
 
@@ -91,7 +91,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		detail:       NewDetailViewModel(tuistyles.App.ListView, app),
 		loading:      true,
 	}
-	vm.spinner = components.NewSpinner("Loading drinks...", vm.styles.Subtitle)
+	vm.spinner = tui.NewSpinner("Loading drinks...", vm.styles.Subtitle)
 	return vm
 }
 

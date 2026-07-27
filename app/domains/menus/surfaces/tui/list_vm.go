@@ -63,7 +63,7 @@ type ListViewModel struct {
 	rename  *RenameMenuVM
 	tags    *components.TagEditor
 	dialog  *dialog.ConfirmDialog
-	spinner components.Spinner
+	spinner tui.Spinner
 	loading bool
 	err     error
 
@@ -103,7 +103,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		detail:       NewDetailViewModel(tuistyles.App.ListView, app),
 		loading:      true,
 	}
-	vm.spinner = components.NewSpinner("Loading menus...", vm.styles.Subtitle)
+	vm.spinner = tui.NewSpinner("Loading menus...", vm.styles.Subtitle)
 	return vm
 }
 

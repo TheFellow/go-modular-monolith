@@ -57,7 +57,7 @@ type ListViewModel struct {
 	mode    listMode
 	dialog  *dialog.ConfirmDialog
 	tags    *components.TagEditor
-	spinner components.Spinner
+	spinner tui.Spinner
 	loading bool
 	err     error
 
@@ -94,7 +94,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		detail:       NewDetailViewModel(tuistyles.App.ListView, app),
 		loading:      true,
 	}
-	vm.spinner = components.NewSpinner("Loading orders...", vm.styles.Subtitle)
+	vm.spinner = tui.NewSpinner("Loading orders...", vm.styles.Subtitle)
 	return vm
 }
 

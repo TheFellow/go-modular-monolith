@@ -1,4 +1,4 @@
-package components
+package tui_test
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/mvvm"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -14,7 +14,7 @@ import (
 func TestListDetailOwnsStandardLoadingResultAndLayoutStates(t *testing.T) {
 	t.Parallel()
 
-	shell := NewListDetail("Things", "Loading things...", styles.App.ListView)
+	shell := tui.NewListDetail("Things", "Loading things...", styles.App.ListView)
 	shell.SetSize(100, 30)
 	if got := shell.View("detail"); !strings.Contains(got, "Loading things") {
 		t.Fatalf("loading view = %q", got)
@@ -25,7 +25,7 @@ func TestListDetailOwnsStandardLoadingResultAndLayoutStates(t *testing.T) {
 		t.Fatalf("error view = %q", got)
 	}
 
-	shell.SetResult([]list.Item{mvvm.NewListItem(42, "Answer", "A detail", "")}, nil)
+	shell.SetResult([]list.Item{tui.NewListItem(42, "Answer", "A detail", "")}, nil)
 	got := shell.View("selected detail")
 	for _, want := range []string{"Things", "Answer", "selected detail"} {
 		if !strings.Contains(got, want) {

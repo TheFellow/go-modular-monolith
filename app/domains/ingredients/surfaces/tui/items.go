@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/mvvm"
+	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
-type ingredientItem = mvvm.ListItem[models.Ingredient]
+type ingredientItem = tui.ListItem[models.Ingredient]
 
 func newIngredientItem(ingredient models.Ingredient) ingredientItem {
-	return mvvm.NewListItem(ingredient, ingredient.Name, fmt.Sprintf("%s • %s", ingredient.Category, ingredient.Unit), ingredient.Name)
+	return tui.NewListItem(ingredient, ingredient.Name, fmt.Sprintf("%s • %s", ingredient.Category, ingredient.Unit), ingredient.Name)
 }

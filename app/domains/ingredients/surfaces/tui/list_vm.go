@@ -47,7 +47,7 @@ type ListViewModel struct {
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
 
-	shell  *components.ListDetail
+	shell  *tui.ListDetail
 	detail *DetailViewModel
 	mode   listMode
 	create *CreateIngredientVM
@@ -71,7 +71,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		formKeys:     tuikeys.App.Form,
 		dialogStyles: tuistyles.App.Dialog,
 		dialogKeys:   tuikeys.App.Dialog,
-		shell:        components.NewListDetail("Ingredients", "Loading ingredients...", tuistyles.App.ListView),
+		shell:        tui.NewListDetail("Ingredients", "Loading ingredients...", tuistyles.App.ListView),
 		detail:       NewDetailViewModel(tuistyles.App.ListView),
 	}
 	return vm

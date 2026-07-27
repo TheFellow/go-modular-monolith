@@ -4,7 +4,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
-	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
@@ -24,7 +23,7 @@ type ListViewModel struct {
 	app  *app.Session
 	keys tui.ListViewKeys
 
-	shell  *components.ListDetail
+	shell  *tui.ListDetail
 	detail *DetailViewModel
 }
 
@@ -32,7 +31,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 	return &ListViewModel{
 		app:    app,
 		keys:   tuikeys.App.ListView,
-		shell:  components.NewListDetail("Audit", "Loading audit entries...", tuistyles.App.ListView),
+		shell:  tui.NewListDetail("Audit", "Loading audit entries...", tuistyles.App.ListView),
 		detail: NewDetailViewModel(tuistyles.App.ListView),
 	}
 }
