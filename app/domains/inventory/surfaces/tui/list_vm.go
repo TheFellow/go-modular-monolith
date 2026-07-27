@@ -34,6 +34,7 @@ const (
 	listModeBrowsing listMode = iota
 	listModeAdjusting
 	listModeSetting
+	listModeTagging
 )
 
 // ListViewModel renders the inventory list and detail panes.
@@ -51,6 +52,7 @@ type ListViewModel struct {
 	mode        listMode
 	adjust      *AdjustInventoryVM
 	set         *SetInventoryVM
+	tags        *components.TagEditor
 	spinner     components.Spinner
 	loading     bool
 	err         error
@@ -92,6 +94,10 @@ func (m *ListViewModel) HandleBackKey() bool {
 	return m.mode != listModeBrowsing
 }
 
+func (m *ListViewModel) TextInputActive() bool {
+	return m.mode == listModeAdjusting || m.mode == listModeSetting || m.mode == listModeTagging
+}
+
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -102,6 +108,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			m.adjust.SetWidth(m.detailWidth)
 		case listModeSetting:
 			m.set.SetWidth(m.detailWidth)
+		case listModeTagging:
+			m.tags.SetWidth(m.width)
 		}
 		return m, nil
 	case InventoryAdjustedMsg:
@@ -115,6 +123,12 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.set = nil
 		m.loading = true
 		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
+	case components.TagsSavedMsg:
+		if m.mode != listModeTagging || m.tags == nil || !m.tags.Owns(msg.Target) {
+			return m, nil
+		}
+		m.mode, m.tags, m.loading, m.err = listModeBrowsing, nil, true, nil
 		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
 	case tea.KeyMsg:
 		switch m.mode {
@@ -131,6 +145,17 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 				m.set = nil
 				return m, nil
 			}
+		case listModeTagging:
+			if key.Matches(msg, m.keys.Back) {
+				if m.tags.Saving() {
+					return m, nil
+				}
+				m.mode, m.tags = listModeBrowsing, nil
+				return m, nil
+			}
+		}
+		if m.mode != listModeBrowsing {
+			break
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
@@ -141,6 +166,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.startAdjust()
 		case key.Matches(msg, m.keys.Set):
 			return m, m.startSet()
+		case key.Matches(msg, m.keys.Tags):
+			return m, m.startTags()
 		}
 	case InventoryLoadedMsg:
 		m.loading = false
@@ -162,6 +189,10 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		var cmd tea.Cmd
 		m.set, cmd = m.set.Update(msg)
 		return m, cmd
+	case listModeTagging:
+		var cmd tea.Cmd
+		m.tags, cmd = m.tags.Update(msg)
+		return m, cmd
 	}
 
 	if m.loading {
@@ -180,38 +211,46 @@ func (m *ListViewModel) View() string {
 	if m.loading {
 		return m.renderLoading()
 	}
+	if m.mode == listModeTagging {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.tags.View())
+	}
 
 	listView := m.table.View()
 	if m.err != nil {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
 	}
-	listView = m.styles.ListPane.Width(m.listWidth).Render(listView)
+	listView = m.styles.ListPane.Width(views.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
 	detailView := m.detail.View()
 	switch m.mode {
 	case listModeBrowsing:
+	case listModeTagging:
 	case listModeAdjusting:
 		detailView = m.adjust.View()
 	case listModeSetting:
 		detailView = m.set.View()
 	}
-	detailView = m.styles.DetailPane.Width(m.detailWidth).Render(detailView)
+	detailView = m.styles.DetailPane.Width(views.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
 	switch m.mode {
+	case listModeTagging:
+		return []key.Binding{m.formKeys.Submit, m.keys.Back}
 	case listModeAdjusting, listModeSetting:
 		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
-		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Adjust, m.keys.Set, m.keys.Refresh, m.keys.Back}
+		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Adjust, m.keys.Set, m.keys.Tags, m.keys.Refresh, m.keys.Back}
 	}
 	return nil
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
 	switch m.mode {
+	case listModeTagging:
+		return [][]key.Binding{{m.formKeys.Submit, m.keys.Back}}
 	case listModeAdjusting, listModeSetting:
 		return [][]key.Binding{
 			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
@@ -220,7 +259,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 	case listModeBrowsing:
 		return [][]key.Binding{
 			{m.keys.Up, m.keys.Down, m.keys.Enter},
-			{m.keys.Adjust, m.keys.Set},
+			{m.keys.Adjust, m.keys.Set, m.keys.Tags},
 			{m.keys.Refresh, m.keys.Back},
 		}
 	}
@@ -327,6 +366,17 @@ func (m *ListViewModel) selectedRow() (InventoryRow, bool) {
 	return m.rows[idx], true
 }
 
+func (m *ListViewModel) startTags() tea.Cmd {
+	row, ok := m.selectedRow()
+	if !ok {
+		return nil
+	}
+	m.mode = listModeTagging
+	m.tags = components.NewTagEditor(m.app, row.Inventory.EntityUID(), row.Ingredient.Name, row.Inventory.Tags)
+	m.tags.SetWidth(m.width)
+	return m.tags.Init()
+}
+
 func (m *ListViewModel) renderLoading() string {
 	content := m.spinner.View()
 	if m.width <= 0 || m.height <= 0 {
@@ -344,8 +394,8 @@ func (m *ListViewModel) setSize(width, height int) {
 	}
 
 	listWidth, detailWidth := views.SplitListDetailWidths(width)
-	listPadLeft, listPadRight := m.styles.ListPane.GetPaddingLeft(), m.styles.ListPane.GetPaddingRight()
-	innerListWidth := max(listWidth-listPadLeft-listPadRight, 0)
+	innerListWidth := views.PaneContentWidth(m.styles.ListPane, listWidth)
+	detailWidth = views.PaneContentWidth(m.styles.DetailPane, detailWidth)
 	m.table.SetColumns(inventoryColumns(innerListWidth))
 	m.table.SetWidth(innerListWidth)
 	tableHeight := height
@@ -353,7 +403,7 @@ func (m *ListViewModel) setSize(width, height int) {
 		tableHeight--
 	}
 	m.table.SetHeight(tableHeight)
-	m.listWidth = listWidth
+	m.listWidth = innerListWidth
 	m.detailWidth = detailWidth
 	m.detail.SetSize(detailWidth, height)
 }

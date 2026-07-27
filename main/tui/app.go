@@ -79,16 +79,35 @@ func (a *App) Init() tea.Cmd {
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if key.Matches(msg, a.keys.Quit) {
-			return a, tea.Quit
+		vm := a.currentViewModel()
+		textInputActive := false
+		if handler, ok := vm.(views.TextInputHandler); ok {
+			textInputActive = handler.TextInputActive()
 		}
-		if key.Matches(msg, a.keys.Help) {
-			a.showHelp = !a.showHelp
-			return a, a.syncWindowCmd()
+		if msg.Type != tea.KeyRunes || !textInputActive {
+			if key.Matches(msg, a.keys.Quit) {
+				return a, tea.Quit
+			}
+			if key.Matches(msg, a.keys.Help) {
+				a.showHelp = !a.showHelp
+				vm, cmd := vm.Update(tea.WindowSizeMsg{
+					Width: a.width, Height: a.availableHeight(),
+				})
+				a.views[a.currentView] = vm
+				return a, cmd
+			}
 		}
 		if key.Matches(msg, a.keys.Back) {
-			if handler, ok := a.currentViewModel().(views.BackKeyHandler); ok && handler.HandleBackKey() {
-				vm, cmd := a.currentViewModel().Update(msg)
+			if a.showHelp {
+				a.showHelp = false
+				vm, cmd := vm.Update(tea.WindowSizeMsg{
+					Width: a.width, Height: a.availableHeight(),
+				})
+				a.views[a.currentView] = vm
+				return a, cmd
+			}
+			if handler, ok := vm.(views.BackKeyHandler); ok && handler.HandleBackKey() {
+				vm, cmd := vm.Update(msg)
 				a.views[a.currentView] = vm
 				return a, cmd
 			}

@@ -72,12 +72,19 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadEntries())
 }
 
+func (m *ListViewModel) HandleBackKey() bool { return m.list.SettingFilter() }
+
+func (m *ListViewModel) TextInputActive() bool { return m.list.SettingFilter() }
+
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 		return m, nil
 	case tea.KeyMsg:
+		if m.list.SettingFilter() {
+			break
+		}
 		if key.Matches(msg, m.keys.Refresh) {
 			m.loading = true
 			m.err = nil
@@ -116,10 +123,10 @@ func (m *ListViewModel) View() string {
 	if m.err != nil {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
 	}
-	listView = m.styles.ListPane.Width(m.listWidth).Render(listView)
+	listView = m.styles.ListPane.Width(views.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
 	detailView := m.detail.View()
-	detailView = m.styles.DetailPane.Width(m.detailWidth).Render(detailView)
+	detailView = m.styles.DetailPane.Width(views.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 }
@@ -176,6 +183,8 @@ func (m *ListViewModel) setSize(width, height int) {
 	}
 
 	listWidth, detailWidth := views.SplitListDetailWidths(width)
+	listWidth = views.PaneContentWidth(m.styles.ListPane, listWidth)
+	detailWidth = views.PaneContentWidth(m.styles.DetailPane, detailWidth)
 
 	m.list.SetSize(listWidth, height)
 	m.detail.SetSize(detailWidth, height)

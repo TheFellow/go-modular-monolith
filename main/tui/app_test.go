@@ -2,8 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	auditui "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/tui"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	drinksui "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/tui"
@@ -15,14 +17,19 @@ import (
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	ordersui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
+	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/charmbracelet/bubbles/cursor"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -67,6 +74,238 @@ func TestE2E_DashboardAndTagResultTransitionsStayWithinViewport(t *testing.T) {
 	driver.RequireText("Inspect entity tags")
 	driver.Press("esc")
 	driver.RequireText("Mixology > Dashboard")
+}
+
+type tagViewScenario struct {
+	name, nav, title string
+	model            func(testing.TB, *testutil.Fixture) (views.ViewModel, cedar.EntityUID)
+}
+
+func tagViewScenarios() []tagViewScenario {
+	return []tagViewScenario{
+		{name: "drink", nav: "1", title: "Drinks", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+			drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
+				Name: "Daiquiri", Category: drinksmodels.DrinkCategoryCocktail,
+				Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, ingredient.Unit)}}, Steps: []string{"Shake"}},
+			})
+			return tuitest.InitAndLoad(t, drinksui.NewListViewModel(f.App)), drink.EntityUID()
+		}},
+		{name: "ingredient", nav: "2", title: "Ingredients", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl})
+			return tuitest.InitAndLoad(t, ingredientsui.NewListViewModel(f.App)), ingredient.EntityUID()
+		}},
+		{name: "inventory", nav: "3", title: "Inventory", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Gin", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+			item := testutil.SetInventory(t, f, inventorymodels.Update{
+				IngredientID: ingredient.ID, Amount: measurement.MustAmount(5, ingredient.Unit),
+				CostPerUnit: money.NewPriceFromCents(100, currency.USD),
+			})
+			return tuitest.InitAndLoad(t, inventoryui.NewListViewModel(f.App)), item.EntityUID()
+		}},
+		{name: "menu", nav: "4", title: "Menus", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+			menu := testutil.CreateMenu(t, f, "Happy Hour")
+			return tuitest.InitAndLoad(t, menusui.NewListViewModel(f.App)), menu.EntityUID()
+		}},
+		{name: "order", nav: "5", title: "Orders", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Rum", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+			drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
+				Name: "Rum Sour", Category: drinksmodels.DrinkCategoryCocktail,
+				Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, ingredient.Unit)}}, Steps: []string{"Shake"}},
+			})
+			menu := testutil.CreateMenu(t, f, "Dinner", testutil.WithDrink(drink), testutil.Published())
+			order := testutil.PlaceOrder(t, f, ordersmodels.Order{MenuID: menu.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 1}}})
+			return tuitest.InitAndLoad(t, ordersui.NewListViewModel(f.App)), order.EntityUID()
+		}},
+	}
+}
+
+func TestTagHotkeyManagesEveryOperationalEntity(t *testing.T) {
+	t.Parallel()
+
+	for _, scenario := range tagViewScenarios() {
+		t.Run(scenario.name, func(t *testing.T) {
+			t.Parallel()
+			f := testutil.NewFixture(t)
+			model, target := scenario.model(t, f)
+			model = updateView(t, model, tea.WindowSizeMsg{Width: 120, Height: 40})
+			model = updateView(t, model, keyRunes("t"))
+			testutil.StringContains(t, model.View(), "Manage tags")
+			testutil.StringContains(t, model.View(), "Empty clears all tags")
+			model = updateView(t, model, components.TagsSavedMsg{Target: entity.NewAuditEntryID().EntityUID()})
+			testutil.StringContains(t, model.View(), "Manage tags")
+
+			model = typeText(t, model, "cedar=deep")
+			model = updateViewSettled(t, model, submitKey())
+
+			persisted, err := f.App.Tags.List(f.OwnerContext(), target)
+			testutil.Ok(t, err)
+			testutil.Equals(t, persisted.Canonical().String(), "cedar=deep")
+			testutil.StringContains(t, model.View(), "cedar=deep")
+		})
+	}
+}
+
+func TestDomainModalOwnsKeysThatAreBrowsingShortcuts(t *testing.T) {
+	t.Parallel()
+
+	scenarios := []struct {
+		name, activate, collision, expected string
+		setup                               tagViewScenario
+	}{
+		{name: "drink create", activate: "c", collision: "t", expected: "Name", setup: tagViewScenarios()[0]},
+		{name: "ingredient create", activate: "c", collision: "t", expected: "Name", setup: tagViewScenarios()[1]},
+		{name: "inventory adjust", activate: "a", collision: "t", expected: "Adjust: Gin", setup: tagViewScenarios()[2]},
+		{name: "menu create", activate: "c", collision: "t", expected: "Name", setup: tagViewScenarios()[3]},
+		{name: "order cancel", activate: "x", collision: "t", expected: "Cancel Order", setup: tagViewScenarios()[4]},
+	}
+
+	for _, scenario := range scenarios {
+		t.Run(scenario.name, func(t *testing.T) {
+			t.Parallel()
+			f := testutil.NewFixture(t)
+			model, _ := scenario.setup.model(t, f)
+			model = updateView(t, model, tea.WindowSizeMsg{Width: 120, Height: 40})
+			model = updateViewSettled(t, model, keyRunes(scenario.activate))
+			testutil.StringContains(t, model.View(), scenario.expected)
+
+			model = updateViewSettled(t, model, keyRunes(scenario.collision))
+			testutil.StringContains(t, model.View(), scenario.expected)
+			testutil.ErrorIf(t, strings.Contains(model.View(), "Manage tags"), "browsing shortcut escaped the active modal:\n%s", model.View())
+		})
+	}
+}
+
+func TestE2E_ListFilterOwnsPrintableShortcutsAndEscape(t *testing.T) {
+	t.Parallel()
+
+	scenarios := tagViewScenarios()
+	scenarios = append(scenarios, tagViewScenario{
+		name: "audit", nav: "6", title: "Audit",
+		model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+				Name: "Audited Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
+			})
+			return tuitest.InitAndLoad(t, auditui.NewListViewModel(f.App)), ingredient.EntityUID()
+		},
+	})
+	for _, scenario := range scenarios {
+		if scenario.name == "inventory" {
+			continue // Inventory uses a table and intentionally has no text filter.
+		}
+		t.Run(scenario.name, func(t *testing.T) {
+			t.Parallel()
+			f := testutil.NewFixture(t)
+			_, _ = scenario.model(t, f)
+			driver := tuitest.NewDriver(t, NewApp(f.App))
+			driver.Resize(120, 40)
+			driver.Press(scenario.nav)
+			driver.Press("/")
+			pressText(driver, "query")
+			driver.RequireRunning()
+			driver.RequireText("Filter: query")
+
+			driver.Press("esc")
+			driver.RequireText("Mixology > " + scenario.title)
+			driver.RequireNoText("Mixology > Dashboard")
+		})
+	}
+}
+
+func TestE2E_TagPickerFilterOwnsPrintableShortcutsAndEscape(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	driver := tuitest.NewDriver(t, NewApp(f.App))
+	driver.Resize(120, 40)
+	driver.Press("7")
+	driver.Press("enter")
+	driver.RequireText("Select entity type")
+	driver.Press("/")
+	pressText(driver, "query")
+	driver.RequireRunning()
+	driver.RequireText("Filter: query")
+
+	driver.Press("esc")
+	driver.RequireText("Select entity type")
+	driver.RequireNoText("Inspect entity tags")
+}
+
+func TestE2E_TagEditorSupportsReplaceClearCancelAndValidationAcrossEveryEntityView(t *testing.T) {
+	t.Parallel()
+
+	for _, scenario := range tagViewScenarios() {
+		t.Run(scenario.name, func(t *testing.T) {
+			t.Parallel()
+			f := testutil.NewFixture(t)
+			_, target := scenario.model(t, f)
+			driver := tuitest.NewDriver(t, NewApp(f.App))
+			driver.Resize(120, 40)
+			driver.Press(scenario.nav)
+			driver.RequireText("Mixology > " + scenario.title)
+			driver.Press("?")
+			driver.RequireText("t manage tags")
+			driver.Press("?")
+
+			driver.Press("t")
+			driver.RequireText("Manage tags", "Empty clears all tags")
+			pressText(driver, "quality=quirky?")
+			driver.RequireRunning()
+			driver.Press("ctrl+s")
+			driver.RequireText("Mixology > "+scenario.title, "quality=quirky?")
+			driver.RequireViewport(120, 40)
+			requirePersistedTags(t, f, target, "quality=quirky?")
+
+			driver.Press("t")
+			driver.RequireText("quality=quirky?")
+			driver.Press("ctrl+u")
+			driver.Press("ctrl+s")
+			driver.RequireText("Tags: (none)")
+			requirePersistedTags(t, f, target, "")
+
+			driver.Press("t")
+			pressText(driver, "transient")
+			driver.Press("esc")
+			driver.RequireText("Mixology > "+scenario.title, "Tags: (none)")
+			requirePersistedTags(t, f, target, "")
+
+			driver.Press("t")
+			pressText(driver, "region=east,region=west")
+			driver.Press("ctrl+s")
+			driver.RequireText("Manage tags", "invalid tags")
+			requirePersistedTags(t, f, target, "")
+		})
+	}
+}
+
+func TestE2E_TagEditorPermissionFailureStaysOpenAndDoesNotPersist(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Protected Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
+	})
+	session := app.NewSession(f.ActorContext("bartender"), f.App.App)
+	driver := tuitest.NewDriver(t, NewApp(session))
+	driver.Resize(100, 40)
+	driver.Press("2")
+	driver.Press("t")
+	pressText(driver, "denied")
+	driver.Press("ctrl+s")
+	driver.RequireText("Manage tags", "authz denied")
+	driver.RequireViewport(100, 40)
+	requirePersistedTags(t, f, ingredient.EntityUID(), "")
+}
+
+func pressText(driver *tuitest.Driver, value string) {
+	for _, r := range value {
+		driver.Press(string(r))
+	}
+}
+
+func requirePersistedTags(t testing.TB, f *testutil.Fixture, target cedar.EntityUID, expected string) {
+	t.Helper()
+	persisted, err := f.App.Tags.List(f.OwnerContext(), target)
+	testutil.Ok(t, err)
+	testutil.Equals(t, persisted.Canonical().String(), expected)
 }
 
 func TestStatusBarView_UsesWarningStyleForNotFound(t *testing.T) {
@@ -254,6 +493,21 @@ func TestBackKey_NavigatesWhenDomainHasNoLocalState(t *testing.T) {
 	}
 }
 
+func TestBackKey_ClosesExpandedHelpBeforeNavigating(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	driver := tuitest.NewDriver(t, NewApp(f.App))
+	driver.Resize(100, 40)
+	driver.Press("1")
+	driver.Press("?")
+	driver.RequireText("t manage tags")
+	driver.Press("esc")
+	driver.RequireText("Mixology > Drinks")
+	driver.RequireNoText("t manage tags")
+	driver.Press("esc")
+	driver.RequireText("Mixology > Dashboard")
+}
+
 func TestDashboard_NavigatesToTagsShowsHelpAndBack(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
@@ -267,6 +521,8 @@ func TestDashboard_NavigatesToTagsShowsHelpAndBack(t *testing.T) {
 	testutil.IsTrue(t, app.showHelp)
 	testutil.ErrorIf(t, app.helpHeight() == 0, "expected expanded tags help")
 
+	app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
+	testutil.Equals(t, app.currentView, ViewTags)
 	app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
 	testutil.Equals(t, app.currentView, ViewDashboard)
 }
@@ -301,6 +557,27 @@ func updateView(t testing.TB, model views.ViewModel, msg tea.Msg) views.ViewMode
 
 func keyRunes(s string) tea.KeyMsg {
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
+}
+
+func typeText(t testing.TB, model views.ViewModel, value string) views.ViewModel {
+	t.Helper()
+	for _, r := range value {
+		model, _ = model.Update(keyRunes(string(r)))
+	}
+	return model
+}
+
+func updateViewSettled(t testing.TB, model views.ViewModel, msg tea.Msg) views.ViewModel {
+	t.Helper()
+	updated, cmd := model.Update(msg)
+	for _, next := range tuitest.RunCmds(cmd) {
+		switch next.(type) {
+		case cursor.BlinkMsg, spinner.TickMsg:
+			continue
+		}
+		updated = updateViewSettled(t, updated, next)
+	}
+	return updated
 }
 
 func submitKey() tea.KeyMsg {

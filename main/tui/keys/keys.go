@@ -31,6 +31,7 @@ type KeyMap struct {
 	Create      key.Binding
 	Edit        key.Binding
 	Delete      key.Binding
+	Tags        key.Binding
 	Adjust      key.Binding
 	Set         key.Binding
 	Publish     key.Binding
@@ -142,6 +143,10 @@ func newKeyMap() KeyMap {
 			key.WithKeys("d"),
 			key.WithHelp("d", "delete"),
 		),
+		Tags: key.NewBinding(
+			key.WithKeys("t"),
+			key.WithHelp("t", "manage tags"),
+		),
 		Publish: key.NewBinding(
 			key.WithKeys("p"),
 			key.WithHelp("p", "publish"),
@@ -220,6 +225,7 @@ func listViewKeysFrom(k KeyMap) tui.ListViewKeys {
 		Create:      k.Create,
 		Edit:        k.Edit,
 		Delete:      k.Delete,
+		Tags:        k.Tags,
 		Adjust:      k.Adjust,
 		Set:         k.Set,
 		Publish:     k.Publish,

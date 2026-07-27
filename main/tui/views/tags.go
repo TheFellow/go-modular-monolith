@@ -119,8 +119,8 @@ type Tags struct {
 func NewTags(application *app.Session) *Tags {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
-	delegate.Styles.SelectedTitle = styles.App.ListView.Selected
-	delegate.Styles.SelectedDesc = styles.App.ListView.Selected
+	delegate.Styles.SelectedTitle = tagSelectedStyle(styles.App)
+	delegate.Styles.SelectedDesc = tagSelectedStyle(styles.App)
 	operations := list.New(tagOperationItems(), delegate, 0, 0)
 	operations.Title = "Tags"
 	operations.SetShowHelp(false)
@@ -158,7 +158,14 @@ func tagOperationItems() []list.Item {
 
 func (m *Tags) Init() tea.Cmd { return nil }
 
-func (m *Tags) HandleBackKey() bool { return m.mode != tagsModeBrowsing }
+func (m *Tags) HandleBackKey() bool {
+	return m.mode != tagsModeBrowsing
+}
+
+func (m *Tags) TextInputActive() bool {
+	return m.mode == tagsModeEnteringValue ||
+		(m.mode == tagsModePickingType || m.mode == tagsModePickingEntity) && m.picker.SettingFilter()
+}
 
 func (m *Tags) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 	switch typed := msg.(type) {
@@ -185,6 +192,11 @@ func (m *Tags) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 		}
 		return m, nil
 	case tea.KeyMsg:
+		if (m.mode == tagsModePickingType || m.mode == tagsModePickingEntity) && m.picker.SettingFilter() {
+			var cmd tea.Cmd
+			m.picker, cmd = m.picker.Update(typed)
+			return m, cmd
+		}
 		if key.Matches(typed, m.keys.Back) && m.mode != tagsModeBrowsing {
 			m.back()
 			return m, nil
@@ -480,8 +492,15 @@ func tagTableStyles(s styles.Styles) table.Styles {
 	result := table.DefaultStyles()
 	result.Header = s.ListView.Title.Padding(0, 1)
 	result.Cell = s.ListView.Muted.Padding(0, 1)
-	result.Selected = s.ListView.Selected.Padding(0, 1)
+	result.Selected = tagSelectedStyle(s).Padding(0, 1)
 	return result
+}
+
+// tagSelectedStyle avoids a filled selection background. Some terminal color
+// profiles resolve adaptive foreground and background colors independently,
+// which can otherwise produce light text on a light background.
+func tagSelectedStyle(s styles.Styles) lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Underline(true).Foreground(s.Primary)
 }
 
 func (m *Tags) setSize(width, height int) {
