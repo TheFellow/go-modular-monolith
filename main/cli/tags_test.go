@@ -65,6 +65,37 @@ func TestCLIMutationIsVisibleThroughRootTUIWorkflow(t *testing.T) {
 	driver.RequireText("Inspect entity tags")
 }
 
+//nolint:paralleltest // the test closes the shared store before starting a fresh CLI lifecycle.
+func TestTUITagMutationIsVisibleThroughCLIWorkflow(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "tui-to-cli.db")
+	targets := seedCLITagTargets(t, dbPath)
+
+	ctx := authn.ToContext(context.Background(), authn.Owner())
+	ctx = pkglog.ToContext(ctx, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s, err := store.Open(ctx, dbPath)
+	testutil.Ok(t, err)
+	application := app.New(ctx, app.Config{Store: s})
+	session := app.NewSession(ctx, application)
+	driver := tuitest.NewDriver(t, tuiapp.NewApp(session))
+	driver.Resize(100, 40)
+	driver.Press("2")
+	driver.RequireText("Mixology > Ingredients")
+	driver.Press("t")
+	for _, r := range "surface=tui" {
+		driver.Press(string(r))
+	}
+	driver.Press("ctrl+s")
+	driver.RequireText("surface=tui")
+	driver.RequireViewport(100, 40)
+	testutil.Ok(t, application.Close())
+
+	result := newCLIE2E(dbPath).Run("tags", "list", targets.ingredient)
+	testutil.Ok(t, result.Err)
+	testutil.Equals(t, result.ExitCode, 0)
+	testutil.Equals(t, result.Stderr, "")
+	testutil.StringContains(t, result.Stdout, targets.ingredient+": surface=tui")
+}
+
 //nolint:paralleltest // the CLI fixture intentionally models sequential process lifecycles.
 func TestCLIE2EFixtureCapturesExitAndSeparateOutputStreams(t *testing.T) {
 	fixture := newCLIE2E(filepath.Join(t.TempDir(), "cli-errors.db"))
