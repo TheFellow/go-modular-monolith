@@ -89,6 +89,8 @@ func (d *Dashboard) Init() tea.Cmd {
 	return tea.Batch(d.spinner.Init(), d.loadData())
 }
 
+func (d *Dashboard) Interaction() Interaction { return Interaction{} }
+
 // Update implements ViewModel.
 func (d *Dashboard) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {

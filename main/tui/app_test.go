@@ -430,8 +430,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 			model = updateView(t, model, tea.WindowSizeMsg{Width: 120, Height: 40})
 			model = scenario.activate(t, model)
 
-			handler := testutil.Cast[views.BackKeyHandler](t, model)
-			testutil.IsTrue(t, handler.HandleBackKey())
+			testutil.IsTrue(t, model.Interaction().HandlesBack)
 
 			app := NewApp(f.App)
 			app.currentView = scenario.view
@@ -441,9 +440,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 			app = updateAppAndRunCmds(t, app, tea.KeyMsg{Type: tea.KeyEsc})
 			testutil.Equals(t, app.currentView, scenario.view)
 
-			if handler, ok := app.views[scenario.view].(views.BackKeyHandler); ok {
-				testutil.IsFalse(t, handler.HandleBackKey())
-			}
+			testutil.IsFalse(t, app.views[scenario.view].Interaction().HandlesBack)
 
 			app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
 			testutil.Equals(t, app.currentView, ViewDashboard)

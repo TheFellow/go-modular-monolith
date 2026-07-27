@@ -158,13 +158,12 @@ func tagOperationItems() []list.Item {
 
 func (m *Tags) Init() tea.Cmd { return nil }
 
-func (m *Tags) HandleBackKey() bool {
-	return m.mode != tagsModeBrowsing
-}
-
-func (m *Tags) TextInputActive() bool {
-	return m.mode == tagsModeEnteringValue ||
-		(m.mode == tagsModePickingType || m.mode == tagsModePickingEntity) && m.picker.SettingFilter()
+func (m *Tags) Interaction() Interaction {
+	return Interaction{
+		HandlesBack: m.mode != tagsModeBrowsing,
+		CapturesText: m.mode == tagsModeEnteringValue ||
+			(m.mode == tagsModePickingType || m.mode == tagsModePickingEntity) && m.picker.SettingFilter(),
+	}
 }
 
 func (m *Tags) Update(msg tea.Msg) (ViewModel, tea.Cmd) {

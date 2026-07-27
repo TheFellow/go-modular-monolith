@@ -102,12 +102,11 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadIngredients())
 }
 
-func (m *ListViewModel) HandleBackKey() bool {
-	return m.mode != listModeBrowsing || m.list.SettingFilter()
-}
-
-func (m *ListViewModel) TextInputActive() bool {
-	return m.list.SettingFilter() || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging
+func (m *ListViewModel) Interaction() views.Interaction {
+	return views.Interaction{
+		HandlesBack:  m.mode != listModeBrowsing || m.list.SettingFilter(),
+		CapturesText: m.list.SettingFilter() || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging,
+	}
 }
 
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
