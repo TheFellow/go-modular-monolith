@@ -119,8 +119,8 @@ type Tags struct {
 func NewTags(application *app.Session) *Tags {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
-	delegate.Styles.SelectedTitle = styles.App.ListView.Selected
-	delegate.Styles.SelectedDesc = styles.App.ListView.Selected
+	delegate.Styles.SelectedTitle = tagSelectedStyle(styles.App)
+	delegate.Styles.SelectedDesc = tagSelectedStyle(styles.App)
 	operations := list.New(tagOperationItems(), delegate, 0, 0)
 	operations.Title = "Tags"
 	operations.SetShowHelp(false)
@@ -480,8 +480,15 @@ func tagTableStyles(s styles.Styles) table.Styles {
 	result := table.DefaultStyles()
 	result.Header = s.ListView.Title.Padding(0, 1)
 	result.Cell = s.ListView.Muted.Padding(0, 1)
-	result.Selected = s.ListView.Selected.Padding(0, 1)
+	result.Selected = tagSelectedStyle(s).Padding(0, 1)
 	return result
+}
+
+// tagSelectedStyle avoids a filled selection background. Some terminal color
+// profiles resolve adaptive foreground and background colors independently,
+// which can otherwise produce light text on a light background.
+func tagSelectedStyle(s styles.Styles) lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Underline(true).Foreground(s.Primary)
 }
 
 func (m *Tags) setSize(width, height int) {

@@ -10,8 +10,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 func TestTagsResultTableSupportsEveryShapeTransition(t *testing.T) {
@@ -51,6 +53,14 @@ func TestTagsResultTableSupportsEveryShapeTransition(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestTagSelectedStyleDoesNotUseBackgroundColor(t *testing.T) {
+	t.Parallel()
+	selected := tagSelectedStyle(styles.App)
+	testutil.Equals(t, selected.GetBackground(), lipgloss.TerminalColor(lipgloss.NoColor{}))
+	testutil.ErrorIf(t, !selected.GetBold(), "expected selected tag rows to be bold")
+	testutil.ErrorIf(t, !selected.GetUnderline(), "expected selected tag rows to be underlined")
 }
 
 func TestTagsWorkspaceUsesOperationListAndEntityPicker(t *testing.T) {
