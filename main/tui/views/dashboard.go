@@ -145,15 +145,11 @@ func (d *Dashboard) View() string {
 	cardWidth, columnCount := d.layoutConfig()
 	content := d.renderCards(cards, cardWidth, columnCount)
 
-	fixed := lipgloss.JoinVertical(
-		lipgloss.Left,
-		header,
-		subtitle,
-		"",
-		content,
-		"",
-		d.styles.Subtitle.Render("Recent Activity"),
-	)
+	fixed := d.fixedContent(header, subtitle, content)
+	if d.height > 0 && lipgloss.Height(fixed) > d.height {
+		content = d.renderCompactCards(cards, cardWidth, columnCount)
+		fixed = d.fixedContent(header, subtitle, content)
+	}
 	activity := d.renderRecentActivity(d.recentActivityLimit(fixed))
 	body := lipgloss.JoinVertical(lipgloss.Left, fixed, activity)
 	if d.width > 0 && d.height > 0 {
@@ -161,6 +157,18 @@ func (d *Dashboard) View() string {
 	}
 
 	return body
+}
+
+func (d *Dashboard) fixedContent(header, subtitle, cards string) string {
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		header,
+		subtitle,
+		"",
+		cards,
+		"",
+		d.styles.Subtitle.Render("Recent Activity"),
+	)
 }
 
 // ShortHelp implements ViewModel.
@@ -424,6 +432,30 @@ func (d *Dashboard) renderCards(cards []dashboardCard, width int, columns int) s
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, rows...)
+}
+
+func (d *Dashboard) renderCompactCards(cards []dashboardCard, width int, columns int) string {
+	rows := make([]string, 0, len(cards))
+	for _, card := range cards {
+		title := card.title
+		if card.count != "" {
+			title = fmt.Sprintf("%s (%s)", card.title, card.count)
+		}
+		rows = append(rows, lipgloss.NewStyle().Width(width).Render("["+card.key+"] "+title))
+	}
+	if columns <= 1 {
+		return lipgloss.JoinVertical(lipgloss.Left, rows...)
+	}
+	paired := make([]string, 0, (len(rows)+1)/2)
+	gap := lipgloss.NewStyle().Width(2).Render("")
+	for i := 0; i < len(rows); i += 2 {
+		if i+1 == len(rows) {
+			paired = append(paired, rows[i])
+			break
+		}
+		paired = append(paired, lipgloss.JoinHorizontal(lipgloss.Top, rows[i], gap, rows[i+1]))
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, paired...)
 }
 
 func (d *Dashboard) renderCard(card dashboardCard, width int) string {

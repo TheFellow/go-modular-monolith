@@ -202,8 +202,7 @@ func (a *App) navigateTo(target View) tea.Cmd {
 		return a.syncWindowCmd()
 	}
 
-	initCmd := a.currentViewModel().Init()
-	return tea.Batch(initCmd, a.syncWindowCmd())
+	return a.initializeCurrentView()
 }
 
 // navigateBack pops the previous view from the stack.
@@ -212,8 +211,7 @@ func (a *App) navigateBack() tea.Cmd {
 		if a.currentView != ViewDashboard {
 			a.currentView = ViewDashboard
 			delete(a.views, ViewDashboard)
-			initCmd := a.currentViewModel().Init()
-			return tea.Batch(initCmd, a.syncWindowCmd())
+			return a.initializeCurrentView()
 		}
 		return nil
 	}
@@ -223,10 +221,22 @@ func (a *App) navigateBack() tea.Cmd {
 	a.prevViews = a.prevViews[:idx]
 	if a.currentView == ViewDashboard {
 		delete(a.views, ViewDashboard)
-		initCmd := a.currentViewModel().Init()
-		return tea.Batch(initCmd, a.syncWindowCmd())
+		return a.initializeCurrentView()
 	}
 	return a.syncWindowCmd()
+}
+
+// initializeCurrentView sizes a newly created child before its Init command can
+// produce a renderable result. A resize command batched with Init may arrive
+// later, briefly exposing an unbounded frame to Bubble Tea's renderer.
+func (a *App) initializeCurrentView() tea.Cmd {
+	vm := a.currentViewModel()
+	var sizeCmd tea.Cmd
+	if a.width > 0 || a.height > 0 {
+		vm, sizeCmd = vm.Update(tea.WindowSizeMsg{Width: a.width, Height: a.availableHeight()})
+		a.views[a.currentView] = vm
+	}
+	return tea.Batch(sizeCmd, vm.Init())
 }
 
 func (a *App) syncWindowCmd() tea.Cmd {
