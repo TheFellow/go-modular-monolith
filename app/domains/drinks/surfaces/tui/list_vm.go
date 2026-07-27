@@ -266,7 +266,7 @@ func (m *ListViewModel) View() string {
 	if m.err != nil {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
 	}
-	listView = m.styles.ListPane.Width(m.listWidth).Render(listView)
+	listView = m.styles.ListPane.Width(views.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
 	detailView := m.detail.View()
 	switch m.mode {
@@ -277,7 +277,7 @@ func (m *ListViewModel) View() string {
 	case listModeEditing:
 		detailView = m.edit.View()
 	}
-	detailView = m.styles.DetailPane.Width(m.detailWidth).Render(detailView)
+	detailView = m.styles.DetailPane.Width(views.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 }
@@ -481,6 +481,8 @@ func (m *ListViewModel) setSize(width, height int) {
 	}
 
 	listWidth, detailWidth := views.SplitListDetailWidths(width)
+	listWidth = views.PaneContentWidth(m.styles.ListPane, listWidth)
+	detailWidth = views.PaneContentWidth(m.styles.DetailPane, detailWidth)
 
 	m.list.SetSize(listWidth, height)
 	m.detail.SetSize(detailWidth, height)

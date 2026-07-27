@@ -209,7 +209,7 @@ func (m *ListViewModel) View() string {
 	if m.err != nil {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
 	}
-	listView = m.styles.ListPane.Width(m.listWidth).Render(listView)
+	listView = m.styles.ListPane.Width(views.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
 	detailView := m.detail.View()
 	switch m.mode {
@@ -220,7 +220,7 @@ func (m *ListViewModel) View() string {
 	case listModeSetting:
 		detailView = m.set.View()
 	}
-	detailView = m.styles.DetailPane.Width(m.detailWidth).Render(detailView)
+	detailView = m.styles.DetailPane.Width(views.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 }
@@ -384,8 +384,8 @@ func (m *ListViewModel) setSize(width, height int) {
 	}
 
 	listWidth, detailWidth := views.SplitListDetailWidths(width)
-	listPadLeft, listPadRight := m.styles.ListPane.GetPaddingLeft(), m.styles.ListPane.GetPaddingRight()
-	innerListWidth := max(listWidth-listPadLeft-listPadRight, 0)
+	innerListWidth := views.PaneContentWidth(m.styles.ListPane, listWidth)
+	detailWidth = views.PaneContentWidth(m.styles.DetailPane, detailWidth)
 	m.table.SetColumns(inventoryColumns(innerListWidth))
 	m.table.SetWidth(innerListWidth)
 	tableHeight := height
@@ -393,7 +393,7 @@ func (m *ListViewModel) setSize(width, height int) {
 		tableHeight--
 	}
 	m.table.SetHeight(tableHeight)
-	m.listWidth = listWidth
+	m.listWidth = innerListWidth
 	m.detailWidth = detailWidth
 	m.detail.SetSize(detailWidth, height)
 }
