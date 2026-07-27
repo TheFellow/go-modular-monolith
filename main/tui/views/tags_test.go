@@ -6,11 +6,52 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+func TestTagsResultTableSupportsEveryShapeTransition(t *testing.T) {
+	t.Parallel()
+
+	results := []struct {
+		name   string
+		result tagResultMsg
+	}{
+		{name: "entity", result: tagResultMsg{
+			operation: tagOperationInspect,
+			target:    entity.NewIngredientID().EntityUID(),
+			tags:      tag.Tags{{Key: "featured"}},
+		}},
+		{name: "references", result: tagResultMsg{
+			operation: tagOperationShow,
+			references: []tagging.Reference{{
+				EntityType: "Ingredient", EntityID: entity.NewIngredientID().String(), Tag: "featured",
+			}},
+		}},
+		{name: "summary", result: tagResultMsg{
+			operation: tagOperationSummary,
+			summaries: []tagging.Summary{{Tag: "featured", Total: 1, Ingredients: 1}},
+		}},
+	}
+
+	for _, from := range results {
+		for _, to := range results {
+			t.Run(from.name+"_to_"+to.name, func(t *testing.T) {
+				t.Parallel()
+				vm := NewTags(nil)
+				vm.setSize(100, 30)
+				vm.setResultTable(from.result)
+				_ = vm.results.View() // Populate the table viewport before changing its schema.
+				vm.setResultTable(to.result)
+				_ = vm.results.View()
+			})
+		}
+	}
+}
 
 func TestTagsWorkspaceUsesOperationListAndEntityPicker(t *testing.T) {
 	t.Parallel()

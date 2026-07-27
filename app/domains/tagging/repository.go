@@ -3,11 +3,10 @@ package tagging
 
 import (
 	"context"
-	"errors"
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
@@ -110,7 +109,7 @@ func (r *Repository) List(ctx store.Context, target cedar.EntityUID) (tag.Tags, 
 // inside the read transaction that loaded their domain entities.
 func (r *Repository) ListTypeTx(tx *bstore.Tx, entityType cedar.EntityType, ids []cedar.String) (map[cedar.EntityUID]tag.Tags, error) {
 	if tx == nil {
-		return nil, apperrors.Internalf("tag read transaction is required")
+		return nil, errors.Internalf("tag read transaction is required")
 	}
 	if len(ids) == 0 {
 		return map[cedar.EntityUID]tag.Tags{}, nil
@@ -326,10 +325,10 @@ func validateTarget(target cedar.EntityUID) error {
 	case entity.TypeInventory:
 		_, err = entity.ParseInventoryID(id)
 	default:
-		return apperrors.Invalidf("unsupported tag target type: %s", target.Type)
+		return errors.Invalidf("unsupported tag target type: %s", target.Type)
 	}
 	if err != nil {
-		return apperrors.Invalidf("invalid tag target %s: %v", target, err)
+		return errors.Invalidf("invalid tag target %s: %v", target, err)
 	}
 	return nil
 }

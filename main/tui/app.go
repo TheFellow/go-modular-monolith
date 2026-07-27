@@ -18,7 +18,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
-	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 const (
@@ -202,8 +202,7 @@ func (a *App) navigateTo(target View) tea.Cmd {
 		return a.syncWindowCmd()
 	}
 
-	initCmd := a.currentViewModel().Init()
-	return tea.Batch(initCmd, a.syncWindowCmd())
+	return a.initializeCurrentView()
 }
 
 // navigateBack pops the previous view from the stack.
@@ -212,8 +211,7 @@ func (a *App) navigateBack() tea.Cmd {
 		if a.currentView != ViewDashboard {
 			a.currentView = ViewDashboard
 			delete(a.views, ViewDashboard)
-			initCmd := a.currentViewModel().Init()
-			return tea.Batch(initCmd, a.syncWindowCmd())
+			return a.initializeCurrentView()
 		}
 		return nil
 	}
@@ -223,10 +221,22 @@ func (a *App) navigateBack() tea.Cmd {
 	a.prevViews = a.prevViews[:idx]
 	if a.currentView == ViewDashboard {
 		delete(a.views, ViewDashboard)
-		initCmd := a.currentViewModel().Init()
-		return tea.Batch(initCmd, a.syncWindowCmd())
+		return a.initializeCurrentView()
 	}
 	return a.syncWindowCmd()
+}
+
+// initializeCurrentView sizes a newly created child before its Init command can
+// produce a renderable result. A resize command batched with Init may arrive
+// later, briefly exposing an unbounded frame to Bubble Tea's renderer.
+func (a *App) initializeCurrentView() tea.Cmd {
+	vm := a.currentViewModel()
+	var sizeCmd tea.Cmd
+	if a.width > 0 || a.height > 0 {
+		vm, sizeCmd = vm.Update(tea.WindowSizeMsg{Width: a.width, Height: a.availableHeight()})
+		a.views[a.currentView] = vm
+	}
+	return tea.Batch(sizeCmd, vm.Init())
 }
 
 func (a *App) syncWindowCmd() tea.Cmd {
@@ -267,14 +277,14 @@ func (a *App) helpHeight() int {
 func (a *App) statusBarView() string {
 	var content string
 	if a.lastError != nil {
-		tuiErr := perrors.ToTUIError(a.lastError)
+		tuiErr := errors.ToTUIError(a.lastError)
 		var style lipgloss.Style
 		switch tuiErr.Style {
-		case perrors.TUIStyleWarning:
+		case errors.TUIStyleWarning:
 			style = a.styles.WarningText
-		case perrors.TUIStyleInfo:
+		case errors.TUIStyleInfo:
 			style = a.styles.InfoText
-		case perrors.TUIStyleError:
+		case errors.TUIStyleError:
 			style = a.styles.ErrorText
 		default:
 			style = a.styles.ErrorText

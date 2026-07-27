@@ -145,22 +145,30 @@ func (d *Dashboard) View() string {
 	cardWidth, columnCount := d.layoutConfig()
 	content := d.renderCards(cards, cardWidth, columnCount)
 
-	activity := d.renderRecentActivity()
-	body := lipgloss.JoinVertical(
-		lipgloss.Left,
-		header,
-		subtitle,
-		"",
-		content,
-		"",
-		d.styles.Subtitle.Render("Recent Activity"),
-		activity,
-	)
+	fixed := d.fixedContent(header, subtitle, content)
+	if d.height > 0 && lipgloss.Height(fixed) > d.height {
+		content = d.renderCompactCards(cards, cardWidth, columnCount)
+		fixed = d.fixedContent(header, subtitle, content)
+	}
+	activity := d.renderRecentActivity(d.recentActivityLimit(fixed))
+	body := lipgloss.JoinVertical(lipgloss.Left, fixed, activity)
 	if d.width > 0 && d.height > 0 {
 		return lipgloss.Place(d.width, d.height, lipgloss.Center, lipgloss.Center, body)
 	}
 
 	return body
+}
+
+func (d *Dashboard) fixedContent(header, subtitle, cards string) string {
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		header,
+		subtitle,
+		"",
+		cards,
+		"",
+		d.styles.Subtitle.Render("Recent Activity"),
+	)
 }
 
 // ShortHelp implements ViewModel.
@@ -363,16 +371,27 @@ func (d *Dashboard) auditCountLabel(data *DashboardData) string {
 	return strconv.Itoa(data.AuditCount)
 }
 
-func (d *Dashboard) renderRecentActivity() string {
+func (d *Dashboard) renderRecentActivity(limit int) string {
+	if limit <= 0 {
+		return ""
+	}
 	if d.data == nil || len(d.data.RecentActivity) == 0 {
 		return d.styles.Subtitle.Render("No recent activity")
 	}
 
-	rows := make([]string, 0, len(d.data.RecentActivity))
-	for _, entry := range d.data.RecentActivity {
+	limit = min(limit, len(d.data.RecentActivity))
+	rows := make([]string, 0, limit)
+	for _, entry := range d.data.RecentActivity[:limit] {
 		rows = append(rows, fmt.Sprintf("%s  %s  %s", entry.Timestamp, entry.Actor, entry.Action))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, rows...)
+}
+
+func (d *Dashboard) recentActivityLimit(fixed string) int {
+	if d.height <= 0 {
+		return dashboardRecentMax
+	}
+	return min(max(d.height-lipgloss.Height(fixed), 0), dashboardRecentMax)
 }
 
 func (d *Dashboard) layoutConfig() (int, int) {
@@ -413,6 +432,30 @@ func (d *Dashboard) renderCards(cards []dashboardCard, width int, columns int) s
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, rows...)
+}
+
+func (d *Dashboard) renderCompactCards(cards []dashboardCard, width int, columns int) string {
+	rows := make([]string, 0, len(cards))
+	for _, card := range cards {
+		title := card.title
+		if card.count != "" {
+			title = fmt.Sprintf("%s (%s)", card.title, card.count)
+		}
+		rows = append(rows, lipgloss.NewStyle().Width(width).Render("["+card.key+"] "+title))
+	}
+	if columns <= 1 {
+		return lipgloss.JoinVertical(lipgloss.Left, rows...)
+	}
+	paired := make([]string, 0, (len(rows)+1)/2)
+	gap := lipgloss.NewStyle().Width(2).Render("")
+	for i := 0; i < len(rows); i += 2 {
+		if i+1 == len(rows) {
+			paired = append(paired, rows[i])
+			break
+		}
+		paired = append(paired, lipgloss.JoinHorizontal(lipgloss.Top, rows[i], gap, rows[i+1]))
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, paired...)
 }
 
 func (d *Dashboard) renderCard(card dashboardCard, width int) string {
