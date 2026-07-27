@@ -23,6 +23,9 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
+	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/charmbracelet/bubbles/cursor"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -67,6 +70,72 @@ func TestE2E_DashboardAndTagResultTransitionsStayWithinViewport(t *testing.T) {
 	driver.RequireText("Inspect entity tags")
 	driver.Press("esc")
 	driver.RequireText("Mixology > Dashboard")
+}
+
+func TestTagHotkeyManagesEveryOperationalEntity(t *testing.T) {
+	t.Parallel()
+
+	type scenario struct {
+		name  string
+		model func(testing.TB, *testutil.Fixture) (views.ViewModel, cedar.EntityUID)
+	}
+
+	scenarios := []scenario{
+		{name: "drink", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
+			drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
+				Name: "Daiquiri", Category: drinksmodels.DrinkCategoryCocktail,
+				Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, ingredient.Unit)}}, Steps: []string{"Shake"}},
+			})
+			return tuitest.InitAndLoad(t, drinksui.NewListViewModel(f.App)), drink.EntityUID()
+		}},
+		{name: "ingredient", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl})
+			return tuitest.InitAndLoad(t, ingredientsui.NewListViewModel(f.App)), ingredient.EntityUID()
+		}},
+		{name: "inventory", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Gin", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+			item := testutil.SetInventory(t, f, inventorymodels.Update{
+				IngredientID: ingredient.ID, Amount: measurement.MustAmount(5, ingredient.Unit),
+				CostPerUnit: money.NewPriceFromCents(100, currency.USD),
+			})
+			return tuitest.InitAndLoad(t, inventoryui.NewListViewModel(f.App)), item.EntityUID()
+		}},
+		{name: "menu", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+			menu := testutil.CreateMenu(t, f, "Happy Hour")
+			return tuitest.InitAndLoad(t, menusui.NewListViewModel(f.App)), menu.EntityUID()
+		}},
+		{name: "order", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Rum", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+			drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
+				Name: "Rum Sour", Category: drinksmodels.DrinkCategoryCocktail,
+				Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, ingredient.Unit)}}, Steps: []string{"Shake"}},
+			})
+			menu := testutil.CreateMenu(t, f, "Dinner", testutil.WithDrink(drink), testutil.Published())
+			order := testutil.PlaceOrder(t, f, ordersmodels.Order{MenuID: menu.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 1}}})
+			return tuitest.InitAndLoad(t, ordersui.NewListViewModel(f.App)), order.EntityUID()
+		}},
+	}
+
+	for _, scenario := range scenarios {
+		t.Run(scenario.name, func(t *testing.T) {
+			t.Parallel()
+			f := testutil.NewFixture(t)
+			model, target := scenario.model(t, f)
+			model = updateView(t, model, tea.WindowSizeMsg{Width: 120, Height: 40})
+			model = updateView(t, model, keyRunes("t"))
+			testutil.StringContains(t, model.View(), "Manage tags")
+			testutil.StringContains(t, model.View(), "Empty clears all tags")
+
+			model = typeText(t, model, "cedar=deep")
+			model = updateViewSettled(t, model, submitKey())
+
+			persisted, err := f.App.Tags.List(f.OwnerContext(), target)
+			testutil.Ok(t, err)
+			testutil.Equals(t, persisted.Canonical().String(), "cedar=deep")
+			testutil.StringContains(t, model.View(), "cedar=deep")
+		})
+	}
 }
 
 func TestStatusBarView_UsesWarningStyleForNotFound(t *testing.T) {
@@ -301,6 +370,27 @@ func updateView(t testing.TB, model views.ViewModel, msg tea.Msg) views.ViewMode
 
 func keyRunes(s string) tea.KeyMsg {
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
+}
+
+func typeText(t testing.TB, model views.ViewModel, value string) views.ViewModel {
+	t.Helper()
+	for _, r := range value {
+		model, _ = model.Update(keyRunes(string(r)))
+	}
+	return model
+}
+
+func updateViewSettled(t testing.TB, model views.ViewModel, msg tea.Msg) views.ViewModel {
+	t.Helper()
+	updated, cmd := model.Update(msg)
+	for _, next := range tuitest.RunCmds(cmd) {
+		switch next.(type) {
+		case cursor.BlinkMsg, spinner.TickMsg:
+			continue
+		}
+		updated = updateViewSettled(t, updated, next)
+	}
+	return updated
 }
 
 func submitKey() tea.KeyMsg {
