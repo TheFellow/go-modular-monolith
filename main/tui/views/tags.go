@@ -428,21 +428,19 @@ func (m *Tags) loadEntities(entityType cedar.EntityType) tea.Cmd {
 func (m *Tags) setResultTable(result tagResultMsg) {
 	switch result.operation {
 	case tagOperationSummary:
-		m.results.SetColumns(summaryColumns(m.width))
 		rows := make([]table.Row, 0, len(result.summaries))
 		for _, v := range result.summaries {
 			rows = append(rows, table.Row{v.Tag, fmt.Sprint(v.Total), fmt.Sprint(v.Drinks), fmt.Sprint(v.Ingredients), fmt.Sprint(v.Inventory), fmt.Sprint(v.Menus), fmt.Sprint(v.Orders)})
 		}
-		m.results.SetRows(rows)
+		m.replaceResultTable(summaryColumns(m.width), rows)
 	case tagOperationShow, tagOperationShowKey:
-		m.results.SetColumns(referenceColumns(m.width))
 		rows := make([]table.Row, 0, len(result.references))
 		for _, v := range result.references {
 			rows = append(rows, table.Row{v.EntityType, v.EntityID, v.Tag})
 		}
-		m.results.SetRows(rows)
+		m.replaceResultTable(referenceColumns(m.width), rows)
 	case tagOperationInspect, tagOperationAdd, tagOperationRemove:
-		m.results.SetColumns([]table.Column{{Title: "ENTITY", Width: 34}, {Title: "TAGS", Width: max(m.width-40, 30)}, {Title: "RESULT", Width: 10}})
+		columns := []table.Column{{Title: "ENTITY", Width: 34}, {Title: "TAGS", Width: max(m.width-40, 30)}, {Title: "RESULT", Width: 10}}
 		state := "inspected"
 		if result.operation != tagOperationInspect {
 			state = "unchanged"
@@ -454,9 +452,18 @@ func (m *Tags) setResultTable(result tagResultMsg) {
 		if values == "" {
 			values = "(none)"
 		}
-		m.results.SetRows([]table.Row{{string(result.target.ID), values, state}})
+		m.replaceResultTable(columns, []table.Row{{string(result.target.ID), values, state}})
 	}
 	m.results.SetCursor(0)
+}
+
+// replaceResultTable safely changes a Bubble Tea table's schema. SetColumns
+// eagerly renders the existing viewport, so rows from the previous schema
+// must be removed before changing the column count.
+func (m *Tags) replaceResultTable(columns []table.Column, rows []table.Row) {
+	m.results.SetRows(nil)
+	m.results.SetColumns(columns)
+	m.results.SetRows(rows)
 }
 
 func referenceColumns(width int) []table.Column {
