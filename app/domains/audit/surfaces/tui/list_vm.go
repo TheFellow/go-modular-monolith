@@ -72,12 +72,19 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadEntries())
 }
 
+func (m *ListViewModel) HandleBackKey() bool { return m.list.SettingFilter() }
+
+func (m *ListViewModel) TextInputActive() bool { return m.list.SettingFilter() }
+
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 		return m, nil
 	case tea.KeyMsg:
+		if m.list.SettingFilter() {
+			break
+		}
 		if key.Matches(msg, m.keys.Refresh) {
 			m.loading = true
 			m.err = nil

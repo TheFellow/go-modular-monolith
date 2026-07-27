@@ -35,6 +35,7 @@ type TagEditor struct {
 	form   *forms.Form
 	err    error
 	width  int
+	saving bool
 }
 
 // NewTagEditor creates an editor prefilled with the entity's canonical tags.
@@ -49,6 +50,12 @@ func NewTagEditor(application *app.Session, target cedar.EntityUID, label string
 
 func (m *TagEditor) Init() tea.Cmd { return m.form.Init() }
 
+// Owns reports whether a result belongs to this editor instance.
+func (m *TagEditor) Owns(target cedar.EntityUID) bool { return m.target == target }
+
+// Saving reports whether a replacement command is in flight.
+func (m *TagEditor) Saving() bool { return m.saving }
+
 func (m *TagEditor) Update(msg tea.Msg) (*TagEditor, tea.Cmd) {
 	switch typed := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -56,10 +63,14 @@ func (m *TagEditor) Update(msg tea.Msg) (*TagEditor, tea.Cmd) {
 		return m, nil
 	case tagsSaveFailedMsg:
 		if typed.target == m.target {
+			m.saving = false
 			m.err = typed.err
 		}
 		return m, nil
 	case tea.KeyMsg:
+		if m.saving {
+			return m, nil
+		}
 		if key.Matches(typed, keys.App.Submit) {
 			return m, m.save()
 		}
@@ -81,6 +92,9 @@ func (m *TagEditor) View() string {
 		parts = append(parts, "", styles.App.ErrorText.Width(m.contentWidth()).Render(m.err.Error()))
 	}
 	parts = append(parts, "", styles.App.HelpDesc.Render("ctrl+s save • esc cancel"))
+	if m.saving {
+		parts[len(parts)-1] = styles.App.HelpDesc.Render("saving tags…")
+	}
 	return styles.App.DialogModal.Render(lipgloss.JoinVertical(lipgloss.Left, parts...))
 }
 
@@ -92,6 +106,9 @@ func (m *TagEditor) SetWidth(width int) {
 func (m *TagEditor) contentWidth() int { return max(min(m.width-8, 72), 20) }
 
 func (m *TagEditor) save() tea.Cmd {
+	if m.saving {
+		return nil
+	}
 	raw, _ := m.field.Value().(string)
 	desired, err := tag.ParseCollection(strings.TrimSpace(raw))
 	if err != nil {
@@ -99,6 +116,7 @@ func (m *TagEditor) save() tea.Cmd {
 		return nil
 	}
 	m.err = nil
+	m.saving = true
 	return func() tea.Msg {
 		result, err := m.app.Tags.Replace(m.app.Context(), m.target, desired)
 		if err != nil {

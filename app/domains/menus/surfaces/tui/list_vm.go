@@ -113,7 +113,11 @@ func (m *ListViewModel) Init() tea.Cmd {
 }
 
 func (m *ListViewModel) HandleBackKey() bool {
-	return m.mode != listModeBrowsing
+	return m.mode != listModeBrowsing || m.list.SettingFilter()
+}
+
+func (m *ListViewModel) TextInputActive() bool {
+	return m.list.SettingFilter() || m.mode == listModeCreating || m.mode == listModeRenaming || m.mode == listModeTagging
 }
 
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
@@ -145,6 +149,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
 	case components.TagsSavedMsg:
+		if m.mode != listModeTagging || m.tags == nil || !m.tags.Owns(msg.Target) {
+			return m, nil
+		}
 		m.mode, m.tags, m.loading, m.err = listModeBrowsing, nil, true, nil
 		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
 	case MenuDeletedMsg:
@@ -233,6 +240,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.draftTarget = nil
 		return m, nil
 	case tea.KeyMsg:
+		if m.mode == listModeBrowsing && m.list.SettingFilter() {
+			break
+		}
 		switch m.mode {
 		case listModeBrowsing:
 		case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
@@ -250,11 +260,14 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			}
 		case listModeTagging:
 			if key.Matches(msg, m.keys.Back) {
+				if m.tags.Saving() {
+					return m, nil
+				}
 				m.mode, m.tags = listModeBrowsing, nil
 				return m, nil
 			}
 		}
-		if m.mode == listModeTagging {
+		if m.mode != listModeBrowsing {
 			break
 		}
 		switch {

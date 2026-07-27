@@ -27,3 +27,10 @@ type ViewModel interface {
 type BackKeyHandler interface {
 	HandleBackKey() bool
 }
+
+// TextInputHandler is implemented by views with a focused text input. Printable
+// application shortcuts must be routed to that input instead of being handled
+// globally while it is active.
+type TextInputHandler interface {
+	TextInputActive() bool
+}

@@ -94,6 +94,10 @@ func (m *ListViewModel) HandleBackKey() bool {
 	return m.mode != listModeBrowsing
 }
 
+func (m *ListViewModel) TextInputActive() bool {
+	return m.mode == listModeAdjusting || m.mode == listModeSetting || m.mode == listModeTagging
+}
+
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -121,6 +125,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
 	case components.TagsSavedMsg:
+		if m.mode != listModeTagging || m.tags == nil || !m.tags.Owns(msg.Target) {
+			return m, nil
+		}
 		m.mode, m.tags, m.loading, m.err = listModeBrowsing, nil, true, nil
 		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
 	case tea.KeyMsg:
@@ -140,11 +147,14 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			}
 		case listModeTagging:
 			if key.Matches(msg, m.keys.Back) {
+				if m.tags.Saving() {
+					return m, nil
+				}
 				m.mode, m.tags = listModeBrowsing, nil
 				return m, nil
 			}
 		}
-		if m.mode == listModeTagging {
+		if m.mode != listModeBrowsing {
 			break
 		}
 		switch {

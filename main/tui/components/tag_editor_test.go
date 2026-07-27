@@ -44,3 +44,22 @@ func TestTagEditorRejectsInvalidSetBeforeMutation(t *testing.T) {
 	testutil.ErrorIf(t, cmd != nil, "invalid tags should not start a mutation")
 	testutil.ErrorIf(t, editor.err == nil, "expected validation error")
 }
+
+func TestTagEditorAllowsOnlyOneSaveInFlight(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, models.Ingredient{
+		Name: "Single Save Tonic", Category: models.CategoryMixer, Unit: measurement.UnitMl,
+	})
+	editor := NewTagEditor(f.App, ingredient.EntityUID(), ingredient.Name, nil)
+	testutil.Ok(t, editor.field.SetValue("featured"))
+
+	_, first := editor.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	testutil.ErrorIf(t, first == nil, "first save should start a mutation")
+	testutil.IsTrue(t, editor.Saving())
+	_, duplicate := editor.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	testutil.ErrorIf(t, duplicate != nil, "duplicate save should not start another mutation")
+	_, typed := editor.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("changed")})
+	testutil.ErrorIf(t, typed != nil, "input should be ignored while saving")
+	testutil.Equals(t, editor.field.Value(), any("featured"))
+}

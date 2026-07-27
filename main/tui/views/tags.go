@@ -158,7 +158,14 @@ func tagOperationItems() []list.Item {
 
 func (m *Tags) Init() tea.Cmd { return nil }
 
-func (m *Tags) HandleBackKey() bool { return m.mode != tagsModeBrowsing }
+func (m *Tags) HandleBackKey() bool {
+	return m.mode != tagsModeBrowsing
+}
+
+func (m *Tags) TextInputActive() bool {
+	return m.mode == tagsModeEnteringValue ||
+		(m.mode == tagsModePickingType || m.mode == tagsModePickingEntity) && m.picker.SettingFilter()
+}
 
 func (m *Tags) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 	switch typed := msg.(type) {
@@ -185,6 +192,11 @@ func (m *Tags) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 		}
 		return m, nil
 	case tea.KeyMsg:
+		if (m.mode == tagsModePickingType || m.mode == tagsModePickingEntity) && m.picker.SettingFilter() {
+			var cmd tea.Cmd
+			m.picker, cmd = m.picker.Update(typed)
+			return m, cmd
+		}
 		if key.Matches(typed, m.keys.Back) && m.mode != tagsModeBrowsing {
 			m.back()
 			return m, nil
