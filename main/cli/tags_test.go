@@ -21,14 +21,59 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	tuiapp "github.com/TheFellow/go-modular-monolith/main/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
 	"github.com/urfave/cli/v3"
 )
+
+//nolint:paralleltest // the CLI fixture intentionally models sequential process lifecycles.
+func TestCLIMutationIsVisibleThroughRootTUIWorkflow(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "cross-surface.db")
+	targets := seedCLITagTargets(t, dbPath)
+	cliFixture := newCLIE2E(dbPath)
+	result := cliFixture.Run("tags", "add", targets.ingredient, "surface=cli")
+	testutil.Ok(t, result.Err)
+	testutil.Equals(t, result.ExitCode, 0)
+	testutil.Equals(t, result.Stderr, "")
+	testutil.StringContains(t, result.Stdout, "surface=cli")
+
+	ctx := authn.ToContext(context.Background(), authn.Owner())
+	ctx = pkglog.ToContext(ctx, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s, err := store.Open(ctx, dbPath)
+	testutil.Ok(t, err)
+	application := app.New(ctx, app.Config{Store: s})
+	t.Cleanup(func() { testutil.Ok(t, application.Close()) })
+	session := app.NewSession(ctx, application)
+	driver := tuitest.NewDriver(t, tuiapp.NewApp(session))
+	driver.Resize(100, 40)
+	driver.Press("7")
+	for range 3 {
+		driver.Press("down")
+	}
+	driver.Press("enter")
+	driver.Press("surface=cli")
+	driver.Press("ctrl+s")
+	driver.RequireText("Show exact tag", targets.ingredient, "surface=cli")
+	driver.RequireViewport(100, 40)
+	driver.Press("esc")
+	driver.RequireText("Inspect entity tags")
+}
+
+//nolint:paralleltest // the CLI fixture intentionally models sequential process lifecycles.
+func TestCLIE2EFixtureCapturesExitAndSeparateOutputStreams(t *testing.T) {
+	fixture := newCLIE2E(filepath.Join(t.TempDir(), "cli-errors.db"))
+	result := fixture.As("bartender").Run("tags", "summary")
+	testutil.ErrorIf(t, result.Err == nil, "expected permission failure")
+	testutil.Equals(t, result.ExitCode, errors.ExitPermission)
+	testutil.Equals(t, result.Stdout, "")
+	testutil.StringContains(t, result.Stderr, "authz denied")
+}
 
 type cliTagTargets struct {
 	drink        string
@@ -188,28 +233,8 @@ func TestTagsCLIWorkflowsPersistAndAuthorize(t *testing.T) {
 }
 
 func runTagsCLI(dbPath, actor string, args ...string) (string, error) {
-	c, err := NewCLI()
-	if err != nil {
-		return "", err
-	}
-	c.dbPath = dbPath
-	c.actor = actor
-	c.logLevel = "error"
-	cmd := c.Command()
-	var output bytes.Buffer
-	cmd.Writer, cmd.ErrWriter = &output, &output
-	leaf := cmd
-	for _, name := range args {
-		if len(name) > 0 && name[0] == '-' {
-			continue
-		}
-		if child := leaf.Command(name); child != nil {
-			leaf = child
-			leaf.Writer, leaf.ErrWriter = &output, &output
-		}
-	}
-	err = cmd.Run(context.Background(), append([]string{"mixology"}, args...))
-	return output.String(), err
+	result := newCLIE2E(dbPath).As(actor).Run(args...)
+	return result.Stdout + result.Stderr, result.Err
 }
 
 func assertCLIExitCode(t *testing.T, err error, want int) {
