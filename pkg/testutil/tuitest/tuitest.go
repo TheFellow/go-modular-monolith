@@ -176,9 +176,11 @@ type listViewKeys interface {
 		Create      key.Binding
 		Edit        key.Binding
 		Delete      key.Binding
+		Tags        key.Binding
 		Adjust      key.Binding
 		Set         key.Binding
 		Publish     key.Binding
+		Draft       key.Binding
 		Complete    key.Binding
 		CancelOrder key.Binding
 	}
@@ -209,9 +211,11 @@ func DefaultListViewKeys[T listViewKeys]() T {
 		Create:      key.NewBinding(key.WithKeys("c")),
 		Edit:        key.NewBinding(key.WithKeys("e")),
 		Delete:      key.NewBinding(key.WithKeys("d")),
+		Tags:        key.NewBinding(key.WithKeys("t")),
 		Adjust:      key.NewBinding(key.WithKeys("a")),
 		Set:         key.NewBinding(key.WithKeys("s")),
 		Publish:     key.NewBinding(key.WithKeys("p")),
+		Draft:       key.NewBinding(key.WithKeys("u")),
 		Complete:    key.NewBinding(key.WithKeys("o")),
 		CancelOrder: key.NewBinding(key.WithKeys("x")),
 	}
