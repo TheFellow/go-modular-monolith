@@ -34,6 +34,7 @@ const (
 	listModeBrowsing listMode = iota
 	listModeAdjusting
 	listModeSetting
+	listModeTagging
 )
 
 // ListViewModel renders the inventory list and detail panes.
@@ -51,6 +52,7 @@ type ListViewModel struct {
 	mode        listMode
 	adjust      *AdjustInventoryVM
 	set         *SetInventoryVM
+	tags        *components.TagEditor
 	spinner     components.Spinner
 	loading     bool
 	err         error
@@ -102,6 +104,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			m.adjust.SetWidth(m.detailWidth)
 		case listModeSetting:
 			m.set.SetWidth(m.detailWidth)
+		case listModeTagging:
+			m.tags.SetWidth(m.width)
 		}
 		return m, nil
 	case InventoryAdjustedMsg:
@@ -115,6 +119,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.set = nil
 		m.loading = true
 		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
+	case components.TagsSavedMsg:
+		m.mode, m.tags, m.loading, m.err = listModeBrowsing, nil, true, nil
 		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
 	case tea.KeyMsg:
 		switch m.mode {
@@ -131,6 +138,14 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 				m.set = nil
 				return m, nil
 			}
+		case listModeTagging:
+			if key.Matches(msg, m.keys.Back) {
+				m.mode, m.tags = listModeBrowsing, nil
+				return m, nil
+			}
+		}
+		if m.mode == listModeTagging {
+			break
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
@@ -141,6 +156,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.startAdjust()
 		case key.Matches(msg, m.keys.Set):
 			return m, m.startSet()
+		case key.Matches(msg, m.keys.Tags):
+			return m, m.startTags()
 		}
 	case InventoryLoadedMsg:
 		m.loading = false
@@ -162,6 +179,10 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		var cmd tea.Cmd
 		m.set, cmd = m.set.Update(msg)
 		return m, cmd
+	case listModeTagging:
+		var cmd tea.Cmd
+		m.tags, cmd = m.tags.Update(msg)
+		return m, cmd
 	}
 
 	if m.loading {
@@ -180,6 +201,9 @@ func (m *ListViewModel) View() string {
 	if m.loading {
 		return m.renderLoading()
 	}
+	if m.mode == listModeTagging {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.tags.View())
+	}
 
 	listView := m.table.View()
 	if m.err != nil {
@@ -190,6 +214,7 @@ func (m *ListViewModel) View() string {
 	detailView := m.detail.View()
 	switch m.mode {
 	case listModeBrowsing:
+	case listModeTagging:
 	case listModeAdjusting:
 		detailView = m.adjust.View()
 	case listModeSetting:
@@ -202,16 +227,20 @@ func (m *ListViewModel) View() string {
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
 	switch m.mode {
+	case listModeTagging:
+		return []key.Binding{m.formKeys.Submit, m.keys.Back}
 	case listModeAdjusting, listModeSetting:
 		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
-		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Adjust, m.keys.Set, m.keys.Refresh, m.keys.Back}
+		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Adjust, m.keys.Set, m.keys.Tags, m.keys.Refresh, m.keys.Back}
 	}
 	return nil
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
 	switch m.mode {
+	case listModeTagging:
+		return [][]key.Binding{{m.formKeys.Submit, m.keys.Back}}
 	case listModeAdjusting, listModeSetting:
 		return [][]key.Binding{
 			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
@@ -220,7 +249,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 	case listModeBrowsing:
 		return [][]key.Binding{
 			{m.keys.Up, m.keys.Down, m.keys.Enter},
-			{m.keys.Adjust, m.keys.Set},
+			{m.keys.Adjust, m.keys.Set, m.keys.Tags},
 			{m.keys.Refresh, m.keys.Back},
 		}
 	}
@@ -325,6 +354,17 @@ func (m *ListViewModel) selectedRow() (InventoryRow, bool) {
 		return InventoryRow{}, false
 	}
 	return m.rows[idx], true
+}
+
+func (m *ListViewModel) startTags() tea.Cmd {
+	row, ok := m.selectedRow()
+	if !ok {
+		return nil
+	}
+	m.mode = listModeTagging
+	m.tags = components.NewTagEditor(m.app, row.Inventory.EntityUID(), row.Ingredient.Name, row.Inventory.Tags)
+	m.tags.SetWidth(m.width)
+	return m.tags.Init()
 }
 
 func (m *ListViewModel) renderLoading() string {

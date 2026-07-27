@@ -33,6 +33,7 @@ const (
 	listModeBrowsing listMode = iota
 	listModeCreating
 	listModeEditing
+	listModeTagging
 	listModeConfirmingDelete
 )
 
@@ -52,6 +53,7 @@ type ListViewModel struct {
 	mode    listMode
 	create  *CreateIngredientVM
 	edit    *EditIngredientVM
+	tags    *components.TagEditor
 	dialog  *dialog.ConfirmDialog
 	spinner components.Spinner
 	loading bool
@@ -114,6 +116,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			m.create.SetWidth(m.detailWidth)
 		case listModeEditing:
 			m.edit.SetWidth(m.detailWidth)
+		case listModeTagging:
+			m.tags.SetWidth(m.width)
 		case listModeConfirmingDelete:
 			m.dialog.SetWidth(m.width)
 		}
@@ -129,6 +133,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.edit = nil
 		m.loading = true
 		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
+	case components.TagsSavedMsg:
+		m.mode, m.tags, m.loading, m.err = listModeBrowsing, nil, true, nil
 		return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
 	case IngredientDeletedMsg:
 		m.mode = listModeBrowsing
@@ -174,6 +181,14 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 				m.edit = nil
 				return m, nil
 			}
+		case listModeTagging:
+			if key.Matches(msg, m.keys.Back) {
+				m.mode, m.tags = listModeBrowsing, nil
+				return m, nil
+			}
+		}
+		if m.mode == listModeTagging {
+			break
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
@@ -186,6 +201,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.startEdit()
 		case key.Matches(msg, m.keys.Delete):
 			return m, m.startDelete()
+		case key.Matches(msg, m.keys.Tags):
+			return m, m.startTags()
 		}
 	case IngredientsLoadedMsg:
 		m.loading = false
@@ -208,6 +225,10 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	case listModeEditing:
 		var cmd tea.Cmd
 		m.edit, cmd = m.edit.Update(msg)
+		return m, cmd
+	case listModeTagging:
+		var cmd tea.Cmd
+		m.tags, cmd = m.tags.Update(msg)
 		return m, cmd
 	case listModeCreating:
 		var cmd tea.Cmd
@@ -239,6 +260,9 @@ func (m *ListViewModel) View() string {
 		}
 		return dialogView
 	}
+	if m.mode == listModeTagging {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.tags.View())
+	}
 
 	listView := m.list.View()
 	if m.err != nil {
@@ -249,6 +273,7 @@ func (m *ListViewModel) View() string {
 	detailView := m.detail.View()
 	switch m.mode {
 	case listModeBrowsing, listModeConfirmingDelete:
+	case listModeTagging:
 	case listModeCreating:
 		detailView = m.create.View()
 	case listModeEditing:
@@ -263,13 +288,15 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	switch m.mode {
 	case listModeConfirmingDelete:
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
+	case listModeTagging:
+		return []key.Binding{m.formKeys.Submit, m.keys.Back}
 	case listModeCreating, listModeEditing:
 		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
 		return []key.Binding{
 			m.keys.Up, m.keys.Down,
 			m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
-			m.keys.Create, m.keys.Edit, m.keys.Delete,
+			m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags,
 			m.keys.Refresh, m.keys.Back,
 		}
 	}
@@ -283,6 +310,8 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.dialogKeys.Confirm, m.keys.Back},
 			{m.dialogKeys.Switch},
 		}
+	case listModeTagging:
+		return [][]key.Binding{{m.formKeys.Submit, m.keys.Back}}
 	case listModeCreating, listModeEditing:
 		return [][]key.Binding{
 			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
@@ -292,7 +321,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 		return [][]key.Binding{
 			{m.keys.Up, m.keys.Down, m.keys.Enter},
 			{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
-			{m.keys.Create, m.keys.Edit, m.keys.Delete},
+			{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags},
 			{m.keys.Refresh, m.keys.Back},
 		}
 	}
@@ -402,6 +431,17 @@ func (m *ListViewModel) selectedIngredient() *models.Ingredient {
 	}
 	ingredient := item.ingredient
 	return &ingredient
+}
+
+func (m *ListViewModel) startTags() tea.Cmd {
+	ingredient := m.selectedIngredient()
+	if ingredient == nil {
+		return nil
+	}
+	m.mode = listModeTagging
+	m.tags = components.NewTagEditor(m.app, ingredient.EntityUID(), ingredient.Name, ingredient.Tags)
+	m.tags.SetWidth(m.width)
+	return m.tags.Init()
 }
 
 func (m *ListViewModel) renderLoading() string {

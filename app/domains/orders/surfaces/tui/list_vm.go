@@ -30,13 +30,14 @@ const (
 	listModeBrowsing listMode = iota
 	listModeConfirmingComplete
 	listModeConfirmingCancel
+	listModeTagging
 )
 
 func (m listMode) isConfirming() bool {
 	switch m {
 	case listModeConfirmingComplete, listModeConfirmingCancel:
 		return true
-	case listModeBrowsing:
+	case listModeBrowsing, listModeTagging:
 		return false
 	}
 	return false
@@ -55,6 +56,7 @@ type ListViewModel struct {
 	detail  *DetailViewModel
 	mode    listMode
 	dialog  *dialog.ConfirmDialog
+	tags    *components.TagEditor
 	spinner components.Spinner
 	loading bool
 	err     error
@@ -111,6 +113,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.setSize(msg.Width, msg.Height)
 		if m.mode.isConfirming() {
 			m.dialog.SetWidth(m.width)
+		} else if m.mode == listModeTagging {
+			m.tags.SetWidth(m.width)
 		}
 		return m, nil
 	case OrderCompletedMsg:
@@ -126,6 +130,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.cancelTarget = nil
 		m.loading = true
 		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadOrders())
+	case components.TagsSavedMsg:
+		m.mode, m.tags, m.loading, m.err = listModeBrowsing, nil, true, nil
 		return m, tea.Batch(m.spinner.Init(), m.loadOrders())
 	case CompleteErrorMsg:
 		m.mode = listModeBrowsing
@@ -162,7 +169,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.performComplete()
 		case listModeConfirmingCancel:
 			return m, m.performCancel()
-		case listModeBrowsing:
+		case listModeBrowsing, listModeTagging:
 			panic(fmt.Sprintf("confirm message received in %v mode", m.mode))
 		}
 		return m, nil
@@ -173,6 +180,13 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.cancelTarget = nil
 		return m, nil
 	case tea.KeyMsg:
+		if m.mode == listModeTagging {
+			if key.Matches(msg, m.keys.Back) {
+				m.mode, m.tags = listModeBrowsing, nil
+				return m, nil
+			}
+			break
+		}
 		if m.mode.isConfirming() {
 			break
 		}
@@ -185,6 +199,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.startComplete()
 		case key.Matches(msg, m.keys.CancelOrder):
 			return m, m.startCancel()
+		case key.Matches(msg, m.keys.Tags):
+			return m, m.startTags()
 		}
 	case OrdersLoadedMsg:
 		m.loading = false
@@ -206,6 +222,11 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	if m.mode.isConfirming() {
 		var cmd tea.Cmd
 		m.dialog, cmd = m.dialog.Update(msg)
+		return m, cmd
+	}
+	if m.mode == listModeTagging {
+		var cmd tea.Cmd
+		m.tags, cmd = m.tags.Update(msg)
 		return m, cmd
 	}
 
@@ -233,6 +254,9 @@ func (m *ListViewModel) View() string {
 		}
 		return dialogView
 	}
+	if m.mode == listModeTagging {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.tags.View())
+	}
 
 	listView := m.list.View()
 	if m.err != nil {
@@ -250,10 +274,13 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	if m.mode.isConfirming() {
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
 	}
+	if m.mode == listModeTagging {
+		return []key.Binding{tuikeys.App.Submit, m.keys.Back}
+	}
 	return []key.Binding{
 		m.keys.Up, m.keys.Down,
 		m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
-		m.keys.Complete, m.keys.CancelOrder,
+		m.keys.Complete, m.keys.CancelOrder, m.keys.Tags,
 		m.keys.Refresh, m.keys.Back,
 	}
 }
@@ -265,10 +292,13 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.dialogKeys.Switch},
 		}
 	}
+	if m.mode == listModeTagging {
+		return [][]key.Binding{{tuikeys.App.Submit, m.keys.Back}}
+	}
 	return [][]key.Binding{
 		{m.keys.Up, m.keys.Down, m.keys.Enter},
 		{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
-		{m.keys.Complete, m.keys.CancelOrder},
+		{m.keys.Complete, m.keys.CancelOrder, m.keys.Tags},
 		{m.keys.Refresh, m.keys.Back},
 	}
 }
@@ -405,6 +435,17 @@ func (m *ListViewModel) selectedOrder() *ordersmodels.Order {
 	}
 	order := item.order
 	return &order
+}
+
+func (m *ListViewModel) startTags() tea.Cmd {
+	order := m.selectedOrder()
+	if order == nil {
+		return nil
+	}
+	m.mode = listModeTagging
+	m.tags = components.NewTagEditor(m.app, order.EntityUID(), order.ID.String(), order.Tags)
+	m.tags.SetWidth(m.width)
+	return m.tags.Init()
 }
 
 func (m *ListViewModel) renderLoading() string {

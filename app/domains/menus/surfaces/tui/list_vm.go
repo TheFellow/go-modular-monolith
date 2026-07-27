@@ -29,6 +29,7 @@ const (
 	listModeBrowsing listMode = iota
 	listModeCreating
 	listModeRenaming
+	listModeTagging
 	listModeConfirmingDelete
 	listModeConfirmingPublish
 	listModeConfirmingDraft
@@ -38,7 +39,7 @@ func (m listMode) isConfirming() bool {
 	switch m {
 	case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
 		return true
-	case listModeBrowsing, listModeCreating, listModeRenaming:
+	case listModeBrowsing, listModeCreating, listModeRenaming, listModeTagging:
 		return false
 	}
 	return false
@@ -60,6 +61,7 @@ type ListViewModel struct {
 	mode    listMode
 	create  *CreateMenuVM
 	rename  *RenameMenuVM
+	tags    *components.TagEditor
 	dialog  *dialog.ConfirmDialog
 	spinner components.Spinner
 	loading bool
@@ -124,6 +126,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			m.create.SetWidth(m.detailWidth)
 		case listModeRenaming:
 			m.rename.SetWidth(m.detailWidth)
+		case listModeTagging:
+			m.tags.SetWidth(m.width)
 		case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
 			m.dialog.SetWidth(m.width)
 		}
@@ -139,6 +143,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.rename = nil
 		m.loading = true
 		m.err = nil
+		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
+	case components.TagsSavedMsg:
+		m.mode, m.tags, m.loading, m.err = listModeBrowsing, nil, true, nil
 		return m, tea.Batch(m.spinner.Init(), m.loadMenus())
 	case MenuDeletedMsg:
 		m.mode = listModeBrowsing
@@ -214,7 +221,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.performPublish()
 		case listModeConfirmingDraft:
 			return m, m.performDraft()
-		case listModeBrowsing, listModeCreating, listModeRenaming:
+		case listModeBrowsing, listModeCreating, listModeRenaming, listModeTagging:
 			panic(fmt.Sprintf("confirm message received in %v mode", m.mode))
 		}
 		return m, nil
@@ -241,6 +248,14 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 				m.rename = nil
 				return m, nil
 			}
+		case listModeTagging:
+			if key.Matches(msg, m.keys.Back) {
+				m.mode, m.tags = listModeBrowsing, nil
+				return m, nil
+			}
+		}
+		if m.mode == listModeTagging {
+			break
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
@@ -257,6 +272,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.startPublish()
 		case key.Matches(msg, m.keys.Draft):
 			return m, m.startDraft()
+		case key.Matches(msg, m.keys.Tags):
+			return m, m.startTags()
 		}
 	case MenusLoadedMsg:
 		m.loading = false
@@ -284,6 +301,10 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		var cmd tea.Cmd
 		m.create, cmd = m.create.Update(msg)
 		return m, cmd
+	case listModeTagging:
+		var cmd tea.Cmd
+		m.tags, cmd = m.tags.Update(msg)
+		return m, cmd
 	}
 
 	if m.loading {
@@ -310,6 +331,9 @@ func (m *ListViewModel) View() string {
 		}
 		return dialogView
 	}
+	if m.mode == listModeTagging {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.tags.View())
+	}
 
 	listView := m.list.View()
 	if m.err != nil {
@@ -320,6 +344,7 @@ func (m *ListViewModel) View() string {
 	detailView := m.detail.View()
 	switch m.mode {
 	case listModeBrowsing, listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
+	case listModeTagging:
 	case listModeCreating:
 		detailView = m.create.View()
 	case listModeRenaming:
@@ -334,13 +359,15 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	switch m.mode {
 	case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft:
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
+	case listModeTagging:
+		return []key.Binding{m.formKeys.Submit, m.keys.Back}
 	case listModeCreating, listModeRenaming:
 		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
 		return []key.Binding{
 			m.keys.Up, m.keys.Down,
 			m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
-			m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Draft,
+			m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Draft, m.keys.Tags,
 			m.keys.Refresh, m.keys.Back,
 		}
 	}
@@ -354,6 +381,8 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.dialogKeys.Confirm, m.keys.Back},
 			{m.dialogKeys.Switch},
 		}
+	case listModeTagging:
+		return [][]key.Binding{{m.formKeys.Submit, m.keys.Back}}
 	case listModeCreating, listModeRenaming:
 		return [][]key.Binding{
 			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
@@ -363,7 +392,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 		return [][]key.Binding{
 			{m.keys.Up, m.keys.Down, m.keys.Enter},
 			{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
-			{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Draft},
+			{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Draft, m.keys.Tags},
 			{m.keys.Refresh, m.keys.Back},
 		}
 	}
@@ -566,6 +595,17 @@ func (m *ListViewModel) selectedMenu() *menusmodels.Menu {
 	}
 	menu := item.menu
 	return &menu
+}
+
+func (m *ListViewModel) startTags() tea.Cmd {
+	menu := m.selectedMenu()
+	if menu == nil {
+		return nil
+	}
+	m.mode = listModeTagging
+	m.tags = components.NewTagEditor(m.app, menu.EntityUID(), menu.Name, menu.Tags)
+	m.tags.SetWidth(m.width)
+	return m.tags.Init()
 }
 
 func (m *ListViewModel) renderLoading() string {
