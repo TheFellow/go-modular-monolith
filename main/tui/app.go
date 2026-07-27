@@ -84,7 +84,11 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if key.Matches(msg, a.keys.Help) {
 			a.showHelp = !a.showHelp
-			return a, a.syncWindowCmd()
+			vm, cmd := a.currentViewModel().Update(tea.WindowSizeMsg{
+				Width: a.width, Height: a.availableHeight(),
+			})
+			a.views[a.currentView] = vm
+			return a, cmd
 		}
 		if key.Matches(msg, a.keys.Back) {
 			if handler, ok := a.currentViewModel().(views.BackKeyHandler); ok && handler.HandleBackKey() {
