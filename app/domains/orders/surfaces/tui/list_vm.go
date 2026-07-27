@@ -445,7 +445,7 @@ func (m *ListViewModel) selectedOrder() *ordersmodels.Order {
 	if !ok {
 		return nil
 	}
-	order := item.order
+	order := item.Value
 	return &order
 }
 
@@ -492,7 +492,7 @@ func (m *ListViewModel) syncDetail() {
 		m.detail.SetOrder(optional.None[ordersmodels.Order]())
 		return
 	}
-	m.detail.SetOrder(optional.Some(item.order))
+	m.detail.SetOrder(optional.Some(item.Value))
 }
 
 func (m *ListViewModel) menuName(menuID entity.MenuID) (string, error) {

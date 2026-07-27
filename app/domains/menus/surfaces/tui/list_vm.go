@@ -605,7 +605,7 @@ func (m *ListViewModel) selectedMenu() *menusmodels.Menu {
 	if !ok {
 		return nil
 	}
-	menu := item.menu
+	menu := item.Value
 	return &menu
 }
 
@@ -652,7 +652,7 @@ func (m *ListViewModel) syncDetail() {
 		m.detail.SetMenu(optional.None[menusmodels.Menu]())
 		return
 	}
-	m.detail.SetMenu(optional.Some(item.menu))
+	m.detail.SetMenu(optional.Some(item.Value))
 }
 
 func (m *ListViewModel) context() *middleware.Context {

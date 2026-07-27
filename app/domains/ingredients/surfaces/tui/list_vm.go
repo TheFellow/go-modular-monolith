@@ -221,7 +221,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.err = msg.Err
 		items := make([]list.Item, 0, len(msg.Ingredients))
 		for _, ingredient := range msg.Ingredients {
-			items = append(items, ingredientItem{ingredient: ingredient})
+			items = append(items, newIngredientItem(ingredient))
 		}
 		m.list.SetItems(items)
 		m.syncDetail()
@@ -441,7 +441,7 @@ func (m *ListViewModel) selectedIngredient() *models.Ingredient {
 	if !ok {
 		return nil
 	}
-	ingredient := item.ingredient
+	ingredient := item.Value
 	return &ingredient
 }
 
@@ -488,7 +488,7 @@ func (m *ListViewModel) syncDetail() {
 		m.detail.SetIngredient(optional.None[models.Ingredient]())
 		return
 	}
-	m.detail.SetIngredient(optional.Some(item.ingredient))
+	m.detail.SetIngredient(optional.Some(item.Value))
 }
 
 func countDrinksUsingIngredient(drinks []*drinksmodels.Drink, ingredientID entity.IngredientID) int {

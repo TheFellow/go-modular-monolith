@@ -123,7 +123,7 @@ func (m *ListViewModel) syncDetail() {
 		m.detail.SetEntry(optional.None[auditmodels.AuditEntry]())
 		return
 	}
-	m.detail.SetEntry(optional.Some(item.entry))
+	m.detail.SetEntry(optional.Some(item.Value))
 }
 
 func (m *ListViewModel) context() *middleware.Context {
