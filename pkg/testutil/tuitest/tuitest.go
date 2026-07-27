@@ -24,6 +24,7 @@ type Driver struct {
 	history []string
 	width   int
 	height  int
+	quit    bool
 }
 
 const commandDrainLimit = 10_000
@@ -41,6 +42,9 @@ func NewDriver(t testing.TB, model tea.Model) *Driver {
 // Send routes one message through the root model and drains all resulting work.
 func (d *Driver) Send(msg tea.Msg) {
 	d.t.Helper()
+	if d.quit {
+		d.t.Fatal("cannot send input after the Bubble Tea program has quit")
+	}
 	remaining := commandDrainLimit
 	d.send(msg, &remaining)
 }
@@ -89,6 +93,22 @@ func (d *Driver) Resize(width, height int) {
 func (d *Driver) Model() tea.Model { return d.model }
 func (d *Driver) Screen() string   { return d.screen }
 
+// RequireRunning asserts that the program has not emitted tea.QuitMsg.
+func (d *Driver) RequireRunning() {
+	d.t.Helper()
+	if d.quit {
+		d.t.Fatal("Bubble Tea program unexpectedly quit")
+	}
+}
+
+// RequireQuit asserts that the program emitted tea.QuitMsg.
+func (d *Driver) RequireQuit() {
+	d.t.Helper()
+	if !d.quit {
+		d.t.Fatal("Bubble Tea program is still running")
+	}
+}
+
 // History returns every rendered frame, including intermediate command frames.
 func (d *Driver) History() []string { return append([]string(nil), d.history...) }
 
@@ -97,6 +117,16 @@ func (d *Driver) RequireText(values ...string) {
 	for _, value := range values {
 		if !strings.Contains(d.screen, value) {
 			d.t.Fatalf("screen does not contain %q:\n%s", value, d.screen)
+		}
+	}
+}
+
+// RequireNoText asserts that none of the values are present in the current frame.
+func (d *Driver) RequireNoText(values ...string) {
+	d.t.Helper()
+	for _, value := range values {
+		if strings.Contains(d.screen, value) {
+			d.t.Fatalf("screen unexpectedly contains %q:\n%s", value, d.screen)
 		}
 	}
 }
@@ -141,6 +171,7 @@ func (d *Driver) drain(cmd tea.Cmd, remaining *int) {
 		return
 	}
 	if _, ok := msg.(tea.QuitMsg); ok {
+		d.quit = true
 		return
 	}
 	// Spinner ticks deliberately schedule themselves forever. One frame is

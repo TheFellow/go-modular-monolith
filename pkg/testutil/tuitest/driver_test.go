@@ -34,6 +34,17 @@ func (m sizedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 func (m sizedModel) View() string { return fmt.Sprintf("%dx%d", m.width, m.height) }
 
+type quittingModel struct{}
+
+func (quittingModel) Init() tea.Cmd { return nil }
+func (quittingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if _, ok := msg.(tea.KeyMsg); ok {
+		return quittingModel{}, tea.Quit
+	}
+	return quittingModel{}, nil
+}
+func (quittingModel) View() string { return "running" }
+
 func TestDriverRendersInitialCommandAndInputFrames(t *testing.T) {
 	t.Parallel()
 	driver := NewDriver(t, lifecycleModel{})
@@ -50,4 +61,12 @@ func TestDriverResizeRecordsBoundedFrame(t *testing.T) {
 	driver.RequireText("80x24")
 	driver.RequireViewport(80, 24)
 	testutil.Equals(t, driver.History(), []string{"0x0", "80x24"})
+}
+
+func TestDriverObservesProgramTermination(t *testing.T) {
+	t.Parallel()
+	driver := NewDriver(t, quittingModel{})
+	driver.RequireRunning()
+	driver.Press("q")
+	driver.RequireQuit()
 }
