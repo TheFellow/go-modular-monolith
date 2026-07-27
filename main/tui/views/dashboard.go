@@ -145,8 +145,7 @@ func (d *Dashboard) View() string {
 	cardWidth, columnCount := d.layoutConfig()
 	content := d.renderCards(cards, cardWidth, columnCount)
 
-	activity := d.renderRecentActivity()
-	body := lipgloss.JoinVertical(
+	fixed := lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
 		subtitle,
@@ -154,8 +153,9 @@ func (d *Dashboard) View() string {
 		content,
 		"",
 		d.styles.Subtitle.Render("Recent Activity"),
-		activity,
 	)
+	activity := d.renderRecentActivity(d.recentActivityLimit(fixed))
+	body := lipgloss.JoinVertical(lipgloss.Left, fixed, activity)
 	if d.width > 0 && d.height > 0 {
 		return lipgloss.Place(d.width, d.height, lipgloss.Center, lipgloss.Center, body)
 	}
@@ -363,16 +363,27 @@ func (d *Dashboard) auditCountLabel(data *DashboardData) string {
 	return strconv.Itoa(data.AuditCount)
 }
 
-func (d *Dashboard) renderRecentActivity() string {
+func (d *Dashboard) renderRecentActivity(limit int) string {
+	if limit <= 0 {
+		return ""
+	}
 	if d.data == nil || len(d.data.RecentActivity) == 0 {
 		return d.styles.Subtitle.Render("No recent activity")
 	}
 
-	rows := make([]string, 0, len(d.data.RecentActivity))
-	for _, entry := range d.data.RecentActivity {
+	limit = min(limit, len(d.data.RecentActivity))
+	rows := make([]string, 0, limit)
+	for _, entry := range d.data.RecentActivity[:limit] {
 		rows = append(rows, fmt.Sprintf("%s  %s  %s", entry.Timestamp, entry.Actor, entry.Action))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, rows...)
+}
+
+func (d *Dashboard) recentActivityLimit(fixed string) int {
+	if d.height <= 0 {
+		return dashboardRecentMax
+	}
+	return min(max(d.height-lipgloss.Height(fixed), 0), dashboardRecentMax)
 }
 
 func (d *Dashboard) layoutConfig() (int, int) {
