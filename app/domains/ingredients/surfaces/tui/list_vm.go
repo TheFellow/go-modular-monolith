@@ -22,7 +22,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/paginator"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -48,39 +47,22 @@ type ListViewModel struct {
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
 
-	list    list.Model
-	detail  *DetailViewModel
-	mode    listMode
-	create  *CreateIngredientVM
-	edit    *EditIngredientVM
-	tags    *components.TagEditor
-	dialog  *dialog.ConfirmDialog
-	spinner components.Spinner
-	loading bool
-	err     error
+	shell  *components.ListDetail
+	detail *DetailViewModel
+	mode   listMode
+	create *CreateIngredientVM
+	edit   *EditIngredientVM
+	tags   *components.TagEditor
+	dialog *dialog.ConfirmDialog
 
 	deleteTarget *models.Ingredient
 
 	width       int
 	height      int
-	listWidth   int
 	detailWidth int
 }
 
 func NewListViewModel(app *app.Session) *ListViewModel {
-	delegate := list.NewDefaultDelegate()
-	delegate.ShowDescription = true
-	delegate.Styles.SelectedTitle = tuistyles.App.ListView.Selected
-	delegate.Styles.SelectedDesc = tuistyles.App.ListView.Selected
-
-	l := list.New([]list.Item{}, delegate, 0, 0)
-	l.Title = "Ingredients"
-	l.SetShowHelp(false)
-	l.SetShowStatusBar(false)
-	l.SetShowPagination(true)
-	l.Paginator.Type = paginator.Arabic
-	l.SetFilteringEnabled(true)
-
 	vm := &ListViewModel{
 		app:          app,
 		styles:       tuistyles.App.ListView,
@@ -89,23 +71,20 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		formKeys:     tuikeys.App.Form,
 		dialogStyles: tuistyles.App.Dialog,
 		dialogKeys:   tuikeys.App.Dialog,
-		list:         l,
+		shell:        components.NewListDetail("Ingredients", "Loading ingredients...", tuistyles.App.ListView),
 		detail:       NewDetailViewModel(tuistyles.App.ListView),
-		loading:      true,
 	}
-	vm.spinner = components.NewSpinner("Loading ingredients...", vm.styles.Subtitle)
 	return vm
 }
 
 func (m *ListViewModel) Init() tea.Cmd {
-	m.loading = true
-	return tea.Batch(m.spinner.Init(), m.loadIngredients())
+	return tea.Batch(m.shell.BeginLoading(), m.loadIngredients())
 }
 
 func (m *ListViewModel) Interaction() views.Interaction {
 	return views.Interaction{
-		HandlesBack:  m.mode != listModeBrowsing || m.list.SettingFilter(),
-		CapturesText: m.list.SettingFilter() || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging,
+		HandlesBack:  m.mode != listModeBrowsing || m.shell.Filtering(),
+		CapturesText: m.shell.Filtering() || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging,
 	}
 }
 
@@ -128,33 +107,27 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 	case IngredientCreatedMsg:
 		m.mode = listModeBrowsing
 		m.create = nil
-		m.loading = true
-		m.err = nil
-		return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
+		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients())
 	case IngredientUpdatedMsg:
 		m.mode = listModeBrowsing
 		m.edit = nil
-		m.loading = true
-		m.err = nil
-		return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
+		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients())
 	case components.TagsSavedMsg:
 		if m.mode != listModeTagging || m.tags == nil || !m.tags.Owns(msg.Target) {
 			return m, nil
 		}
-		m.mode, m.tags, m.loading, m.err = listModeBrowsing, nil, true, nil
-		return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
+		m.mode, m.tags = listModeBrowsing, nil
+		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients())
 	case IngredientDeletedMsg:
 		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.deleteTarget = nil
-		m.loading = true
-		m.err = nil
-		return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
+		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients())
 	case DeleteErrorMsg:
 		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.deleteTarget = nil
-		m.err = msg.Err
+		m.shell.SetError(msg.Err)
 		return m, nil
 	case showDeleteDialogMsg:
 		m.mode = listModeConfirmingDelete
@@ -172,7 +145,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.deleteTarget = nil
 		return m, nil
 	case tea.KeyMsg:
-		if m.mode == listModeBrowsing && m.list.SettingFilter() {
+		if m.mode == listModeBrowsing && m.shell.Filtering() {
 			break
 		}
 		switch m.mode {
@@ -204,9 +177,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
-			m.loading = true
-			m.err = nil
-			return m, tea.Batch(m.spinner.Init(), m.loadIngredients())
+			return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients())
 		case key.Matches(msg, m.keys.Create):
 			return m, m.startCreate()
 		case key.Matches(msg, m.keys.Edit), key.Matches(msg, m.keys.Enter):
@@ -217,13 +188,11 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.startTags()
 		}
 	case IngredientsLoadedMsg:
-		m.loading = false
-		m.err = msg.Err
 		items := make([]list.Item, 0, len(msg.Ingredients))
 		for _, ingredient := range msg.Ingredients {
 			items = append(items, newIngredientItem(ingredient))
 		}
-		m.list.SetItems(items)
+		m.shell.SetResult(items, msg.Err)
 		m.syncDetail()
 		return m, nil
 	}
@@ -248,23 +217,12 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		return m, cmd
 	}
 
-	if m.loading {
-		var cmd tea.Cmd
-		m.spinner, cmd = m.spinner.Update(msg)
-		return m, cmd
-	}
-
-	var cmd tea.Cmd
-	m.list, cmd = m.list.Update(msg)
+	cmd := m.shell.Update(msg)
 	m.syncDetail()
 	return m, cmd
 }
 
 func (m *ListViewModel) View() string {
-	if m.loading {
-		return m.renderLoading()
-	}
-
 	if m.mode == listModeConfirmingDelete {
 		dialogView := m.dialog.View()
 		if m.width > 0 && m.height > 0 {
@@ -276,12 +234,6 @@ func (m *ListViewModel) View() string {
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.tags.View())
 	}
 
-	listView := m.list.View()
-	if m.err != nil {
-		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
-	}
-	listView = m.styles.ListPane.Width(views.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
-
 	detailView := m.detail.View()
 	switch m.mode {
 	case listModeBrowsing, listModeConfirmingDelete:
@@ -291,9 +243,7 @@ func (m *ListViewModel) View() string {
 	case listModeEditing:
 		detailView = m.edit.View()
 	}
-	detailView = m.styles.DetailPane.Width(views.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
-
-	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
+	return m.shell.View(detailView)
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
@@ -307,7 +257,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	case listModeBrowsing:
 		return []key.Binding{
 			m.keys.Up, m.keys.Down,
-			m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
+			m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage,
 			m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags,
 			m.keys.Refresh, m.keys.Back,
 		}
@@ -332,7 +282,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 	case listModeBrowsing:
 		return [][]key.Binding{
 			{m.keys.Up, m.keys.Down, m.keys.Enter},
-			{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
+			{m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage},
 			{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags},
 			{m.keys.Refresh, m.keys.Back},
 		}
@@ -437,7 +387,7 @@ func (m *ListViewModel) context() *middleware.Context {
 }
 
 func (m *ListViewModel) selectedIngredient() *models.Ingredient {
-	item, ok := m.list.SelectedItem().(ingredientItem)
+	item, ok := m.shell.SelectedItem().(ingredientItem)
 	if !ok {
 		return nil
 	}
@@ -456,14 +406,6 @@ func (m *ListViewModel) startTags() tea.Cmd {
 	return m.tags.Init()
 }
 
-func (m *ListViewModel) renderLoading() string {
-	content := m.spinner.View()
-	if m.width <= 0 || m.height <= 0 {
-		return content
-	}
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
-}
-
 func (m *ListViewModel) setSize(width, height int) {
 	m.width = width
 	m.height = height
@@ -472,18 +414,13 @@ func (m *ListViewModel) setSize(width, height int) {
 		return
 	}
 
-	listWidth, detailWidth := views.SplitListDetailWidths(width)
-	listWidth = views.PaneContentWidth(m.styles.ListPane, listWidth)
-	detailWidth = views.PaneContentWidth(m.styles.DetailPane, detailWidth)
-
-	m.list.SetSize(listWidth, height)
+	_, detailWidth := m.shell.SetSize(width, height)
 	m.detail.SetSize(detailWidth, height)
-	m.listWidth = listWidth
 	m.detailWidth = detailWidth
 }
 
 func (m *ListViewModel) syncDetail() {
-	item, ok := m.list.SelectedItem().(ingredientItem)
+	item, ok := m.shell.SelectedItem().(ingredientItem)
 	if !ok {
 		m.detail.SetIngredient(optional.None[models.Ingredient]())
 		return

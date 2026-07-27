@@ -61,6 +61,8 @@ func (m *ListDetail) SetResult(items []list.Item, err error) {
 	m.list.SetItems(items)
 }
 
+func (m *ListDetail) SetError(err error) { m.err = err }
+
 func (m *ListDetail) SetSize(width, height int) (listWidth, detailWidth int) {
 	m.width, m.height = width, height
 	if width <= 0 {
