@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	auditui "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/tui"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	drinksui "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/tui"
@@ -72,16 +73,14 @@ func TestE2E_DashboardAndTagResultTransitionsStayWithinViewport(t *testing.T) {
 	driver.RequireText("Mixology > Dashboard")
 }
 
-func TestTagHotkeyManagesEveryOperationalEntity(t *testing.T) {
-	t.Parallel()
+type tagViewScenario struct {
+	name, nav, title string
+	model            func(testing.TB, *testutil.Fixture) (views.ViewModel, cedar.EntityUID)
+}
 
-	type scenario struct {
-		name  string
-		model func(testing.TB, *testutil.Fixture) (views.ViewModel, cedar.EntityUID)
-	}
-
-	scenarios := []scenario{
-		{name: "drink", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+func tagViewScenarios() []tagViewScenario {
+	return []tagViewScenario{
+		{name: "drink", nav: "1", title: "Drinks", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
 			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
 			drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 				Name: "Daiquiri", Category: drinksmodels.DrinkCategoryCocktail,
@@ -89,11 +88,11 @@ func TestTagHotkeyManagesEveryOperationalEntity(t *testing.T) {
 			})
 			return tuitest.InitAndLoad(t, drinksui.NewListViewModel(f.App)), drink.EntityUID()
 		}},
-		{name: "ingredient", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+		{name: "ingredient", nav: "2", title: "Ingredients", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
 			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl})
 			return tuitest.InitAndLoad(t, ingredientsui.NewListViewModel(f.App)), ingredient.EntityUID()
 		}},
-		{name: "inventory", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+		{name: "inventory", nav: "3", title: "Inventory", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
 			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Gin", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 			item := testutil.SetInventory(t, f, inventorymodels.Update{
 				IngredientID: ingredient.ID, Amount: measurement.MustAmount(5, ingredient.Unit),
@@ -101,11 +100,11 @@ func TestTagHotkeyManagesEveryOperationalEntity(t *testing.T) {
 			})
 			return tuitest.InitAndLoad(t, inventoryui.NewListViewModel(f.App)), item.EntityUID()
 		}},
-		{name: "menu", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+		{name: "menu", nav: "4", title: "Menus", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
 			menu := testutil.CreateMenu(t, f, "Happy Hour")
 			return tuitest.InitAndLoad(t, menusui.NewListViewModel(f.App)), menu.EntityUID()
 		}},
-		{name: "order", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+		{name: "order", nav: "5", title: "Orders", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
 			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Rum", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 			drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 				Name: "Rum Sour", Category: drinksmodels.DrinkCategoryCocktail,
@@ -116,8 +115,12 @@ func TestTagHotkeyManagesEveryOperationalEntity(t *testing.T) {
 			return tuitest.InitAndLoad(t, ordersui.NewListViewModel(f.App)), order.EntityUID()
 		}},
 	}
+}
 
-	for _, scenario := range scenarios {
+func TestTagHotkeyManagesEveryOperationalEntity(t *testing.T) {
+	t.Parallel()
+
+	for _, scenario := range tagViewScenarios() {
 		t.Run(scenario.name, func(t *testing.T) {
 			t.Parallel()
 			f := testutil.NewFixture(t)
@@ -136,6 +139,83 @@ func TestTagHotkeyManagesEveryOperationalEntity(t *testing.T) {
 			testutil.StringContains(t, model.View(), "cedar=deep")
 		})
 	}
+}
+
+func TestE2E_TagEditorSupportsReplaceClearCancelAndValidationAcrossEveryEntityView(t *testing.T) {
+	t.Parallel()
+
+	for _, scenario := range tagViewScenarios() {
+		t.Run(scenario.name, func(t *testing.T) {
+			t.Parallel()
+			f := testutil.NewFixture(t)
+			_, target := scenario.model(t, f)
+			driver := tuitest.NewDriver(t, NewApp(f.App))
+			driver.Resize(120, 40)
+			driver.Press(scenario.nav)
+			driver.RequireText("Mixology > " + scenario.title)
+			driver.Press("?")
+			driver.RequireText("t manage tags")
+			driver.Press("?")
+
+			driver.Press("t")
+			driver.RequireText("Manage tags", "Empty clears all tags")
+			pressText(driver, "cedar=deep")
+			driver.Press("ctrl+s")
+			driver.RequireText("Mixology > "+scenario.title, "cedar=deep")
+			driver.RequireViewport(120, 40)
+			requirePersistedTags(t, f, target, "cedar=deep")
+
+			driver.Press("t")
+			driver.RequireText("cedar=deep")
+			driver.Press("ctrl+u")
+			driver.Press("ctrl+s")
+			driver.RequireText("Tags: (none)")
+			requirePersistedTags(t, f, target, "")
+
+			driver.Press("t")
+			pressText(driver, "transient")
+			driver.Press("esc")
+			driver.RequireText("Mixology > "+scenario.title, "Tags: (none)")
+			requirePersistedTags(t, f, target, "")
+
+			driver.Press("t")
+			pressText(driver, "region=east,region=west")
+			driver.Press("ctrl+s")
+			driver.RequireText("Manage tags", "invalid tags")
+			requirePersistedTags(t, f, target, "")
+		})
+	}
+}
+
+func TestE2E_TagEditorPermissionFailureStaysOpenAndDoesNotPersist(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Protected Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
+	})
+	session := app.NewSession(f.ActorContext("bartender"), f.App.App)
+	driver := tuitest.NewDriver(t, NewApp(session))
+	driver.Resize(100, 40)
+	driver.Press("2")
+	driver.Press("t")
+	pressText(driver, "denied")
+	driver.Press("ctrl+s")
+	driver.RequireText("Manage tags", "authz denied")
+	driver.RequireViewport(100, 40)
+	requirePersistedTags(t, f, ingredient.EntityUID(), "")
+}
+
+func pressText(driver *tuitest.Driver, value string) {
+	for _, r := range value {
+		driver.Press(string(r))
+	}
+}
+
+func requirePersistedTags(t testing.TB, f *testutil.Fixture, target cedar.EntityUID, expected string) {
+	t.Helper()
+	persisted, err := f.App.Tags.List(f.OwnerContext(), target)
+	testutil.Ok(t, err)
+	testutil.Equals(t, persisted.Canonical().String(), expected)
 }
 
 func TestStatusBarView_UsesWarningStyleForNotFound(t *testing.T) {

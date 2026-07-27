@@ -64,6 +64,8 @@ func (d *Driver) Press(name string) {
 		msg = tea.KeyMsg{Type: tea.KeyEnter}
 	case "ctrl+s":
 		msg = tea.KeyMsg{Type: tea.KeyCtrlS}
+	case "ctrl+u":
+		msg = tea.KeyMsg{Type: tea.KeyCtrlU}
 	case "up":
 		msg = tea.KeyMsg{Type: tea.KeyUp}
 	case "down":
