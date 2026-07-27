@@ -80,11 +80,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		vm := a.currentViewModel()
-		textInputActive := false
-		if handler, ok := vm.(views.TextInputHandler); ok {
-			textInputActive = handler.TextInputActive()
-		}
-		if msg.Type != tea.KeyRunes || !textInputActive {
+		interaction := vm.Interaction()
+		if msg.Type != tea.KeyRunes || !interaction.CapturesText {
 			if key.Matches(msg, a.keys.Quit) {
 				return a, tea.Quit
 			}
@@ -106,7 +103,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.views[a.currentView] = vm
 				return a, cmd
 			}
-			if handler, ok := vm.(views.BackKeyHandler); ok && handler.HandleBackKey() {
+			if interaction.HandlesBack {
 				vm, cmd := vm.Update(msg)
 				a.views[a.currentView] = vm
 				return a, cmd

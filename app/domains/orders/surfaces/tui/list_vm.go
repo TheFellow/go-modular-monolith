@@ -57,7 +57,7 @@ type ListViewModel struct {
 	mode    listMode
 	dialog  *dialog.ConfirmDialog
 	tags    *components.TagEditor
-	spinner components.Spinner
+	spinner tui.Spinner
 	loading bool
 	err     error
 
@@ -94,7 +94,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		detail:       NewDetailViewModel(tuistyles.App.ListView, app),
 		loading:      true,
 	}
-	vm.spinner = components.NewSpinner("Loading orders...", vm.styles.Subtitle)
+	vm.spinner = tui.NewSpinner("Loading orders...", vm.styles.Subtitle)
 	return vm
 }
 
@@ -103,12 +103,11 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadOrders())
 }
 
-func (m *ListViewModel) HandleBackKey() bool {
-	return m.mode != listModeBrowsing || m.list.SettingFilter()
-}
-
-func (m *ListViewModel) TextInputActive() bool {
-	return m.list.SettingFilter() || m.mode == listModeTagging
+func (m *ListViewModel) Interaction() views.Interaction {
+	return views.Interaction{
+		HandlesBack:  m.mode != listModeBrowsing || m.list.SettingFilter(),
+		CapturesText: m.list.SettingFilter() || m.mode == listModeTagging,
+	}
 }
 
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
@@ -446,7 +445,7 @@ func (m *ListViewModel) selectedOrder() *ordersmodels.Order {
 	if !ok {
 		return nil
 	}
-	order := item.order
+	order := item.Value
 	return &order
 }
 
@@ -493,7 +492,7 @@ func (m *ListViewModel) syncDetail() {
 		m.detail.SetOrder(optional.None[ordersmodels.Order]())
 		return
 	}
-	m.detail.SetOrder(optional.Some(item.order))
+	m.detail.SetOrder(optional.Some(item.Value))
 }
 
 func (m *ListViewModel) menuName(menuID entity.MenuID) (string, error) {

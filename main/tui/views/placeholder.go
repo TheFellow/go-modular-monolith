@@ -23,6 +23,8 @@ func (p *Placeholder) Init() tea.Cmd {
 	return nil
 }
 
+func (p *Placeholder) Interaction() Interaction { return Interaction{} }
+
 // Update implements tea.Model.
 func (p *Placeholder) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 	if msg, ok := msg.(tea.WindowSizeMsg); ok {

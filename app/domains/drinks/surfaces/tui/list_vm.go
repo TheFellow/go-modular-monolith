@@ -53,7 +53,7 @@ type ListViewModel struct {
 	edit    *EditDrinkVM
 	tags    *components.TagEditor
 	dialog  *dialog.ConfirmDialog
-	spinner components.Spinner
+	spinner tui.Spinner
 	loading bool
 	err     error
 
@@ -91,7 +91,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		detail:       NewDetailViewModel(tuistyles.App.ListView, app),
 		loading:      true,
 	}
-	vm.spinner = components.NewSpinner("Loading drinks...", vm.styles.Subtitle)
+	vm.spinner = tui.NewSpinner("Loading drinks...", vm.styles.Subtitle)
 	return vm
 }
 
@@ -100,12 +100,11 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadDrinks())
 }
 
-func (m *ListViewModel) HandleBackKey() bool {
-	return m.mode != listModeBrowsing || m.list.SettingFilter()
-}
-
-func (m *ListViewModel) TextInputActive() bool {
-	return m.list.SettingFilter() || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging
+func (m *ListViewModel) Interaction() views.Interaction {
+	return views.Interaction{
+		HandlesBack:  m.mode != listModeBrowsing || m.list.SettingFilter(),
+		CapturesText: m.list.SettingFilter() || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging,
+	}
 }
 
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
@@ -220,7 +219,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.err = msg.Err
 		items := make([]list.Item, 0, len(msg.Drinks))
 		for _, drink := range msg.Drinks {
-			items = append(items, drinkItem{drink: drink})
+			items = append(items, newDrinkItem(drink))
 		}
 		m.list.SetItems(items)
 		m.syncDetail()
@@ -440,7 +439,7 @@ func (m *ListViewModel) selectedDrink() *models.Drink {
 	if !ok {
 		return nil
 	}
-	drink := item.drink
+	drink := item.Value
 	return &drink
 }
 
@@ -509,5 +508,5 @@ func (m *ListViewModel) syncDetail() {
 		m.detail.SetDrink(optional.None[models.Drink]())
 		return
 	}
-	m.detail.SetDrink(optional.Some(item.drink))
+	m.detail.SetDrink(optional.Some(item.Value))
 }

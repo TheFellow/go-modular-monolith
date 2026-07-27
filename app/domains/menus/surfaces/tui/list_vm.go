@@ -63,7 +63,7 @@ type ListViewModel struct {
 	rename  *RenameMenuVM
 	tags    *components.TagEditor
 	dialog  *dialog.ConfirmDialog
-	spinner components.Spinner
+	spinner tui.Spinner
 	loading bool
 	err     error
 
@@ -103,7 +103,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		detail:       NewDetailViewModel(tuistyles.App.ListView, app),
 		loading:      true,
 	}
-	vm.spinner = components.NewSpinner("Loading menus...", vm.styles.Subtitle)
+	vm.spinner = tui.NewSpinner("Loading menus...", vm.styles.Subtitle)
 	return vm
 }
 
@@ -112,12 +112,11 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadMenus())
 }
 
-func (m *ListViewModel) HandleBackKey() bool {
-	return m.mode != listModeBrowsing || m.list.SettingFilter()
-}
-
-func (m *ListViewModel) TextInputActive() bool {
-	return m.list.SettingFilter() || m.mode == listModeCreating || m.mode == listModeRenaming || m.mode == listModeTagging
+func (m *ListViewModel) Interaction() views.Interaction {
+	return views.Interaction{
+		HandlesBack:  m.mode != listModeBrowsing || m.list.SettingFilter(),
+		CapturesText: m.list.SettingFilter() || m.mode == listModeCreating || m.mode == listModeRenaming || m.mode == listModeTagging,
+	}
 }
 
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
@@ -606,7 +605,7 @@ func (m *ListViewModel) selectedMenu() *menusmodels.Menu {
 	if !ok {
 		return nil
 	}
-	menu := item.menu
+	menu := item.Value
 	return &menu
 }
 
@@ -653,7 +652,7 @@ func (m *ListViewModel) syncDetail() {
 		m.detail.SetMenu(optional.None[menusmodels.Menu]())
 		return
 	}
-	m.detail.SetMenu(optional.Some(item.menu))
+	m.detail.SetMenu(optional.Some(item.Value))
 }
 
 func (m *ListViewModel) context() *middleware.Context {

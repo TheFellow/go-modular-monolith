@@ -7,29 +7,13 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
-type orderItem struct {
-	order       models.Order
-	menuName    string
-	description string
-	displayID   string
-}
+type orderItem = tui.ListItem[models.Order]
 
 func newOrderItem(order models.Order, menuName string, styles tui.ListViewStyles) orderItem {
 	status := orderStatusBadge(order.Status, styles)
 	description := fmt.Sprintf("%s | %s | %d items", status, menuName, len(order.Items))
-	return orderItem{
-		order:       order,
-		menuName:    menuName,
-		description: description,
-		displayID:   truncateID(order.ID.String()),
-	}
+	return tui.NewListItem(order, truncateID(order.ID.String()), description, order.ID.String())
 }
-
-func (i orderItem) Title() string { return i.displayID }
-func (i orderItem) Description() string {
-	return i.description
-}
-func (i orderItem) FilterValue() string { return i.order.ID.String() }
 
 func truncateID(id string) string {
 	if len(id) <= 8 {

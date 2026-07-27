@@ -53,7 +53,7 @@ type ListViewModel struct {
 	adjust      *AdjustInventoryVM
 	set         *SetInventoryVM
 	tags        *components.TagEditor
-	spinner     components.Spinner
+	spinner     tui.Spinner
 	loading     bool
 	err         error
 	width       int
@@ -81,7 +81,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		detail:     NewDetailViewModel(tuistyles.App.ListView),
 		loading:    true,
 	}
-	vm.spinner = components.NewSpinner("Loading inventory...", vm.styles.Subtitle)
+	vm.spinner = tui.NewSpinner("Loading inventory...", vm.styles.Subtitle)
 	return vm
 }
 
@@ -90,12 +90,11 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadInventory())
 }
 
-func (m *ListViewModel) HandleBackKey() bool {
-	return m.mode != listModeBrowsing
-}
-
-func (m *ListViewModel) TextInputActive() bool {
-	return m.mode == listModeAdjusting || m.mode == listModeSetting || m.mode == listModeTagging
+func (m *ListViewModel) Interaction() views.Interaction {
+	return views.Interaction{
+		HandlesBack:  m.mode != listModeBrowsing,
+		CapturesText: m.mode == listModeAdjusting || m.mode == listModeSetting || m.mode == listModeTagging,
+	}
 }
 
 func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
