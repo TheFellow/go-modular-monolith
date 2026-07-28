@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -15,23 +14,4 @@ type ListViewStyles struct {
 	DetailPane  lipgloss.Style
 	ErrorText   lipgloss.Style
 	WarningText lipgloss.Style
-}
-
-// ListViewKeys contains key bindings needed by domain list ViewModels.
-type ListViewKeys struct {
-	Up          key.Binding
-	Down        key.Binding
-	Enter       key.Binding
-	Refresh     key.Binding
-	Back        key.Binding
-	Create      key.Binding
-	Edit        key.Binding
-	Delete      key.Binding
-	Tags        key.Binding
-	Adjust      key.Binding
-	Set         key.Binding
-	Publish     key.Binding
-	Draft       key.Binding
-	Complete    key.Binding
-	CancelOrder key.Binding
 }

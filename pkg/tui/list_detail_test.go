@@ -5,16 +5,22 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 func TestListDetailOwnsStandardLoadingResultAndLayoutStates(t *testing.T) {
 	t.Parallel()
 
-	shell := tui.NewListDetail("Things", "Loading things...", styles.App.ListView)
+	styles := tui.ListViewStyles{
+		Selected:   lipgloss.NewStyle().Bold(true),
+		ListPane:   lipgloss.NewStyle().Padding(0, 1),
+		DetailPane: lipgloss.NewStyle().Padding(0, 1),
+		ErrorText:  lipgloss.NewStyle(),
+	}
+	shell := tui.NewListDetail("Things", "Loading things...", styles)
 	shell.SetSize(100, 30)
 	if got := shell.View("detail"); !strings.Contains(got, "Loading things") {
 		t.Fatalf("loading view = %q", got)

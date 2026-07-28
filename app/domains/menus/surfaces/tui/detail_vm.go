@@ -7,6 +7,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/main/tui/presentation"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -50,7 +51,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Title.Render(menu.Name),
 		d.styles.Muted.Render("ID: " + menu.ID.String()),
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
-		d.styles.Subtitle.Render("Tags: ") + tui.TagLabel(menu.Tags.Canonical().String()),
+		d.styles.Subtitle.Render("Tags: ") + presentation.TagLabel(menu.Tags.Canonical().String()),
 	}
 
 	if strings.TrimSpace(menu.Description) != "" {

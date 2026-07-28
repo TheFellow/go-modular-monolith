@@ -39,7 +39,7 @@ const (
 type ListViewModel struct {
 	app    *app.Session
 	styles tui.ListViewStyles
-	keys   tui.ListViewKeys
+	keys   tuikeys.ListViewKeys
 
 	formStyles   forms.FormStyles
 	formKeys     forms.FormKeys

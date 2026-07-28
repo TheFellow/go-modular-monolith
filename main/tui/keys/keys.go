@@ -1,7 +1,6 @@
 package keys
 
 import (
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
 	"github.com/charmbracelet/bubbles/key"
@@ -49,7 +48,7 @@ type KeyMap struct {
 	SwitchBtn key.Binding
 
 	// Derived subsets
-	ListView  tui.ListViewKeys
+	ListView  ListViewKeys
 	Form      forms.FormKeys
 	Dialog    dialog.DialogKeys
 	Dashboard DashboardKeys
@@ -70,6 +69,27 @@ type DashboardKeys struct {
 	Refresh key.Binding
 	Help    key.Binding
 	Quit    key.Binding
+}
+
+// ListViewKeys defines Mixology's list navigation and domain action bindings.
+// It lives in the application TUI because actions such as publishing and
+// completing orders are application policy, not generic list mechanics.
+type ListViewKeys struct {
+	Up          key.Binding
+	Down        key.Binding
+	Enter       key.Binding
+	Refresh     key.Binding
+	Back        key.Binding
+	Create      key.Binding
+	Edit        key.Binding
+	Delete      key.Binding
+	Tags        key.Binding
+	Adjust      key.Binding
+	Set         key.Binding
+	Publish     key.Binding
+	Draft       key.Binding
+	Complete    key.Binding
+	CancelOrder key.Binding
 }
 
 // newKeyMap creates a KeyMap with default bindings.
@@ -215,8 +235,8 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 	}
 }
 
-func listViewKeysFrom(k KeyMap) tui.ListViewKeys {
-	return tui.ListViewKeys{
+func listViewKeysFrom(k KeyMap) ListViewKeys {
+	return ListViewKeys{
 		Up:          k.Up,
 		Down:        k.Down,
 		Enter:       k.Enter,

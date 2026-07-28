@@ -1,4 +1,23 @@
 specs:
+  # The reusable TUI toolkit owns terminal mechanics, never application policy.
+  - name: tui-toolkit-no-application
+    packages:
+      include:
+        - "pkg/tui/**"
+    rules:
+      forbid:
+        - "app/**"
+        - "main/**"
+
+  # Same-domain TUI surfaces use public APIs even though Go permits internal imports.
+  - name: tui-surfaces-use-public-domain-api
+    packages:
+      include:
+        - "app/domains/*/surfaces/tui/**"
+    rules:
+      forbid:
+        - "app/domains/*/internal/**"
+
   # Shared types cannot import domains.
   - name: shared-no-domains
     packages:

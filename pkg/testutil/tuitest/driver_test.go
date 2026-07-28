@@ -6,6 +6,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type lifecycleModel struct{ updates int }
@@ -69,4 +70,12 @@ func TestDriverObservesProgramTermination(t *testing.T) {
 	driver.RequireRunning()
 	driver.Press("q")
 	driver.RequireQuit()
+}
+
+func TestMalformedANSIFragmentDistinguishesStyledTextFromLeakedSGR(t *testing.T) {
+	t.Parallel()
+
+	valid := lipgloss.NewStyle().Foreground(lipgloss.Color("#9ca3af")).Render("muted")
+	testutil.Equals(t, malformedANSIFragment(valid), "")
+	testutil.Equals(t, malformedANSIFragment("[38;2;156;163;175mbase-spirit[0m"), "[38;2;156;163;175m")
 }
