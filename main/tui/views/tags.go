@@ -12,10 +12,15 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
+	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
+	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
+	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
@@ -23,6 +28,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -80,11 +86,13 @@ func (i tagEntityItem) Description() string { return i.desc }
 func (i tagEntityItem) FilterValue() string { return i.name + " " + string(i.uid.ID) }
 
 type tagEntitiesLoadedMsg struct {
-	items []list.Item
-	err   error
+	requestID uint64
+	items     []list.Item
+	err       error
 }
 
 type tagResultMsg struct {
+	requestID  uint64
 	operation  tagOperation
 	target     cedar.EntityUID
 	tags       tag.Tags
@@ -114,6 +122,7 @@ type Tags struct {
 	err       error
 	width     int
 	height    int
+	requestID uint64
 }
 
 func NewTags(application *app.Session) *Tags {
@@ -172,6 +181,9 @@ func (m *Tags) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 		m.setSize(typed.Width, typed.Height)
 		return m, nil
 	case tagEntitiesLoadedMsg:
+		if typed.requestID != m.requestID {
+			return m, nil
+		}
 		if typed.err != nil {
 			m.mode, m.err = tagsModePickingType, typed.err
 			return m, nil
@@ -182,6 +194,9 @@ func (m *Tags) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 		m.mode, m.err = tagsModePickingEntity, nil
 		return m, nil
 	case tagResultMsg:
+		if typed.requestID != m.requestID {
+			return m, nil
+		}
 		m.mode = tagsModeResults
 		m.err = typed.err
 		if typed.err == nil {
@@ -364,75 +379,90 @@ func (m *Tags) submitValue() tea.Cmd {
 }
 
 func (m *Tags) runOperation(value tag.Tag) tea.Cmd {
+	m.requestID++
+	requestID, operation, target := m.requestID, m.operation, m.target
+	ctx := m.context()
 	return func() tea.Msg {
-		msg := tagResultMsg{operation: m.operation, target: m.target}
-		switch m.operation {
+		msg := tagResultMsg{requestID: requestID, operation: operation, target: target}
+		switch operation {
 		case tagOperationInspect:
-			msg.tags, msg.err = m.app.Tags.List(m.context(), m.target)
+			msg.tags, msg.err = m.app.Tags.List(ctx, target)
 		case tagOperationAdd:
-			result, err := m.app.Tags.Upsert(m.context(), m.target, value)
+			result, err := m.app.Tags.Upsert(ctx, target, value)
 			msg.tags, msg.changed, msg.err = result.Tags, result.Changed, err
 		case tagOperationRemove:
-			result, err := m.app.Tags.Remove(m.context(), m.target, value.Key)
+			result, err := m.app.Tags.Remove(ctx, target, value.Key)
 			msg.tags, msg.changed, msg.err = result.Tags, result.Changed, err
 		case tagOperationShow:
-			msg.references, msg.err = m.app.Tags.Show(m.context(), value, true)
+			msg.references, msg.err = m.app.Tags.Show(ctx, value, true)
 		case tagOperationShowKey:
-			msg.references, msg.err = m.app.Tags.Show(m.context(), value, false)
+			msg.references, msg.err = m.app.Tags.Show(ctx, value, false)
 		case tagOperationSummary:
-			msg.summaries, msg.err = m.app.Tags.Summary(m.context())
+			msg.summaries, msg.err = m.app.Tags.Summary(ctx)
 		}
 		return msg
 	}
 }
 
 func (m *Tags) loadEntities(entityType cedar.EntityType) tea.Cmd {
+	m.requestID++
+	requestID := m.requestID
+	ctx := m.context()
 	return func() tea.Msg {
-		ctx := m.context()
 		items := []list.Item{}
 		switch entityType {
 		case entity.TypeDrink:
-			page, err := m.app.Drinks.List(ctx, drinks.ListRequest{Limit: 1000})
+			values, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*drinksmodels.Drink], error) {
+				return m.app.Drinks.List(ctx, drinks.ListRequest{Cursor: cursor})
+			})
 			if err != nil {
-				return tagEntitiesLoadedMsg{err: err}
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
 			}
-			for _, v := range page.Items {
+			for _, v := range values {
 				items = append(items, tagEntityItem{v.EntityUID(), v.Name, fmt.Sprintf("%s • %s", v.Category, v.ID)})
 			}
 		case entity.TypeIngredient:
-			page, err := m.app.Ingredients.List(ctx, ingredients.ListRequest{Limit: 1000})
+			values, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*ingredientsmodels.Ingredient], error) {
+				return m.app.Ingredients.List(ctx, ingredients.ListRequest{Cursor: cursor})
+			})
 			if err != nil {
-				return tagEntitiesLoadedMsg{err: err}
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
 			}
-			for _, v := range page.Items {
+			for _, v := range values {
 				items = append(items, tagEntityItem{v.EntityUID(), v.Name, fmt.Sprintf("%s • %s", v.Category, v.ID)})
 			}
 		case entity.TypeInventory:
-			page, err := m.app.Inventory.List(ctx, inventory.ListRequest{Limit: 1000})
+			values, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*inventorymodels.Inventory], error) {
+				return m.app.Inventory.List(ctx, inventory.ListRequest{Cursor: cursor})
+			})
 			if err != nil {
-				return tagEntitiesLoadedMsg{err: err}
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
 			}
-			for _, v := range page.Items {
+			for _, v := range values {
 				items = append(items, tagEntityItem{v.EntityUID(), v.ID.String(), "Ingredient " + v.IngredientID.String()})
 			}
 		case entity.TypeMenu:
-			page, err := m.app.Menus.List(ctx, menus.ListRequest{Limit: 1000})
+			values, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*menusmodels.Menu], error) {
+				return m.app.Menus.List(ctx, menus.ListRequest{Cursor: cursor})
+			})
 			if err != nil {
-				return tagEntitiesLoadedMsg{err: err}
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
 			}
-			for _, v := range page.Items {
+			for _, v := range values {
 				items = append(items, tagEntityItem{v.EntityUID(), v.Name, fmt.Sprintf("%s • %s", v.Status, v.ID)})
 			}
 		case entity.TypeOrder:
-			page, err := m.app.Orders.List(ctx, orders.ListRequest{Limit: 1000})
+			values, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*ordersmodels.Order], error) {
+				return m.app.Orders.List(ctx, orders.ListRequest{Cursor: cursor})
+			})
 			if err != nil {
-				return tagEntitiesLoadedMsg{err: err}
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
 			}
-			for _, v := range page.Items {
+			for _, v := range values {
 				items = append(items, tagEntityItem{v.EntityUID(), v.ID.String(), fmt.Sprintf("%s • menu %s", v.Status, v.MenuID)})
 			}
 		}
-		return tagEntitiesLoadedMsg{items: items}
+		return tagEntitiesLoadedMsg{requestID: requestID, items: items}
 	}
 }
 
@@ -459,10 +489,7 @@ func (m *Tags) setResultTable(result tagResultMsg) {
 				state = "changed"
 			}
 		}
-		values := result.tags.Canonical().String()
-		if values == "" {
-			values = "(none)"
-		}
+		values := tui.TagLabel(result.tags.Canonical().String())
 		m.replaceResultTable(columns, []table.Row{{string(result.target.ID), values, state}})
 	}
 	m.results.SetCursor(0)
@@ -516,6 +543,9 @@ func (m *Tags) setSize(width, height int) {
 }
 
 func (m *Tags) back() {
+	if m.mode == tagsModeLoading {
+		m.requestID++
+	}
 	switch m.mode {
 	case tagsModeBrowsing, tagsModePickingType, tagsModeLoading, tagsModeResults:
 		m.mode = tagsModeBrowsing
