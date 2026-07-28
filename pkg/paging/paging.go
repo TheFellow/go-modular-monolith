@@ -21,6 +21,23 @@ type Page[T any] struct {
 	Next  Cursor `json:"next,omitempty"`
 }
 
+// Collect traverses every page returned by list in cursor order.
+func Collect[T any](list func(Cursor) (Page[T], error)) ([]T, error) {
+	var items []T
+	var cursor Cursor
+	for {
+		page, err := list(cursor)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, page.Items...)
+		if page.Next == "" {
+			return items, nil
+		}
+		cursor = page.Next
+	}
+}
+
 // Count traverses every page returned by list.
 func Count[T any](list func(Cursor) (Page[T], error)) (int, error) {
 	count := 0
