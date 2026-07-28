@@ -1,6 +1,7 @@
 package tuitest
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // Driver deterministically exercises a complete Bubble Tea model. Unlike the
@@ -28,6 +30,8 @@ type Driver struct {
 }
 
 const commandDrainLimit = 10_000
+
+var sgrWithoutEscape = regexp.MustCompile(`\[(?:[0-9]+;)*[0-9]+m`)
 
 // NewDriver initializes a root model and completely drains its startup work.
 func NewDriver(t testing.TB, model tea.Model) *Driver {
@@ -144,12 +148,27 @@ func (d *Driver) RequireViewport(width, height int) {
 func (d *Driver) render() {
 	d.screen = d.model.View()
 	d.history = append(d.history, d.screen)
+	RequireValidANSI(d.t, d.screen)
 	if d.width > 0 && lipgloss.Width(d.screen) > d.width {
 		d.t.Fatalf("rendered frame width %d exceeds viewport %d:\n%s", lipgloss.Width(d.screen), d.width, d.screen)
 	}
 	if d.height > 0 && lipgloss.Height(d.screen) > d.height {
 		d.t.Fatalf("rendered frame height %d exceeds viewport %d:\n%s", lipgloss.Height(d.screen), d.height, d.screen)
 	}
+}
+
+// RequireValidANSI rejects SGR fragments whose escape byte was lost while a
+// styled frame was truncated. Valid ANSI sequences are removed first, leaving
+// only malformed fragments such as "[38;2;156;163;175m" for detection.
+func RequireValidANSI(t testing.TB, rendered string) {
+	t.Helper()
+	if fragment := malformedANSIFragment(rendered); fragment != "" {
+		t.Fatalf("rendered frame contains malformed ANSI fragment %q:\n%s", fragment, rendered)
+	}
+}
+
+func malformedANSIFragment(rendered string) string {
+	return sgrWithoutEscape.FindString(ansi.Strip(rendered))
 }
 
 func (d *Driver) drain(cmd tea.Cmd, remaining *int) {

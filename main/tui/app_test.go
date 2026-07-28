@@ -81,6 +81,32 @@ type tagViewScenario struct {
 	model            func(testing.TB, *testutil.Fixture) (views.ViewModel, cedar.EntityUID)
 }
 
+func TestEveryTopLevelViewRendersValidFramesAcrossViewportSizes(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	driver := tuitest.NewDriver(t, NewApp(f.App))
+	driver.Resize(MinWidth, MinHeight)
+
+	for _, scenario := range []struct {
+		nav, title string
+	}{
+		{nav: "1", title: "Mixology > Drinks"},
+		{nav: "2", title: "Mixology > Ingredients"},
+		{nav: "3", title: "Mixology > Inventory"},
+		{nav: "4", title: "Mixology > Menus"},
+		{nav: "5", title: "Mixology > Orders"},
+		{nav: "6", title: "Mixology > Audit"},
+		{nav: "7", title: "Mixology > Tags"},
+	} {
+		driver.Press(scenario.nav)
+		driver.RequireText(scenario.title)
+		driver.Resize(120, 40)
+		driver.Resize(MinWidth, MinHeight)
+		driver.Press("esc")
+		driver.RequireText("Mixology > Dashboard")
+	}
+}
+
 func tagViewScenarios() []tagViewScenario {
 	return []tagViewScenario{
 		{name: "drink", nav: "1", title: "Drinks", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {

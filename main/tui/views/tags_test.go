@@ -1,6 +1,8 @@
 package views
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func TestTagsResultTableSupportsEveryShapeTransition(t *testing.T) {
@@ -43,16 +46,25 @@ func TestTagsResultTableSupportsEveryShapeTransition(t *testing.T) {
 
 	for _, from := range results {
 		for _, to := range results {
-			t.Run(from.name+"_to_"+to.name, func(t *testing.T) {
-				t.Parallel()
-				vm := NewTags(nil)
-				vm.setSize(100, 30)
-				vm.setResultTable(from.result)
-				_ = vm.results.View() // Populate the table viewport before changing its schema.
-				vm.setResultTable(to.result)
-				_ = vm.results.View()
-			})
+			for _, width := range []int{80, 100, 120} {
+				t.Run(fmt.Sprintf("%s_to_%s_at_%d", from.name, to.name, width), func(t *testing.T) {
+					t.Parallel()
+					vm := NewTags(nil)
+					vm.setSize(width, 30)
+					vm.setResultTable(from.result)
+					requireValidANSI(t, vm.results.View())
+					vm.setResultTable(to.result)
+					requireValidANSI(t, vm.results.View())
+				})
+			}
 		}
+	}
+}
+
+func requireValidANSI(t testing.TB, rendered string) {
+	t.Helper()
+	if fragment := regexp.MustCompile(`\[(?:[0-9]+;)*[0-9]+m`).FindString(ansi.Strip(rendered)); fragment != "" {
+		t.Fatalf("rendered table contains malformed ANSI fragment %q:\n%s", fragment, rendered)
 	}
 }
 

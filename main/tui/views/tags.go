@@ -468,21 +468,22 @@ func (m *Tags) loadEntities(entityType cedar.EntityType) tea.Cmd {
 }
 
 func (m *Tags) setResultTable(result tagResultMsg) {
+	tableWidth := tagTableWidth(m.width)
 	switch result.operation {
 	case tagOperationSummary:
 		rows := make([]table.Row, 0, len(result.summaries))
 		for _, v := range result.summaries {
 			rows = append(rows, table.Row{v.Tag, fmt.Sprint(v.Total), fmt.Sprint(v.Drinks), fmt.Sprint(v.Ingredients), fmt.Sprint(v.Inventory), fmt.Sprint(v.Menus), fmt.Sprint(v.Orders)})
 		}
-		m.replaceResultTable(summaryColumns(m.width), rows)
+		m.replaceResultTable(summaryColumns(tableWidth), rows)
 	case tagOperationShow, tagOperationShowKey:
 		rows := make([]table.Row, 0, len(result.references))
 		for _, v := range result.references {
 			rows = append(rows, table.Row{v.EntityType, v.EntityID, v.Tag})
 		}
-		m.replaceResultTable(referenceColumns(m.width), rows)
+		m.replaceResultTable(referenceColumns(tableWidth), rows)
 	case tagOperationInspect, tagOperationAdd, tagOperationRemove:
-		columns := []table.Column{{Title: "ENTITY", Width: 34}, {Title: "TAGS", Width: max(m.width-40, 30)}, {Title: "RESULT", Width: 10}}
+		columns := entityColumns(tableWidth)
 		state := "inspected"
 		if result.operation != tagOperationInspect {
 			state = "unchanged"
@@ -505,21 +506,46 @@ func (m *Tags) replaceResultTable(columns []table.Column, rows []table.Row) {
 	m.results.SetRows(rows)
 }
 
+func tagTableWidth(viewWidth int) int {
+	return max(viewWidth-4, 40)
+}
+
+func entityColumns(width int) []table.Column {
+	const entityWidth, resultWidth = 34, 10
+	return []table.Column{
+		{Title: "ENTITY", Width: entityWidth},
+		{Title: "TAGS", Width: flexibleTagColumn(width, entityWidth+resultWidth, 3)},
+		{Title: "RESULT", Width: resultWidth},
+	}
+}
+
 func referenceColumns(width int) []table.Column {
-	available := max(width-8, 72)
-	return []table.Column{{Title: "ENTITY TYPE", Width: 14}, {Title: "ENTITY ID", Width: 34}, {Title: "TAG", Width: max(available-52, 20)}}
+	const entityTypeWidth, entityIDWidth = 14, 34
+	return []table.Column{
+		{Title: "ENTITY TYPE", Width: entityTypeWidth},
+		{Title: "ENTITY ID", Width: entityIDWidth},
+		{Title: "TAG", Width: flexibleTagColumn(width, entityTypeWidth+entityIDWidth, 3)},
+	}
 }
 
 func summaryColumns(width int) []table.Column {
-	tagWidth := max(width-70, 22)
+	const fixedWidth = 54
+	tagWidth := flexibleTagColumn(width, fixedWidth, 7)
 	return []table.Column{{Title: "TAG", Width: tagWidth}, {Title: "TOTAL", Width: 7}, {Title: "DRINKS", Width: 8}, {Title: "INGREDIENTS", Width: 13}, {Title: "INVENTORY", Width: 11}, {Title: "MENUS", Width: 7}, {Title: "ORDERS", Width: 8}}
+}
+
+// flexibleTagColumn accounts for the horizontal padding applied to every
+// table cell so styled rows fit before the viewport truncates them.
+func flexibleTagColumn(width, fixedWidth, columnCount int) int {
+	const cellPadding = 2
+	return max(width-fixedWidth-(cellPadding*columnCount), 1)
 }
 
 func tagTableStyles(s styles.Styles) table.Styles {
 	result := table.DefaultStyles()
 	result.Header = s.ListView.Title.Padding(0, 1)
 	result.Cell = s.ListView.Muted.Padding(0, 1)
-	result.Selected = tagSelectedStyle(s).Padding(0, 1)
+	result.Selected = tagSelectedStyle(s)
 	return result
 }
 
@@ -532,7 +558,7 @@ func tagSelectedStyle(s styles.Styles) lipgloss.Style {
 
 func (m *Tags) setSize(width, height int) {
 	m.width, m.height = width, height
-	contentWidth, contentHeight := max(width-4, 40), max(height-4, 10)
+	contentWidth, contentHeight := tagTableWidth(width), max(height-4, 10)
 	m.operations.SetSize(contentWidth, contentHeight)
 	m.picker.SetSize(min(contentWidth, 72), min(contentHeight, 24))
 	m.form.SetWidth(min(contentWidth, 72))
