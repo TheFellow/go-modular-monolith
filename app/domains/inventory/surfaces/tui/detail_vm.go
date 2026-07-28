@@ -42,7 +42,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Title.Render(row.Ingredient.Name),
 		d.styles.Muted.Render("Ingredient ID: " + row.Ingredient.ID.String()),
 		d.styles.Muted.Render("Inventory ID: " + row.Inventory.ID.String()),
-		d.styles.Subtitle.Render("Tags: ") + tagLabel(row.Inventory.Tags.Canonical().String()),
+		d.styles.Subtitle.Render("Tags: ") + tui.TagLabel(row.Inventory.Tags.Canonical().String()),
 		d.styles.Subtitle.Render("Category: ") + string(row.Ingredient.Category),
 		d.styles.Subtitle.Render("Unit: ") + string(row.Ingredient.Unit),
 		"",
@@ -56,13 +56,6 @@ func (d *DetailViewModel) View() string {
 		content = lipgloss.NewStyle().Width(d.width).Render(content)
 	}
 	return content
-}
-
-func tagLabel(value string) string {
-	if value == "" {
-		return "(none)"
-	}
-	return value
 }
 
 func (d *DetailViewModel) statusBadge(status string) string {

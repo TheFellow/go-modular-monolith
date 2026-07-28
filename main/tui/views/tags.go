@@ -489,10 +489,7 @@ func (m *Tags) setResultTable(result tagResultMsg) {
 				state = "changed"
 			}
 		}
-		values := result.tags.Canonical().String()
-		if values == "" {
-			values = "(none)"
-		}
+		values := tui.TagLabel(result.tags.Canonical().String())
 		m.replaceResultTable(columns, []table.Row{{string(result.target.ID), values, state}})
 	}
 	m.results.SetCursor(0)

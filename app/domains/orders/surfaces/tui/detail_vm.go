@@ -60,7 +60,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + order.ID.String()),
 		d.styles.Subtitle.Render("Menu: ") + menu.Name,
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
-		d.styles.Subtitle.Render("Tags: ") + tagLabel(order.Tags.Canonical().String()),
+		d.styles.Subtitle.Render("Tags: ") + tui.TagLabel(order.Tags.Canonical().String()),
 		d.styles.Muted.Render("Created: " + formatTime(order.CreatedAt)),
 	}
 
@@ -86,13 +86,6 @@ func (d *DetailViewModel) View() string {
 		content = lipgloss.NewStyle().Width(d.width).Render(content)
 	}
 	return content
-}
-
-func tagLabel(value string) string {
-	if value == "" {
-		return "(none)"
-	}
-	return value
 }
 
 func (d *DetailViewModel) renderItems(items []models.OrderItem, menu *menusmodels.Menu) ([]string, string, error) {
