@@ -12,6 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -61,6 +62,56 @@ func TestTagSelectedStyleDoesNotUseBackgroundColor(t *testing.T) {
 	testutil.Equals(t, selected.GetBackground(), lipgloss.TerminalColor(lipgloss.NoColor{}))
 	testutil.ErrorIf(t, !selected.GetBold(), "expected selected tag rows to be bold")
 	testutil.ErrorIf(t, !selected.GetUnderline(), "expected selected tag rows to be underlined")
+}
+
+func TestTagsIgnoresResultsFromSupersededRequests(t *testing.T) {
+	t.Parallel()
+	vm := NewTags(nil)
+	vm.mode = tagsModeLoading
+	vm.requestID = 2
+
+	updated, _ := vm.Update(tagResultMsg{requestID: 1, operation: tagOperationSummary})
+	vm = testutil.Cast[*Tags](t, updated)
+	testutil.Equals(t, vm.mode, tagsModeLoading)
+	testutil.Equals(t, vm.result, (*tagResultMsg)(nil))
+
+	updated, _ = vm.Update(tagEntitiesLoadedMsg{requestID: 1, items: []list.Item{
+		tagEntityItem{name: "stale"},
+	}})
+	vm = testutil.Cast[*Tags](t, updated)
+	testutil.Equals(t, vm.mode, tagsModeLoading)
+	testutil.Equals(t, len(vm.picker.Items()), 0)
+}
+
+func TestTagsOperationCommandCapturesRequestState(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Captured Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
+	})
+	_, err := f.App.Tags.Upsert(f.OwnerContext(), ingredient.EntityUID(), tag.Tag{Key: "captured"})
+	testutil.Ok(t, err)
+
+	vm := NewTags(f.App)
+	vm.operation, vm.target = tagOperationInspect, ingredient.EntityUID()
+	cmd := vm.runOperation(tag.Tag{})
+	requestID := vm.requestID
+	vm.operation, vm.target = tagOperationSummary, entity.NewDrinkID().EntityUID()
+
+	msg := testutil.Cast[tagResultMsg](t, cmd())
+	testutil.Equals(t, msg.requestID, requestID)
+	testutil.Equals(t, msg.operation, tagOperationInspect)
+	testutil.Equals(t, msg.target, ingredient.EntityUID())
+	testutil.Equals(t, msg.tags, tag.Tags{{Key: "captured"}})
+}
+
+func TestTagsBackInvalidatesLoadingRequest(t *testing.T) {
+	t.Parallel()
+	vm := NewTags(nil)
+	vm.mode, vm.requestID = tagsModeLoading, 7
+	vm.back()
+	testutil.Equals(t, vm.mode, tagsModeBrowsing)
+	testutil.Equals(t, vm.requestID, uint64(8))
 }
 
 func TestTagsWorkspaceUsesOperationListAndEntityPicker(t *testing.T) {

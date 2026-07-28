@@ -80,11 +80,13 @@ func (i tagEntityItem) Description() string { return i.desc }
 func (i tagEntityItem) FilterValue() string { return i.name + " " + string(i.uid.ID) }
 
 type tagEntitiesLoadedMsg struct {
-	items []list.Item
-	err   error
+	requestID uint64
+	items     []list.Item
+	err       error
 }
 
 type tagResultMsg struct {
+	requestID  uint64
 	operation  tagOperation
 	target     cedar.EntityUID
 	tags       tag.Tags
@@ -114,6 +116,7 @@ type Tags struct {
 	err       error
 	width     int
 	height    int
+	requestID uint64
 }
 
 func NewTags(application *app.Session) *Tags {
@@ -172,6 +175,9 @@ func (m *Tags) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 		m.setSize(typed.Width, typed.Height)
 		return m, nil
 	case tagEntitiesLoadedMsg:
+		if typed.requestID != m.requestID {
+			return m, nil
+		}
 		if typed.err != nil {
 			m.mode, m.err = tagsModePickingType, typed.err
 			return m, nil
@@ -182,6 +188,9 @@ func (m *Tags) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 		m.mode, m.err = tagsModePickingEntity, nil
 		return m, nil
 	case tagResultMsg:
+		if typed.requestID != m.requestID {
+			return m, nil
+		}
 		m.mode = tagsModeResults
 		m.err = typed.err
 		if typed.err == nil {
@@ -364,37 +373,42 @@ func (m *Tags) submitValue() tea.Cmd {
 }
 
 func (m *Tags) runOperation(value tag.Tag) tea.Cmd {
+	m.requestID++
+	requestID, operation, target := m.requestID, m.operation, m.target
+	ctx := m.context()
 	return func() tea.Msg {
-		msg := tagResultMsg{operation: m.operation, target: m.target}
-		switch m.operation {
+		msg := tagResultMsg{requestID: requestID, operation: operation, target: target}
+		switch operation {
 		case tagOperationInspect:
-			msg.tags, msg.err = m.app.Tags.List(m.context(), m.target)
+			msg.tags, msg.err = m.app.Tags.List(ctx, target)
 		case tagOperationAdd:
-			result, err := m.app.Tags.Upsert(m.context(), m.target, value)
+			result, err := m.app.Tags.Upsert(ctx, target, value)
 			msg.tags, msg.changed, msg.err = result.Tags, result.Changed, err
 		case tagOperationRemove:
-			result, err := m.app.Tags.Remove(m.context(), m.target, value.Key)
+			result, err := m.app.Tags.Remove(ctx, target, value.Key)
 			msg.tags, msg.changed, msg.err = result.Tags, result.Changed, err
 		case tagOperationShow:
-			msg.references, msg.err = m.app.Tags.Show(m.context(), value, true)
+			msg.references, msg.err = m.app.Tags.Show(ctx, value, true)
 		case tagOperationShowKey:
-			msg.references, msg.err = m.app.Tags.Show(m.context(), value, false)
+			msg.references, msg.err = m.app.Tags.Show(ctx, value, false)
 		case tagOperationSummary:
-			msg.summaries, msg.err = m.app.Tags.Summary(m.context())
+			msg.summaries, msg.err = m.app.Tags.Summary(ctx)
 		}
 		return msg
 	}
 }
 
 func (m *Tags) loadEntities(entityType cedar.EntityType) tea.Cmd {
+	m.requestID++
+	requestID := m.requestID
+	ctx := m.context()
 	return func() tea.Msg {
-		ctx := m.context()
 		items := []list.Item{}
 		switch entityType {
 		case entity.TypeDrink:
 			page, err := m.app.Drinks.List(ctx, drinks.ListRequest{Limit: 1000})
 			if err != nil {
-				return tagEntitiesLoadedMsg{err: err}
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
 			}
 			for _, v := range page.Items {
 				items = append(items, tagEntityItem{v.EntityUID(), v.Name, fmt.Sprintf("%s • %s", v.Category, v.ID)})
@@ -402,7 +416,7 @@ func (m *Tags) loadEntities(entityType cedar.EntityType) tea.Cmd {
 		case entity.TypeIngredient:
 			page, err := m.app.Ingredients.List(ctx, ingredients.ListRequest{Limit: 1000})
 			if err != nil {
-				return tagEntitiesLoadedMsg{err: err}
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
 			}
 			for _, v := range page.Items {
 				items = append(items, tagEntityItem{v.EntityUID(), v.Name, fmt.Sprintf("%s • %s", v.Category, v.ID)})
@@ -410,7 +424,7 @@ func (m *Tags) loadEntities(entityType cedar.EntityType) tea.Cmd {
 		case entity.TypeInventory:
 			page, err := m.app.Inventory.List(ctx, inventory.ListRequest{Limit: 1000})
 			if err != nil {
-				return tagEntitiesLoadedMsg{err: err}
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
 			}
 			for _, v := range page.Items {
 				items = append(items, tagEntityItem{v.EntityUID(), v.ID.String(), "Ingredient " + v.IngredientID.String()})
@@ -418,7 +432,7 @@ func (m *Tags) loadEntities(entityType cedar.EntityType) tea.Cmd {
 		case entity.TypeMenu:
 			page, err := m.app.Menus.List(ctx, menus.ListRequest{Limit: 1000})
 			if err != nil {
-				return tagEntitiesLoadedMsg{err: err}
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
 			}
 			for _, v := range page.Items {
 				items = append(items, tagEntityItem{v.EntityUID(), v.Name, fmt.Sprintf("%s • %s", v.Status, v.ID)})
@@ -426,13 +440,13 @@ func (m *Tags) loadEntities(entityType cedar.EntityType) tea.Cmd {
 		case entity.TypeOrder:
 			page, err := m.app.Orders.List(ctx, orders.ListRequest{Limit: 1000})
 			if err != nil {
-				return tagEntitiesLoadedMsg{err: err}
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
 			}
 			for _, v := range page.Items {
 				items = append(items, tagEntityItem{v.EntityUID(), v.ID.String(), fmt.Sprintf("%s • menu %s", v.Status, v.MenuID)})
 			}
 		}
-		return tagEntitiesLoadedMsg{items: items}
+		return tagEntitiesLoadedMsg{requestID: requestID, items: items}
 	}
 }
 
@@ -516,6 +530,9 @@ func (m *Tags) setSize(width, height int) {
 }
 
 func (m *Tags) back() {
+	if m.mode == tagsModeLoading {
+		m.requestID++
+	}
 	switch m.mode {
 	case tagsModeBrowsing, tagsModePickingType, tagsModeLoading, tagsModeResults:
 		m.mode = tagsModeBrowsing
