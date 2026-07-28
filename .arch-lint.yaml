@@ -1,4 +1,24 @@
 specs:
+  # The reusable TUI toolkit owns terminal mechanics, never application policy.
+  - name: tui-toolkit-no-application
+    packages:
+      include:
+        - "pkg/tui/**"
+    rules:
+      forbid:
+        - "app/**"
+        - "main/**"
+
+  # UI surfaces use public domain APIs rather than private persistence or commands.
+  - name: tui-surfaces-no-domain-internals
+    packages:
+      include:
+        - "app/domains/*/surfaces/tui/**"
+        - "main/tui/**"
+    rules:
+      forbid:
+        - "app/domains/*/internal/**"
+
   # Shared types cannot import domains.
   - name: shared-no-domains
     packages:
