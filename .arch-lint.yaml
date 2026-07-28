@@ -9,12 +9,11 @@ specs:
         - "app/**"
         - "main/**"
 
-  # UI surfaces use public domain APIs rather than private persistence or commands.
-  - name: tui-surfaces-no-domain-internals
+  # Same-domain TUI surfaces use public APIs even though Go permits internal imports.
+  - name: tui-surfaces-use-public-domain-api
     packages:
       include:
         - "app/domains/*/surfaces/tui/**"
-        - "main/tui/**"
     rules:
       forbid:
         - "app/domains/*/internal/**"
