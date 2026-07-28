@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/main/tui/presentation"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/charmbracelet/lipgloss"
@@ -41,7 +42,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + ingredient.ID.String()),
 		d.styles.Subtitle.Render("Category: ") + string(ingredient.Category),
 		d.styles.Subtitle.Render("Unit: ") + string(ingredient.Unit),
-		d.styles.Subtitle.Render("Tags: ") + tui.TagLabel(ingredient.Tags.Canonical().String()),
+		d.styles.Subtitle.Render("Tags: ") + presentation.TagLabel(ingredient.Tags.Canonical().String()),
 	}
 
 	if strings.TrimSpace(ingredient.Description) != "" {

@@ -21,7 +21,7 @@ const auditDefaultLimit = 50
 // ListViewModel renders the audit list and detail panes.
 type ListViewModel struct {
 	app  *app.Session
-	keys tui.ListViewKeys
+	keys tuikeys.ListViewKeys
 
 	shell  *tui.ListDetail
 	detail *DetailViewModel

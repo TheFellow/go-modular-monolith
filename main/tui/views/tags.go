@@ -25,6 +25,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/main/tui/presentation"
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -489,7 +490,7 @@ func (m *Tags) setResultTable(result tagResultMsg) {
 				state = "changed"
 			}
 		}
-		values := tui.TagLabel(result.tags.Canonical().String())
+		values := presentation.TagLabel(result.tags.Canonical().String())
 		m.replaceResultTable(columns, []table.Row{{string(result.target.ID), values, state}})
 	}
 	m.results.SetCursor(0)
