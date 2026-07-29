@@ -1,0 +1,14 @@
+Website = "https://thefellow.github.io/go-modular-monolith/"
+
+[Details]
+Icon = "Icon.png"
+Name = "Mixology"
+ID = "com.thefellow.mixology"
+Version = "0.1.0"
+Build = 3
+
+[LinuxAndBSD]
+GenericName = "Cocktail Bar Manager"
+Categories = ["Office"]
+Comment = "Manage a cocktail bar through the Mixology modular monolith"
+Keywords = ["cocktails", "bar", "inventory", "menus", "orders"]

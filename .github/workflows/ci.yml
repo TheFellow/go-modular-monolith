@@ -5,11 +5,17 @@ on:
   push:
     branches: ["**"]
 
+permissions:
+  contents: read
+
 jobs:
-  build-test-lint:
+  linux-quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Fyne build dependencies
+        run: sudo apt-get update && sudo apt-get install --yes libgl1-mesa-dev libwayland-dev libxkbcommon-dev xorg-dev
 
       - uses: actions/setup-go@v5
         with:
@@ -32,3 +38,73 @@ jobs:
 
       - name: Test
         run: go test -race -shuffle=on -count=1 -timeout=5m ./...
+
+      - name: Package unsigned Linux application
+        working-directory: main/fyne
+        run: |
+          go build -o Mixology .
+          go run fyne.io/tools/cmd/fyne@v1.7.2 package -os linux -release -exe Mixology
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mixology-linux-unsigned
+          path: main/fyne/Mixology.tar.xz
+          if-no-files-found: error
+
+  desktop-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: darwin
+            binary: Mixology
+            artifact: mixology-macos-unsigned
+            package: main/fyne/Mixology-macos-unsigned.zip
+          - os: windows-latest
+            target: windows
+            binary: Mixology.exe
+            artifact: mixology-windows-unsigned
+            package: main/fyne/Mixology.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build native desktop executable
+        run: go build -o main/fyne/${{ matrix.binary }} ./main/fyne
+
+      - name: Test Fyne surfaces headlessly
+        run: >-
+          go test -tags ci -shuffle=on -count=1 -timeout=5m
+          ./main/fyne
+          ./pkg/fyne
+          ./pkg/testutil/fynetest
+          ./app/domains/audit/surfaces/fyne
+          ./app/domains/drinks/surfaces/fyne
+          ./app/domains/ingredients/surfaces/fyne
+          ./app/domains/inventory/surfaces/fyne
+          ./app/domains/menus/surfaces/fyne
+          ./app/domains/orders/surfaces/fyne
+          ./app/domains/tagging/surfaces/fyne
+
+      - name: Package unsigned desktop application
+        working-directory: main/fyne
+        run: go run fyne.io/tools/cmd/fyne@v1.7.2 package -os ${{ matrix.target }} -release -exe ${{ matrix.binary }}
+
+      # upload-artifact normalizes file modes, which would make the executable
+      # inside a raw .app bundle non-executable after download.
+      - name: Archive macOS application bundle
+        if: matrix.target == 'darwin'
+        working-directory: main/fyne
+        run: ditto -c -k --sequesterRsrc --keepParent Mixology.app Mixology-macos-unsigned.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.package }}
+          if-no-files-found: error
