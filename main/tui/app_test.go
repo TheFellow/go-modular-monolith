@@ -183,7 +183,7 @@ func TestDomainModalOwnsKeysThatAreBrowsingShortcuts(t *testing.T) {
 		{name: "ingredient create", activate: "c", collision: "t", expected: "Name", setup: tagViewScenarios()[1]},
 		{name: "inventory adjust", activate: "a", collision: "t", expected: "Adjust: Gin", setup: tagViewScenarios()[2]},
 		{name: "menu create", activate: "c", collision: "t", expected: "Name", setup: tagViewScenarios()[3]},
-		{name: "order cancel", activate: "x", collision: "t", expected: "Cancel Order", setup: tagViewScenarios()[4]},
+		{name: "order cancel", activate: "x", collision: "t", expected: "Complete tags (optional)", setup: tagViewScenarios()[4]},
 	}
 
 	for _, scenario := range scenarios {
@@ -226,10 +226,15 @@ func TestE2E_ListFilterOwnsPrintableShortcutsAndEscape(t *testing.T) {
 			driver := tuitest.NewDriver(t, NewApp(f.App))
 			driver.Resize(120, 40)
 			driver.Press(scenario.nav)
-			driver.Press("/")
+			driver.Press("f")
+			filterTitle := "Filter " + scenario.title
+			if scenario.name == "audit" {
+				filterTitle = "Query Audit"
+			}
+			driver.RequireText(filterTitle)
 			pressText(driver, "query")
 			driver.RequireRunning()
-			driver.RequireText("Filter: query")
+			driver.RequireText(filterTitle)
 
 			driver.Press("esc")
 			driver.RequireText("Mixology > " + scenario.title)
