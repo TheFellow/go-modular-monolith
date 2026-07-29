@@ -192,6 +192,7 @@ func (c *CLI) Command() *cli.Command {
 			return cli.Exit(err, errors.ExitUsage)
 		},
 		Commands: []*cli.Command{
+			c.dashboardCommand(),
 			c.drinksCommands(),
 			c.ingredientsCommands(),
 			c.inventoryCommands(),

@@ -10,18 +10,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/TheFellow/go-modular-monolith/app"
-	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
-	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
-	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
-	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
-	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
-	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 )
 
@@ -41,30 +31,11 @@ type Dashboard struct {
 
 const (
 	dashboardEdgeMargin = 2
-	dashboardRecentMax  = 10
-	dashboardUnknown    = -1
+	dashboardRecentMax  = app.DashboardRecentLimit
 )
 
-type DashboardData struct {
-	DrinkCount       int
-	IngredientCount  int
-	InventoryCount   int
-	MenuCount        int
-	DraftMenus       int
-	PublishedMenus   int
-	LowStockCount    int
-	OrderCount       int
-	PendingOrders    int
-	AuditCount       int
-	AuditCountCapped bool
-	RecentActivity   []AuditSummary
-}
-
-type AuditSummary struct {
-	Timestamp string
-	Actor     string
-	Action    string
-}
+type DashboardData = app.DashboardAggregate
+type AuditSummary = app.DashboardActivity
 
 type DashboardLoadedMsg struct {
 	Data *DashboardData
@@ -203,107 +174,9 @@ func (d *Dashboard) loadData() tea.Cmd {
 		if d.app == nil {
 			return DashboardLoadedMsg{Err: errors.New("dashboard requires app")}
 		}
-
-		ctx := d.context()
-
-		data := &DashboardData{
-			DrinkCount:      dashboardUnknown,
-			IngredientCount: dashboardUnknown,
-			InventoryCount:  dashboardUnknown,
-			MenuCount:       dashboardUnknown,
-			DraftMenus:      dashboardUnknown,
-			PublishedMenus:  dashboardUnknown,
-			LowStockCount:   dashboardUnknown,
-			OrderCount:      dashboardUnknown,
-			PendingOrders:   dashboardUnknown,
-			AuditCount:      dashboardUnknown,
-		}
-		var loadErr error
-
-		if count, err := d.app.Drinks.Count(ctx, drinks.ListRequest{}); err != nil {
-			loadErr = firstErr(loadErr, err)
-		} else {
-			data.DrinkCount = count
-		}
-
-		if count, err := d.app.Ingredients.Count(ctx, ingredients.ListRequest{}); err != nil {
-			loadErr = firstErr(loadErr, err)
-		} else {
-			data.IngredientCount = count
-		}
-
-		if count, err := d.app.Inventory.Count(ctx, inventory.ListRequest{}); err != nil {
-			loadErr = firstErr(loadErr, err)
-		} else {
-			data.InventoryCount = count
-		}
-
-		if count, err := d.app.Inventory.Count(ctx, inventory.ListRequest{LowStock: optional.Some(0.0)}); err != nil {
-			loadErr = firstErr(loadErr, err)
-		} else {
-			data.LowStockCount = count
-		}
-
-		if count, err := d.app.Menus.Count(ctx, menus.ListRequest{}); err != nil {
-			loadErr = firstErr(loadErr, err)
-		} else {
-			data.MenuCount = count
-		}
-
-		if count, err := d.app.Menus.Count(ctx, menus.ListRequest{Status: menumodels.MenuStatusDraft}); err != nil {
-			loadErr = firstErr(loadErr, err)
-		} else {
-			data.DraftMenus = count
-		}
-
-		if count, err := d.app.Menus.Count(ctx, menus.ListRequest{Status: menumodels.MenuStatusPublished}); err != nil {
-			loadErr = firstErr(loadErr, err)
-		} else {
-			data.PublishedMenus = count
-		}
-
-		if count, err := d.app.Orders.Count(ctx, orders.ListRequest{}); err != nil {
-			loadErr = firstErr(loadErr, err)
-		} else {
-			data.OrderCount = count
-		}
-
-		if count, err := d.app.Orders.Count(ctx, orders.ListRequest{Status: ordersmodels.OrderStatusPending}); err != nil {
-			loadErr = firstErr(loadErr, err)
-		} else {
-			data.PendingOrders = count
-		}
-
-		if count, err := d.app.Audit.Count(ctx, audit.ListRequest{}); err != nil {
-			loadErr = firstErr(loadErr, err)
-		} else {
-			data.AuditCount = count
-			data.AuditCountCapped = false
-		}
-
-		if entries, err := d.app.Audit.List(ctx, audit.ListRequest{Limit: dashboardRecentMax}); err != nil {
-			loadErr = firstErr(loadErr, err)
-		} else {
-			data.RecentActivity = make([]AuditSummary, 0, len(entries.Items))
-			for _, entry := range entries.Items {
-				ts := entry.CompletedAt
-				if ts.IsZero() {
-					ts = entry.StartedAt
-				}
-				data.RecentActivity = append(data.RecentActivity, AuditSummary{
-					Timestamp: ts.Format("15:04"),
-					Actor:     entry.Principal.String(),
-					Action:    entry.Action,
-				})
-			}
-		}
-
-		return DashboardLoadedMsg{Data: data, Err: loadErr}
+		aggregate, err := d.app.Dashboard()
+		return DashboardLoadedMsg{Data: &aggregate, Err: err}
 	}
-}
-
-func (d *Dashboard) context() *middleware.Context {
-	return d.app.Context()
 }
 
 func (d *Dashboard) renderLoading() string {
@@ -317,18 +190,8 @@ func (d *Dashboard) renderLoading() string {
 func (d *Dashboard) renderCountCards() []dashboardCard {
 	data := d.data
 	if data == nil {
-		data = &DashboardData{
-			DrinkCount:      dashboardUnknown,
-			IngredientCount: dashboardUnknown,
-			InventoryCount:  dashboardUnknown,
-			MenuCount:       dashboardUnknown,
-			DraftMenus:      dashboardUnknown,
-			PublishedMenus:  dashboardUnknown,
-			LowStockCount:   dashboardUnknown,
-			OrderCount:      dashboardUnknown,
-			PendingOrders:   dashboardUnknown,
-			AuditCount:      dashboardUnknown,
-		}
+		unknown := app.UnknownDashboardAggregate()
+		data = &unknown
 	}
 
 	return []dashboardCard{
@@ -367,9 +230,6 @@ func (d *Dashboard) auditCountLabel(data *DashboardData) string {
 	if data.AuditCount < 0 {
 		return "?"
 	}
-	if data.AuditCountCapped {
-		return fmt.Sprintf("%d+", data.AuditCount)
-	}
 	return strconv.Itoa(data.AuditCount)
 }
 
@@ -384,7 +244,7 @@ func (d *Dashboard) renderRecentActivity(limit int) string {
 	limit = min(limit, len(d.data.RecentActivity))
 	rows := make([]string, 0, limit)
 	for _, entry := range d.data.RecentActivity[:limit] {
-		rows = append(rows, fmt.Sprintf("%s  %s  %s", entry.Timestamp, entry.Actor, entry.Action))
+		rows = append(rows, fmt.Sprintf("%s  %s  %s", entry.Timestamp.Format("15:04"), entry.Actor, entry.Action))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
@@ -481,13 +341,6 @@ func (d *Dashboard) renderCard(card dashboardCard, width int) string {
 	}
 
 	return style.Render(content)
-}
-
-func firstErr(existing error, next error) error {
-	if existing == nil {
-		return next
-	}
-	return existing
 }
 
 func formatCount(count int) string {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/charmbracelet/lipgloss"
@@ -43,7 +44,7 @@ func TestDashboardRecentActivityFitsAssignedHeight(t *testing.T) {
 	recent := make([]AuditSummary, 10)
 	for i := range recent {
 		recent[i] = AuditSummary{
-			Timestamp: fmt.Sprintf("12:%02d", i),
+			Timestamp: time.Date(2026, 1, 1, 12, i, 0, 0, time.UTC),
 			Actor:     "owner",
 			Action:    fmt.Sprintf("activity-%02d", i),
 		}
@@ -60,4 +61,14 @@ func TestDashboardRecentActivityFitsAssignedHeight(t *testing.T) {
 	testutil.StringContains(t, view, "activity-00")
 	testutil.ErrorIf(t, strings.Contains(view, "activity-09"),
 		"expected recent activity to be truncated to available height:\n%s", view)
+}
+
+func TestDashboardLoadsExactApplicationAggregate(t *testing.T) {
+	f := testutil.NewFixture(t)
+	want, err := f.App.Dashboard()
+	testutil.Ok(t, err)
+	d := NewDashboard(f.App)
+	msg := d.loadData()().(DashboardLoadedMsg)
+	testutil.Ok(t, msg.Err)
+	testutil.Equals(t, *msg.Data, want)
 }
