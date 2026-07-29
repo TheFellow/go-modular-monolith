@@ -46,6 +46,7 @@ type OrderView struct {
 type OrderInput struct {
 	MenuID string         `json:"menu_id"`
 	Items  []OrderItemRow `json:"items"`
+	Notes  string         `json:"notes,omitempty"`
 }
 
 func ToOrderRow(o *models.Order) OrderRow {
@@ -159,6 +160,7 @@ func (input OrderInput) ToDomain() (*models.Order, error) {
 	return &models.Order{
 		MenuID: menuID,
 		Items:  items,
+		Notes:  input.Notes,
 	}, nil
 }
 

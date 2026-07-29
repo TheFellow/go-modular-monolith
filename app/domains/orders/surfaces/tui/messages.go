@@ -1,10 +1,12 @@
 package tui
 
 import "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+import "github.com/TheFellow/go-modular-monolith/pkg/paging"
 
 // OrdersLoadedMsg is sent when orders have been loaded.
 type OrdersLoadedMsg struct {
 	Orders []models.Order
+	Next   paging.Cursor
 	Err    error
 }
 
