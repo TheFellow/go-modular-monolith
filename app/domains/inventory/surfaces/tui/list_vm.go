@@ -15,6 +15,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
 	"github.com/charmbracelet/bubbles/key"
@@ -24,8 +25,13 @@ import (
 )
 
 const (
-	lowStockThreshold  = 10.0
+	lowStockThreshold  = inventory.DefaultLowStockThreshold
 	inventoryColumnGap = 1
+)
+
+var (
+	previousInventoryPage = key.NewBinding(key.WithKeys("["), key.WithHelp("[", "previous page"))
+	nextInventoryPage     = key.NewBinding(key.WithKeys("]"), key.WithHelp("]", "next page"))
 )
 
 type listMode int
@@ -35,6 +41,7 @@ const (
 	listModeAdjusting
 	listModeSetting
 	listModeTagging
+	listModeFiltering
 )
 
 // ListViewModel renders the inventory list and detail panes.
@@ -53,6 +60,11 @@ type ListViewModel struct {
 	adjust      *AdjustInventoryVM
 	set         *SetInventoryVM
 	tags        *components.TagEditor
+	filter      *filterVM
+	request     inventory.ListRequest
+	next        paging.Cursor
+	history     []paging.Cursor
+	loadToken   uint64
 	spinner     tui.Spinner
 	loading     bool
 	err         error
@@ -93,7 +105,7 @@ func (m *ListViewModel) Init() tea.Cmd {
 func (m *ListViewModel) Interaction() views.Interaction {
 	return views.Interaction{
 		HandlesBack:  m.mode != listModeBrowsing,
-		CapturesText: m.mode == listModeAdjusting || m.mode == listModeSetting || m.mode == listModeTagging,
+		CapturesText: m.mode == listModeAdjusting || m.mode == listModeSetting || m.mode == listModeTagging || m.mode == listModeFiltering,
 	}
 }
 
@@ -109,6 +121,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			m.set.SetWidth(m.detailWidth)
 		case listModeTagging:
 			m.tags.SetWidth(m.width)
+		case listModeFiltering:
+			m.filter.form.SetWidth(m.detailWidth)
 		}
 		return m, nil
 	case InventoryAdjustedMsg:
@@ -152,6 +166,20 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 				m.mode, m.tags = listModeBrowsing, nil
 				return m, nil
 			}
+		case listModeFiltering:
+			if key.Matches(msg, m.keys.Back) {
+				m.mode, m.filter = listModeBrowsing, nil
+				return m, nil
+			}
+			if filterSubmit(msg) {
+				req, err := m.filter.Request()
+				if err != nil {
+					return m, nil
+				}
+				m.request, m.history, m.next = req, nil, ""
+				m.mode, m.filter, m.loading = listModeBrowsing, nil, true
+				return m, tea.Batch(m.spinner.Init(), m.loadInventory())
+			}
 		}
 		if m.mode != listModeBrowsing {
 			break
@@ -161,6 +189,18 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			m.loading = true
 			m.err = nil
 			return m, tea.Batch(m.spinner.Init(), m.loadInventory())
+		case msg.String() == "f":
+			m.mode, m.filter = listModeFiltering, newFilterVM(m.request)
+			m.filter.form.SetWidth(m.detailWidth)
+			return m, m.filter.Init()
+		case msg.String() == "]" && m.next != "":
+			m.history = append(m.history, m.request.Cursor)
+			m.request.Cursor, m.loading = m.next, true
+			return m, tea.Batch(m.spinner.Init(), m.loadInventory())
+		case msg.String() == "[" && len(m.history) > 0:
+			i := len(m.history) - 1
+			m.request.Cursor, m.history, m.loading = m.history[i], m.history[:i], true
+			return m, tea.Batch(m.spinner.Init(), m.loadInventory())
 		case key.Matches(msg, m.keys.Adjust):
 			return m, m.startAdjust()
 		case key.Matches(msg, m.keys.Set):
@@ -169,11 +209,19 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.startTags()
 		}
 	case InventoryLoadedMsg:
+		if msg.Token != m.loadToken {
+			return m, nil
+		}
 		m.loading = false
 		m.err = msg.Err
+		if msg.Err != nil {
+			return m, nil
+		}
+		m.next = msg.Next
+		selected := selectedInventoryID(m.selectedRow())
 		m.rows = msg.Rows
 		m.table.SetRows(buildInventoryTableRows(msg.Rows, m.styles))
-		m.table.SetCursor(0)
+		m.selectInventory(selected)
 		m.syncDetail()
 		return m, nil
 	}
@@ -192,6 +240,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		var cmd tea.Cmd
 		m.tags, cmd = m.tags.Update(msg)
 		return m, cmd
+	case listModeFiltering:
+		return m, m.filter.Update(msg)
 	}
 
 	if m.loading {
@@ -207,6 +257,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 }
 
 func (m *ListViewModel) View() string {
+	if m.mode == listModeFiltering {
+		return m.filter.View()
+	}
 	if m.loading {
 		return m.renderLoading()
 	}
@@ -241,7 +294,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	case listModeAdjusting, listModeSetting:
 		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
-		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Adjust, m.keys.Set, m.keys.Tags, m.keys.Refresh, m.keys.Back}
+		return []key.Binding{m.keys.Up, m.keys.Down, previousInventoryPage, nextInventoryPage, m.keys.Adjust, m.keys.Set, m.keys.Tags, m.keys.Refresh, m.keys.Back}
 	}
 	return nil
 }
@@ -258,6 +311,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 	case listModeBrowsing:
 		return [][]key.Binding{
 			{m.keys.Up, m.keys.Down, m.keys.Enter},
+			{previousInventoryPage, nextInventoryPage},
 			{m.keys.Adjust, m.keys.Set, m.keys.Tags},
 			{m.keys.Refresh, m.keys.Back},
 		}
@@ -266,16 +320,22 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 }
 
 func (m *ListViewModel) loadInventory() tea.Cmd {
+	m.loadToken++
+	token := m.loadToken
+	req := m.request
 	return func() tea.Msg {
-		inventoryList, err := m.app.Inventory.List(m.context(), inventory.ListRequest{})
+		inventoryList, err := m.app.Inventory.List(m.context(), req)
 		if err != nil {
-			return InventoryLoadedMsg{Err: err}
+			return InventoryLoadedMsg{Err: err, Token: token}
 		}
 
 		ingredientIDs := make(map[entity.IngredientID]struct{}, len(inventoryList.Items))
-		for _, item := range inventoryList.Items {
+		for i, item := range inventoryList.Items {
+			if item == nil {
+				return InventoryLoadedMsg{Err: errors.Internalf("inventory %d missing", i), Token: token}
+			}
 			if item.IngredientID.IsZero() {
-				return InventoryLoadedMsg{Err: errors.Internalf("inventory %s missing ingredient", item.ID.String())}
+				return InventoryLoadedMsg{Err: errors.Internalf("inventory %s missing ingredient", item.ID.String()), Token: token}
 			}
 			ingredientIDs[item.IngredientID] = struct{}{}
 		}
@@ -287,14 +347,14 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 
 		ingredientByID, err := m.loadIngredients(ids)
 		if err != nil {
-			return InventoryLoadedMsg{Err: errors.Internalf("load ingredients: %w", err)}
+			return InventoryLoadedMsg{Err: errors.Internalf("load ingredients: %w", err), Token: token}
 		}
 
 		rows := make([]InventoryRow, 0, len(inventoryList.Items))
 		for _, item := range inventoryList.Items {
 			ingredient, ok := ingredientByID[item.IngredientID]
 			if !ok {
-				return InventoryLoadedMsg{Err: errors.Internalf("ingredient %s missing", item.IngredientID.String())}
+				return InventoryLoadedMsg{Err: errors.Internalf("ingredient %s missing", item.IngredientID.String()), Token: token}
 			}
 
 			quantity := item.Amount.String()
@@ -302,7 +362,11 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 			if price, ok := item.CostPerUnit.Unwrap(); ok {
 				cost = price.String()
 			}
-			status := stockStatus(item.Amount)
+			threshold := inventory.DefaultLowStockThreshold
+			if value, ok := req.LowStock.Unwrap(); ok {
+				threshold = value
+			}
+			status := stockStatus(item.Amount, threshold)
 
 			rows = append(rows, InventoryRow{
 				Inventory:  *item,
@@ -313,7 +377,7 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 			})
 		}
 
-		return InventoryLoadedMsg{Rows: rows}
+		return InventoryLoadedMsg{Rows: rows, Next: inventoryList.Next, Token: token}
 	}
 }
 
@@ -363,6 +427,26 @@ func (m *ListViewModel) selectedRow() (InventoryRow, bool) {
 		return InventoryRow{}, false
 	}
 	return m.rows[idx], true
+}
+
+func selectedInventoryID(row InventoryRow, ok bool) entity.InventoryID {
+	if !ok {
+		return entity.InventoryID{}
+	}
+	return row.Inventory.ID
+}
+
+func (m *ListViewModel) selectInventory(id entity.InventoryID) {
+	m.table.SetCursor(0)
+	if id.IsZero() {
+		return
+	}
+	for i := range m.rows {
+		if m.rows[i].Inventory.ID == id {
+			m.table.SetCursor(i)
+			return
+		}
+	}
 }
 
 func (m *ListViewModel) startTags() tea.Cmd {
@@ -487,12 +571,16 @@ func renderStatus(status string, styles tui.ListViewStyles) string {
 	}
 }
 
-func stockStatus(amount measurement.Amount) string {
+func stockStatus(amount measurement.Amount, thresholds ...float64) string {
+	threshold := lowStockThreshold
+	if len(thresholds) > 0 {
+		threshold = thresholds[0]
+	}
 	value := amount.Value()
 	if value <= 0 {
 		return "OUT"
 	}
-	if value < lowStockThreshold {
+	if value <= threshold {
 		return "LOW"
 	}
 	return "OK"

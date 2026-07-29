@@ -2,6 +2,7 @@ package tui
 
 import (
 	"strings"
+	"time"
 
 	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	"github.com/TheFellow/go-modular-monolith/main/tui/presentation"
@@ -50,6 +51,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Subtitle.Render("Quantity: ") + row.Quantity,
 		d.styles.Subtitle.Render("Cost per unit: ") + row.Cost,
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
+		d.styles.Subtitle.Render("Last updated: ") + formatInventoryTime(row.Inventory.LastUpdated),
 	}
 
 	content := strings.Join(lines, "\n")
@@ -57,6 +59,13 @@ func (d *DetailViewModel) View() string {
 		content = lipgloss.NewStyle().Width(d.width).Render(content)
 	}
 	return content
+}
+
+func formatInventoryTime(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+	return value.Format(time.RFC3339)
 }
 
 func (d *DetailViewModel) statusBadge(status string) string {
