@@ -20,6 +20,7 @@ type TextField struct {
 	labelRequiredStyle lipgloss.Style
 	required           bool
 	focused            bool
+	dirty              bool
 }
 
 // NewTextField creates a new TextField.
@@ -41,8 +42,12 @@ func (t *TextField) Init() tea.Cmd {
 
 // Update updates the field with a message.
 func (t *TextField) Update(msg tea.Msg) (Field, tea.Cmd) {
+	before := t.input.Value()
 	var cmd tea.Cmd
 	t.input, cmd = t.input.Update(msg)
+	if t.input.Value() != before {
+		t.dirty = true
+	}
 	return t, cmd
 }
 
@@ -86,6 +91,10 @@ func (t *TextField) Blur() {
 func (t *TextField) IsFocused() bool {
 	return t.focused
 }
+
+// IsDirty reports whether interactive input changed the initial/programmatic
+// value. SetValue deliberately does not mark a field dirty.
+func (t *TextField) IsDirty() bool { return t.dirty }
 
 // Value returns the field value.
 func (t *TextField) Value() any {
