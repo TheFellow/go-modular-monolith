@@ -246,6 +246,95 @@ func (c *CLI) menuCommands() *cli.Command {
 				}),
 			},
 			{
+				Name:  "update",
+				Usage: "Rename a draft menu or update its non-empty description",
+				Flags: appendTagsFlag([]cli.Flag{
+					JSONFlag,
+					TemplateFlag,
+					StdinFlag,
+					FileFlag,
+					&cli.StringFlag{Name: "id", Usage: "Menu ID"},
+					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Usage: "New name"},
+					&cli.StringFlag{Name: "description", Aliases: []string{"d"}, Usage: "New non-empty description (blank preserves the current description)"},
+				}),
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					if cmd.Bool("template") {
+						return writeJSON(cmd.Writer, menucli.TemplateUpdate())
+					}
+
+					var input *menumodels.Menu
+					if cmd.Bool("stdin") || strings.TrimSpace(cmd.String("file")) != "" {
+						row, err := readJSONInput[menucli.MenuRow](cmd)
+						if err != nil {
+							return err
+						}
+						menuID, err := entity.ParseMenuID(strings.TrimSpace(row.ID))
+						if err != nil {
+							return err
+						}
+						input = &menumodels.Menu{ID: menuID, Name: row.Name, Description: row.Desc}
+					} else {
+						rawID := strings.TrimSpace(cmd.String("id"))
+						if rawID == "" {
+							return errors.Invalidf("id is required (or use --stdin/--file)")
+						}
+						if !cmd.IsSet("name") && !cmd.IsSet("description") && !cmd.IsSet("tags") {
+							return errors.Invalidf("at least one of name, description, or tags is required")
+						}
+						menuID, err := entity.ParseMenuID(rawID)
+						if err != nil {
+							return err
+						}
+						existing, err := c.app.Menus.Get(ctx, menuID)
+						if err != nil {
+							return err
+						}
+						input = &menumodels.Menu{ID: menuID, Name: existing.Name, Description: existing.Description}
+						if cmd.IsSet("name") {
+							input.Name = cmd.String("name")
+						}
+						if cmd.IsSet("description") {
+							input.Description = cmd.String("description")
+						}
+					}
+
+					updated, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*menumodels.Menu, error) {
+						return c.app.Menus.Update(ctx, input)
+					})
+					if err != nil {
+						return err
+					}
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
+					}
+					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
+					return err
+				}),
+			},
+			{
+				Name:  "delete",
+				Usage: "Delete a draft menu",
+				Flags: []cli.Flag{
+					JSONFlag,
+					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
+				},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					menuID, err := entity.ParseMenuID(cmd.String("id"))
+					if err != nil {
+						return err
+					}
+					deleted, err := c.app.Menus.Delete(ctx, menuID)
+					if err != nil {
+						return err
+					}
+					if cmd.Bool("json") {
+						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*deleted))
+					}
+					_, err = fmt.Fprintln(cmd.Writer, deleted.ID.String())
+					return err
+				}),
+			},
+			{
 				Name:  "add-drink",
 				Usage: "Add a drink to a menu",
 				Flags: appendTagsFlag([]cli.Flag{

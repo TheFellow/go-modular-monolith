@@ -19,6 +19,7 @@ type Menu struct {
 type MenuItem struct {
 	DrinkID      string `json:"drink_id"`
 	DisplayName  string `json:"display_name,omitempty"`
+	Price        string `json:"price,omitempty"`
 	Featured     bool   `json:"featured,omitempty"`
 	Availability string `json:"availability"`
 	SortOrder    int    `json:"sort_order,omitempty"`
@@ -51,9 +52,14 @@ func FromDomainMenu(m models.Menu) Menu {
 func FromDomainMenuItem(i models.MenuItem) MenuItem {
 	var displayName string
 	displayName, _ = i.DisplayName.Unwrap()
+	var price string
+	if value, ok := i.Price.Unwrap(); ok {
+		price = value.String()
+	}
 	return MenuItem{
 		DrinkID:      i.DrinkID.String(),
 		DisplayName:  displayName,
+		Price:        price,
 		Featured:     i.Featured,
 		Availability: string(i.Availability),
 		SortOrder:    i.SortOrder,
