@@ -5,7 +5,7 @@ import (
 	"unicode"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	"github.com/TheFellow/go-modular-monolith/main/tui/components"
+	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/charmbracelet/lipgloss"
 )

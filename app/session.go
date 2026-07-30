@@ -3,7 +3,9 @@ package app
 import (
 	"context"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 // Session binds an application to one authenticated context for a persistent
@@ -11,6 +13,12 @@ import (
 type Session struct {
 	*App
 	ctx context.Context
+}
+
+// ReplaceTags replaces an entity's complete tag set in this session's context.
+func (s *Session) ReplaceTags(target cedar.EntityUID, desired tag.Tags) (tag.Tags, error) {
+	result, err := s.Tags.Replace(s.Context(), target, desired)
+	return result.Tags, err
 }
 
 func NewSession(ctx context.Context, application *App) *Session {

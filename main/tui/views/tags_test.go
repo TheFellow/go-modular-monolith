@@ -12,7 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"

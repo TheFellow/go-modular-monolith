@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	"github.com/TheFellow/go-modular-monolith/main/tui/presentation"
+	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/presentation"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/charmbracelet/lipgloss"

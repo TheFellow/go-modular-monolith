@@ -10,8 +10,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/TheFellow/go-modular-monolith/app"
-	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
-	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 )
 

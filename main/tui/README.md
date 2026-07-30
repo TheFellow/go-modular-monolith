@@ -33,7 +33,7 @@ graph TD
 
 ### ViewModels
 - One per domain view (drinks, ingredients, inventory, menus, orders, audit).
-- Import styles and keys from `main/tui/styles` and `main/tui/keys`.
+- Import shared styles and keys from `app/surfaces/tui/styles` and `app/surfaces/tui/keys`.
 - Use `app.Context()` to obtain a fresh `middleware.Context` per command/query.
 - Own domain-specific workflow state and adapt typed domain values for display.
 - Report input ownership through `Interaction` so the root can route global keys.
@@ -59,16 +59,15 @@ graph TD
 - `main/tui/main.go`: Entry point (`Run`).
 - `main/tui/views/dashboard.go`: Dashboard view model.
 - `app/domains/*/surfaces/tui/`: Domain list/detail/create/edit view models.
-- `main/tui/styles/`: Shared Lip Gloss style definitions.
-- `main/tui/keys/`: Shared key bindings.
+- `app/surfaces/tui/`: Shared Mixology TUI contracts, components, styles, and key bindings.
 - `main/tui/messages.go`: Public TUI message/view aliases.
 
 ## Adding a New View
 
 1. Create a new view model in the target domain under `app/domains/<domain>/surfaces/tui/`.
-2. Add a new `View` constant in `main/tui/views/messages.go` and `main/tui/messages.go`.
+2. Add a new `View` constant in `app/surfaces/tui/views/messages.go` and expose it from `main/tui/messages.go`.
 3. Wire the view into `main/tui/app.go` `currentViewModel()` and navigation.
-4. Use shared styles/keys from `main/tui/styles` and `main/tui/keys`.
+4. Use shared styles/keys from `app/surfaces/tui/styles` and `app/surfaces/tui/keys`.
 5. For data access, call `app.Context()` per operation.
 
 ## Notes

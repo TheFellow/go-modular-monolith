@@ -13,7 +13,7 @@ import (
 	menuauthz "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	menustui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	"github.com/TheFellow/go-modular-monolith/main/tui/views"
+	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
 	tea "github.com/charmbracelet/bubbletea"
