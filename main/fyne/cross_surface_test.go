@@ -15,6 +15,7 @@ import (
 	inventoryauthz "github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	inventoryfyne "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/fyne"
 	taggingfyne "github.com/TheFellow/go-modular-monolith/app/domains/tagging/surfaces/fyne"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 )
 
@@ -25,7 +26,7 @@ func TestCLIAndComposedDesktopShareIngredientInventoryAuditAndTagContracts(t *te
 		t.Fatal(err)
 	}
 	workingDirectory := t.TempDir()
-	binary := filepath.Join(workingDirectory, "mixology")
+	binary := testutil.ExecutablePath(workingDirectory, "mixology")
 	build := exec.Command("go", "build", "-o", binary, "./main/cli")
 	build.Dir = repository
 	if output, buildErr := build.CombinedOutput(); buildErr != nil {

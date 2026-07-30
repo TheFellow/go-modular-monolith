@@ -495,7 +495,7 @@ func TestCLIWorkflowAndFyneSharePersistenceContract(t *testing.T) {
 	repo, err := filepath.Abs("../../../../../")
 	testutil.Ok(t, err)
 	dir := t.TempDir()
-	binary := filepath.Join(dir, "mixology")
+	binary := testutil.ExecutablePath(dir, "mixology")
 	build := exec.Command("go", "build", "-o", binary, "./main/cli")
 	build.Dir = repo
 	output, err := build.CombinedOutput()
