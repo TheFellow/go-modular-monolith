@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 )
 
 type orderItem = tui.ListItem[models.Order]

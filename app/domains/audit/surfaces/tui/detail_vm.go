@@ -7,7 +7,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/lipgloss"
 )

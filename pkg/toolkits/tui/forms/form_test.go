@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )

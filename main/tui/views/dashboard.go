@@ -12,7 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 )
 
 // Dashboard is the main navigation hub of the TUI.

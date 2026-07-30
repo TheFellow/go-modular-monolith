@@ -3,7 +3,7 @@ package tui_test
 import (
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 )
 
 type listItem interface {
