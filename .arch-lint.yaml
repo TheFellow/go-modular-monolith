@@ -9,11 +9,11 @@ specs:
         - "app/**"
         - "main/**"
 
-  # Domain Fyne surfaces adapt public module APIs without reaching into internals.
-  - name: fyne-surfaces-use-public-domain-api
+  # Domain GUI surfaces adapt public module APIs without reaching into internals.
+  - name: gui-surfaces-use-public-domain-api
     packages:
       include:
-        - "app/domains/*/surfaces/fyne/**"
+        - "app/domains/*/surfaces/gui/**"
     rules:
       forbid:
         - "app/domains/*/internal/**"
@@ -22,16 +22,16 @@ specs:
         - "main/**"
         - "pkg/tui/**"
 
-  # A domain owns its Fyne presentation; sibling surfaces are not a reuse layer.
-  - name: fyne-surfaces-no-cross-domain-surfaces
+  # A domain owns its GUI presentation; sibling surfaces are not a reuse layer.
+  - name: gui-surfaces-no-cross-domain-surfaces
     packages:
       include:
-        - "app/domains/*/surfaces/fyne/**"
+        - "app/domains/*/surfaces/gui/**"
     rules:
       forbid:
         - "app/domains/{module}/surfaces/**"
       except:
-        - "app/domains/{module}/surfaces/fyne/**"
+        - "app/domains/{module}/surfaces/gui/**"
 
   # The reusable TUI toolkit owns terminal mechanics, never application policy.
   - name: tui-toolkit-no-application
@@ -60,7 +60,7 @@ specs:
     rules:
       forbid:
         - "app/domains/*/surfaces/cli/**"
-        - "app/domains/*/surfaces/fyne/**"
+        - "app/domains/*/surfaces/gui/**"
 
   # CLI surfaces adapt public APIs directly rather than depending on interactive views.
   - name: cli-surfaces-are-bespoke
@@ -69,7 +69,7 @@ specs:
         - "app/domains/*/surfaces/cli/**"
     rules:
       forbid:
-        - "app/domains/*/surfaces/fyne/**"
+        - "app/domains/*/surfaces/gui/**"
         - "app/domains/*/surfaces/tui/**"
 
   # Shared types cannot import domains.

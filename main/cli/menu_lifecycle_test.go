@@ -27,7 +27,7 @@ func TestMenusCLIUpdateDeleteLifecycleAndCrossInvocationVisibility(t *testing.T)
 	testutil.Equals(t, strings.Join(menu.Tags, ","), "featured,service=late")
 
 	// A fresh command tree observes the same persisted state, as the TUI and
-	// Fyne surfaces do through the shared application modules.
+	// GUI surfaces do through the shared application modules.
 	shown := cli.Run("menus", "show", "--id", menu.ID, "--json")
 	testutil.Ok(t, shown.Err)
 	testutil.StringContains(t, shown.Stdout, `"name": "Late Dinner"`)
