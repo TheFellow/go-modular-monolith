@@ -221,7 +221,8 @@ go test -tags ci ./pkg/toolkits/gui ./pkg/testutil/fynetest ./main/gui \
   ./app/domains/*/surfaces/gui
 go test ./pkg/toolkits/cli/... ./pkg/toolkits/tui/...
 go tool arch-lint -config=.arch-lint.yaml
-go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
+GOTOOLCHAIN=go1.26.5 \
+  go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
 go test -race -shuffle=on -count=1 -timeout=5m ./...
 ```
 
