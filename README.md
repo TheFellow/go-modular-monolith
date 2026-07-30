@@ -446,23 +446,17 @@ invoked by `//go:generate go run ./gen` in the parent package.
 
 ## Architecture Enforcement
 
-Fourteen `arch-lint` rules (`.arch-lint.yaml`) enforce module and presentation boundaries at CI time:
+Eight `arch-lint` rules (`.arch-lint.yaml`) enforce module and presentation boundaries at CI time:
 
 | Rule | Prevents |
 |------|----------|
-| fyne-toolkit-no-application | Reusable Fyne mechanics importing application or composition code |
-| gui-surfaces-use-public-domain-api | GUI surfaces reaching into internals, composition, or sibling surface mechanics |
-| gui-surfaces-no-cross-domain-surfaces | One domain reusing another domain's concrete presentation surface |
-| tui-toolkit-no-application | Reusable TUI mechanics importing application or composition code |
-| tui-surfaces-use-public-domain-api | TUI surfaces reaching into same-domain internals |
-| tui-surfaces-are-bespoke | TUI surfaces importing CLI or GUI surface implementations |
-| cli-surfaces-are-bespoke | CLI surfaces importing TUI or GUI surface implementations |
+| presentation-toolkits-no-application | Reusable Fyne or TUI mechanics importing application or composition code |
+| domain-internals-have-explicit-consumers | Any package outside a domain's facade, internal implementation, queries, or handlers reaching into its internals |
+| gui-surfaces-no-composition-or-tui | GUI surfaces reaching into composition or terminal toolkit mechanics |
+| surfaces-are-bespoke | Any domain surface importing another domain or surface kind's concrete presentation |
 | shared-no-domains | Shared app packages importing domain code |
-| no-cross-domain-internal | Domain A reaching into Domain B's internals |
 | handlers-no-commands | Event handlers importing command implementations |
-| events-no-internal | Event packages depending on internal packages |
 | queries-no-commands | Queries importing write-side code |
-| models-no-internal | Domain models depending on internal packages |
 | handlers-no-modules | Handlers accessing module roots (must use queries/events/models) |
 
 Additional compile-time guarantees: `golangci-lint` runs its standard checks plus wrapped-error,

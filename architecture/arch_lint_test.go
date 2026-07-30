@@ -14,7 +14,7 @@ import (
 	"github.com/TheFellow/arch-lint/pkg/linter"
 )
 
-func TestGUIArchitectureRulesRejectForbiddenImports(t *testing.T) {
+func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
 	repositoryRoot := repositoryRoot(t)
 	fixtureRoot := t.TempDir()
 
@@ -32,15 +32,20 @@ func TestGUIArchitectureRulesRejectForbiddenImports(t *testing.T) {
 		"main",
 		"app/domains/drinks",
 		"app/domains/drinks/internal/storage",
+		"app/domains/drinks/internal/commands",
+		"app/domains/drinks/internal/commands/nested",
 		"app/domains/drinks/surfaces/cli",
 		"app/domains/drinks/surfaces/gui",
 		"app/domains/drinks/surfaces/tui",
+		"app/domains/drinks/surfaces/web",
 		"app/domains/ingredients/surfaces/gui",
+		"app/domains/ingredients/internal/storage",
 	} {
 		writeFixture(t, fixtureRoot, filepath.Join(target, "target.go"), "package target\n")
 	}
 
 	writeImporter(t, fixtureRoot, "pkg/fyne/invalid", "app", "main")
+	writeImporter(t, fixtureRoot, "pkg/tui/invalid", "app", "main")
 	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/gui/invalid",
 		"app/domains/drinks/internal/storage",
 		"app/domains/drinks/surfaces/cli",
@@ -67,6 +72,41 @@ func TestGUIArchitectureRulesRejectForbiddenImports(t *testing.T) {
 	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/cli/valid",
 		"app/domains/drinks",
 	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/web/invalid-gui",
+		"app/domains/drinks/surfaces/gui",
+		"app/domains/drinks/internal/storage",
+	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/web/valid",
+		"app/domains/drinks/surfaces/web",
+	)
+	writeImporterPackage(t, fixtureRoot, "app/domains/drinks", "target",
+		"app/domains/drinks/internal/storage",
+	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/internal/workflow/valid-internal",
+		"app/domains/drinks/internal/storage",
+	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/queries/valid-internal",
+		"app/domains/drinks/internal/storage",
+	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/handlers/valid-internal",
+		"app/domains/drinks/internal/storage",
+	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/service/invalid-internal",
+		"app/domains/drinks/internal/storage",
+	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/service/invalid-cross-domain-internal",
+		"app/domains/ingredients/internal/storage",
+	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/handlers/invalid",
+		"app/domains/drinks",
+		"app/domains/drinks/internal/commands",
+		"app/domains/drinks/internal/commands/nested",
+	)
+	for _, layer := range []string{"authz", "events", "models"} {
+		writeImporter(t, fixtureRoot, "app/domains/drinks/"+layer+"/invalid-internal",
+			"app/domains/drinks/internal/storage",
+		)
+	}
 
 	workingDirectory, err := os.Getwd()
 	if err != nil {
@@ -91,17 +131,29 @@ func TestGUIArchitectureRulesRejectForbiddenImports(t *testing.T) {
 	}
 
 	want := []string{
-		`arch-lint: [cli-surfaces-are-bespoke] package "app/domains/drinks/surfaces/cli/invalid-gui" imports "app/domains/drinks/surfaces/gui"`,
-		`arch-lint: [cli-surfaces-are-bespoke] package "app/domains/drinks/surfaces/cli/invalid-gui" imports "app/domains/ingredients/surfaces/gui"`,
-		`arch-lint: [gui-surfaces-no-cross-domain-surfaces] package "app/domains/drinks/surfaces/gui/crossdomain" imports "app/domains/ingredients/surfaces/gui"`,
-		`arch-lint: [gui-surfaces-use-public-domain-api] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/internal/storage"`,
-		`arch-lint: [gui-surfaces-use-public-domain-api] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/surfaces/cli"`,
-		`arch-lint: [gui-surfaces-use-public-domain-api] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/surfaces/tui"`,
-		`arch-lint: [gui-surfaces-use-public-domain-api] package "app/domains/drinks/surfaces/gui/invalid" imports "main"`,
-		`arch-lint: [fyne-toolkit-no-application] package "pkg/fyne/invalid" imports "app"`,
-		`arch-lint: [fyne-toolkit-no-application] package "pkg/fyne/invalid" imports "main"`,
-		`arch-lint: [tui-surfaces-are-bespoke] package "app/domains/drinks/surfaces/tui/invalid-gui" imports "app/domains/drinks/surfaces/gui"`,
-		`arch-lint: [tui-surfaces-are-bespoke] package "app/domains/drinks/surfaces/tui/invalid-gui" imports "app/domains/ingredients/surfaces/gui"`,
+		`arch-lint: [domain-internals-have-explicit-consumers] package "app/domains/drinks/authz/invalid-internal" imports "app/domains/drinks/internal/storage"`,
+		`arch-lint: [domain-internals-have-explicit-consumers] package "app/domains/drinks/events/invalid-internal" imports "app/domains/drinks/internal/storage"`,
+		`arch-lint: [domain-internals-have-explicit-consumers] package "app/domains/drinks/models/invalid-internal" imports "app/domains/drinks/internal/storage"`,
+		`arch-lint: [domain-internals-have-explicit-consumers] package "app/domains/drinks/service/invalid-cross-domain-internal" imports "app/domains/ingredients/internal/storage"`,
+		`arch-lint: [domain-internals-have-explicit-consumers] package "app/domains/drinks/service/invalid-internal" imports "app/domains/drinks/internal/storage"`,
+		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/cli/invalid-gui" imports "app/domains/drinks/surfaces/gui"`,
+		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/cli/invalid-gui" imports "app/domains/ingredients/surfaces/gui"`,
+		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/gui/crossdomain" imports "app/domains/ingredients/surfaces/gui"`,
+		`arch-lint: [handlers-no-commands] package "app/domains/drinks/handlers/invalid" imports "app/domains/drinks/internal/commands"`,
+		`arch-lint: [handlers-no-commands] package "app/domains/drinks/handlers/invalid" imports "app/domains/drinks/internal/commands/nested"`,
+		`arch-lint: [handlers-no-modules] package "app/domains/drinks/handlers/invalid" imports "app/domains/drinks"`,
+		`arch-lint: [domain-internals-have-explicit-consumers] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/internal/storage"`,
+		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/surfaces/cli"`,
+		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/surfaces/tui"`,
+		`arch-lint: [gui-surfaces-no-composition-or-tui] package "app/domains/drinks/surfaces/gui/invalid" imports "main"`,
+		`arch-lint: [presentation-toolkits-no-application] package "pkg/fyne/invalid" imports "app"`,
+		`arch-lint: [presentation-toolkits-no-application] package "pkg/fyne/invalid" imports "main"`,
+		`arch-lint: [presentation-toolkits-no-application] package "pkg/tui/invalid" imports "app"`,
+		`arch-lint: [presentation-toolkits-no-application] package "pkg/tui/invalid" imports "main"`,
+		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/tui/invalid-gui" imports "app/domains/drinks/surfaces/gui"`,
+		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/tui/invalid-gui" imports "app/domains/ingredients/surfaces/gui"`,
+		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/web/invalid-gui" imports "app/domains/drinks/surfaces/gui"`,
+		`arch-lint: [domain-internals-have-explicit-consumers] package "app/domains/drinks/surfaces/web/invalid-gui" imports "app/domains/drinks/internal/storage"`,
 	}
 	got := make([]string, 0, len(violations))
 	for _, violation := range violations {
@@ -125,8 +177,13 @@ func repositoryRoot(t *testing.T) string {
 
 func writeImporter(t *testing.T, root, directory string, imports ...string) {
 	t.Helper()
+	writeImporterPackage(t, root, directory, "fixture", imports...)
+}
+
+func writeImporterPackage(t *testing.T, root, directory, packageName string, imports ...string) {
+	t.Helper()
 	var source strings.Builder
-	source.WriteString("package fixture\n\nimport (\n")
+	fmt.Fprintf(&source, "package %s\n\nimport (\n", packageName)
 	for _, importPath := range imports {
 		fmt.Fprintf(&source, "\t_ %q\n", "github.com/TheFellow/go-modular-monolith/"+importPath)
 	}
