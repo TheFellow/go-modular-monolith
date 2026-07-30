@@ -75,6 +75,7 @@ specs:
         - "app/*"
       exclude:
         - "app/domains/**"
+        - "app/surfaces/**"
     rules:
       forbid:
         - "app/domains/**"

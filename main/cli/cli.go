@@ -6,10 +6,8 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"github.com/TheFellow/go-modular-monolith/app"
-	"github.com/TheFellow/go-modular-monolith/main/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
@@ -56,10 +54,6 @@ func (c *CLI) Command() *cli.Command {
 		Name:  "mixology",
 		Usage: "Mixology as a Service",
 		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:  "tui",
-				Usage: "Launch interactive terminal UI",
-			},
 			&cli.StringFlag{
 				Name:        "log-level",
 				Value:       c.logLevel,
@@ -103,18 +97,6 @@ func (c *CLI) Command() *cli.Command {
 				ctx = pkglog.ToContext(ctx, pkglog.Setup("error", "text", io.Discard))
 				return middleware.NewContext(ctx), nil
 			}
-			if cmd != nil && cmd.Bool("tui") && c.logFile == "" {
-				logDir := filepath.Dir(c.dbPath)
-				if logDir != "" && logDir != "." {
-					if err := os.MkdirAll(logDir, 0o755); err != nil {
-						return ctx, fmt.Errorf("create log dir: %w", err)
-					}
-					c.logFile = filepath.Join(logDir, "mixology-tui.log")
-				} else {
-					c.logFile = "mixology-tui.log"
-				}
-			}
-
 			var logOutput io.Writer = os.Stderr
 			if c.logFile != "" {
 				f, err := os.OpenFile(c.logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
@@ -155,22 +137,7 @@ func (c *CLI) Command() *cli.Command {
 			}
 			c.app = app.New(ctx, app.Config{Store: s})
 
-			baseCtx := ctx
-			mctx := middleware.NewContext(ctx)
-
-			if cmd != nil && cmd.Bool("tui") {
-				args := cmd.Args().Slice()
-				if len(args) > 0 {
-					return ctx, cli.Exit(fmt.Errorf("too many arguments for --tui"), errors.ExitUsage)
-				}
-
-				if err := tui.Run(app.NewSession(baseCtx, c.app)); err != nil {
-					return mctx, err
-				}
-				return mctx, cli.Exit("", 0)
-			}
-
-			return mctx, nil
+			return middleware.NewContext(ctx), nil
 		},
 		After: func(ctx context.Context, _ *cli.Command) error {
 			if c.app != nil {
