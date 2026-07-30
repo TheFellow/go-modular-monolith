@@ -79,6 +79,36 @@ specs:
       forbid:
         - "app/domains/**"
 
+  # Authorization contracts are implementation details of the domain that owns
+  # them. Cross-domain collaboration uses public models, queries, and events.
+  - name: domain-authz-is-private
+    packages:
+      include:
+        - "app/domains/*"
+        - "app/domains/*/**"
+    rules:
+      forbid:
+        - "app/domains/{module}/authz"
+        - "app/domains/{module}/authz/**"
+      except:
+        - "app/domains/{module}"
+        - "app/domains/{module}/**"
+
+  # Commands publish facts owned by their own domain; they must not emit another
+  # domain's events. Other domain layers may still consume public events.
+  - name: commands-emit-own-domain-events
+    packages:
+      include:
+        - "app/domains/*/internal/commands"
+        - "app/domains/*/internal/commands/**"
+    rules:
+      forbid:
+        - "app/domains/{module}/events"
+        - "app/domains/{module}/events/**"
+      except:
+        - "app/domains/{module}/internal/commands"
+        - "app/domains/{module}/internal/commands/**"
+
   # Handlers cannot import commands.
   - name: handlers-no-commands
     packages:

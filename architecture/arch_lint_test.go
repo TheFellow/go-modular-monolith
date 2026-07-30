@@ -34,11 +34,22 @@ func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
 		"app/domains/drinks/internal/storage",
 		"app/domains/drinks/internal/commands",
 		"app/domains/drinks/internal/commands/nested",
+		"app/domains/drinks/authz",
+		"app/domains/drinks/events",
+		"app/domains/drinks/events/nested",
+		"app/domains/drinks/models",
+		"app/domains/drinks/queries",
 		"app/domains/drinks/surfaces/cli",
 		"app/domains/drinks/surfaces/gui",
 		"app/domains/drinks/surfaces/tui",
 		"app/domains/drinks/surfaces/web",
 		"app/domains/ingredients/surfaces/gui",
+		"app/domains/ingredients/authz",
+		"app/domains/ingredients/authz/roles",
+		"app/domains/ingredients/events",
+		"app/domains/ingredients/events/nested",
+		"app/domains/ingredients/models",
+		"app/domains/ingredients/queries",
 		"app/domains/ingredients/internal/storage",
 		"pkg/toolkits/cli",
 		"pkg/toolkits/gui",
@@ -95,6 +106,27 @@ func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
 	writeImporter(t, fixtureRoot, "app/domains/drinks/internal/workflow/valid-internal",
 		"app/domains/drinks/internal/storage",
 	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/service/valid-public-contracts",
+		"app/domains/ingredients/events",
+		"app/domains/ingredients/events/nested",
+		"app/domains/ingredients/models",
+		"app/domains/ingredients/queries",
+	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/service/invalid-cross-domain-authz",
+		"app/domains/ingredients/authz",
+		"app/domains/ingredients/authz/roles",
+	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/service/valid-own-authz",
+		"app/domains/drinks/authz",
+	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/internal/commands/valid-own-events",
+		"app/domains/drinks/events",
+		"app/domains/drinks/events/nested",
+	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/internal/commands/invalid-cross-domain-events",
+		"app/domains/ingredients/events",
+		"app/domains/ingredients/events/nested",
+	)
 	writeImporter(t, fixtureRoot, "app/domains/drinks/queries/valid-internal",
 		"app/domains/drinks/internal/storage",
 	)
@@ -141,6 +173,10 @@ func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
 	}
 
 	want := []string{
+		`arch-lint: [commands-emit-own-domain-events] package "app/domains/drinks/internal/commands/invalid-cross-domain-events" imports "app/domains/ingredients/events"`,
+		`arch-lint: [commands-emit-own-domain-events] package "app/domains/drinks/internal/commands/invalid-cross-domain-events" imports "app/domains/ingredients/events/nested"`,
+		`arch-lint: [domain-authz-is-private] package "app/domains/drinks/service/invalid-cross-domain-authz" imports "app/domains/ingredients/authz"`,
+		`arch-lint: [domain-authz-is-private] package "app/domains/drinks/service/invalid-cross-domain-authz" imports "app/domains/ingredients/authz/roles"`,
 		`arch-lint: [domain-internals-have-explicit-consumers] package "app/domains/drinks/authz/invalid-internal" imports "app/domains/drinks/internal/storage"`,
 		`arch-lint: [domain-internals-have-explicit-consumers] package "app/domains/drinks/events/invalid-internal" imports "app/domains/drinks/internal/storage"`,
 		`arch-lint: [domain-internals-have-explicit-consumers] package "app/domains/drinks/models/invalid-internal" imports "app/domains/drinks/internal/storage"`,
@@ -155,7 +191,7 @@ func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
 		`arch-lint: [domain-internals-have-explicit-consumers] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/internal/storage"`,
 		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/surfaces/cli"`,
 		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/surfaces/tui"`,
-		`arch-lint: [gui-surfaces-no-composition] package "app/domains/drinks/surfaces/gui/invalid" imports "main"`,
+		`arch-lint: [surfaces-no-composition] package "app/domains/drinks/surfaces/gui/invalid" imports "main"`,
 		`arch-lint: [surfaces-use-matching-toolkit] package "app/domains/drinks/surfaces/gui/wrong-toolkit" imports "pkg/toolkits/tui"`,
 		`arch-lint: [surfaces-use-matching-toolkit] package "app/domains/drinks/surfaces/tui/wrong-toolkit" imports "pkg/toolkits/gui"`,
 		`arch-lint: [surfaces-use-matching-toolkit] package "app/domains/drinks/surfaces/cli/wrong-toolkit" imports "pkg/toolkits/gui"`,
