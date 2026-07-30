@@ -15,7 +15,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
-	"github.com/TheFellow/go-modular-monolith/main/tui/components"
+	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/dialog"
 	tea "github.com/charmbracelet/bubbletea"

@@ -47,11 +47,11 @@ specs:
       except:
         - "app/domains/*/surfaces/{surface}/**"
 
-  # GUI surfaces do not depend on application composition.
-  - name: gui-surfaces-no-composition
+  # Domain surfaces do not depend on executable composition.
+  - name: surfaces-no-composition
     packages:
       include:
-        - "app/domains/*/surfaces/gui/**"
+        - "app/domains/*/surfaces/*/**"
     rules:
       forbid:
         - "main/**"

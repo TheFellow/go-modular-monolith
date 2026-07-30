@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
-	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
+	tuikeys "github.com/TheFellow/go-modular-monolith/app/surfaces/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/app/surfaces/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"

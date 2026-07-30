@@ -6,9 +6,9 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	"github.com/TheFellow/go-modular-monolith/main/tui/components"
-	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/components"
+	tuikeys "github.com/TheFellow/go-modular-monolith/app/surfaces/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/app/surfaces/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	"github.com/charmbracelet/bubbles/key"

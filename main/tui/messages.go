@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/TheFellow/go-modular-monolith/main/tui/views"
+import "github.com/TheFellow/go-modular-monolith/app/surfaces/tui/views"
 
 // NavigateMsg requests navigation to a different view.
 type NavigateMsg = views.NavigateMsg

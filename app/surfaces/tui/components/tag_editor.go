@@ -3,10 +3,9 @@ package components
 import (
 	"strings"
 
-	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
-	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -26,9 +25,14 @@ type tagsSaveFailedMsg struct {
 	err    error
 }
 
+// TagReplacer supplies the session-scoped tag mutation used by TagEditor.
+type TagReplacer interface {
+	ReplaceTags(target cedar.EntityUID, desired tag.Tags) (tag.Tags, error)
+}
+
 // TagEditor edits the complete tag set for one entity.
 type TagEditor struct {
-	app    *app.Session
+	tags   TagReplacer
 	target cedar.EntityUID
 	label  string
 	field  *forms.TextField
@@ -39,11 +43,11 @@ type TagEditor struct {
 }
 
 // NewTagEditor creates an editor prefilled with the entity's canonical tags.
-func NewTagEditor(application *app.Session, target cedar.EntityUID, label string, current tag.Tags) *TagEditor {
+func NewTagEditor(tags TagReplacer, target cedar.EntityUID, label string, current tag.Tags) *TagEditor {
 	field := forms.NewTextField("Tags", forms.WithPlaceholder("featured,region=west"))
 	_ = field.SetValue(current.Canonical().String())
 	return &TagEditor{
-		app: application, target: target, label: label, field: field,
+		tags: tags, target: target, label: label, field: field,
 		form: forms.New(styles.App.Form, keys.App.Form, field),
 	}
 }
@@ -118,10 +122,10 @@ func (m *TagEditor) save() tea.Cmd {
 	m.err = nil
 	m.saving = true
 	return func() tea.Msg {
-		result, err := m.app.Tags.Replace(m.app.Context(), m.target, desired)
+		result, err := m.tags.ReplaceTags(m.target, desired)
 		if err != nil {
 			return tagsSaveFailedMsg{target: m.target, err: err}
 		}
-		return TagsSavedMsg{Target: m.target, Tags: result.Tags}
+		return TagsSavedMsg{Target: m.target, Tags: result}
 	}
 }

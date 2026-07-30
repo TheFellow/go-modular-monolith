@@ -15,8 +15,8 @@ import (
 	inventoryui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/tui"
 	menusui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
 	ordersui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/tui"
-	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
-	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
