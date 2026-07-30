@@ -1,4 +1,3 @@
-//nolint:paralleltest // this boundary table remains serial with its package lifecycle suite.
 package tui
 
 import (
@@ -8,6 +7,7 @@ import (
 )
 
 func TestStockStatusDefaultThresholdBoundaries(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		value float64
 		want  string

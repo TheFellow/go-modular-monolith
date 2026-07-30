@@ -1,4 +1,3 @@
-//nolint:paralleltest // terminal view-model lifecycle assertions intentionally run serially.
 package tui
 
 import (
@@ -25,6 +24,7 @@ func (p *drinksPagingProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (p *drinksPagingProgram) View() string { return p.vm.View() }
 
 func TestFilterVMComposesEveryStructuredFieldAndExpression(t *testing.T) {
+	t.Parallel()
 	want := drinks.ListRequest{Name: "Martini", Category: models.DrinkCategoryCocktail, Glass: models.GlassTypeCoupe, Filter: `tags contains "featured"`, Limit: 17}
 	form := newFilterVM(want)
 	got, err := form.Request()
@@ -33,6 +33,7 @@ func TestFilterVMComposesEveryStructuredFieldAndExpression(t *testing.T) {
 }
 
 func TestListViewModelTraversesServerPagesWithoutDuplicates(t *testing.T) {
+	t.Parallel()
 	fix := testutil.NewFixture(t)
 	ingredient := testutil.CreateIngredient(t, fix, ingredientmodels.Ingredient{Name: "Base", Category: ingredientmodels.CategoryOther, Unit: measurement.UnitOz})
 	for i := range 101 {
@@ -64,6 +65,7 @@ func TestListViewModelTraversesServerPagesWithoutDuplicates(t *testing.T) {
 }
 
 func TestFilterVMRejectsInvalidPageSizeWithoutChangingRequest(t *testing.T) {
+	t.Parallel()
 	before := drinks.ListRequest{Name: "Old", Limit: 25}
 	form := newFilterVM(before)
 	_ = form.limit.SetValue(0)

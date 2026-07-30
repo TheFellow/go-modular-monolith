@@ -209,7 +209,7 @@ func (p *Presenter) start(mode Mode) {
 	}
 	p.state.Mode, p.state.Err = mode, nil
 	p.state.Form = Form{Tags: p.state.Selected.Inventory.Tags.Canonical().String(), ReplaceTags: mode != Tags}
-	switch mode { //nolint:exhaustive // browse and adjust do not create inventory.
+	switch mode {
 	case Set:
 		p.state.Form.Amount = fmt.Sprintf("%.2f", p.state.Selected.Inventory.Amount.Value())
 		if price, ok := p.state.Selected.Inventory.CostPerUnit.Unwrap(); ok {
@@ -218,6 +218,7 @@ func (p *Presenter) start(mode Mode) {
 		}
 	case Tags:
 		p.state.Form.Tags = p.state.Selected.Inventory.Tags.Canonical().String()
+	case Browse, Adjust:
 	}
 	p.publishLocked()
 }
@@ -256,7 +257,7 @@ func (p *Presenter) Submit(form Form) bool {
 		if form.ReplaceTags {
 			desired = &validated.tags
 		}
-		switch mode { //nolint:exhaustive // browse mode does not submit a mutation.
+		switch mode {
 		case Adjust:
 			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
 				return p.app.Inventory.Adjust(ctx, &inventorymodels.Patch{IngredientID: selected.Ingredient.ID, Reason: form.Reason, Delta: validated.amount, CostPerUnit: validated.cost})
@@ -269,7 +270,7 @@ func (p *Presenter) Submit(form Form) bool {
 			})
 		case Tags:
 			_, err = p.app.Tags.Replace(p.app.Context(), selected.Inventory.EntityUID(), validated.tags)
-		default:
+		case Browse:
 			err = apperrors.Invalidf("inventory form is not active")
 		}
 		return err

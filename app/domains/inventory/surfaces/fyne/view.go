@@ -37,16 +37,17 @@ func (v *View) Content() framework.CanvasObject { return v.root }
 func (v *View) Activate()                       { v.presenter.Load() }
 func (v *View) ExecuteCommand(command fyneui.Command) bool {
 	state := v.presenter.Snapshot()
-	switch command { //nolint:exhaustive // new-item setup has no existing form fields to focus.
+	switch command {
 	case fyneui.CommandRefresh:
 		return state.Mode == Browse && fyneui.Trigger(v.refresh)
 	case fyneui.CommandSave:
 		return state.Mode != Browse && fyneui.Trigger(v.save)
 	case fyneui.CommandCancel:
 		return state.Mode != Browse && fyneui.Trigger(v.cancel)
-	default:
+	case fyneui.CommandNew:
 		return false
 	}
+	return false
 }
 
 func (v *View) render(state State) {
@@ -123,11 +124,12 @@ func (v *View) render(state State) {
 		rows.Add(widget.NewLabel("No inventory found"))
 	}
 	status := ""
-	switch state.Status { //nolint:exhaustive // idle and loaded require no transient notice.
+	switch state.Status {
 	case fyneui.Loading:
 		status = "Loading inventory…"
 	case fyneui.Failed:
 		status = "Unable to load inventory"
+	case fyneui.Idle, fyneui.Loaded:
 	}
 	if state.Err != nil {
 		status = "Error: " + state.Err.Error()
@@ -181,7 +183,7 @@ func (v *View) form(state State) framework.CanvasObject {
 		}
 	}
 	var fields framework.CanvasObject
-	switch state.Mode { //nolint:exhaustive // browse mode has no mutation form.
+	switch state.Mode {
 	case Adjust:
 		v.amount = fyneui.NewEntry("inventory-form-amount")
 		v.amount.SetPlaceHolder("Optional, e.g. +5.00 or -2.50")
@@ -210,6 +212,7 @@ func (v *View) form(state State) framework.CanvasObject {
 		v.tags.SetPlaceHolder("featured, region=west")
 		v.tags.SetText(state.Form.Tags)
 		fields = container.NewVBox(widget.NewLabel("Complete tag set (CSV); clear to remove all tags"), v.tags)
+	case Browse:
 	}
 	errorText := ""
 	if state.Err != nil {
@@ -217,7 +220,7 @@ func (v *View) form(state State) framework.CanvasObject {
 	}
 	v.save = fyneui.NewButton("inventory-form-save", "Save", func() {
 		form := Form{}
-		switch state.Mode { //nolint:exhaustive // browse mode has no mutation form.
+		switch state.Mode {
 		case Adjust:
 			form.Amount = v.amount.Text
 			form.Cost = v.cost.Text
@@ -229,6 +232,7 @@ func (v *View) form(state State) framework.CanvasObject {
 			form.Tags, form.ReplaceTags = v.tags.Text, true
 		case Tags:
 			form.Tags = v.tags.Text
+		case Browse:
 		}
 		v.presenter.Submit(form)
 	})

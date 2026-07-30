@@ -1,4 +1,3 @@
-//nolint:paralleltest // aggregate fixtures exercise full application lifecycles serially.
 package app_test
 
 import (
@@ -17,6 +16,7 @@ import (
 )
 
 func TestDashboardRejectsSessionWithoutApplication(t *testing.T) {
+	t.Parallel()
 	_, err := app.NewSession(context.Background(), nil).Dashboard()
 	if err == nil {
 		t.Fatal("dashboard accepted a session without an application")
@@ -24,6 +24,7 @@ func TestDashboardRejectsSessionWithoutApplication(t *testing.T) {
 }
 
 func TestDashboardAggregateUsesThresholdBoundaryAndAuditOrder(t *testing.T) {
+	t.Parallel()
 	f := testutil.NewFixture(t)
 	at := testutil.CreateIngredient(t, f, ingredientmodels.Ingredient{Name: "At threshold", Category: ingredientmodels.CategoryOther, Unit: measurement.UnitOz})
 	above := testutil.CreateIngredient(t, f, ingredientmodels.Ingredient{Name: "Above threshold", Category: ingredientmodels.CategoryOther, Unit: measurement.UnitOz})

@@ -92,14 +92,15 @@ func (v *View) Activate() {}
 
 func (v *View) ExecuteCommand(command ui.Command) bool {
 	state := v.presenter.State()
-	switch command { //nolint:exhaustive // refresh and new have no operation-specific focus target.
+	switch command {
 	case ui.CommandSave:
 		return state.Mode == EnteringValue && ui.Trigger(v.submit)
 	case ui.CommandCancel:
 		return state.Mode != Browsing && ui.Trigger(v.back)
-	default:
+	case ui.CommandRefresh, ui.CommandNew:
 		return false
 	}
+	return false
 }
 
 func (v *View) render(state State) {

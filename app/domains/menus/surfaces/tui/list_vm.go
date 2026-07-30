@@ -539,7 +539,7 @@ func (m *ListViewModel) View() string {
 	listView = m.styles.ListPane.Width(views.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
 	detailView := m.detail.View()
-	switch m.mode { //nolint:exhaustive // workflow modes own their confirmation prompts.
+	switch m.mode {
 	case listModeBrowsing, listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft, listModeConfirmingRemoveDrink:
 	case listModeTagging:
 	case listModeAddingDrink, listModeRemovingDrink, listModeAnalyzing:
@@ -547,6 +547,7 @@ func (m *ListViewModel) View() string {
 		detailView = m.create.View()
 	case listModeRenaming:
 		detailView = m.rename.View()
+	case listModeFiltering:
 	}
 	detailView = m.styles.DetailPane.Width(views.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
 
@@ -554,7 +555,7 @@ func (m *ListViewModel) View() string {
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	switch m.mode { //nolint:exhaustive // workflow modes own their confirmation prompts.
+	switch m.mode {
 	case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft, listModeConfirmingRemoveDrink:
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
 	case listModeTagging:
@@ -570,6 +571,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 			m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Draft, m.keys.Tags, addDrinkKey, removeDrinkKey, analyzeKey,
 			m.keys.Refresh, m.keys.Back,
 		}
+	case listModeAddingDrink, listModeRemovingDrink, listModeAnalyzing:
 	}
 	if m.mode == listModeAddingDrink || m.mode == listModeRemovingDrink || m.mode == listModeAnalyzing {
 		return []key.Binding{m.keys.Enter, m.keys.Back}
@@ -578,7 +580,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
-	switch m.mode { //nolint:exhaustive // workflow modes own their confirmation prompts.
+	switch m.mode {
 	case listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft, listModeConfirmingRemoveDrink:
 		return [][]key.Binding{
 			{m.dialogKeys.Confirm, m.keys.Back},
@@ -601,6 +603,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{addDrinkKey, removeDrinkKey, analyzeKey},
 			{m.keys.Refresh, m.keys.Back},
 		}
+	case listModeAddingDrink, listModeRemovingDrink, listModeAnalyzing:
 	}
 	if m.mode == listModeAddingDrink || m.mode == listModeRemovingDrink || m.mode == listModeAnalyzing {
 		return [][]key.Binding{{m.keys.Enter, m.keys.Back}}

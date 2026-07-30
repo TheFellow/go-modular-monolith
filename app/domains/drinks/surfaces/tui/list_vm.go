@@ -339,13 +339,14 @@ func (m *ListViewModel) View() string {
 	listView = m.styles.ListPane.Width(views.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
 	detailView := m.detail.View()
-	switch m.mode { //nolint:exhaustive // filtering is handled by the active filter component.
+	switch m.mode {
 	case listModeBrowsing, listModeConfirmingDelete:
 	case listModeTagging:
 	case listModeCreating:
 		detailView = m.create.View()
 	case listModeEditing:
 		detailView = m.edit.View()
+	case listModeFiltering:
 	}
 	detailView = m.styles.DetailPane.Width(views.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
 
@@ -353,7 +354,7 @@ func (m *ListViewModel) View() string {
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	switch m.mode { //nolint:exhaustive // filtering is handled by the active filter component.
+	switch m.mode {
 	case listModeConfirmingDelete:
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
 	case listModeTagging:
@@ -367,12 +368,13 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 			m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags,
 			m.keys.Refresh, m.keys.Back,
 		}
+	case listModeFiltering:
 	}
 	return nil
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
-	switch m.mode { //nolint:exhaustive // filtering is handled by the active filter component.
+	switch m.mode {
 	case listModeConfirmingDelete:
 		return [][]key.Binding{
 			{m.dialogKeys.Confirm, m.keys.Back},
@@ -392,6 +394,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags},
 			{m.keys.Refresh, m.keys.Back},
 		}
+	case listModeFiltering:
 	}
 	return nil
 }

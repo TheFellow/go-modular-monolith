@@ -225,11 +225,11 @@ func (p *Presenter) listIngredients() ([]IngredientOption, error) {
 }
 
 func (p *Presenter) Save() bool {
-	switch p.state.Mode { //nolint:exhaustive // browsing has no form submission.
+	switch p.state.Mode {
 	case Tagging:
 		return p.saveTags()
 	case Creating, Editing:
-	default:
+	case Browsing:
 		p.fail(apperrors.Invalidf("no drink form is active"))
 		return false
 	}

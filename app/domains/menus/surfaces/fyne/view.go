@@ -163,11 +163,12 @@ func (v *View) ExecuteCommand(command ui.Command) bool {
 		}
 		return (state.Mode == Creating || state.Mode == Renaming || state.Mode == Tagging) && ui.Trigger(v.save)
 	case ui.CommandCancel:
-		switch state.Mode { //nolint:exhaustive // only drink membership modes render this editor.
+		switch state.Mode {
 		case AddingDrink:
 			return ui.Trigger(v.drinkCancel)
 		case Analyzing:
 			return ui.Trigger(v.analysisCancel)
+		case Browsing, Creating, Renaming, Tagging:
 		}
 		return state.Mode != Browsing && ui.Trigger(v.cancel)
 	default:
@@ -190,7 +191,7 @@ func (v *View) render(state State) {
 	v.descriptionHelp.Hidden = state.Mode != Renaming
 	changed := !v.formRendered || v.renderedMode != state.Mode || !reflect.DeepEqual(v.renderedForm, state.Form)
 	if changed {
-		switch state.Mode { //nolint:exhaustive // browsing has no mutation form.
+		switch state.Mode {
 		case Creating, Renaming:
 			v.name.Show()
 			v.description.Show()
@@ -212,6 +213,7 @@ func (v *View) render(state State) {
 			if v.renderedMode != Analyzing {
 				v.targetMargin.SetText(state.AnalysisForm.TargetMargin)
 			}
+		case Browsing:
 		}
 		v.renderedMode, v.renderedForm, v.formRendered = state.Mode, state.Form, true
 	}

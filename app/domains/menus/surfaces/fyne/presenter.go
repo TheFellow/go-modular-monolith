@@ -315,7 +315,7 @@ func (p *Presenter) Cancel() {
 }
 func (p *Presenter) Save() bool {
 	mode, form, target := p.state.Mode, p.state.Form, cloneMenu(p.state.Selected)
-	switch mode { //nolint:exhaustive // only mutation modes cancel pending work.
+	switch mode {
 	case Creating, Renaming:
 		var desired *tag.Tags
 		if form.ReplaceTags {
@@ -366,10 +366,11 @@ func (p *Presenter) Save() bool {
 			return false
 		}
 		return p.mutate(func() error { _, err := p.app.Tags.Replace(p.app.Context(), target.EntityUID(), tags); return err })
-	default:
+	case Browsing, AddingDrink, Analyzing:
 		p.fail(apperrors.Invalidf("no menu form is active"))
 		return false
 	}
+	return false
 }
 func (p *Presenter) AddDrink(id entity.DrinkID) bool {
 	target := cloneMenu(p.state.Selected)

@@ -1,4 +1,3 @@
-//nolint:paralleltest // startup configuration tests remain serial with desktop process state.
 package main
 
 import (
@@ -8,8 +7,10 @@ import (
 )
 
 func TestStartupConfigSelectsEverySupportedActor(t *testing.T) {
+	t.Parallel()
 	for _, actor := range []string{"owner", "manager", "sommelier", "bartender", "anonymous"} {
 		t.Run(actor, func(t *testing.T) {
+			t.Parallel()
 			config, err := startupConfig([]string{"-actor", actor}, new(bytes.Buffer))
 			if err != nil || config == nil || config.actor != actor || config.dataDirectory == "" {
 				t.Fatalf("startup config = %#v, %v", config, err)
@@ -19,6 +20,7 @@ func TestStartupConfigSelectsEverySupportedActor(t *testing.T) {
 }
 
 func TestStartupConfigDefaultsFreshDesktopToOwnerAndSupportsAlias(t *testing.T) {
+	t.Parallel()
 	config, err := startupConfig(nil, new(bytes.Buffer))
 	if err != nil || config == nil || config.actor != "owner" {
 		t.Fatalf("default startup config = %#v, %v", config, err)
@@ -30,6 +32,7 @@ func TestStartupConfigDefaultsFreshDesktopToOwnerAndSupportsAlias(t *testing.T) 
 }
 
 func TestStartupConfigHelpAndInvalidActor(t *testing.T) {
+	t.Parallel()
 	output := new(bytes.Buffer)
 	config, err := startupConfig([]string{"-help"}, output)
 	if err != nil || config != nil || !strings.Contains(output.String(), "owner|manager|sommelier|bartender|anonymous") {

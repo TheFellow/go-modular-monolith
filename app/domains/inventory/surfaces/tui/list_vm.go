@@ -274,13 +274,14 @@ func (m *ListViewModel) View() string {
 	listView = m.styles.ListPane.Width(views.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
 	detailView := m.detail.View()
-	switch m.mode { //nolint:exhaustive // filtering is rendered by the active filter component.
+	switch m.mode {
 	case listModeBrowsing:
 	case listModeTagging:
 	case listModeAdjusting:
 		detailView = m.adjust.View()
 	case listModeSetting:
 		detailView = m.set.View()
+	case listModeFiltering:
 	}
 	detailView = m.styles.DetailPane.Width(views.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
 
@@ -288,19 +289,20 @@ func (m *ListViewModel) View() string {
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	switch m.mode { //nolint:exhaustive // filtering is handled by the active filter component.
+	switch m.mode {
 	case listModeTagging:
 		return []key.Binding{m.formKeys.Submit, m.keys.Back}
 	case listModeAdjusting, listModeSetting:
 		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
 		return []key.Binding{m.keys.Up, m.keys.Down, previousInventoryPage, nextInventoryPage, m.keys.Adjust, m.keys.Set, m.keys.Tags, m.keys.Refresh, m.keys.Back}
+	case listModeFiltering:
 	}
 	return nil
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
-	switch m.mode { //nolint:exhaustive // filtering is handled by the active filter component.
+	switch m.mode {
 	case listModeTagging:
 		return [][]key.Binding{{m.formKeys.Submit, m.keys.Back}}
 	case listModeAdjusting, listModeSetting:
@@ -315,6 +317,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.keys.Adjust, m.keys.Set, m.keys.Tags},
 			{m.keys.Refresh, m.keys.Back},
 		}
+	case listModeFiltering:
 	}
 	return nil
 }

@@ -187,7 +187,7 @@ func (p *Presenter) Submit() bool {
 		p.fail(err)
 		return false
 	}
-	switch p.state.Operation { //nolint:exhaustive // read-only operations do not mutate tags.
+	switch p.state.Operation {
 	case ShowExact, ShowKey:
 		exact := p.state.Operation == ShowExact
 		p.runQuery(func() (any, error) { return p.app.Tags.Show(p.app.Context(), value, exact) })
@@ -221,10 +221,11 @@ func (p *Presenter) Submit() bool {
 			p.state.Mode, p.state.Err = Results, nil
 			p.publish()
 		})
-	default:
+	case Inspect, Summary:
 		p.fail(apperrors.Invalidf("operation does not accept a value"))
 		return false
 	}
+	return false
 }
 
 func (p *Presenter) Back() bool {
@@ -266,7 +267,7 @@ func (p *Presenter) runQuery(work func() (any, error)) {
 			return
 		}
 		result := Result{Target: target, TargetName: targetName}
-		switch operation { //nolint:exhaustive // read-only operations require no mutation permission.
+		switch operation {
 		case Inspect:
 			result.Tags, _ = r.Value.(tag.Tags)
 			result.Tags = result.Tags.Sorted()
@@ -275,7 +276,7 @@ func (p *Presenter) runQuery(work func() (any, error)) {
 			result.References, _ = r.Value.([]tagging.Reference)
 		case Summary:
 			result.Summaries, _ = r.Value.([]tagging.Summary)
-		default:
+		case Add, Remove:
 			p.state.Mode, p.state.Err = Results, apperrors.Internalf("unexpected tag query")
 			p.publish()
 			return

@@ -1,4 +1,3 @@
-//nolint:paralleltest // table rows are tiny deterministic parser cases.
 package money_test
 
 import (
@@ -18,6 +17,7 @@ func TestParsePriceUserFacingForms(t *testing.T) {
 		{"1.23 EUR", "1.23 €"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			got, err := money.ParsePrice(tc.input)
 			if err != nil {
 				t.Fatal(err)

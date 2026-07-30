@@ -141,11 +141,12 @@ func (v *View) render(state State) {
 	detail := v.detail(state)
 	content := fyneui.ListDetail(list, detail, .38)
 	status := ""
-	switch state.Status { //nolint:exhaustive // idle and loaded require no transient notice.
+	switch state.Status {
 	case fyneui.Loading:
 		status = "Loading ingredients…"
 	case fyneui.Failed:
 		status = "Unable to load ingredients"
+	case fyneui.Idle, fyneui.Loaded:
 	}
 	if state.Err != nil {
 		status = "Error: " + state.Err.Error()

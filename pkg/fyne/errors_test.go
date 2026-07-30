@@ -1,4 +1,3 @@
-//nolint:paralleltest // presentation dialog state remains serial and deterministic.
 package fyne_test
 
 import (
@@ -11,6 +10,7 @@ import (
 )
 
 func TestPresentErrorClassifiesKindsAndProtectsInternalDetail(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		err      error
@@ -27,6 +27,7 @@ func TestPresentErrorClassifiesKindsAndProtectsInternalDetail(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			got := fyneui.PresentError(test.err)
 			var presentation fyneui.ErrorPresentation
 			if !errors.As(got, &presentation) {
@@ -43,6 +44,7 @@ func TestPresentErrorClassifiesKindsAndProtectsInternalDetail(t *testing.T) {
 }
 
 func TestPresentErrorHandlesNilWrappedAndExplicitSafeMessages(t *testing.T) {
+	t.Parallel()
 	if got := fyneui.PresentError(nil); got != nil {
 		t.Fatalf("nil presentation = %#v", got)
 	}
@@ -63,6 +65,7 @@ func TestPresentErrorHandlesNilWrappedAndExplicitSafeMessages(t *testing.T) {
 }
 
 func TestShowPresentationUsesSeverityAndSuppressesInlineValidation(t *testing.T) {
+	t.Parallel()
 	dialogs := &fynetest.Dialogs{}
 	fyneui.ShowPresentation(dialogs, apperrors.Invalidf("fix field"))
 	fyneui.ShowPresentation(dialogs, apperrors.Conflictf("already exists"))

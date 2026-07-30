@@ -1,4 +1,3 @@
-//nolint:paralleltest // terminal view-model rendering remains serial and deterministic.
 package tui_test
 
 import (
@@ -59,6 +58,7 @@ func TestDetailViewModel_ShowsMenuDetails(t *testing.T) {
 }
 
 func TestDetailViewModel_OmitsAbsentPublishedAtAndSortsItems(t *testing.T) {
+	t.Parallel()
 	f := testutil.NewFixture(t)
 	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Base", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 	recipe := drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)}}, Steps: []string{"Stir"}}

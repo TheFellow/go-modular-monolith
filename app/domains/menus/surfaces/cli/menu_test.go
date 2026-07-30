@@ -1,4 +1,3 @@
-//nolint:paralleltest // view rendering assertions intentionally remain serial and deterministic.
 package cli
 
 import (
@@ -12,6 +11,7 @@ import (
 )
 
 func TestMenuItemJSONAndTextViewsPreservePrice(t *testing.T) {
+	t.Parallel()
 	item := models.MenuItem{
 		DrinkID: entity.NewDrinkID(),
 		Price:   optional.Some(money.NewPriceFromCents(1250, currency.USD)),
