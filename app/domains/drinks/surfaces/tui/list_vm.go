@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	drinks "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
@@ -15,6 +16,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
@@ -33,6 +35,7 @@ const (
 	listModeEditing
 	listModeTagging
 	listModeConfirmingDelete
+	listModeFiltering
 )
 
 // ListViewModel renders the drinks list and detail panes.
@@ -46,23 +49,29 @@ type ListViewModel struct {
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
 
-	list    list.Model
-	detail  *DetailViewModel
-	mode    listMode
-	create  *CreateDrinkVM
-	edit    *EditDrinkVM
-	tags    *components.TagEditor
-	dialog  *dialog.ConfirmDialog
-	spinner tui.Spinner
-	loading bool
-	err     error
+	list      list.Model
+	detail    *DetailViewModel
+	mode      listMode
+	create    *CreateDrinkVM
+	edit      *EditDrinkVM
+	tags      *components.TagEditor
+	dialog    *dialog.ConfirmDialog
+	spinner   tui.Spinner
+	loading   bool
+	err       error
+	filter    *filterVM
+	request   drinks.ListRequest
+	next      paging.Cursor
+	history   []paging.Cursor
+	loadToken uint64
 
 	deleteTarget *models.Drink
 
-	width       int
-	height      int
-	listWidth   int
-	detailWidth int
+	width        int
+	height       int
+	listWidth    int
+	detailWidth  int
+	detailHeight int
 }
 
 func NewListViewModel(app *app.Session) *ListViewModel {
@@ -75,9 +84,9 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 	l.Title = "Drinks"
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
-	l.SetShowPagination(true)
+	l.SetShowPagination(false)
 	l.Paginator.Type = paginator.Arabic
-	l.SetFilteringEnabled(true)
+	l.SetFilteringEnabled(false)
 
 	vm := &ListViewModel{
 		app:          app,
@@ -97,13 +106,13 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 
 func (m *ListViewModel) Init() tea.Cmd {
 	m.loading = true
-	return tea.Batch(m.spinner.Init(), m.loadDrinks())
+	return tea.Batch(m.spinner.Init(), m.loadDrinks(""))
 }
 
 func (m *ListViewModel) Interaction() views.Interaction {
 	return views.Interaction{
-		HandlesBack:  m.mode != listModeBrowsing || m.list.SettingFilter(),
-		CapturesText: m.list.SettingFilter() || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging,
+		HandlesBack:  m.mode != listModeBrowsing,
+		CapturesText: m.mode == listModeFiltering || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging,
 	}
 }
 
@@ -114,13 +123,15 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		switch m.mode {
 		case listModeBrowsing:
 		case listModeCreating:
-			m.create.SetWidth(m.detailWidth)
+			m.create.SetSize(m.detailWidth, m.detailHeight)
 		case listModeEditing:
-			m.edit.SetWidth(m.detailWidth)
+			m.edit.SetSize(m.detailWidth, m.detailHeight)
 		case listModeTagging:
 			m.tags.SetWidth(m.width)
 		case listModeConfirmingDelete:
 			m.dialog.SetWidth(m.width)
+		case listModeFiltering:
+			m.filter.form.SetWidth(m.detailWidth)
 		}
 		return m, nil
 	case DrinkCreatedMsg:
@@ -128,26 +139,26 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.create = nil
 		m.loading = true
 		m.err = nil
-		return m, tea.Batch(m.spinner.Init(), m.loadDrinks())
+		return m, tea.Batch(m.spinner.Init(), m.loadDrinks(m.request.Cursor))
 	case DrinkUpdatedMsg:
 		m.mode = listModeBrowsing
 		m.edit = nil
 		m.loading = true
 		m.err = nil
-		return m, tea.Batch(m.spinner.Init(), m.loadDrinks())
+		return m, tea.Batch(m.spinner.Init(), m.loadDrinks(m.request.Cursor))
 	case components.TagsSavedMsg:
 		if m.mode != listModeTagging || m.tags == nil || !m.tags.Owns(msg.Target) {
 			return m, nil
 		}
 		m.mode, m.tags, m.loading, m.err = listModeBrowsing, nil, true, nil
-		return m, tea.Batch(m.spinner.Init(), m.loadDrinks())
+		return m, tea.Batch(m.spinner.Init(), m.loadDrinks(m.request.Cursor))
 	case DrinkDeletedMsg:
 		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.deleteTarget = nil
 		m.loading = true
 		m.err = nil
-		return m, tea.Batch(m.spinner.Init(), m.loadDrinks())
+		return m, tea.Batch(m.spinner.Init(), m.loadDrinks(m.request.Cursor))
 	case DeleteErrorMsg:
 		m.mode = listModeBrowsing
 		m.dialog = nil
@@ -170,20 +181,23 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.deleteTarget = nil
 		return m, nil
 	case tea.KeyMsg:
-		if m.mode == listModeBrowsing && m.list.SettingFilter() {
-			break
-		}
 		switch m.mode {
 		case listModeBrowsing:
 		case listModeConfirmingDelete:
 		case listModeCreating:
 			if key.Matches(msg, m.keys.Back) {
+				if m.create.Submitting() {
+					return m, nil
+				}
 				m.mode = listModeBrowsing
 				m.create = nil
 				return m, nil
 			}
 		case listModeEditing:
 			if key.Matches(msg, m.keys.Back) {
+				if m.edit.Submitting() {
+					return m, nil
+				}
 				m.mode = listModeBrowsing
 				m.edit = nil
 				return m, nil
@@ -196,6 +210,20 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 				m.mode, m.tags = listModeBrowsing, nil
 				return m, nil
 			}
+		case listModeFiltering:
+			if key.Matches(msg, m.keys.Back) {
+				m.mode, m.filter = listModeBrowsing, nil
+				return m, nil
+			}
+			if filterSubmit(msg) {
+				req, err := m.filter.Request()
+				if err != nil {
+					return m, nil
+				}
+				m.request, m.history, m.next = req, nil, ""
+				m.mode, m.filter, m.loading, m.err = listModeBrowsing, nil, true, nil
+				return m, tea.Batch(m.spinner.Init(), m.loadDrinks(""))
+			}
 		}
 		if m.mode != listModeBrowsing {
 			break
@@ -204,7 +232,22 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		case key.Matches(msg, m.keys.Refresh):
 			m.loading = true
 			m.err = nil
-			return m, tea.Batch(m.spinner.Init(), m.loadDrinks())
+			return m, tea.Batch(m.spinner.Init(), m.loadDrinks(m.request.Cursor))
+		case msg.String() == "f":
+			m.mode, m.filter = listModeFiltering, newFilterVM(m.request)
+			m.filter.form.SetWidth(m.detailWidth)
+			return m, m.filter.Init()
+		case msg.String() == "]" && m.next != "":
+			m.history = append(m.history, m.request.Cursor)
+			m.request.Cursor = m.next
+			m.loading = true
+			return m, tea.Batch(m.spinner.Init(), m.loadDrinks(m.request.Cursor))
+		case msg.String() == "[" && len(m.history) > 0:
+			i := len(m.history) - 1
+			m.request.Cursor = m.history[i]
+			m.history = m.history[:i]
+			m.loading = true
+			return m, tea.Batch(m.spinner.Init(), m.loadDrinks(m.request.Cursor))
 		case key.Matches(msg, m.keys.Create):
 			return m, m.startCreate()
 		case key.Matches(msg, m.keys.Edit), key.Matches(msg, m.keys.Enter):
@@ -215,13 +258,23 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.startTags()
 		}
 	case DrinksLoadedMsg:
+		if msg.Token != m.loadToken {
+			return m, nil
+		}
 		m.loading = false
 		m.err = msg.Err
+		if msg.Err != nil {
+			return m, nil
+		}
+		m.next = msg.Next
+		selected := selectedDrinkID(m.selectedDrink())
 		items := make([]list.Item, 0, len(msg.Drinks))
 		for _, drink := range msg.Drinks {
 			items = append(items, newDrinkItem(drink))
 		}
 		m.list.SetItems(items)
+		selectDrinkID(&m.list, selected)
+		m.updateTitle()
 		m.syncDetail()
 		return m, nil
 	}
@@ -244,6 +297,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		var cmd tea.Cmd
 		m.create, cmd = m.create.Update(msg)
 		return m, cmd
+	case listModeFiltering:
+		return m, m.filter.Update(msg)
 	}
 
 	if m.loading {
@@ -273,6 +328,9 @@ func (m *ListViewModel) View() string {
 	if m.mode == listModeTagging {
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.tags.View())
 	}
+	if m.mode == listModeFiltering {
+		return m.filter.View()
+	}
 
 	listView := m.list.View()
 	if m.err != nil {
@@ -288,6 +346,7 @@ func (m *ListViewModel) View() string {
 		detailView = m.create.View()
 	case listModeEditing:
 		detailView = m.edit.View()
+	case listModeFiltering:
 	}
 	detailView = m.styles.DetailPane.Width(views.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
 
@@ -309,6 +368,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 			m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags,
 			m.keys.Refresh, m.keys.Back,
 		}
+	case listModeFiltering:
 	}
 	return nil
 }
@@ -334,26 +394,31 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags},
 			{m.keys.Refresh, m.keys.Back},
 		}
+	case listModeFiltering:
 	}
 	return nil
 }
 
-func (m *ListViewModel) loadDrinks() tea.Cmd {
+func (m *ListViewModel) loadDrinks(cursor paging.Cursor) tea.Cmd {
+	m.loadToken++
+	token := m.loadToken
+	req := m.request
+	req.Cursor = cursor
 	return func() tea.Msg {
-		drinksList, err := m.app.Drinks.List(m.context(), drinks.ListRequest{})
+		drinksList, err := m.app.Drinks.List(m.context(), req)
 		if err != nil {
-			return DrinksLoadedMsg{Err: err}
+			return DrinksLoadedMsg{Err: err, Token: token}
 		}
 
 		var items []models.Drink
 		for i, drink := range drinksList.Items {
 			if drink == nil {
-				return DrinksLoadedMsg{Err: fmt.Errorf("drink %d missing", i)}
+				return DrinksLoadedMsg{Err: fmt.Errorf("drink %d missing", i), Token: token}
 			}
 			items = append(items, *drink)
 		}
 
-		return DrinksLoadedMsg{Drinks: items}
+		return DrinksLoadedMsg{Drinks: items, Next: drinksList.Next, Token: token}
 	}
 }
 
@@ -365,7 +430,7 @@ type showDeleteDialogMsg struct {
 func (m *ListViewModel) startCreate() tea.Cmd {
 	m.mode = listModeCreating
 	m.create = NewCreateDrinkVM(m.app)
-	m.create.SetWidth(m.detailWidth)
+	m.create.SetSize(m.detailWidth, m.detailHeight)
 	return m.create.Init()
 }
 
@@ -376,7 +441,7 @@ func (m *ListViewModel) startEdit() tea.Cmd {
 	}
 	m.mode = listModeEditing
 	m.edit = NewEditDrinkVM(m.app, drink)
-	m.edit.SetWidth(m.detailWidth)
+	m.edit.SetSize(m.detailWidth, m.detailHeight)
 	return m.edit.Init()
 }
 
@@ -393,11 +458,13 @@ func (m *ListViewModel) showDeleteConfirm(drink *models.Drink) tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		menusList, err := m.app.Menus.List(m.context(), menus.ListRequest{})
+		menusList, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*menusmodels.Menu], error) {
+			return m.app.Menus.List(m.context(), menus.ListRequest{Cursor: cursor})
+		})
 		if err != nil {
 			return DeleteErrorMsg{Err: err}
 		}
-		menuCount := countMenusWithDrink(menusList.Items, drink.ID)
+		menuCount := countMenusWithDrink(menusList, drink.ID)
 		message := fmt.Sprintf("Delete %q?", drink.Name)
 		if menuCount > 0 {
 			message = fmt.Sprintf(
@@ -441,6 +508,53 @@ func (m *ListViewModel) selectedDrink() *models.Drink {
 	}
 	drink := item.Value
 	return &drink
+}
+
+func selectedDrinkID(value *models.Drink) entity.DrinkID {
+	if value == nil {
+		return entity.DrinkID{}
+	}
+	return value.ID
+}
+
+func selectDrinkID(values *list.Model, id entity.DrinkID) {
+	if id.IsZero() {
+		return
+	}
+	for i, item := range values.Items() {
+		if drink, ok := item.(drinkItem); ok && drink.Value.ID == id {
+			values.Select(i)
+			return
+		}
+	}
+}
+
+func (m *ListViewModel) updateTitle() {
+	parts := []string{"Drinks"}
+	if m.request.Name != "" {
+		parts = append(parts, "name="+m.request.Name)
+	}
+	if m.request.Category != "" {
+		parts = append(parts, "category="+string(m.request.Category))
+	}
+	if m.request.Glass != "" {
+		parts = append(parts, "glass="+string(m.request.Glass))
+	}
+	if m.request.Filter != "" {
+		parts = append(parts, "filter="+m.request.Filter)
+	}
+	parts = append(parts, fmt.Sprintf("page size=%d", effectiveDrinkLimit(m.request.Limit)))
+	if len(m.history) > 0 {
+		parts = append(parts, fmt.Sprintf("page=%d", len(m.history)+1))
+	}
+	m.list.Title = strings.Join(parts, " • ")
+}
+
+func effectiveDrinkLimit(limit int) int {
+	if limit <= 0 {
+		return paging.DefaultLimit
+	}
+	return limit
 }
 
 func (m *ListViewModel) startTags() tea.Cmd {
@@ -500,6 +614,8 @@ func (m *ListViewModel) setSize(width, height int) {
 	m.detail.SetSize(detailWidth, height)
 	m.listWidth = listWidth
 	m.detailWidth = detailWidth
+	_, frameHeight := m.styles.DetailPane.GetFrameSize()
+	m.detailHeight = max(height-frameHeight, 1)
 }
 
 func (m *ListViewModel) syncDetail() {

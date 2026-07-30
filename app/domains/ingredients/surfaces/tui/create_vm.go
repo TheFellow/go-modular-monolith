@@ -6,6 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -26,6 +27,7 @@ type CreateIngredientVM struct {
 	category    *forms.SelectField
 	unit        *forms.SelectField
 	description *forms.TextField
+	tags        *forms.TextField
 }
 
 // IngredientCreatedMsg is sent when the ingredient has been created.
@@ -71,6 +73,7 @@ func NewCreateIngredientVM(app *app.Session) *CreateIngredientVM {
 		forms.WithMaxLength(500),
 		forms.WithPlaceholder("Optional description"),
 	)
+	tagsField := components.NewOptionalTagsField(nil)
 
 	formStyles := tuistyles.App.Form
 	formKeys := tuikeys.App.Form
@@ -81,6 +84,7 @@ func NewCreateIngredientVM(app *app.Session) *CreateIngredientVM {
 		categoryField,
 		unitField,
 		descriptionField,
+		tagsField,
 	)
 
 	return &CreateIngredientVM{
@@ -92,6 +96,7 @@ func NewCreateIngredientVM(app *app.Session) *CreateIngredientVM {
 		category:    categoryField,
 		unit:        unitField,
 		description: descriptionField,
+		tags:        tagsField,
 	}
 }
 
@@ -150,6 +155,11 @@ func (m *CreateIngredientVM) submit() tea.Cmd {
 		m.err = err
 		return nil
 	}
+	desired, err := components.DesiredTags(m.tags)
+	if err != nil {
+		m.err = err
+		return nil
+	}
 	m.err = nil
 	m.submitting = true
 
@@ -161,7 +171,9 @@ func (m *CreateIngredientVM) submit() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		created, err := m.app.Ingredients.Create(m.context(), ingredient)
+		created, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Ingredient, error) {
+			return m.app.Ingredients.Create(ctx, ingredient)
+		})
 		if err != nil {
 			return CreateErrorMsg{Err: err}
 		}

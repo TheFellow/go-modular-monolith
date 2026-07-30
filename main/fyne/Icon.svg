@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title description">
+  <title id="title">Mixology application icon</title>
+  <desc id="description">A cream cocktail coupe and citrus twist on a dark blue rounded square.</desc>
+  <rect width="1024" height="1024" rx="224" fill="#24273a"/>
+  <path d="M224 282h576L536 586v150h160v72H328v-72h160V586L224 282Z" fill="#cad3f5"/>
+  <path d="M306 354h436L512 520 306 354Z" fill="#8aadf4"/>
+  <path d="M662 196c-48 0-88 39-88 88s40 88 88 88c49 0 88-39 88-88s-39-88-88-88Zm0 52c20 0 36 16 36 36s-16 36-36 36-36-16-36-36 16-36 36-36Z" fill="#eed49f"/>
+  <path d="M672 222c-44 28-77 69-94 116" fill="none" stroke="#f5bde6" stroke-linecap="round" stroke-width="28"/>
+</svg>

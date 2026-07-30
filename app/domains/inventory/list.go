@@ -24,6 +24,10 @@ type ListRequest struct {
 	Limit    int
 }
 
+// DefaultLowStockThreshold is the application-wide quantity boundary used by
+// stock status and dashboard summaries when a surface does not choose another.
+const DefaultLowStockThreshold = 10.0
+
 func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*models.Inventory], error) {
 	expression, err := appfilter.Parse(models.ListFilterSchema(), req.Filter)
 	if err != nil {

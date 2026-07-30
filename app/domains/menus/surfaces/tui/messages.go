@@ -1,11 +1,16 @@
 package tui
 
-import "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+import (
+	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+)
 
 // MenusLoadedMsg is sent when menus have been loaded.
 type MenusLoadedMsg struct {
 	Menus []models.Menu
 	Err   error
+	Next  paging.Cursor
+	Token uint64
 }
 
 // MenuDeletedMsg is sent when a menu has been deleted.

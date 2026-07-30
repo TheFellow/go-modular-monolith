@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	inventorycli "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/cli"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
@@ -214,6 +215,9 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						if reason == "" {
 							return errors.Invalidf("reason is required (or use --stdin/--file)")
 						}
+						if delta.IsNone() && cost.IsNone() {
+							return errors.Invalidf("at least one of delta or cost-per-unit is required (or use --stdin/--file)")
+						}
 
 						patch = &inventorymodels.Patch{
 							IngredientID: parsedIngredientID,
@@ -270,9 +274,6 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						if input.Quantity == nil {
 							return errors.Invalidf("quantity is required")
 						}
-						if strings.TrimSpace(input.CostPerUnit) == "" {
-							return errors.Invalidf("cost_per_unit is required")
-						}
 						parsedIngredientID, err := entity.ParseIngredientID(input.IngredientID)
 						if err != nil {
 							return err
@@ -291,7 +292,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 							return err
 						}
 
-						cost, err := parsePrice(input.CostPerUnit)
+						cost, err := c.inventorySetCost(ctx, parsedIngredientID, input.CostPerUnit)
 						if err != nil {
 							return err
 						}
@@ -313,12 +314,12 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						if err != nil {
 							return err
 						}
+						if !cmd.IsSet("quantity") {
+							return errors.Invalidf("quantity is required (or use --stdin/--file)")
+						}
 						qty := cmd.Float64("quantity")
 
-						if strings.TrimSpace(cmd.String("cost-per-unit")) == "" {
-							return errors.Invalidf("cost-per-unit is required (or use --stdin/--file)")
-						}
-						cost, err := parsePrice(cmd.String("cost-per-unit"))
+						cost, err := c.inventorySetCost(ctx, parsedIngredientID, cmd.String("cost-per-unit"))
 						if err != nil {
 							return err
 						}
@@ -351,4 +352,21 @@ func (c *CLI) inventoryCommands() *cli.Command {
 			},
 		},
 	}
+}
+
+func (c *CLI) inventorySetCost(ctx *middleware.Context, ingredientID entity.IngredientID, raw string) (money.Price, error) {
+	if strings.TrimSpace(raw) != "" {
+		return parsePrice(raw)
+	}
+	stock, err := c.app.Inventory.Get(ctx, ingredientID)
+	if err == nil {
+		if price, ok := stock.CostPerUnit.Unwrap(); ok {
+			return price, nil
+		}
+		return money.NewPriceFromCents(0, currency.USD), nil
+	}
+	if errors.IsNotFound(err) {
+		return money.NewPriceFromCents(0, currency.USD), nil
+	}
+	return money.Price{}, err
 }

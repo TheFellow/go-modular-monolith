@@ -15,6 +15,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
 	"github.com/charmbracelet/bubbles/key"
@@ -31,13 +32,15 @@ const (
 	listModeConfirmingComplete
 	listModeConfirmingCancel
 	listModeTagging
+	listModeFiltering
+	listModePlacing
 )
 
 func (m listMode) isConfirming() bool {
 	switch m {
 	case listModeConfirmingComplete, listModeConfirmingCancel:
 		return true
-	case listModeBrowsing, listModeTagging:
+	case listModeBrowsing, listModeTagging, listModeFiltering, listModePlacing:
 		return false
 	}
 	return false
@@ -52,17 +55,25 @@ type ListViewModel struct {
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
 
-	list    list.Model
-	detail  *DetailViewModel
-	mode    listMode
-	dialog  *dialog.ConfirmDialog
-	tags    *components.TagEditor
-	spinner tui.Spinner
-	loading bool
-	err     error
+	list     list.Model
+	detail   *DetailViewModel
+	mode     listMode
+	dialog   *components.TaggedConfirm
+	tags     *components.TagEditor
+	filter   *filterVM
+	place    *placeVM
+	workflow uint64
+	spinner  tui.Spinner
+	loading  bool
+	mutating bool
+	err      error
 
 	completeTarget *ordersmodels.Order
 	cancelTarget   *ordersmodels.Order
+	request        orders.ListRequest
+	next           paging.Cursor
+	history        []paging.Cursor
+	restoreID      entity.OrderID
 
 	width       int
 	height      int
@@ -93,6 +104,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		list:         l,
 		detail:       NewDetailViewModel(tuistyles.App.ListView, app),
 		loading:      true,
+		request:      orders.ListRequest{Limit: paging.DefaultLimit},
 	}
 	vm.spinner = tui.NewSpinner("Loading orders...", vm.styles.Subtitle)
 	return vm
@@ -105,8 +117,8 @@ func (m *ListViewModel) Init() tea.Cmd {
 
 func (m *ListViewModel) Interaction() views.Interaction {
 	return views.Interaction{
-		HandlesBack:  m.mode != listModeBrowsing || m.list.SettingFilter(),
-		CapturesText: m.list.SettingFilter() || m.mode == listModeTagging,
+		HandlesBack:  m.mutating || m.mode != listModeBrowsing || m.list.SettingFilter(),
+		CapturesText: m.mutating || m.list.SettingFilter() || m.mode == listModeTagging || m.mode == listModeFiltering || m.mode == listModePlacing,
 	}
 }
 
@@ -121,6 +133,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		}
 		return m, nil
 	case OrderCompletedMsg:
+		m.mutating = false
 		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.completeTarget = nil
@@ -128,6 +141,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadOrders())
 	case OrderCancelledMsg:
+		m.mutating = false
 		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.cancelTarget = nil
@@ -140,13 +154,31 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		}
 		m.mode, m.tags, m.loading, m.err = listModeBrowsing, nil, true, nil
 		return m, tea.Batch(m.spinner.Init(), m.loadOrders())
+	case placeCatalogLoadedMsg:
+		if m.mode == listModePlacing && m.place != nil && msg.workflow == m.place.workflow {
+			m.place.setCatalog(msg)
+		}
+		return m, nil
+	case orderPlacedMsg:
+		if m.mode != listModePlacing || m.place == nil || msg.workflow != m.place.workflow {
+			return m, nil
+		}
+		m.place.saving, m.place.err = false, msg.err
+		if msg.err != nil {
+			return m, nil
+		}
+		m.mode, m.place, m.loading, m.err = listModeBrowsing, nil, true, nil
+		m.request.Cursor, m.next, m.history = "", "", nil
+		return m, tea.Batch(m.spinner.Init(), m.loadOrders())
 	case CompleteErrorMsg:
+		m.mutating = false
 		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.completeTarget = nil
 		m.err = msg.Err
 		return m, nil
 	case CancelErrorMsg:
+		m.mutating = false
 		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.cancelTarget = nil
@@ -158,24 +190,26 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.completeTarget = &msg.target
 		m.cancelTarget = nil
 		m.dialog.SetWidth(m.width)
-		return m, nil
+		return m, m.dialog.Init()
 	case showCancelDialogMsg:
 		m.mode = listModeConfirmingCancel
 		m.dialog = msg.dialog
 		m.cancelTarget = &msg.target
 		m.completeTarget = nil
 		m.dialog.SetWidth(m.width)
-		return m, nil
+		return m, m.dialog.Init()
 	case dialog.ConfirmMsg:
 		mode := m.mode
 		m.mode = listModeBrowsing
-		m.dialog = nil
+		m.loading = false
 		switch mode {
 		case listModeConfirmingComplete:
+			m.mutating = true
 			return m, m.performComplete()
 		case listModeConfirmingCancel:
+			m.mutating = true
 			return m, m.performCancel()
-		case listModeBrowsing, listModeTagging:
+		case listModeBrowsing, listModeTagging, listModeFiltering, listModePlacing:
 			panic(fmt.Sprintf("confirm message received in %v mode", m.mode))
 		}
 		return m, nil
@@ -186,6 +220,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.cancelTarget = nil
 		return m, nil
 	case tea.KeyMsg:
+		if m.mutating {
+			return m, nil
+		}
 		if m.mode == listModeBrowsing && m.list.SettingFilter() {
 			break
 		}
@@ -196,6 +233,36 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 				}
 				m.mode, m.tags = listModeBrowsing, nil
 				return m, nil
+			}
+			break
+		}
+		if m.mode == listModeFiltering {
+			if key.Matches(msg, m.keys.Back) {
+				m.mode, m.filter = listModeBrowsing, nil
+				return m, nil
+			}
+			if msg.String() == "ctrl+s" {
+				req, err := m.filter.Request()
+				if err != nil {
+					return m, nil
+				}
+				m.request, m.next, m.history, m.restoreID = req, "", nil, entity.OrderID{}
+				m.mode, m.filter, m.loading, m.err = listModeBrowsing, nil, true, nil
+				return m, tea.Batch(m.spinner.Init(), m.loadOrders())
+			}
+			break
+		}
+		if m.mode == listModePlacing {
+			if key.Matches(msg, m.keys.Back) {
+				if m.place.saving || !m.place.mayClose() {
+					return m, nil
+				}
+				m.workflow++
+				m.mode, m.place = listModeBrowsing, nil
+				return m, nil
+			}
+			if msg.String() == "ctrl+s" {
+				return m, m.place.submit()
 			}
 			break
 		}
@@ -213,10 +280,35 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.startCancel()
 		case key.Matches(msg, m.keys.Tags):
 			return m, m.startTags()
+		case key.Matches(msg, m.keys.Create):
+			m.workflow++
+			m.mode = listModePlacing
+			m.place = newPlaceVM(m.app, m.workflow)
+			return m, m.place.Init()
+		case msg.String() == "f":
+			m.mode, m.filter = listModeFiltering, newFilterVM(m.request)
+			return m, m.filter.Init()
+		case msg.String() == "]" && m.next != "":
+			m.history = append(m.history, m.request.Cursor)
+			m.restoreID = selectedOrderID(m.selectedOrder())
+			m.request.Cursor = m.next
+			m.loading, m.err = true, nil
+			return m, tea.Batch(m.spinner.Init(), m.loadOrders())
+		case msg.String() == "[" && len(m.history) > 0:
+			i := len(m.history) - 1
+			m.request.Cursor = m.history[i]
+			m.history = m.history[:i]
+			m.restoreID = selectedOrderID(m.selectedOrder())
+			m.loading, m.err = true, nil
+			return m, tea.Batch(m.spinner.Init(), m.loadOrders())
 		}
 	case OrdersLoadedMsg:
 		m.loading = false
 		m.err = msg.Err
+		if msg.Err != nil {
+			return m, nil
+		}
+		m.next = msg.Next
 		items := make([]list.Item, 0, len(msg.Orders))
 		for _, order := range msg.Orders {
 			menuName, err := m.menuName(order.MenuID)
@@ -227,6 +319,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			items = append(items, newOrderItem(order, menuName, m.styles))
 		}
 		m.list.SetItems(items)
+		m.restoreSelection()
 		m.syncDetail()
 		return m, nil
 	}
@@ -240,6 +333,12 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		var cmd tea.Cmd
 		m.tags, cmd = m.tags.Update(msg)
 		return m, cmd
+	}
+	if m.mode == listModeFiltering {
+		return m, m.filter.Update(msg)
+	}
+	if m.mode == listModePlacing {
+		return m, m.place.Update(msg)
 	}
 
 	if m.loading {
@@ -269,8 +368,17 @@ func (m *ListViewModel) View() string {
 	if m.mode == listModeTagging {
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.tags.View())
 	}
+	if m.mode == listModeFiltering {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.filter.View())
+	}
+	if m.mode == listModePlacing {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.place.View())
+	}
 
 	listView := m.list.View()
+	if m.mutating {
+		listView = m.styles.Subtitle.Render("Updating order…") + "\n\n" + listView
+	}
 	if m.err != nil {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
 	}
@@ -289,10 +397,16 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	if m.mode == listModeTagging {
 		return []key.Binding{tuikeys.App.Submit, m.keys.Back}
 	}
+	if m.mode == listModeFiltering {
+		return []key.Binding{tuikeys.App.Submit, m.keys.Back}
+	}
+	if m.mode == listModePlacing {
+		return []key.Binding{tuikeys.App.Submit, m.keys.Back}
+	}
 	return []key.Binding{
 		m.keys.Up, m.keys.Down,
 		m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
-		m.keys.Complete, m.keys.CancelOrder, m.keys.Tags,
+		m.keys.Create, m.keys.Complete, m.keys.CancelOrder, m.keys.Tags,
 		m.keys.Refresh, m.keys.Back,
 	}
 }
@@ -307,17 +421,23 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 	if m.mode == listModeTagging {
 		return [][]key.Binding{{tuikeys.App.Submit, m.keys.Back}}
 	}
+	if m.mode == listModeFiltering {
+		return [][]key.Binding{{tuikeys.App.Submit, m.keys.Back}}
+	}
+	if m.mode == listModePlacing {
+		return [][]key.Binding{{tuikeys.App.Submit, m.keys.Back}}
+	}
 	return [][]key.Binding{
 		{m.keys.Up, m.keys.Down, m.keys.Enter},
 		{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
-		{m.keys.Complete, m.keys.CancelOrder, m.keys.Tags},
+		{m.keys.Create, m.keys.Complete, m.keys.CancelOrder, m.keys.Tags},
 		{m.keys.Refresh, m.keys.Back},
 	}
 }
 
 func (m *ListViewModel) loadOrders() tea.Cmd {
 	return func() tea.Msg {
-		ordersList, err := m.app.Orders.List(m.context(), orders.ListRequest{})
+		ordersList, err := m.app.Orders.List(m.context(), m.request)
 		if err != nil {
 			return OrdersLoadedMsg{Err: err}
 		}
@@ -330,17 +450,36 @@ func (m *ListViewModel) loadOrders() tea.Cmd {
 			orders = append(orders, *order)
 		}
 
-		return OrdersLoadedMsg{Orders: orders}
+		return OrdersLoadedMsg{Orders: orders, Next: ordersList.Next}
 	}
 }
 
+func selectedOrderID(order *ordersmodels.Order) entity.OrderID {
+	if order == nil {
+		return entity.OrderID{}
+	}
+	return order.ID
+}
+func (m *ListViewModel) restoreSelection() {
+	if m.restoreID.IsZero() {
+		return
+	}
+	for i, raw := range m.list.Items() {
+		if item, ok := raw.(orderItem); ok && item.Value.ID == m.restoreID {
+			m.list.Select(i)
+			break
+		}
+	}
+	m.restoreID = entity.OrderID{}
+}
+
 type showCompleteDialogMsg struct {
-	dialog *dialog.ConfirmDialog
+	dialog *components.TaggedConfirm
 	target ordersmodels.Order
 }
 
 type showCancelDialogMsg struct {
-	dialog *dialog.ConfirmDialog
+	dialog *components.TaggedConfirm
 	target ordersmodels.Order
 }
 
@@ -376,14 +515,20 @@ func (m *ListViewModel) showCompleteConfirm(order *ordersmodels.Order) tea.Cmd {
 			dialog.WithStyles(m.dialogStyles),
 			dialog.WithKeys(m.dialogKeys),
 		)
-		return showCompleteDialogMsg{dialog: confirm, target: *order}
+		return showCompleteDialogMsg{dialog: components.NewTaggedConfirm(order.Tags, confirm), target: *order}
 	}
 }
 
 func (m *ListViewModel) performComplete() tea.Cmd {
 	target := *m.completeTarget
+	desired, err := m.dialog.DesiredTags()
+	if err != nil {
+		return func() tea.Msg { return CompleteErrorMsg{Err: err} }
+	}
 	return func() tea.Msg {
-		updated, err := m.app.Orders.Complete(m.context(), &ordersmodels.Order{ID: target.ID})
+		updated, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
+			return m.app.Orders.Complete(ctx, &ordersmodels.Order{ID: target.ID})
+		})
 		if err != nil {
 			return CompleteErrorMsg{Err: err}
 		}
@@ -425,14 +570,20 @@ func (m *ListViewModel) showCancelConfirm(order *ordersmodels.Order) tea.Cmd {
 			dialog.WithStyles(m.dialogStyles),
 			dialog.WithKeys(m.dialogKeys),
 		)
-		return showCancelDialogMsg{dialog: confirm, target: *order}
+		return showCancelDialogMsg{dialog: components.NewTaggedConfirm(order.Tags, confirm), target: *order}
 	}
 }
 
 func (m *ListViewModel) performCancel() tea.Cmd {
 	target := *m.cancelTarget
+	desired, err := m.dialog.DesiredTags()
+	if err != nil {
+		return func() tea.Msg { return CancelErrorMsg{Err: err} }
+	}
 	return func() tea.Msg {
-		updated, err := m.app.Orders.Cancel(m.context(), &ordersmodels.Order{ID: target.ID})
+		updated, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
+			return m.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: target.ID})
+		})
 		if err != nil {
 			return CancelErrorMsg{Err: err}
 		}

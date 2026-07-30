@@ -3,6 +3,7 @@ package tui
 import (
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 )
 
 type InventoryRow struct {
@@ -15,8 +16,10 @@ type InventoryRow struct {
 
 // InventoryLoadedMsg is sent when inventory has been loaded.
 type InventoryLoadedMsg struct {
-	Rows []InventoryRow
-	Err  error
+	Rows  []InventoryRow
+	Next  paging.Cursor
+	Token uint64
+	Err   error
 }
 
 // InventoryAdjustedMsg is sent when inventory is adjusted.

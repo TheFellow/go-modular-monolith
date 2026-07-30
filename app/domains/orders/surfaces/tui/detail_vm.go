@@ -145,7 +145,11 @@ func (d *DetailViewModel) renderItems(items []models.OrderItem, menu *menusmodel
 			totalAvailable = false
 		}
 
-		lines = append(lines, fmt.Sprintf("- %s | qty: %d | total: %s", name, item.Quantity, lineTotal))
+		line := fmt.Sprintf("- %s | qty: %d | total: %s", name, item.Quantity, lineTotal)
+		if notes := strings.TrimSpace(item.Notes); notes != "" {
+			line += "\n  Notes: " + strings.ReplaceAll(notes, "\n", "\n  ")
+		}
+		lines = append(lines, line)
 	}
 
 	totalStr := "N/A"

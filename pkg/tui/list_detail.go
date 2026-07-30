@@ -108,3 +108,22 @@ func (m *ListDetail) Filtering() bool         { return m.list.SettingFilter() }
 func (m *ListDetail) Loading() bool           { return m.loading }
 func (m *ListDetail) SelectedItem() list.Item { return m.list.SelectedItem() }
 func (m *ListDetail) KeyMap() list.KeyMap     { return m.list.KeyMap }
+
+// Items returns a copy of the currently rendered adapter items. It permits a
+// domain surface to restore selection by stable identity after a refresh
+// without exposing the underlying Bubbles model.
+func (m *ListDetail) Items() []list.Item {
+	return append([]list.Item(nil), m.list.Items()...)
+}
+
+// Select selects a rendered item by zero-based index.
+func (m *ListDetail) Select(index int) { m.list.Select(index) }
+
+// SetTitle updates the browse header with domain-owned query context.
+func (m *ListDetail) SetTitle(title string) { m.list.Title = title }
+
+// SetLocalFiltering controls the optional Bubbles in-memory quick filter.
+func (m *ListDetail) SetLocalFiltering(enabled bool) { m.list.SetFilteringEnabled(enabled) }
+
+// SetLocalPagination controls pagination within the current server page.
+func (m *ListDetail) SetLocalPagination(enabled bool) { m.list.SetShowPagination(enabled) }

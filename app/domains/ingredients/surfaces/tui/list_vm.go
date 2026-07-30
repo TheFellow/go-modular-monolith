@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	drinks "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
@@ -17,6 +18,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
@@ -34,6 +36,7 @@ const (
 	listModeEditing
 	listModeTagging
 	listModeConfirmingDelete
+	listModeFiltering
 )
 
 // ListViewModel renders the ingredients list and detail panes.
@@ -47,13 +50,19 @@ type ListViewModel struct {
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
 
-	shell  *tui.ListDetail
-	detail *DetailViewModel
-	mode   listMode
-	create *CreateIngredientVM
-	edit   *EditIngredientVM
-	tags   *components.TagEditor
-	dialog *dialog.ConfirmDialog
+	shell     *tui.ListDetail
+	detail    *DetailViewModel
+	mode      listMode
+	create    *CreateIngredientVM
+	edit      *EditIngredientVM
+	tags      *components.TagEditor
+	dialog    *dialog.ConfirmDialog
+	filter    *filterVM
+	request   ingredients.ListRequest
+	next      paging.Cursor
+	history   []paging.Cursor
+	loadToken uint64
+	items     []list.Item
 
 	deleteTarget *models.Ingredient
 
@@ -74,17 +83,19 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		shell:        tui.NewListDetail("Ingredients", "Loading ingredients...", tuistyles.App.ListView),
 		detail:       NewDetailViewModel(tuistyles.App.ListView),
 	}
+	vm.shell.SetLocalFiltering(false)
+	vm.shell.SetLocalPagination(false)
 	return vm
 }
 
 func (m *ListViewModel) Init() tea.Cmd {
-	return tea.Batch(m.shell.BeginLoading(), m.loadIngredients())
+	return tea.Batch(m.shell.BeginLoading(), m.loadIngredients(""))
 }
 
 func (m *ListViewModel) Interaction() views.Interaction {
 	return views.Interaction{
-		HandlesBack:  m.mode != listModeBrowsing || m.shell.Filtering(),
-		CapturesText: m.shell.Filtering() || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging,
+		HandlesBack:  m.mode != listModeBrowsing,
+		CapturesText: m.mode == listModeFiltering || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging,
 	}
 }
 
@@ -102,27 +113,29 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			m.tags.SetWidth(m.width)
 		case listModeConfirmingDelete:
 			m.dialog.SetWidth(m.width)
+		case listModeFiltering:
+			m.filter.form.SetWidth(m.detailWidth)
 		}
 		return m, nil
 	case IngredientCreatedMsg:
 		m.mode = listModeBrowsing
 		m.create = nil
-		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients())
+		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(m.request.Cursor))
 	case IngredientUpdatedMsg:
 		m.mode = listModeBrowsing
 		m.edit = nil
-		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients())
+		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(m.request.Cursor))
 	case components.TagsSavedMsg:
 		if m.mode != listModeTagging || m.tags == nil || !m.tags.Owns(msg.Target) {
 			return m, nil
 		}
 		m.mode, m.tags = listModeBrowsing, nil
-		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients())
+		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(m.request.Cursor))
 	case IngredientDeletedMsg:
 		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.deleteTarget = nil
-		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients())
+		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(m.request.Cursor))
 	case DeleteErrorMsg:
 		m.mode = listModeBrowsing
 		m.dialog = nil
@@ -145,9 +158,6 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.deleteTarget = nil
 		return m, nil
 	case tea.KeyMsg:
-		if m.mode == listModeBrowsing && m.shell.Filtering() {
-			break
-		}
 		switch m.mode {
 		case listModeBrowsing:
 		case listModeConfirmingDelete:
@@ -171,13 +181,40 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 				m.mode, m.tags = listModeBrowsing, nil
 				return m, nil
 			}
+		case listModeFiltering:
+			if key.Matches(msg, m.keys.Back) {
+				m.mode, m.filter = listModeBrowsing, nil
+				return m, nil
+			}
+			if filterSubmit(msg) {
+				req, err := m.filter.Request()
+				if err != nil {
+					return m, nil
+				}
+				m.request, m.history, m.next = req, nil, ""
+				m.mode, m.filter = listModeBrowsing, nil
+				return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(""))
+			}
 		}
 		if m.mode != listModeBrowsing {
 			break
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
-			return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients())
+			return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(m.request.Cursor))
+		case msg.String() == "f":
+			m.mode, m.filter = listModeFiltering, newFilterVM(m.request)
+			m.filter.form.SetWidth(m.detailWidth)
+			return m, m.filter.Init()
+		case msg.String() == "]" && m.next != "":
+			m.history = append(m.history, m.request.Cursor)
+			m.request.Cursor = m.next
+			return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(m.request.Cursor))
+		case msg.String() == "[" && len(m.history) > 0:
+			i := len(m.history) - 1
+			m.request.Cursor = m.history[i]
+			m.history = m.history[:i]
+			return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(m.request.Cursor))
 		case key.Matches(msg, m.keys.Create):
 			return m, m.startCreate()
 		case key.Matches(msg, m.keys.Edit), key.Matches(msg, m.keys.Enter):
@@ -188,11 +225,23 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, m.startTags()
 		}
 	case IngredientsLoadedMsg:
+		if msg.Token != m.loadToken {
+			return m, nil
+		}
+		if msg.Err != nil {
+			m.shell.SetResult(m.items, msg.Err)
+			return m, nil
+		}
+		m.next = msg.Next
+		selected := selectedIngredientID(m.selectedIngredient())
 		items := make([]list.Item, 0, len(msg.Ingredients))
 		for _, ingredient := range msg.Ingredients {
 			items = append(items, newIngredientItem(ingredient))
 		}
+		m.items = items
 		m.shell.SetResult(items, msg.Err)
+		m.selectIngredient(selected)
+		m.updateTitle()
 		m.syncDetail()
 		return m, nil
 	}
@@ -215,6 +264,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		var cmd tea.Cmd
 		m.create, cmd = m.create.Update(msg)
 		return m, cmd
+	case listModeFiltering:
+		return m, m.filter.Update(msg)
 	}
 
 	cmd := m.shell.Update(msg)
@@ -223,6 +274,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 }
 
 func (m *ListViewModel) View() string {
+	if m.mode == listModeFiltering {
+		return m.filter.View()
+	}
 	if m.mode == listModeConfirmingDelete {
 		dialogView := m.dialog.View()
 		if m.width > 0 && m.height > 0 {
@@ -242,6 +296,7 @@ func (m *ListViewModel) View() string {
 		detailView = m.create.View()
 	case listModeEditing:
 		detailView = m.edit.View()
+	case listModeFiltering:
 	}
 	return m.shell.View(detailView)
 }
@@ -261,6 +316,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 			m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags,
 			m.keys.Refresh, m.keys.Back,
 		}
+	case listModeFiltering:
 	}
 	return nil
 }
@@ -286,26 +342,31 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags},
 			{m.keys.Refresh, m.keys.Back},
 		}
+	case listModeFiltering:
 	}
 	return nil
 }
 
-func (m *ListViewModel) loadIngredients() tea.Cmd {
+func (m *ListViewModel) loadIngredients(cursor paging.Cursor) tea.Cmd {
+	m.loadToken++
+	token := m.loadToken
+	req := m.request
+	req.Cursor = cursor
 	return func() tea.Msg {
-		ingredientsList, err := m.app.Ingredients.List(m.context(), ingredients.ListRequest{})
+		ingredientsList, err := m.app.Ingredients.List(m.context(), req)
 		if err != nil {
-			return IngredientsLoadedMsg{Err: err}
+			return IngredientsLoadedMsg{Err: err, Token: token}
 		}
 
 		items := make([]models.Ingredient, 0, len(ingredientsList.Items))
 		for i, ingredient := range ingredientsList.Items {
 			if ingredient == nil {
-				return IngredientsLoadedMsg{Err: errors.Internalf("ingredient %d missing", i)}
+				return IngredientsLoadedMsg{Err: errors.Internalf("ingredient %d missing", i), Token: token}
 			}
 			items = append(items, *ingredient)
 		}
 
-		return IngredientsLoadedMsg{Ingredients: items}
+		return IngredientsLoadedMsg{Ingredients: items, Next: ingredientsList.Next, Token: token}
 	}
 }
 
@@ -345,11 +406,13 @@ func (m *ListViewModel) showDeleteConfirm(ingredient *models.Ingredient) tea.Cmd
 		return nil
 	}
 	return func() tea.Msg {
-		drinks, err := m.app.Drinks.List(m.context(), drinks.ListRequest{})
+		drinks, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*drinksmodels.Drink], error) {
+			return m.app.Drinks.List(m.context(), drinks.ListRequest{Cursor: cursor})
+		})
 		if err != nil {
 			return DeleteErrorMsg{Err: err}
 		}
-		drinkCount := countDrinksUsingIngredient(drinks.Items, ingredient.ID)
+		drinkCount := countDrinksUsingIngredient(drinks, ingredient.ID)
 		message := fmt.Sprintf("Delete %q?", ingredient.Name)
 		if drinkCount > 0 {
 			message = fmt.Sprintf(
@@ -393,6 +456,47 @@ func (m *ListViewModel) selectedIngredient() *models.Ingredient {
 	}
 	ingredient := item.Value
 	return &ingredient
+}
+
+func selectedIngredientID(value *models.Ingredient) entity.IngredientID {
+	if value == nil {
+		return entity.IngredientID{}
+	}
+	return value.ID
+}
+
+func (m *ListViewModel) selectIngredient(id entity.IngredientID) {
+	if id.IsZero() {
+		return
+	}
+	for i, item := range m.shell.Items() {
+		if value, ok := item.(ingredientItem); ok && value.Value.ID == id {
+			m.shell.Select(i)
+			return
+		}
+	}
+}
+
+func (m *ListViewModel) updateTitle() {
+	parts := []string{"Ingredients"}
+	if m.request.Category != "" {
+		parts = append(parts, "category="+string(m.request.Category))
+	}
+	if m.request.Filter != "" {
+		parts = append(parts, "filter="+m.request.Filter)
+	}
+	parts = append(parts, fmt.Sprintf("page size=%d", effectiveLimit(m.request.Limit)))
+	if len(m.history) > 0 {
+		parts = append(parts, fmt.Sprintf("page=%d", len(m.history)+1))
+	}
+	m.shell.SetTitle(strings.Join(parts, " • "))
+}
+
+func effectiveLimit(limit int) int {
+	if limit <= 0 {
+		return paging.DefaultLimit
+	}
+	return limit
 }
 
 func (m *ListViewModel) startTags() tea.Cmd {

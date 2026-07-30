@@ -4,7 +4,8 @@
 
 A modular monolith sample that models a cocktail bar domain with explicit bounded contexts,
 middleware pipelines, Cedar-based authorization, and event-driven coordination. It ships with
-a CLI and a Bubble Tea TUI, both backed by an embedded bstore (bbolt) database.
+a CLI, a Bubble Tea TUI, and a native Fyne desktop client backed by embedded bstore (bbolt)
+databases.
 
 For a guided architectural walkthrough, see the [tutorial series](https://github.com/TheFellow/go-modular-monolith/issues/23).
 
@@ -34,7 +35,9 @@ go test ./...
 ### Run the App
 
 The CLI binary is `mixology` (`main/cli`), and the TUI is launched through the same binary with
-`--tui`. Both use `data/mixology.db` by default.
+`--tui`. Both use `data/mixology.db` by default. The native desktop client has its own per-user
+database; see [`main/fyne/README.md`](main/fyne/README.md) for platform prerequisites, state
+locations, packaging, and troubleshooting.
 
 ```bash
 # Seed a local database with sample ingredients, drinks, inventory, and a published menu
@@ -67,6 +70,9 @@ go run ./main/cli --as anonymous drinks list
 
 # Launch the TUI
 go run ./main/cli --tui
+
+# Launch the native desktop client
+go run ./main/fyne
 ```
 
 Set `MIXOLOGY_DB=path/to/other.db` to override the database path used by `go run ./main/seed`.
@@ -211,6 +217,8 @@ to that Cedar policy. The application itself reserves no tag keys or values.
 go generate ./...
 git diff --exit-code
 go build ./...
+go test -tags ci ./pkg/fyne ./pkg/testutil/fynetest ./main/fyne \
+  ./app/domains/*/surfaces/fyne
 go tool arch-lint -config=.arch-lint.yaml
 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
 go test -race -shuffle=on -count=1 -timeout=5m ./...
@@ -438,10 +446,17 @@ invoked by `//go:generate go run ./gen` in the parent package.
 
 ## Architecture Enforcement
 
-Seven `arch-lint` rules (`.arch-lint.yaml`) enforce module boundaries at CI time:
+Fourteen `arch-lint` rules (`.arch-lint.yaml`) enforce module and presentation boundaries at CI time:
 
 | Rule | Prevents |
 |------|----------|
+| fyne-toolkit-no-application | Reusable Fyne mechanics importing application or composition code |
+| fyne-surfaces-use-public-domain-api | Fyne surfaces reaching into internals, composition, or sibling surface mechanics |
+| fyne-surfaces-no-cross-domain-surfaces | One domain reusing another domain's concrete presentation surface |
+| tui-toolkit-no-application | Reusable TUI mechanics importing application or composition code |
+| tui-surfaces-use-public-domain-api | TUI surfaces reaching into same-domain internals |
+| tui-surfaces-are-bespoke | TUI surfaces importing CLI or Fyne surface implementations |
+| cli-surfaces-are-bespoke | CLI surfaces importing TUI or Fyne surface implementations |
 | shared-no-domains | Shared app packages importing domain code |
 | no-cross-domain-internal | Domain A reaching into Domain B's internals |
 | handlers-no-commands | Event handlers importing command implementations |

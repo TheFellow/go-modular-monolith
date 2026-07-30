@@ -35,7 +35,7 @@ func TestDomainMutationCommandsShareTagsFlag(t *testing.T) {
 		"drinks":      {"create", "update"},
 		"ingredients": {"create", "update"},
 		"inventory":   {"adjust", "set"},
-		"menus":       {"create", "add-drink", "remove-drink", "publish", "draft"},
+		"menus":       {"create", "update", "add-drink", "remove-drink", "publish", "draft"},
 		"orders":      {"place", "complete", "cancel"},
 	}
 	seen := make(map[cli.Flag]string)
@@ -59,7 +59,7 @@ func TestDomainMutationCommandsShareTagsFlag(t *testing.T) {
 			seen[flag] = noun + " " + mutation
 		}
 	}
-	testutil.Equals(t, len(seen), 14)
+	testutil.Equals(t, len(seen), 15)
 }
 
 //nolint:paralleltest // each invocation constructs urfave commands whose flags retain parse state.

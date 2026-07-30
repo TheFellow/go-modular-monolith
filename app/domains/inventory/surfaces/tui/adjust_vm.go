@@ -10,6 +10,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -29,7 +30,9 @@ type AdjustInventoryVM struct {
 	err        error
 	submitting bool
 	amount     *forms.NumberField
+	cost       *forms.TextField
 	reason     *forms.SelectField
+	tags       *forms.TextField
 }
 
 // AdjustErrorMsg is sent when adjusting inventory fails.
@@ -48,17 +51,18 @@ func NewAdjustInventoryVM(app *app.Session, row InventoryRow) *AdjustInventoryVM
 	}
 
 	amountField := forms.NewNumberField(
-		"Amount",
-		forms.WithRequired(),
+		"Delta",
 		forms.WithPrecision(2),
 		forms.WithAllowNegative(),
 		forms.WithPlaceholder("e.g., +5.0 or -2.5"),
 	)
+	costField := forms.NewTextField("Cost per unit", forms.WithPlaceholder("e.g., $1.23 or EUR 1.23"))
 	reasonField := forms.NewSelectField(
 		"Reason",
 		reasonOptions,
 		forms.WithRequired(),
 	)
+	tagsField := components.NewOptionalTagsField(row.Inventory.Tags)
 
 	formStyles := tuistyles.App.Form
 	formKeys := tuikeys.App.Form
@@ -66,7 +70,9 @@ func NewAdjustInventoryVM(app *app.Session, row InventoryRow) *AdjustInventoryVM
 		formStyles,
 		formKeys,
 		amountField,
+		costField,
 		reasonField,
+		tagsField,
 	)
 
 	return &AdjustInventoryVM{
@@ -76,7 +82,9 @@ func NewAdjustInventoryVM(app *app.Session, row InventoryRow) *AdjustInventoryVM
 		styles: formStyles,
 		keys:   formKeys,
 		amount: amountField,
+		cost:   costField,
 		reason: reasonField,
+		tags:   tagsField,
 	}
 }
 
@@ -118,6 +126,9 @@ func (m *AdjustInventoryVM) View() string {
 	if m.row.Inventory.Amount != nil {
 		current = fmt.Sprintf("Current: %.2f %s", m.row.Inventory.Amount.Value(), m.row.Inventory.Amount.Unit())
 	}
+	if price, ok := m.row.Inventory.CostPerUnit.Unwrap(); ok {
+		current += " at " + price.String()
+	}
 
 	view := strings.Join([]string{title, current, "", m.form.View()}, "\n")
 	if m.err != nil {
@@ -146,18 +157,36 @@ func (m *AdjustInventoryVM) submit() tea.Cmd {
 		return nil
 	}
 
-	amountValue, ok := toFloat(m.amount.Value())
-	if !ok {
-		m.err = errors.New("amount is required")
-		return nil
-	}
 	unit := unitFromRow(m.row)
-	if unit == "" {
-		m.err = errors.New("unit is required")
+	var delta optional.Value[measurement.Amount]
+	if rawValue := m.amount.Value(); rawValue != nil {
+		raw := strings.TrimSpace(fmt.Sprint(rawValue))
+		value, err := strconv.ParseFloat(raw, 64)
+		if err != nil {
+			m.err = errors.New("delta must be a number")
+			return nil
+		}
+		amount, err := measurement.NewAmount(value, unit)
+		if err != nil {
+			m.err = err
+			return nil
+		}
+		delta = optional.Some(amount)
+	}
+	var cost optional.Value[money.Price]
+	if raw := strings.TrimSpace(fmt.Sprint(m.cost.Value())); raw != "" {
+		price, err := money.ParsePrice(raw)
+		if err != nil {
+			m.err = err
+			return nil
+		}
+		cost = optional.Some(price)
+	}
+	if delta.IsNone() && cost.IsNone() {
+		m.err = errors.New("at least one of delta or cost per unit is required")
 		return nil
 	}
-
-	amount, err := measurement.NewAmount(amountValue, unit)
+	desired, err := components.DesiredTags(m.tags)
 	if err != nil {
 		m.err = err
 		return nil
@@ -166,14 +195,16 @@ func (m *AdjustInventoryVM) submit() tea.Cmd {
 	patch := &models.Patch{
 		IngredientID: m.row.Ingredient.ID,
 		Reason:       toAdjustmentReason(m.reason.Value()),
-		Delta:        optional.Some(amount),
-		CostPerUnit:  optional.None[money.Price](),
+		Delta:        delta,
+		CostPerUnit:  cost,
 	}
 	m.err = nil
 	m.submitting = true
 
 	return func() tea.Msg {
-		adjusted, err := m.app.Inventory.Adjust(m.context(), patch)
+		adjusted, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Inventory, error) {
+			return m.app.Inventory.Adjust(ctx, patch)
+		})
 		if err != nil {
 			return AdjustErrorMsg{Err: err}
 		}
@@ -197,26 +228,8 @@ func toAdjustmentReason(value any) models.AdjustmentReason {
 }
 
 func toFloat(value any) (float64, bool) {
-	switch typed := value.(type) {
-	case float64:
-		return typed, true
-	case float32:
-		return float64(typed), true
-	case int:
-		return float64(typed), true
-	case int64:
-		return float64(typed), true
-	case int32:
-		return float64(typed), true
-	case string:
-		parsed, err := strconv.ParseFloat(strings.TrimSpace(typed), 64)
-		if err != nil {
-			return 0, false
-		}
-		return parsed, true
-	default:
-		return 0, false
-	}
+	parsed, err := strconv.ParseFloat(strings.TrimSpace(fmt.Sprint(value)), 64)
+	return parsed, err == nil
 }
 
 func unitFromRow(row InventoryRow) measurement.Unit {
