@@ -16,7 +16,7 @@ import (
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )

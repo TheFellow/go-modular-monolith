@@ -39,7 +39,7 @@ graph TD
 - Report input ownership through `Interaction` so the root can route global keys.
 
 ### Shared UI mechanics
-- `pkg/tui` owns reusable terminal mechanics and presentation adapters.
+- `pkg/toolkits/tui` owns reusable terminal mechanics and presentation adapters.
 - Forms and dialogs own their local input behavior.
 - Domain views choose commands and render domain-specific details; shared helpers
   handle recurring concerns such as list layout, loading, filtering, and sizing.

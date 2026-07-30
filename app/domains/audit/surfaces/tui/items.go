@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 )
 
 type auditItem = tui.ListItem[models.AuditEntry]

@@ -1,8 +1,8 @@
 package keys
 
 import (
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/dialog"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/dialog"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	"github.com/charmbracelet/bubbles/key"
 )
 

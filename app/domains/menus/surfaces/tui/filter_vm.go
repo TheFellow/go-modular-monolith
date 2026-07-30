@@ -10,7 +10,7 @@ import (
 	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

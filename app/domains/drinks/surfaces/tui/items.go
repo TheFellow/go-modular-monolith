@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 )
 
 type drinkItem = tui.ListItem[models.Drink]

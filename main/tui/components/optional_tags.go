@@ -5,7 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 )
 
 // NewOptionalTagsField creates a complete-tag-set field. An untouched field

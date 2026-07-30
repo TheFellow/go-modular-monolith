@@ -30,8 +30,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 

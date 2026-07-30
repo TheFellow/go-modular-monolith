@@ -15,7 +15,7 @@ import (
 	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )

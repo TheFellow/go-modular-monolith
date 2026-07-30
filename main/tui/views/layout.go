@@ -1,7 +1,7 @@
 package views
 
 import (
-	sharedtui "github.com/TheFellow/go-modular-monolith/pkg/tui"
+	sharedtui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/charmbracelet/lipgloss"
 )
 
