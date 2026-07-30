@@ -1,76 +1,52 @@
 specs:
-  # The reusable Fyne toolkit owns desktop mechanics, never application policy.
-  - name: fyne-toolkit-no-application
+  # Reusable presentation toolkits own mechanics, never application policy.
+  - name: presentation-toolkits-no-application
     packages:
       include:
         - "pkg/fyne/**"
+        - "pkg/tui/**"
     rules:
       forbid:
         - "app/**"
         - "main/**"
 
-  # Domain GUI surfaces adapt public module APIs without reaching into internals.
-  - name: gui-surfaces-use-public-domain-api
+  # Domain internals are available only to the facade, read/write services, and
+  # other implementation packages. Every other current or future layer is denied.
+  - name: domain-internals-have-explicit-consumers
     packages:
       include:
-        - "app/domains/*/surfaces/gui/**"
+        - "app/domains/*"
+        - "app/domains/*/**"
     rules:
       forbid:
-        - "app/domains/*/internal/**"
-        - "app/domains/*/surfaces/cli/**"
-        - "app/domains/*/surfaces/tui/**"
-        - "main/**"
-        - "pkg/tui/**"
-
-  # A domain owns its GUI presentation; sibling surfaces are not a reuse layer.
-  - name: gui-surfaces-no-cross-domain-surfaces
-    packages:
-      include:
-        - "app/domains/*/surfaces/gui/**"
-    rules:
-      forbid:
-        - "app/domains/{module}/surfaces/**"
+        - "app/domains/{module}/internal/**"
       except:
-        - "app/domains/{module}/surfaces/gui/**"
+        - "app/domains/{module}"
+        - "app/domains/{module}/internal/**"
+        - "app/domains/{module}/queries/**"
+        - "app/domains/{module}/handlers/**"
 
-  # The reusable TUI toolkit owns terminal mechanics, never application policy.
-  - name: tui-toolkit-no-application
+  # GUI surfaces do not depend on composition or terminal-specific mechanics.
+  - name: gui-surfaces-no-composition-or-tui
     packages:
       include:
-        - "pkg/tui/**"
+        - "app/domains/*/surfaces/gui/**"
     rules:
       forbid:
-        - "app/**"
         - "main/**"
+        - "pkg/tui/**"
 
-  # Same-domain TUI surfaces use public APIs even though Go permits internal imports.
-  - name: tui-surfaces-use-public-domain-api
+  # Concrete presentation surfaces are private to their domain and surface kind.
+  # Captures make this apply automatically to every current and future surface.
+  - name: surfaces-are-bespoke
     packages:
       include:
-        - "app/domains/*/surfaces/tui/**"
+        - "app/domains/*/surfaces/*/**"
     rules:
       forbid:
-        - "app/domains/*/internal/**"
-
-  # TUI surfaces are terminal adapters, not a reuse layer for other concrete views.
-  - name: tui-surfaces-are-bespoke
-    packages:
-      include:
-        - "app/domains/*/surfaces/tui/**"
-    rules:
-      forbid:
-        - "app/domains/*/surfaces/cli/**"
-        - "app/domains/*/surfaces/gui/**"
-
-  # CLI surfaces adapt public APIs directly rather than depending on interactive views.
-  - name: cli-surfaces-are-bespoke
-    packages:
-      include:
-        - "app/domains/*/surfaces/cli/**"
-    rules:
-      forbid:
-        - "app/domains/*/surfaces/gui/**"
-        - "app/domains/*/surfaces/tui/**"
+        - "app/domains/{module}/surfaces/{surface}/**"
+      except:
+        - "app/domains/{module}/surfaces/{surface}/**"
 
   # Shared types cannot import domains.
   - name: shared-no-domains
@@ -83,15 +59,6 @@ specs:
       forbid:
         - "app/domains/**"
 
-  # Cross-domain internal access forbidden.
-  - name: no-cross-domain-internal
-    packages:
-      include:
-        - "app/domains/{module}/**"
-    rules:
-      forbid:
-        - "app/domains/{!module}/internal/**"
-
   # Handlers cannot import commands.
   - name: handlers-no-commands
     packages:
@@ -99,17 +66,7 @@ specs:
         - "app/domains/*/handlers/**"
     rules:
       forbid:
-        - "app/domains/*/internal/commands"
         - "app/domains/*/internal/commands/**"
-
-  # Events are public contracts - no internal dependencies.
-  - name: events-no-internal
-    packages:
-      include:
-        - "app/domains/*/events/**"
-    rules:
-      forbid:
-        - "app/domains/*/internal/**"
 
   # Queries are read-only - no command imports.
   - name: queries-no-commands
@@ -120,15 +77,6 @@ specs:
       forbid:
         - "app/domains/*/internal/commands/**"
 
-  # Models are dependency-free within module.
-  - name: models-no-internal
-    packages:
-      include:
-        - "app/domains/*/models/**"
-    rules:
-      forbid:
-        - "app/domains/*/internal/**"
-
   # Handlers use queries, not modules.
   - name: handlers-no-modules
     packages:
@@ -137,8 +85,3 @@ specs:
     rules:
       forbid:
         - "app/domains/*"
-      except:
-        - "app/domains/*/events"
-        - "app/domains/*/queries"
-        - "app/domains/*/models"
-        - "app/domains/*/internal/**"
