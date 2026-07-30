@@ -6,9 +6,9 @@ import (
 	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/availability"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
@@ -19,7 +19,7 @@ type AnalyticsCalculator struct {
 	costs        *CostCalculator
 }
 
-func NewAnalyticsCalculator(s *store.Store, tags *tagging.Repository) *AnalyticsCalculator {
+func NewAnalyticsCalculator(s *store.Store, tags tag.Repository) *AnalyticsCalculator {
 	return &AnalyticsCalculator{
 		drinks:       drinksq.New(s, tags),
 		availability: availability.New(s, tags),

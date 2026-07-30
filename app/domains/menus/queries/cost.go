@@ -8,10 +8,10 @@ import (
 	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	inventoryq "github.com/TheFellow/go-modular-monolith/app/domains/inventory/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/availability"
-	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -24,7 +24,7 @@ type CostCalculator struct {
 	availability *availability.AvailabilityCalculator
 }
 
-func NewCostCalculator(s *store.Store, tags *tagging.Repository) *CostCalculator {
+func NewCostCalculator(s *store.Store, tags tag.Repository) *CostCalculator {
 	return &CostCalculator{
 		drinks:       drinksq.New(s, tags),
 		inventory:    inventoryq.New(s, tags),
