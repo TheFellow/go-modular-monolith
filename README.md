@@ -217,8 +217,9 @@ to that Cedar policy. The application itself reserves no tag keys or values.
 go generate ./...
 git diff --exit-code
 go build ./...
-go test -tags ci ./pkg/fyne ./pkg/testutil/fynetest ./main/gui \
+go test -tags ci ./pkg/toolkits/gui ./pkg/testutil/fynetest ./main/gui \
   ./app/domains/*/surfaces/gui
+go test ./pkg/toolkits/cli/... ./pkg/toolkits/tui/...
 go tool arch-lint -config=.arch-lint.yaml
 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
 go test -race -shuffle=on -count=1 -timeout=5m ./...
@@ -446,13 +447,15 @@ invoked by `//go:generate go run ./gen` in the parent package.
 
 ## Architecture Enforcement
 
-Eight `arch-lint` rules (`.arch-lint.yaml`) enforce module and presentation boundaries at CI time:
+Ten `arch-lint` rules (`.arch-lint.yaml`) enforce module and presentation boundaries at CI time:
 
 | Rule | Prevents |
 |------|----------|
-| presentation-toolkits-no-application | Reusable Fyne or TUI mechanics importing application or composition code |
+| presentation-toolkits-no-application | Reusable CLI, GUI, or TUI mechanics importing application or composition code |
 | domain-internals-have-explicit-consumers | Any package outside a domain's facade, internal implementation, queries, or handlers reaching into its internals |
-| gui-surfaces-no-composition-or-tui | GUI surfaces reaching into composition or terminal toolkit mechanics |
+| presentation-toolkits-are-independent | One presentation toolkit importing a sibling toolkit |
+| surfaces-use-matching-toolkit | A CLI, GUI, TUI, or future surface importing a toolkit for a different presentation mode |
+| gui-surfaces-no-composition | GUI surfaces reaching into application composition |
 | surfaces-are-bespoke | Any domain surface importing another domain or surface kind's concrete presentation |
 | shared-no-domains | Shared app packages importing domain code |
 | handlers-no-commands | Event handlers importing command implementations |
