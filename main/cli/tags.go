@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	clitable "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli/table"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/urfave/cli/v3"
 )
@@ -31,7 +32,7 @@ func (c *CLI) tagsCommands() *cli.Command {
 				UsageText: "mixology tags show [--json] <key[=value]>\n   or: mixology tags show [--json] --key <key>",
 				Arguments: []cli.Argument{&cli.StringArg{Name: "tag", UsageText: "<key[=value]>"}},
 				Flags: []cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "key", Usage: "Match every value for this tag key"},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -59,7 +60,7 @@ func (c *CLI) tagsCommands() *cli.Command {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, rows)
+						return clitoolkit.WriteJSON(cmd.Writer, rows)
 					}
 					return clitable.PrintTable(cmd.Writer, rows)
 				}),
@@ -67,14 +68,14 @@ func (c *CLI) tagsCommands() *cli.Command {
 			{
 				Name:  "summary",
 				Usage: "Summarize active tag usage",
-				Flags: []cli.Flag{JSONFlag},
+				Flags: []cli.Flag{clitoolkit.JSONFlag},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					rows, err := c.app.Tags.Summary(ctx)
 					if err != nil {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, rows)
+						return clitoolkit.WriteJSON(cmd.Writer, rows)
 					}
 					return clitable.PrintTable(cmd.Writer, rows)
 				}),
@@ -152,7 +153,7 @@ func (c *CLI) tagsCommands() *cli.Command {
 					}
 					out := tagsOutput{EntityID: string(target.ID), Tags: values.Canonical()}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, out)
+						return clitoolkit.WriteJSON(cmd.Writer, out)
 					}
 					return printTagState(cmd, out, "")
 				}),
@@ -185,7 +186,7 @@ func printTagMutation(cmd *cli.Command, result tagging.Result) error {
 		Changed:  &changed,
 	}
 	if cmd.Bool("json") {
-		return writeJSON(cmd.Writer, out)
+		return clitoolkit.WriteJSON(cmd.Writer, out)
 	}
 	state := "unchanged"
 	if changed {

@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"math"
-	"os"
 	"reflect"
 	"strings"
 	"text/tabwriter"
@@ -168,10 +165,6 @@ func printNextCursor(w io.Writer, cursor paging.Cursor) error {
 }
 
 var (
-	JSONFlag         cli.Flag = &cli.BoolFlag{Name: "json", Usage: "Output JSON"}
-	TemplateFlag     cli.Flag = &cli.BoolFlag{Name: "template", Usage: "Print JSON template and exit"}
-	StdinFlag        cli.Flag = &cli.BoolFlag{Name: "stdin", Usage: "Read JSON from stdin"}
-	FileFlag         cli.Flag = &cli.StringFlag{Name: "file", Usage: "Read JSON from file"}
 	CostsFlag        cli.Flag = &cli.BoolFlag{Name: "costs", Usage: "Include cost/margin analytics"}
 	TargetMarginFlag cli.Flag = &cli.Float64Flag{
 		Name: "target-margin", Usage: "Target margin for suggested prices (0-1)", Value: 0.7,
@@ -184,56 +177,8 @@ var (
 	}
 )
 
-func writeJSON(w io.Writer, v any) error {
-	b, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
-		return err
-	}
-	b = append(b, '\n')
-	_, err = w.Write(b)
-	return err
-}
-
 func newTabWriter(output io.Writer) *tabwriter.Writer {
 	return tabwriter.NewWriter(output, 0, 0, 2, ' ', 0)
-}
-
-func readJSONInput[T any](cmd *cli.Command) (T, error) {
-	var zero T
-
-	fromStdin := cmd.Bool("stdin")
-	fromFile := strings.TrimSpace(cmd.String("file"))
-	if fromStdin && fromFile != "" {
-		return zero, fmt.Errorf("set only one of --stdin or --file")
-	}
-	if !fromStdin && fromFile == "" {
-		return zero, fmt.Errorf("missing input: set --stdin or --file (or use --template)")
-	}
-
-	var r io.Reader
-	if fromStdin {
-		b, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return zero, err
-		}
-		if len(bytes.TrimSpace(b)) == 0 {
-			return zero, fmt.Errorf("stdin is empty")
-		}
-		r = bytes.NewReader(b)
-	} else {
-		f, err := os.Open(fromFile)
-		if err != nil {
-			return zero, err
-		}
-		defer func() { _ = f.Close() }()
-		r = f
-	}
-
-	var result T
-	if err := json.NewDecoder(r).Decode(&result); err != nil {
-		return zero, err
-	}
-	return result, nil
 }
 
 func parsePrice(s string) (money.Price, error) {

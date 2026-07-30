@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	menucli "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
-	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	clitable "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli/table"
 	"github.com/urfave/cli/v3"
 )
 
@@ -24,7 +25,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List menus",
 				Flags: appendFilterFlags(append([]cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					CostsFlag,
 					TargetMarginFlag,
 					&cli.StringFlag{
@@ -56,7 +57,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						for _, m := range res.Items {
 							out = append(out, menucli.FromDomainMenu(*m))
 						}
-						return writeJSON(cmd.Writer, paging.Page[menucli.Menu]{Items: out, Next: res.Next})
+						return clitoolkit.WriteJSON(cmd.Writer, paging.Page[menucli.Menu]{Items: out, Next: res.Next})
 					}
 
 					rows := make([]menucli.MenuRow, 0, len(res.Items))
@@ -89,7 +90,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "show",
 				Usage: "Show a menu",
 				Flags: []cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					CostsFlag,
 					TargetMarginFlag,
 					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
@@ -110,9 +111,9 @@ func (c *CLI) menuCommands() *cli.Command {
 							if err != nil {
 								return err
 							}
-							return writeJSON(cmd.Writer, an)
+							return clitoolkit.WriteJSON(cmd.Writer, an)
 						}
-						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*res))
+						return clitoolkit.WriteJSON(cmd.Writer, menucli.FromDomainMenu(*res))
 					}
 
 					m := *res
@@ -202,19 +203,19 @@ func (c *CLI) menuCommands() *cli.Command {
 					&cli.StringArgs{Name: "name", UsageText: "Menu name", Max: 1},
 				},
 				Flags: appendTagsFlag([]cli.Flag{
-					JSONFlag,
-					TemplateFlag,
-					StdinFlag,
-					FileFlag,
+					clitoolkit.JSONFlag,
+					clitoolkit.TemplateFlag,
+					clitoolkit.StdinFlag,
+					clitoolkit.FileFlag,
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
-						return writeJSON(cmd.Writer, menucli.TemplateCreate())
+						return clitoolkit.WriteJSON(cmd.Writer, menucli.TemplateCreate())
 					}
 
 					var input *menumodels.Menu
 					if cmd.Bool("stdin") || strings.TrimSpace(cmd.String("file")) != "" {
-						row, err := readJSONInput[menucli.MenuRow](cmd)
+						row, err := clitoolkit.ReadJSONInput[menucli.MenuRow](cmd)
 						if err != nil {
 							return err
 						}
@@ -238,7 +239,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*created))
+						return clitoolkit.WriteJSON(cmd.Writer, menucli.FromDomainMenu(*created))
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, created.ID.String())
@@ -249,22 +250,22 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "update",
 				Usage: "Rename a draft menu or update its non-empty description",
 				Flags: appendTagsFlag([]cli.Flag{
-					JSONFlag,
-					TemplateFlag,
-					StdinFlag,
-					FileFlag,
+					clitoolkit.JSONFlag,
+					clitoolkit.TemplateFlag,
+					clitoolkit.StdinFlag,
+					clitoolkit.FileFlag,
 					&cli.StringFlag{Name: "id", Usage: "Menu ID"},
 					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Usage: "New name"},
 					&cli.StringFlag{Name: "description", Aliases: []string{"d"}, Usage: "New non-empty description (blank preserves the current description)"},
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
-						return writeJSON(cmd.Writer, menucli.TemplateUpdate())
+						return clitoolkit.WriteJSON(cmd.Writer, menucli.TemplateUpdate())
 					}
 
 					var input *menumodels.Menu
 					if cmd.Bool("stdin") || strings.TrimSpace(cmd.String("file")) != "" {
-						row, err := readJSONInput[menucli.MenuRow](cmd)
+						row, err := clitoolkit.ReadJSONInput[menucli.MenuRow](cmd)
 						if err != nil {
 							return err
 						}
@@ -305,7 +306,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
+						return clitoolkit.WriteJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
 					}
 					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
 					return err
@@ -315,7 +316,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "delete",
 				Usage: "Delete a draft menu",
 				Flags: []cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -328,7 +329,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*deleted))
+						return clitoolkit.WriteJSON(cmd.Writer, menucli.FromDomainMenu(*deleted))
 					}
 					_, err = fmt.Fprintln(cmd.Writer, deleted.ID.String())
 					return err
@@ -338,7 +339,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "add-drink",
 				Usage: "Add a drink to a menu",
 				Flags: appendTagsFlag([]cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
 					&cli.StringFlag{Name: "drink-id", Usage: "Drink ID", Required: true},
 				}),
@@ -361,7 +362,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
+						return clitoolkit.WriteJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
@@ -372,7 +373,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "remove-drink",
 				Usage: "Remove a drink from a menu",
 				Flags: appendTagsFlag([]cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
 					&cli.StringFlag{Name: "drink-id", Usage: "Drink ID", Required: true},
 				}),
@@ -395,7 +396,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
+						return clitoolkit.WriteJSON(cmd.Writer, menucli.FromDomainMenu(*updated))
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
@@ -406,7 +407,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "publish",
 				Usage: "Publish a menu",
 				Flags: appendTagsFlag([]cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -422,7 +423,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*published))
+						return clitoolkit.WriteJSON(cmd.Writer, menucli.FromDomainMenu(*published))
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, published.ID.String())
@@ -433,7 +434,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "draft",
 				Usage: "Return a published menu to draft status",
 				Flags: appendTagsFlag([]cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -449,7 +450,7 @@ func (c *CLI) menuCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, menucli.FromDomainMenu(*drafted))
+						return clitoolkit.WriteJSON(cmd.Writer, menucli.FromDomainMenu(*drafted))
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, drafted.ID.String())
