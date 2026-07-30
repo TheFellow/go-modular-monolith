@@ -260,6 +260,7 @@ app/
       authz/           Cedar policy definitions for this context
       surfaces/
         cli/           urfave/cli command builders
+        gui/           Fyne presenters and views
         tui/           Bubble Tea view models
       internal/
         commands/      Write logic (not importable by other domains)
@@ -276,12 +277,24 @@ pkg/
   log/             Structured slog logging
   errors/          Typed domain errors with mapped exit codes & TUI styles
   optional/        Minimal generic Value[T] optional type (Some/None/IsSome/Unwrap)
-  tui/             Shared Bubble Tea components (forms, dialogs, styles, keys)
+  toolkits/        Reusable, application-independent presentation mechanics
+    cli/             JSON and table rendering
+    gui/             Fyne shell, dialogs, validation, and async command execution
+    tui/             Bubble Tea layout, list/detail, forms, dialogs, and styling
   testutil/        Isolated app fixtures, domain builders, audit helpers, assertion utilities
 main/
-  cli/             CLI + TUI entry point (--tui flag launches the TUI)
+  cli/             CLI executable and command composition (--tui launches the TUI)
+  gui/             Native Fyne desktop executable and application composition
+  tui/             TUI application shell and cross-domain workspace composition
   seed/            Database seeder
 ```
+
+Domain roots are their public composition boundaries. Public `models`, `queries`, and `events`
+form the deliberate cross-domain collaboration contracts; authorization packages and internal
+implementations remain private to their owning domain. Operational domains follow the package
+profile shown above, while audit and tagging use smaller explicit profiles. Architecture tests
+reject unrecognized peer layers and verify that every domain is exposed and initialized by the
+application root.
 
 The store is a required app-bootstrap dependency. As each bounded context is constructed, it
 registers its own internal bstore model with that store. Persistence types stay behind their
@@ -306,17 +319,27 @@ graph LR
         Audit[Audit<br/>Activity Log]
         Tags[Tagging<br/>Cross-Cutting Metadata]
 
-        Ingredients --> Drinks
-        Inventory --> Menu
-        Drinks --> Menu
-        Menu --> Orders
-        Tags -.-> Ingredients
-        Tags -.-> Drinks
-        Tags -.-> Inventory
-        Tags -.-> Menu
-        Tags -.-> Orders
+        Drinks -->|queries| Ingredients
+        Inventory -->|queries| Ingredients
+        Menu -->|queries| Drinks
+        Menu -->|queries| Ingredients
+        Menu -->|queries| Inventory
+        Orders -->|queries| Menu
+        Orders -->|queries| Drinks
+        Orders -->|queries| Ingredients
+        Orders -->|queries| Inventory
+        Ingredients -.->|tag target| Tags
+        Drinks -.->|tag target| Tags
+        Inventory -.->|tag target| Tags
+        Menu -.->|tag target| Tags
+        Orders -.->|tag target| Tags
     end
 ```
+
+The arrows above show synchronous query dependencies. Domains coordinate reactive updates by
+consuming other domains' public events; a command may publish only events owned by its own domain.
+Taggable domains depend on the narrow tag repository port and register domain-owned loaders with
+the tagging workflow, so tagging does not reach into their private persistence.
 
 ## Event Flow (No Cascading)
 
@@ -429,7 +452,7 @@ denied entities as normal filtering and return only the visible subset.
 | Drinks | Drink recipes | Ingredients | DrinkCreated, DrinkUpdated, DrinkDeleted |
 | Inventory | Stock levels | Ingredients | StockAdjusted |
 | Menu | Published menus | Drinks, Inventory | MenuCreated, DrinkAddedToMenu, DrinkRemovedFromMenu, MenuPublished, MenuDrafted |
-| Orders | Customer orders | Menu, Drinks, Inventory | OrderPlaced, OrderCompleted, OrderCancelled |
+| Orders | Customer orders | Menu, Drinks, Ingredients, Inventory | OrderPlaced, OrderCompleted, OrderCancelled |
 | Audit | Activity log, audit entries (not taggable) | - | - |
 | Tagging | Polymorphic tag associations and tag workflow | Domain-owned target loaders | - |
 
@@ -447,7 +470,8 @@ invoked by `//go:generate go run ./gen` in the parent package.
 
 ## Architecture Enforcement
 
-Ten `arch-lint` rules (`.arch-lint.yaml`) enforce module and presentation boundaries at CI time:
+Twelve `arch-lint` rules (`.arch-lint.yaml`) enforce module, contract, and presentation boundaries
+at CI time:
 
 | Rule | Prevents |
 |------|----------|
@@ -455,16 +479,18 @@ Ten `arch-lint` rules (`.arch-lint.yaml`) enforce module and presentation bounda
 | domain-internals-have-explicit-consumers | Any package outside a domain's facade, internal implementation, queries, or handlers reaching into its internals |
 | presentation-toolkits-are-independent | One presentation toolkit importing a sibling toolkit |
 | surfaces-use-matching-toolkit | A CLI, GUI, TUI, or future surface importing a toolkit for a different presentation mode |
-| gui-surfaces-no-composition | GUI surfaces reaching into application composition |
+| surfaces-no-composition | Domain surfaces reaching into executable composition |
 | surfaces-are-bespoke | Any domain surface importing another domain or surface kind's concrete presentation |
 | shared-no-domains | Shared app packages importing domain code |
+| domain-authz-is-private | A domain importing another domain's authorization contracts |
+| commands-emit-own-domain-events | A command importing events owned by another domain |
 | handlers-no-commands | Event handlers importing command implementations |
 | queries-no-commands | Queries importing write-side code |
 | handlers-no-modules | Handlers accessing module roots (must use queries/events/models) |
 
-Additional compile-time guarantees: `golangci-lint` runs its standard checks plus wrapped-error,
-enum exhaustiveness, modernization, and project style checks, while `arch-lint` enforces module
-boundaries.
+Architecture tests also enforce each bounded context's allowed package topology and ensure every
+domain is composed by `app.New`. `golangci-lint` runs its standard checks plus wrapped-error, enum
+exhaustiveness, modernization, and project style checks.
 
 ## Cross-Transport Error Types
 
