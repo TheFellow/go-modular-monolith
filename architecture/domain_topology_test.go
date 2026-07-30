@@ -34,6 +34,8 @@ var (
 )
 
 func TestDomainPackageTopology(t *testing.T) {
+	t.Parallel()
+
 	domainsRoot := filepath.Join(repositoryRoot(t), "app", "domains")
 	domains, err := os.ReadDir(domainsRoot)
 	if err != nil {
@@ -47,6 +49,8 @@ func TestDomainPackageTopology(t *testing.T) {
 
 		domain := domain
 		t.Run(domain.Name(), func(t *testing.T) {
+			t.Parallel()
+
 			domainRoot := filepath.Join(domainsRoot, domain.Name())
 			if _, err := os.Stat(filepath.Join(domainRoot, "module.go")); err != nil {
 				t.Errorf("domain root must define its composition boundary in module.go: %v", err)
@@ -60,6 +64,8 @@ func TestDomainPackageTopology(t *testing.T) {
 }
 
 func TestOperationalDomainProfileRejectsNovelPackageLayers(t *testing.T) {
+	t.Parallel()
+
 	domainRoot := t.TempDir()
 	for _, packagePath := range []string{
 		"models",
