@@ -12,8 +12,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
-	ui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 

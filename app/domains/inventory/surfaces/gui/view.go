@@ -10,7 +10,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
+	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 type View struct {

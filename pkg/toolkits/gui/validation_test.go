@@ -1,10 +1,10 @@
-package fyne_test
+package gui_test
 
 import (
 	"errors"
 	"testing"
 
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
+	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func TestValidateReturnsFirstFailure(t *testing.T) {

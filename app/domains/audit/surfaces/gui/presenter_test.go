@@ -13,9 +13,9 @@ import (
 	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	ui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
+	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func createAuditedIngredient(t testing.TB, fixture *testutil.Fixture, name string) *models.Ingredient {

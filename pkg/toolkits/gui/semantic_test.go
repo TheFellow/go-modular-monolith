@@ -1,5 +1,5 @@
 //nolint:paralleltest // Fyne's focus and canvas state are process-global.
-package fyne_test
+package gui_test
 
 import (
 	"testing"
@@ -7,8 +7,8 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/test"
 
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
+	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func TestSemanticDriverInteractsWithActualWidgets(t *testing.T) {

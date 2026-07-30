@@ -11,7 +11,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
-	ui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
+	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 type View struct {

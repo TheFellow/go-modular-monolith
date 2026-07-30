@@ -3,14 +3,14 @@
 This directory composes Mixology's native desktop client. It owns process
 lifecycle, the desktop data directory, the root window, and application-level
 navigation. Domain behavior belongs in `app/domains/*/surfaces/gui` and enters
-the shell as a `pkg/fyne.View`.
+the shell as a `pkg/toolkits/gui.View`.
 
 Every application workspace is supplied by a domain-owned, tested vertical
 slice rather than accumulating domain behavior here.
 
 ## Boundaries
 
-- `pkg/fyne` contains reusable Fyne mechanics and imports neither `app` nor
+- `pkg/toolkits/gui` contains reusable Fyne mechanics and imports neither `app` nor
   `main`.
 - `main/gui` creates the application session and composes routes.
 - `app/domains/<domain>/surfaces/gui` adapts that domain's public module API
@@ -165,15 +165,15 @@ exist; local and pull-request builds must not pretend to be trusted releases.
 Desktop composition tests use Fyne's in-memory test application and virtual
 window. They exercise real widgets, navigation, persistence startup, and clean
 shutdown without opening a platform window or requiring a display server.
-Asynchronous view models receive both `pkg/fyne.Executor` and
-`pkg/fyne.Dispatcher`; production uses background goroutines followed by the
+Asynchronous view models receive both `pkg/toolkits/gui.Executor` and
+`pkg/toolkits/gui.Dispatcher`; production uses background goroutines followed by the
 Fyne event loop. Tests use deterministic FIFO or out-of-order execution and
 semantic controls from `pkg/testutil/fynetest` while interacting with real
 widgets.
 
 ```sh
 go test -tags ci -race \
-  ./pkg/fyne ./pkg/testutil/fynetest ./main/gui \
+  ./pkg/toolkits/gui ./pkg/testutil/fynetest ./main/gui \
   ./app/domains/audit/surfaces/gui \
   ./app/domains/drinks/surfaces/gui \
   ./app/domains/ingredients/surfaces/gui \

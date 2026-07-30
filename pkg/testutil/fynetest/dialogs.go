@@ -3,7 +3,7 @@ package fynetest
 import (
 	"sync"
 
-	ui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
+	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 type Confirmation struct {

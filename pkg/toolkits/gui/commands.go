@@ -1,4 +1,4 @@
-package fyne
+package gui
 
 // Command is an application-shell intent. A concrete surface decides whether
 // the intent is meaningful in its current mode and how it maps to its widgets.

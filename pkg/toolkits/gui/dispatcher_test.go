@@ -1,5 +1,5 @@
 //nolint:paralleltest // Fyne's application driver is process-global.
-package fyne
+package gui
 
 import (
 	"testing"

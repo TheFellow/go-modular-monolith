@@ -1,12 +1,12 @@
-package fyne_test
+package gui_test
 
 import (
 	"errors"
 	"testing"
 
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
+	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func TestPresentErrorClassifiesKindsAndProtectsInternalDetail(t *testing.T) {

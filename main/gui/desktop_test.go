@@ -27,9 +27,9 @@ import (
 	tagginggui "github.com/TheFellow/go-modular-monolith/app/domains/tagging/surfaces/gui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
+	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func deterministicDesktopDependencies(onInformation func(string, string, framework.Window)) desktopDependencies {

@@ -82,7 +82,7 @@ jobs:
         run: >-
           go test -tags ci -shuffle=on -count=1 -timeout=5m
           ./main/gui
-          ./pkg/fyne
+          ./pkg/toolkits/gui
           ./pkg/testutil/fynetest
           ./app/domains/audit/surfaces/gui
           ./app/domains/drinks/surfaces/gui
