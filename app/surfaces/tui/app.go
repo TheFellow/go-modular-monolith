@@ -17,7 +17,7 @@ import (
 	ordersui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/keys"
 	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/main/tui/views"
+	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 

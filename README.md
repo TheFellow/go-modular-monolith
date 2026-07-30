@@ -34,8 +34,8 @@ go test ./...
 
 ### Run the App
 
-The CLI binary is `mixology` (`main/cli`), and the TUI is launched through the same binary with
-`--tui`. Both use `data/mixology.db` by default. The native desktop client has its own per-user
+The CLI binary is `mixology` (`main/cli`), and the TUI has its own executable (`main/tui`).
+Both use `data/mixology.db` by default. The native desktop client has its own per-user
 database; see [`main/gui/README.md`](main/gui/README.md) for platform prerequisites, state
 locations, packaging, and troubleshooting.
 
@@ -69,7 +69,7 @@ go run ./main/cli --actor bartender menus list
 go run ./main/cli --as anonymous drinks list
 
 # Launch the TUI
-go run ./main/cli --tui
+go run ./main/tui
 
 # Launch the native desktop client
 go run ./main/gui
@@ -251,6 +251,7 @@ the originating command.
 ```
 app/
   kernel/          Shared value types (entity IDs, tags, money, measurement, currency, quality)
+  surfaces/tui/    TUI application shell and cross-domain workspace composition
   domains/         One package per bounded context
     <ctx>/
       module.go        Public API (commands + queries)
@@ -284,9 +285,9 @@ pkg/
     tui/             Bubble Tea layout, list/detail, forms, dialogs, and styling
   testutil/        Isolated app fixtures, domain builders, audit helpers, assertion utilities
 main/
-  cli/             CLI executable and command composition (--tui launches the TUI)
+  cli/             CLI executable and command composition
   gui/             Native Fyne desktop executable and application composition
-  tui/             TUI application shell and cross-domain workspace composition
+  tui/             TUI executable bootstrap
   seed/            Database seeder
 ```
 
@@ -504,7 +505,7 @@ surface.
 
 ## Terminal UI
 
-The TUI (`go run ./main/cli --tui`) provides seven dashboard workspaces: the five operational
+The TUI (`go run ./main/tui`) provides seven dashboard workspaces: the five operational
 domains, audit, and tags. Press `[7]` from the Dashboard to open the Tags workspace, enter any
 tag operation from the list, and press Enter. Inspect, Add or replace, and Remove open an entity
 type picker followed by a searchable active-entity picker, so IDs never need to be entered by hand.
