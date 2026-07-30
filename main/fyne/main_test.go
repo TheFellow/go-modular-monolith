@@ -1,3 +1,4 @@
+//nolint:paralleltest // startup configuration tests remain serial with desktop process state.
 package main
 
 import (

@@ -1,3 +1,4 @@
+//nolint:paralleltest // Fyne's headless application and driver state are process-global.
 package fyne
 
 import (
@@ -428,14 +429,14 @@ func TestCLIWorkflowAndFyneShareMenuPersistenceContract(t *testing.T) {
 	testutil.Ok(t, err)
 	dir := t.TempDir()
 	binary := testutil.ExecutablePath(dir, "mixology")
-	build := exec.Command("go", "build", "-o", binary, "./main/cli")
+	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "./main/cli")
 	build.Dir = repo
 	output, err := build.CombinedOutput()
 	if err != nil {
 		t.Fatalf("build CLI: %v\n%s", err, output)
 	}
 	run := func(stdin string, args ...string) string {
-		cmd := exec.Command(binary, args...)
+		cmd := exec.CommandContext(t.Context(), binary, args...)
 		cmd.Dir = dir
 		if stdin != "" {
 			cmd.Stdin = strings.NewReader(stdin)

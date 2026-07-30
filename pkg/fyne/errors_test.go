@@ -1,3 +1,4 @@
+//nolint:paralleltest // presentation dialog state remains serial and deterministic.
 package fyne_test
 
 import (

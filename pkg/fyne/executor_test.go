@@ -1,3 +1,4 @@
+//nolint:paralleltest // concurrency scheduling tests control their own goroutine ordering.
 package fyne_test
 
 import (

@@ -274,7 +274,7 @@ func (m *ListViewModel) View() string {
 	listView = m.styles.ListPane.Width(views.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
 	detailView := m.detail.View()
-	switch m.mode {
+	switch m.mode { //nolint:exhaustive // filtering is rendered by the active filter component.
 	case listModeBrowsing:
 	case listModeTagging:
 	case listModeAdjusting:
@@ -288,7 +288,7 @@ func (m *ListViewModel) View() string {
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	switch m.mode {
+	switch m.mode { //nolint:exhaustive // filtering is handled by the active filter component.
 	case listModeTagging:
 		return []key.Binding{m.formKeys.Submit, m.keys.Back}
 	case listModeAdjusting, listModeSetting:
@@ -300,7 +300,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
-	switch m.mode {
+	switch m.mode { //nolint:exhaustive // filtering is handled by the active filter component.
 	case listModeTagging:
 		return [][]key.Binding{{m.formKeys.Submit, m.keys.Back}}
 	case listModeAdjusting, listModeSetting:

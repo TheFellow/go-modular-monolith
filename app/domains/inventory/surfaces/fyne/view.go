@@ -37,7 +37,7 @@ func (v *View) Content() framework.CanvasObject { return v.root }
 func (v *View) Activate()                       { v.presenter.Load() }
 func (v *View) ExecuteCommand(command fyneui.Command) bool {
 	state := v.presenter.Snapshot()
-	switch command {
+	switch command { //nolint:exhaustive // new-item setup has no existing form fields to focus.
 	case fyneui.CommandRefresh:
 		return state.Mode == Browse && fyneui.Trigger(v.refresh)
 	case fyneui.CommandSave:
@@ -123,7 +123,7 @@ func (v *View) render(state State) {
 		rows.Add(widget.NewLabel("No inventory found"))
 	}
 	status := ""
-	switch state.Status {
+	switch state.Status { //nolint:exhaustive // idle and loaded require no transient notice.
 	case fyneui.Loading:
 		status = "Loading inventory…"
 	case fyneui.Failed:
@@ -181,7 +181,7 @@ func (v *View) form(state State) framework.CanvasObject {
 		}
 	}
 	var fields framework.CanvasObject
-	switch state.Mode {
+	switch state.Mode { //nolint:exhaustive // browse mode has no mutation form.
 	case Adjust:
 		v.amount = fyneui.NewEntry("inventory-form-amount")
 		v.amount.SetPlaceHolder("Optional, e.g. +5.00 or -2.50")
@@ -217,7 +217,7 @@ func (v *View) form(state State) framework.CanvasObject {
 	}
 	v.save = fyneui.NewButton("inventory-form-save", "Save", func() {
 		form := Form{}
-		switch state.Mode {
+		switch state.Mode { //nolint:exhaustive // browse mode has no mutation form.
 		case Adjust:
 			form.Amount = v.amount.Text
 			form.Cost = v.cost.Text

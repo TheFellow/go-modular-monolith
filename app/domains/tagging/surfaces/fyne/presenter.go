@@ -187,7 +187,7 @@ func (p *Presenter) Submit() bool {
 		p.fail(err)
 		return false
 	}
-	switch p.state.Operation {
+	switch p.state.Operation { //nolint:exhaustive // read-only operations do not mutate tags.
 	case ShowExact, ShowKey:
 		exact := p.state.Operation == ShowExact
 		p.runQuery(func() (any, error) { return p.app.Tags.Show(p.app.Context(), value, exact) })
@@ -266,7 +266,7 @@ func (p *Presenter) runQuery(work func() (any, error)) {
 			return
 		}
 		result := Result{Target: target, TargetName: targetName}
-		switch operation {
+		switch operation { //nolint:exhaustive // read-only operations require no mutation permission.
 		case Inspect:
 			result.Tags, _ = r.Value.(tag.Tags)
 			result.Tags = result.Tags.Sorted()

@@ -1,3 +1,4 @@
+//nolint:paralleltest // Fyne's focus and canvas state are process-global.
 package fyne
 
 import (

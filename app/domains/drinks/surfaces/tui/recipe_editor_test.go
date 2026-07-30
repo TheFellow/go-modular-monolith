@@ -1,3 +1,4 @@
+//nolint:paralleltest // terminal program and viewport lifecycles intentionally run serially.
 package tui
 
 import (
@@ -78,7 +79,7 @@ func (p *editDrinkProgram) View() string { return p.vm.View() }
 
 func TestCreateDrinkProgramPersistsCompleteStructuredRecipe(t *testing.T) {
 	fix := testutil.NewFixture(t)
-	for i := 0; i < 99; i++ {
+	for i := range 99 {
 		testutil.CreateIngredient(t, fix, ingredientmodels.Ingredient{Name: fmt.Sprintf("Catalog %03d", i), Category: ingredientmodels.CategoryOther, Unit: measurement.UnitOz})
 	}
 	base := testutil.CreateIngredient(t, fix, ingredientmodels.Ingredient{Name: "Last Page Botanical", Category: ingredientmodels.CategorySpirit, Unit: measurement.UnitOz})
@@ -150,7 +151,7 @@ func TestRecipeCreateRunsThroughRealBubbleTeaProgram(t *testing.T) {
 	fix := testutil.NewFixture(t)
 	ingredient := testutil.CreateIngredient(t, fix, ingredientmodels.Ingredient{Name: "Program Gin", Category: ingredientmodels.CategorySpirit, Unit: measurement.UnitOz})
 	vm := NewCreateDrinkVM(fix.App)
-	vm.nameField.SetValue("Real Program")
+	testutil.Ok(t, vm.nameField.SetValue("Real Program"))
 	vm.recipe.rows[0].ingredient = ingredient.ID
 	vm.recipe.rows[0].amount.SetValue("2")
 	vm.recipe.steps[0].SetValue("Stir")
@@ -223,7 +224,7 @@ func TestCreateRecipeAuthorizationFailureRetainsFormAndWritesNothing(t *testing.
 	anonymous := app.NewSession(fix.ActorContext("anonymous"), fix.App.App)
 	program := &createDrinkProgram{vm: NewCreateDrinkVM(anonymous)}
 	driver := tuitest.NewDriver(t, program)
-	program.vm.nameField.SetValue("Unauthorized Recipe")
+	testutil.Ok(t, program.vm.nameField.SetValue("Unauthorized Recipe"))
 	program.vm.recipe.rows[0].ingredient = ingredient.ID
 	program.vm.recipe.rows[0].amount.SetValue("1")
 	program.vm.recipe.steps[0].SetValue("Stir")
@@ -242,7 +243,7 @@ func TestCreateRecipeRejectsDuplicateSubmissionAndFreshOpenResetsState(t *testin
 	ingredient := testutil.CreateIngredient(t, fix, ingredientmodels.Ingredient{Name: "Gin", Category: ingredientmodels.CategorySpirit, Unit: measurement.UnitOz})
 	vm := NewCreateDrinkVM(fix.App)
 	vm.recipe.AcceptCatalog(vm.recipe.Init()().(ingredientCatalogLoadedMsg))
-	vm.nameField.SetValue("Only Once")
+	testutil.Ok(t, vm.nameField.SetValue("Only Once"))
 	vm.recipe.rows[0].ingredient = ingredient.ID
 	vm.recipe.rows[0].amount.SetValue("1")
 	vm.recipe.steps[0].SetValue("Stir")
@@ -254,7 +255,7 @@ func TestCreateRecipeRejectsDuplicateSubmissionAndFreshOpenResetsState(t *testin
 
 	list := NewListViewModel(fix.App)
 	list.startCreate()
-	list.create.nameField.SetValue("Discard me")
+	testutil.Ok(t, list.create.nameField.SetValue("Discard me"))
 	list.create.recipe.rows[0].ingredient = ingredient.ID
 	list.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	list.startCreate()
@@ -267,7 +268,7 @@ func TestEditRecipeViewportKeepsLastAndFirstControlsVisibleAt80x24(t *testing.T)
 	fix := testutil.NewFixture(t)
 	ingredient := testutil.CreateIngredient(t, fix, ingredientmodels.Ingredient{Name: "Viewport Gin", Category: ingredientmodels.CategorySpirit, Unit: measurement.UnitOz})
 	recipe := models.Recipe{Garnish: "LAST GARNISH"}
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		recipe.Ingredients = append(recipe.Ingredients, models.RecipeIngredient{IngredientID: ingredient.ID, Amount: measurement.MustAmount(float64(i+1), measurement.UnitOz)})
 		recipe.Steps = append(recipe.Steps, fmt.Sprintf("Viewport step %d", i+1))
 	}
@@ -296,7 +297,7 @@ func TestCreateRecipeViewportTracksDynamicControlsAndResize(t *testing.T) {
 	fix := testutil.NewFixture(t)
 	ingredient := testutil.CreateIngredient(t, fix, ingredientmodels.Ingredient{Name: "Viewport Base", Category: ingredientmodels.CategorySpirit, Unit: measurement.UnitOz})
 	program := &createDrinkProgram{vm: NewCreateDrinkVM(fix.App)}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		program.vm.recipe.rows = append(program.vm.recipe.rows, newRecipeRow(models.RecipeIngredient{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)}))
 		program.vm.recipe.steps = append(program.vm.recipe.steps, newRecipeInput(fmt.Sprintf("Dynamic step %d", i+2)))
 	}
@@ -320,13 +321,13 @@ func TestCreateRecipeViewportTracksDynamicControlsAndResize(t *testing.T) {
 func TestRecipeViewportTracksHighlightedIngredientAndSubstituteCandidatesAt80x24(t *testing.T) {
 	fix := testutil.NewFixture(t)
 	options := make([]ingredientOption, 0, 8)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		ingredient := testutil.CreateIngredient(t, fix, ingredientmodels.Ingredient{Name: fmt.Sprintf("Picker > Candidate %02d", i), Category: ingredientmodels.CategoryOther, Unit: measurement.UnitOz})
 		options = append(options, ingredientOption{ID: ingredient.ID, Name: ingredient.Name})
 	}
 	program := &createDrinkProgram{vm: NewCreateDrinkVM(fix.App)}
-	program.vm.nameField.SetValue("Drink named Recipe * > decoy")
-	program.vm.description.SetValue("Description contains Recipe * and > marker")
+	testutil.Ok(t, program.vm.nameField.SetValue("Drink named Recipe * > decoy"))
+	testutil.Ok(t, program.vm.description.SetValue("Description contains Recipe * and > marker"))
 	driver := tuitest.NewDriver(t, program)
 	program.vm.recipe.catalog = options // deterministic picker order; loading itself is covered by the 101-item test.
 	driver.Resize(80, 24)

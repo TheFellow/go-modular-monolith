@@ -186,7 +186,6 @@ func (v *View) rebuildRows(state State) {
 	v.rows.RemoveAll()
 	v.rowButtons = make(map[string]*ui.SemanticButton, len(state.Rows))
 	for index, row := range state.Rows {
-		index, row := index, row
 		label := summary(row)
 		if !row.Entry.Success {
 			label += "  [failed]"

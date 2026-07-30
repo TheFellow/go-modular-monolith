@@ -93,7 +93,7 @@ func (p *drinkPicker) update(msg tea.Msg) tea.Cmd {
 			p.tagsDirty = p.tagsDirty || p.tags.Value() != before
 			return cmd
 		}
-		switch typed.Type {
+		switch typed.Type { //nolint:exhaustive // unrelated keys leave the workflow unchanged.
 		case tea.KeyUp:
 			if p.selected > 0 {
 				p.selected--

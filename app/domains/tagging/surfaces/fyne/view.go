@@ -92,7 +92,7 @@ func (v *View) Activate() {}
 
 func (v *View) ExecuteCommand(command ui.Command) bool {
 	state := v.presenter.State()
-	switch command {
+	switch command { //nolint:exhaustive // refresh and new have no operation-specific focus target.
 	case ui.CommandSave:
 		return state.Mode == EnteringValue && ui.Trigger(v.submit)
 	case ui.CommandCancel:
@@ -120,7 +120,6 @@ func (v *View) render(state State) {
 		}
 		v.entityRows.RemoveAll()
 		for i, item := range state.Visible {
-			i, item := i, item
 			v.entityRows.Add(ui.NewButton(entityControl(i), item.Name+" — "+item.Detail, func() { v.presenter.SelectEntity(i) }))
 		}
 		v.entityRows.Refresh()

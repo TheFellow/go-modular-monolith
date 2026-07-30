@@ -1,3 +1,4 @@
+//nolint:paralleltest // table rows are tiny deterministic parser cases.
 package money_test
 
 import (

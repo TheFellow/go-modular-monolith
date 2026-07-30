@@ -1,3 +1,4 @@
+//nolint:paralleltest // mutation lifecycle assertions intentionally run serially.
 package tui
 
 import (

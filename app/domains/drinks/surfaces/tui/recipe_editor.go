@@ -544,7 +544,7 @@ func (e *RecipeEditor) syncFocus() {
 		return
 	}
 	f := e.controls()[min(e.position, len(e.controls())-1)]
-	switch f.kind {
+	switch f.kind { //nolint:exhaustive // only text-bearing controls accept direct values.
 	case controlIngredient:
 		e.rows[f.index].ingredientQuery.Focus()
 	case controlAmount:

@@ -78,7 +78,7 @@ func (v *filterVM) Update(msg tea.Msg) tea.Cmd {
 
 func (v *filterVM) configureForm(scope auditScope) {
 	fields := []forms.Field{v.scope}
-	switch scope {
+	switch scope { //nolint:exhaustive // scopeAll deliberately contributes no structured predicate.
 	case scopeEntity:
 		fields = append(fields, v.entity)
 	case scopeActor:

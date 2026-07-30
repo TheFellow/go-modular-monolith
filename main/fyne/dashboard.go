@@ -16,8 +16,6 @@ import (
 const dashboardRecentMax = application.DashboardRecentLimit
 
 type dashboardData = application.DashboardAggregate
-type dashboardActivity = application.DashboardActivity
-
 type dashboardLoader interface {
 	LoadDashboard() (dashboardData, error)
 }
@@ -194,7 +192,6 @@ func (v *dashboardView) render(state dashboardState) {
 
 	v.cards.RemoveAll()
 	for _, definition := range dashboardCards {
-		definition := definition
 		count, detail := dashboardCardText(definition.route, state.Data)
 		button := fyneui.NewButton("dashboard-open-"+definition.route, "Open", func() { _ = v.navigate(definition.route) })
 		v.cards.Add(widget.NewCard(definition.title+"  "+count, detail, button))

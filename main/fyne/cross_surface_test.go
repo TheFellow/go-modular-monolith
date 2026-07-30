@@ -27,14 +27,14 @@ func TestCLIAndComposedDesktopShareIngredientInventoryAuditAndTagContracts(t *te
 	}
 	workingDirectory := t.TempDir()
 	binary := testutil.ExecutablePath(workingDirectory, "mixology")
-	build := exec.Command("go", "build", "-o", binary, "./main/cli")
+	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "./main/cli")
 	build.Dir = repository
 	if output, buildErr := build.CombinedOutput(); buildErr != nil {
 		t.Fatalf("build CLI: %v\n%s", buildErr, output)
 	}
 	run := func(args ...string) string {
 		t.Helper()
-		command := exec.Command(binary, append([]string{"--log-level", "error"}, args...)...)
+		command := exec.CommandContext(t.Context(), binary, append([]string{"--log-level", "error"}, args...)...)
 		command.Dir = workingDirectory
 		output, runErr := command.CombinedOutput()
 		if runErr != nil {

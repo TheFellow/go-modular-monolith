@@ -1,3 +1,4 @@
+//nolint:paralleltest // terminal workflow request ordering intentionally runs serially.
 package tui
 
 import (

@@ -202,7 +202,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		mode := m.mode
 		m.mode = listModeBrowsing
 		m.loading = false
-		switch mode {
+		switch mode { //nolint:exhaustive // filtering and placement are owned by child components.
 		case listModeConfirmingComplete:
 			m.mutating = true
 			return m, m.performComplete()

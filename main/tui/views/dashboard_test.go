@@ -1,3 +1,4 @@
+//nolint:paralleltest // terminal program lifecycle assertions intentionally run serially.
 package views
 
 import (

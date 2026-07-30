@@ -3,6 +3,7 @@ package fyne
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"slices"
 	"sort"
@@ -314,7 +315,7 @@ func (p *Presenter) Cancel() {
 }
 func (p *Presenter) Save() bool {
 	mode, form, target := p.state.Mode, p.state.Form, cloneMenu(p.state.Selected)
-	switch mode {
+	switch mode { //nolint:exhaustive // only mutation modes cancel pending work.
 	case Creating, Renaming:
 		var desired *tag.Tags
 		if form.ReplaceTags {
@@ -573,9 +574,7 @@ func cloneMenus(in []*models.Menu) []*models.Menu {
 }
 func cloneNames(in map[entity.DrinkID]string) map[entity.DrinkID]string {
 	out := make(map[entity.DrinkID]string, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
+	maps.Copy(out, in)
 	return out
 }
 func cloneState(in State) State {

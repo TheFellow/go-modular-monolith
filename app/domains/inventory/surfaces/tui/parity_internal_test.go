@@ -1,3 +1,4 @@
+//nolint:paralleltest // terminal program and mutation lifecycles intentionally run serially.
 package tui
 
 import (
@@ -186,7 +187,7 @@ func (p *inventoryPagingProgram) View() string { return p.vm.View() }
 
 func TestInventoryTraversesMoreThanOneHundredRowsThroughRealProgram(t *testing.T) {
 	fix := testutil.NewFixture(t)
-	for i := 0; i < 101; i++ {
+	for i := range 101 {
 		ingredient := testutil.CreateIngredient(t, fix, ingredientmodels.Ingredient{Name: fmt.Sprintf("Program Stock %03d", i), Category: ingredientmodels.CategoryOther, Unit: measurement.UnitOz})
 		testutil.SetInventory(t, fix, models.Update{IngredientID: ingredient.ID, Amount: measurement.MustAmount(float64(i+1), ingredient.Unit), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
 	}

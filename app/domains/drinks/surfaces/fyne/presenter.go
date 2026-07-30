@@ -225,7 +225,7 @@ func (p *Presenter) listIngredients() ([]IngredientOption, error) {
 }
 
 func (p *Presenter) Save() bool {
-	switch p.state.Mode {
+	switch p.state.Mode { //nolint:exhaustive // browsing has no form submission.
 	case Tagging:
 		return p.saveTags()
 	case Creating, Editing:
@@ -425,7 +425,7 @@ func parseRecipe(f Form) (models.Recipe, error) {
 }
 func nonEmptyLines(value string) []string {
 	var out []string
-	for _, v := range strings.Split(value, "\n") {
+	for v := range strings.SplitSeq(value, "\n") {
 		if v = strings.TrimSpace(v); v != "" {
 			out = append(out, v)
 		}

@@ -1,3 +1,4 @@
+//nolint:paralleltest // Fyne's headless application and driver state are process-global.
 package fyne
 
 import (
@@ -70,7 +71,7 @@ func TestViewPagesMoreThanOneHundredIngredients(t *testing.T) {
 	gui := frameworktest.NewApp()
 	t.Cleanup(gui.Quit)
 	fix := testutil.NewFixture(t)
-	for i := 0; i < 101; i++ {
+	for i := range 101 {
 		testutil.CreateIngredient(t, fix, models.Ingredient{
 			Name: fmt.Sprintf("Ingredient %03d", i), Category: models.CategoryOther, Unit: measurement.UnitOz,
 		})
@@ -279,7 +280,7 @@ func TestPresenterDeletePermissionFailureIsShownAndDoesNotMutate(t *testing.T) {
 
 func TestCountDrinksUsingTraversesEveryPage(t *testing.T) {
 	fix, gin, _ := ingredientFixture(t)
-	for i := 0; i < 101; i++ {
+	for i := range 101 {
 		testutil.CreateDrink(t, fix, drinksmodels.Drink{
 			Name:     fmt.Sprintf("Drink %03d", i),
 			Category: drinksmodels.DrinkCategoryCocktail,

@@ -1,3 +1,4 @@
+//nolint:paralleltest // terminal program lifecycles intentionally run serially.
 package tui
 
 import (

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -42,7 +43,7 @@ func startupConfig(args []string, output io.Writer) (*desktopConfig, error) {
 	flags.StringVar(&config.actor, "actor", config.actor, "actor to run as (owner|manager|sommelier|bartender|anonymous)")
 	flags.StringVar(&config.actor, "as", config.actor, "alias for -actor")
 	if err := flags.Parse(args); err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			return nil, nil
 		}
 		return nil, err

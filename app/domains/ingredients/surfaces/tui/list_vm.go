@@ -289,7 +289,7 @@ func (m *ListViewModel) View() string {
 	}
 
 	detailView := m.detail.View()
-	switch m.mode {
+	switch m.mode { //nolint:exhaustive // filtering is handled by the active filter component.
 	case listModeBrowsing, listModeConfirmingDelete:
 	case listModeTagging:
 	case listModeCreating:
@@ -301,7 +301,7 @@ func (m *ListViewModel) View() string {
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	switch m.mode {
+	switch m.mode { //nolint:exhaustive // filtering is handled by the active filter component.
 	case listModeConfirmingDelete:
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
 	case listModeTagging:
@@ -320,7 +320,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
-	switch m.mode {
+	switch m.mode { //nolint:exhaustive // filtering is handled by the active filter component.
 	case listModeConfirmingDelete:
 		return [][]key.Binding{
 			{m.dialogKeys.Confirm, m.keys.Back},

@@ -1,3 +1,4 @@
+//nolint:paralleltest // terminal workflow and picker lifecycles intentionally run serially.
 package tui_test
 
 import (
@@ -157,7 +158,7 @@ func TestMenuTUIPickerTraversesDrinkPages(t *testing.T) {
 	menu := testutil.CreateMenu(t, f, "Large catalog")
 	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Shared Base", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 	var target *drinksmodels.Drink
-	for i := 0; i < 101; i++ {
+	for i := range 101 {
 		drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 			Name: fmt.Sprintf("Catalog %03d", i), Category: drinksmodels.DrinkCategoryCocktail,
 			Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)}}, Steps: []string{"Build"}},
@@ -230,7 +231,7 @@ func TestMenuTUIStatusFilterUsesDomainListContract(t *testing.T) {
 
 func TestMenuTUITraversesDomainCursorPagesBeyondOneHundred(t *testing.T) {
 	f := testutil.NewFixture(t)
-	for i := 0; i < 101; i++ {
+	for i := range 101 {
 		testutil.CreateMenu(t, f, fmt.Sprintf("Paged menu %03d", i))
 	}
 	first, err := f.App.Menus.List(f.OwnerContext(), menus.ListRequest{Limit: 100})

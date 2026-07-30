@@ -1,3 +1,4 @@
+//nolint:paralleltest // desktop tests share Fyne process-global application and window state.
 package main
 
 import (

@@ -1,3 +1,4 @@
+//nolint:paralleltest // Fyne test dialog state is process-global.
 package fynetest
 
 import (

@@ -163,7 +163,7 @@ func (v *View) ExecuteCommand(command ui.Command) bool {
 		}
 		return (state.Mode == Creating || state.Mode == Renaming || state.Mode == Tagging) && ui.Trigger(v.save)
 	case ui.CommandCancel:
-		switch state.Mode {
+		switch state.Mode { //nolint:exhaustive // only drink membership modes render this editor.
 		case AddingDrink:
 			return ui.Trigger(v.drinkCancel)
 		case Analyzing:
@@ -190,7 +190,7 @@ func (v *View) render(state State) {
 	v.descriptionHelp.Hidden = state.Mode != Renaming
 	changed := !v.formRendered || v.renderedMode != state.Mode || !reflect.DeepEqual(v.renderedForm, state.Form)
 	if changed {
-		switch state.Mode {
+		switch state.Mode { //nolint:exhaustive // browsing has no mutation form.
 		case Creating, Renaming:
 			v.name.Show()
 			v.description.Show()
@@ -275,7 +275,6 @@ func (v *View) render(state State) {
 			items := append([]models.MenuItem(nil), state.Selected.Items...)
 			sort.SliceStable(items, func(i, j int) bool { return items[i].SortOrder < items[j].SortOrder })
 			for _, item := range items {
-				item := item
 				button := ui.NewButton("menus.drink.remove."+item.DrinkID.String(), "Remove "+v.p.DrinkName(item.DrinkID), func() { v.p.RemoveDrink(item.DrinkID) })
 				if busy {
 					button.Disable()
@@ -295,7 +294,6 @@ func (v *View) render(state State) {
 	}
 	v.drinkChoices.RemoveAll()
 	for _, option := range state.Drinks {
-		option := option
 		button := ui.NewButton("menus.drink.choice."+option.ID.String(), fmt.Sprintf("%s  ·  %s", option.Name, option.ID.String()), func() {
 			form := v.p.State().Form
 			form.Tags, form.ReplaceTags = v.drinkTags.Text, true

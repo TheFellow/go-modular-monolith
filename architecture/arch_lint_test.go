@@ -1,10 +1,13 @@
+//nolint:paralleltest // tests mutate temporary module layouts and process working state.
 package architecture_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/TheFellow/arch-lint/pkg/config"
@@ -122,12 +125,13 @@ func repositoryRoot(t *testing.T) string {
 
 func writeImporter(t *testing.T, root, directory string, imports ...string) {
 	t.Helper()
-	source := "package fixture\n\nimport (\n"
+	var source strings.Builder
+	source.WriteString("package fixture\n\nimport (\n")
 	for _, importPath := range imports {
-		source += "\t_ \"github.com/TheFellow/go-modular-monolith/" + importPath + "\"\n"
+		fmt.Fprintf(&source, "\t_ %q\n", "github.com/TheFellow/go-modular-monolith/"+importPath)
 	}
-	source += ")\n"
-	writeFixture(t, root, filepath.Join(directory, "fixture.go"), source)
+	source.WriteString(")\n")
+	writeFixture(t, root, filepath.Join(directory, "fixture.go"), source.String())
 }
 
 func writeFixture(t *testing.T, root, name, contents string) {

@@ -1,3 +1,4 @@
+//nolint:paralleltest // small validation policy tables remain serial and deterministic.
 package fyne_test
 
 import (

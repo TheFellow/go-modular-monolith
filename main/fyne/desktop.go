@@ -79,7 +79,6 @@ func (d *desktop) mainMenu() *framework.MainMenu {
 	cancel.Shortcut = &fynedesktop.CustomShortcut{KeyName: framework.KeyEscape}
 	viewItems := make([]*framework.MenuItem, 0, len(d.shell.RouteIDs()))
 	for i, route := range d.shell.RouteIDs() {
-		route := route
 		item := framework.NewMenuItem(d.shell.RouteLabel(route), func() { _ = d.shell.Navigate(route) })
 		if i < len(routeKeys) {
 			item.Shortcut = &fynedesktop.CustomShortcut{KeyName: routeKeys[i], Modifier: framework.KeyModifierAlt}

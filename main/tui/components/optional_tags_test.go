@@ -1,3 +1,4 @@
+//nolint:paralleltest // terminal component focus and input lifecycles run serially.
 package components
 
 import (

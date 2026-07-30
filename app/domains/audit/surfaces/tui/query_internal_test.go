@@ -1,3 +1,4 @@
+//nolint:paralleltest // terminal program lifecycles are intentionally exercised serially.
 package tui
 
 import (
@@ -48,11 +49,11 @@ func TestAuditProgramSupportsAllEntityAndActorScopes(t *testing.T) {
 			driver := tuitest.NewDriver(t, program)
 			driver.Resize(120, 40)
 			driver.Press("f")
-			program.vm.filter.scope.SetValue(tc.scope)
-			program.vm.filter.entity.SetValue(tc.entity)
-			program.vm.filter.principal.SetValue(tc.principal)
-			program.vm.filter.action.SetValue(tc.action)
-			program.vm.filter.expression.SetValue("success == true")
+			testutil.Ok(t, program.vm.filter.scope.SetValue(tc.scope))
+			testutil.Ok(t, program.vm.filter.entity.SetValue(tc.entity))
+			testutil.Ok(t, program.vm.filter.principal.SetValue(tc.principal))
+			testutil.Ok(t, program.vm.filter.action.SetValue(tc.action))
+			testutil.Ok(t, program.vm.filter.expression.SetValue("success == true"))
 			driver.Press("ctrl+s")
 			driver.RequireText(string(tc.scope), ingredientsauthz.ActionCreate.String())
 			if program.vm.filter != nil {
@@ -100,8 +101,8 @@ func TestAuditProgramInvalidQueryRetainsLoadedDataAndInputOwnership(t *testing.T
 	if got := program.vm.Interaction(); !got.CapturesText || !got.HandlesBack {
 		t.Fatalf("filter does not own text/back: %+v", got)
 	}
-	program.vm.filter.scope.SetValue(scopeEntity)
-	program.vm.filter.entity.SetValue("bad uid")
+	testutil.Ok(t, program.vm.filter.scope.SetValue(scopeEntity))
+	testutil.Ok(t, program.vm.filter.entity.SetValue("bad uid"))
 	driver.Press("ctrl+s")
 	driver.RequireText("invalid entity uid", "bad uid")
 	testutil.Equals(t, len(program.vm.shell.Items()), before)
@@ -114,7 +115,7 @@ func TestAuditProgramInvalidQueryRetainsLoadedDataAndInputOwnership(t *testing.T
 
 func TestAuditProgramPagesForwardBackAndIgnoresStaleLoad(t *testing.T) {
 	fix := testutil.NewFixture(t)
-	for i := 0; i < 101; i++ {
+	for i := range 101 {
 		testutil.CreateIngredient(t, fix, ingredientmodels.Ingredient{Name: fmt.Sprintf("Paged %03d", i), Category: ingredientmodels.CategoryOther, Unit: measurement.UnitOz})
 	}
 	program := &auditProgram{vm: NewListViewModel(fix.App)}

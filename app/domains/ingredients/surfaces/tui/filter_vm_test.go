@@ -1,3 +1,4 @@
+//nolint:paralleltest // terminal view-model lifecycle assertions intentionally run serially.
 package tui
 
 import (
@@ -33,7 +34,7 @@ func TestFilterVMComposesEveryStructuredFieldAndExpression(t *testing.T) {
 
 func TestListViewModelTraversesServerPages(t *testing.T) {
 	fix := testutil.NewFixture(t)
-	for i := 0; i < 101; i++ {
+	for i := range 101 {
 		testutil.CreateIngredient(t, fix, models.Ingredient{Name: fmt.Sprintf("Paged %03d", i), Category: models.CategoryOther, Unit: measurement.UnitOz})
 	}
 	program := &ingredientsPagingProgram{vm: NewListViewModel(fix.App)}

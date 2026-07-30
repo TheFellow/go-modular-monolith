@@ -1,7 +1,6 @@
 package fynetest
 
 import (
-	"fmt"
 	"testing"
 
 	framework "fyne.io/fyne/v2"
@@ -56,7 +55,7 @@ func (d Driver) find(id string) framework.CanvasObject {
 		return true
 	})
 	if found == nil {
-		d.t.Fatal(fmt.Sprintf("semantic control %q not found", id))
+		d.t.Fatalf("semantic control %q not found", id)
 	}
 	return found
 }

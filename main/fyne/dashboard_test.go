@@ -1,3 +1,4 @@
+//nolint:paralleltest // Fyne's headless application and driver state are process-global.
 package main
 
 import (

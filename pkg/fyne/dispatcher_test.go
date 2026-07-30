@@ -1,3 +1,4 @@
+//nolint:paralleltest // Fyne's application driver is process-global.
 package fyne
 
 import (
@@ -51,6 +52,8 @@ func TestGatedDispatcherDropsQueuedAndFuturePublicationsAfterClose(t *testing.T)
 }
 
 func TestGatedDispatcherAllowsReentrantDispatchWhileCloseWaits(t *testing.T) {
+	t.Parallel()
+
 	dispatcher := NewGatedDispatcher(InlineDispatcher{})
 	entered := make(chan struct{})
 	release := make(chan struct{})

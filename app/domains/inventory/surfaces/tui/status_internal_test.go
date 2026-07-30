@@ -1,3 +1,4 @@
+//nolint:paralleltest // this boundary table remains serial with its package lifecycle suite.
 package tui
 
 import (

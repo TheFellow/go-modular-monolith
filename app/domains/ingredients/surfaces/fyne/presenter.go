@@ -239,7 +239,7 @@ func (p *Presenter) Submit(form Form) bool {
 			}
 			desired = &values
 		}
-		switch mode {
+		switch mode { //nolint:exhaustive // browse mode does not submit a mutation.
 		case Create:
 			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Ingredient, error) {
 				return p.app.Ingredients.Create(ctx, &models.Ingredient{Name: strings.TrimSpace(form.Name), Category: category, Unit: unit, Description: strings.TrimSpace(form.Description)})

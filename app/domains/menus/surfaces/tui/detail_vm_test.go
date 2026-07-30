@@ -1,3 +1,4 @@
+//nolint:paralleltest // terminal view-model rendering remains serial and deterministic.
 package tui_test
 
 import (

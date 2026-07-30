@@ -1,5 +1,7 @@
 package fyne
 
+import "errors"
+
 import apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 
 // ErrorSeverity is deliberately neutral presentation policy. A bespoke
@@ -54,8 +56,8 @@ func ShowPresentation(dialogs Dialogs, err error) {
 	if dialogs == nil || err == nil {
 		return
 	}
-	presented, ok := PresentError(err).(ErrorPresentation)
-	if !ok {
+	var presented ErrorPresentation
+	if !errors.As(PresentError(err), &presented) {
 		return
 	}
 	switch presented.Severity {

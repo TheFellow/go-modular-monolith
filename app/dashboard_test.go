@@ -1,3 +1,4 @@
+//nolint:paralleltest // aggregate fixtures exercise full application lifecycles serially.
 package app_test
 
 import (

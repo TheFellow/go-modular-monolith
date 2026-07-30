@@ -1,3 +1,4 @@
+//nolint:paralleltest // fresh-process integration tests deliberately serialize database lifecycles.
 package main
 
 import (

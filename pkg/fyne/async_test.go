@@ -1,3 +1,4 @@
+//nolint:paralleltest // concurrency scheduling tests control their own goroutine ordering.
 package fyne_test
 
 import (
@@ -123,9 +124,11 @@ func TestSubmissionReleasesAfterPanickingWorkIsPublished(t *testing.T) {
 }
 
 func TestLatestRequestIsRaceSafe(t *testing.T) {
+	t.Parallel()
+
 	request := fyneui.NewLatestRequest[int](fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
 	var publications sync.WaitGroup
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		publications.Add(1)
 		go func(value int) {
 			defer publications.Done()

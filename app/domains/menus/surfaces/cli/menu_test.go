@@ -1,3 +1,4 @@
+//nolint:paralleltest // view rendering assertions intentionally remain serial and deterministic.
 package cli
 
 import (
