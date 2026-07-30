@@ -41,6 +41,6 @@ go.work.sum
 /data/*
 
 # Native desktop packaging outputs (source assets remain tracked).
-/main/fyne/Mixology
-/main/fyne/Mixology.app/
-/main/fyne/Mixology.tar.xz
+/main/gui/Mixology
+/main/gui/Mixology.app/
+/main/gui/Mixology.tar.xz

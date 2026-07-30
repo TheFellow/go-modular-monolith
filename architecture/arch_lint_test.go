@@ -14,7 +14,7 @@ import (
 	"github.com/TheFellow/arch-lint/pkg/linter"
 )
 
-func TestFyneArchitectureRulesRejectForbiddenImports(t *testing.T) {
+func TestGUIArchitectureRulesRejectForbiddenImports(t *testing.T) {
 	repositoryRoot := repositoryRoot(t)
 	fixtureRoot := t.TempDir()
 
@@ -33,36 +33,36 @@ func TestFyneArchitectureRulesRejectForbiddenImports(t *testing.T) {
 		"app/domains/drinks",
 		"app/domains/drinks/internal/storage",
 		"app/domains/drinks/surfaces/cli",
-		"app/domains/drinks/surfaces/fyne",
+		"app/domains/drinks/surfaces/gui",
 		"app/domains/drinks/surfaces/tui",
-		"app/domains/ingredients/surfaces/fyne",
+		"app/domains/ingredients/surfaces/gui",
 	} {
 		writeFixture(t, fixtureRoot, filepath.Join(target, "target.go"), "package target\n")
 	}
 
 	writeImporter(t, fixtureRoot, "pkg/fyne/invalid", "app", "main")
-	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/fyne/invalid",
+	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/gui/invalid",
 		"app/domains/drinks/internal/storage",
 		"app/domains/drinks/surfaces/cli",
 		"app/domains/drinks/surfaces/tui",
 		"main",
 	)
-	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/fyne/crossdomain",
-		"app/domains/ingredients/surfaces/fyne",
+	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/gui/crossdomain",
+		"app/domains/ingredients/surfaces/gui",
 	)
-	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/fyne/valid",
+	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/gui/valid",
 		"app/domains/drinks",
 	)
-	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/tui/invalid-fyne",
-		"app/domains/drinks/surfaces/fyne",
-		"app/domains/ingredients/surfaces/fyne",
+	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/tui/invalid-gui",
+		"app/domains/drinks/surfaces/gui",
+		"app/domains/ingredients/surfaces/gui",
 	)
 	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/tui/valid",
 		"app/domains/drinks",
 	)
-	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/cli/invalid-fyne",
-		"app/domains/drinks/surfaces/fyne",
-		"app/domains/ingredients/surfaces/fyne",
+	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/cli/invalid-gui",
+		"app/domains/drinks/surfaces/gui",
+		"app/domains/ingredients/surfaces/gui",
 	)
 	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/cli/valid",
 		"app/domains/drinks",
@@ -91,17 +91,17 @@ func TestFyneArchitectureRulesRejectForbiddenImports(t *testing.T) {
 	}
 
 	want := []string{
-		`arch-lint: [cli-surfaces-are-bespoke] package "app/domains/drinks/surfaces/cli/invalid-fyne" imports "app/domains/drinks/surfaces/fyne"`,
-		`arch-lint: [cli-surfaces-are-bespoke] package "app/domains/drinks/surfaces/cli/invalid-fyne" imports "app/domains/ingredients/surfaces/fyne"`,
-		`arch-lint: [fyne-surfaces-no-cross-domain-surfaces] package "app/domains/drinks/surfaces/fyne/crossdomain" imports "app/domains/ingredients/surfaces/fyne"`,
-		`arch-lint: [fyne-surfaces-use-public-domain-api] package "app/domains/drinks/surfaces/fyne/invalid" imports "app/domains/drinks/internal/storage"`,
-		`arch-lint: [fyne-surfaces-use-public-domain-api] package "app/domains/drinks/surfaces/fyne/invalid" imports "app/domains/drinks/surfaces/cli"`,
-		`arch-lint: [fyne-surfaces-use-public-domain-api] package "app/domains/drinks/surfaces/fyne/invalid" imports "app/domains/drinks/surfaces/tui"`,
-		`arch-lint: [fyne-surfaces-use-public-domain-api] package "app/domains/drinks/surfaces/fyne/invalid" imports "main"`,
+		`arch-lint: [cli-surfaces-are-bespoke] package "app/domains/drinks/surfaces/cli/invalid-gui" imports "app/domains/drinks/surfaces/gui"`,
+		`arch-lint: [cli-surfaces-are-bespoke] package "app/domains/drinks/surfaces/cli/invalid-gui" imports "app/domains/ingredients/surfaces/gui"`,
+		`arch-lint: [gui-surfaces-no-cross-domain-surfaces] package "app/domains/drinks/surfaces/gui/crossdomain" imports "app/domains/ingredients/surfaces/gui"`,
+		`arch-lint: [gui-surfaces-use-public-domain-api] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/internal/storage"`,
+		`arch-lint: [gui-surfaces-use-public-domain-api] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/surfaces/cli"`,
+		`arch-lint: [gui-surfaces-use-public-domain-api] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/surfaces/tui"`,
+		`arch-lint: [gui-surfaces-use-public-domain-api] package "app/domains/drinks/surfaces/gui/invalid" imports "main"`,
 		`arch-lint: [fyne-toolkit-no-application] package "pkg/fyne/invalid" imports "app"`,
 		`arch-lint: [fyne-toolkit-no-application] package "pkg/fyne/invalid" imports "main"`,
-		`arch-lint: [tui-surfaces-are-bespoke] package "app/domains/drinks/surfaces/tui/invalid-fyne" imports "app/domains/drinks/surfaces/fyne"`,
-		`arch-lint: [tui-surfaces-are-bespoke] package "app/domains/drinks/surfaces/tui/invalid-fyne" imports "app/domains/ingredients/surfaces/fyne"`,
+		`arch-lint: [tui-surfaces-are-bespoke] package "app/domains/drinks/surfaces/tui/invalid-gui" imports "app/domains/drinks/surfaces/gui"`,
+		`arch-lint: [tui-surfaces-are-bespoke] package "app/domains/drinks/surfaces/tui/invalid-gui" imports "app/domains/ingredients/surfaces/gui"`,
 	}
 	got := make([]string, 0, len(violations))
 	for _, violation := range violations {
