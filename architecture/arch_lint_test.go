@@ -40,12 +40,19 @@ func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
 		"app/domains/drinks/surfaces/web",
 		"app/domains/ingredients/surfaces/gui",
 		"app/domains/ingredients/internal/storage",
+		"pkg/toolkits/cli",
+		"pkg/toolkits/gui",
+		"pkg/toolkits/tui",
 	} {
 		writeFixture(t, fixtureRoot, filepath.Join(target, "target.go"), "package target\n")
 	}
 
-	writeImporter(t, fixtureRoot, "pkg/fyne/invalid", "app", "main")
-	writeImporter(t, fixtureRoot, "pkg/tui/invalid", "app", "main")
+	writeImporter(t, fixtureRoot, "pkg/toolkits/gui/invalid", "app", "main")
+	writeImporter(t, fixtureRoot, "pkg/toolkits/tui/invalid", "app", "main")
+	writeImporter(t, fixtureRoot, "pkg/toolkits/cli/invalid", "app", "main")
+	writeImporter(t, fixtureRoot, "pkg/toolkits/gui/cross-toolkit", "pkg/toolkits/tui")
+	writeImporter(t, fixtureRoot, "pkg/toolkits/tui/cross-toolkit", "pkg/toolkits/cli")
+	writeImporter(t, fixtureRoot, "pkg/toolkits/cli/cross-toolkit", "pkg/toolkits/gui")
 	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/gui/invalid",
 		"app/domains/drinks/internal/storage",
 		"app/domains/drinks/surfaces/cli",
@@ -56,22 +63,25 @@ func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
 		"app/domains/ingredients/surfaces/gui",
 	)
 	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/gui/valid",
-		"app/domains/drinks",
+		"app/domains/drinks", "pkg/toolkits/gui",
 	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/gui/wrong-toolkit", "pkg/toolkits/tui")
 	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/tui/invalid-gui",
 		"app/domains/drinks/surfaces/gui",
 		"app/domains/ingredients/surfaces/gui",
 	)
 	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/tui/valid",
-		"app/domains/drinks",
+		"app/domains/drinks", "pkg/toolkits/tui",
 	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/tui/wrong-toolkit", "pkg/toolkits/gui")
 	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/cli/invalid-gui",
 		"app/domains/drinks/surfaces/gui",
 		"app/domains/ingredients/surfaces/gui",
 	)
 	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/cli/valid",
-		"app/domains/drinks",
+		"app/domains/drinks", "pkg/toolkits/cli",
 	)
+	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/cli/wrong-toolkit", "pkg/toolkits/gui")
 	writeImporter(t, fixtureRoot, "app/domains/drinks/surfaces/web/invalid-gui",
 		"app/domains/drinks/surfaces/gui",
 		"app/domains/drinks/internal/storage",
@@ -145,11 +155,19 @@ func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
 		`arch-lint: [domain-internals-have-explicit-consumers] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/internal/storage"`,
 		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/surfaces/cli"`,
 		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/gui/invalid" imports "app/domains/drinks/surfaces/tui"`,
-		`arch-lint: [gui-surfaces-no-composition-or-tui] package "app/domains/drinks/surfaces/gui/invalid" imports "main"`,
-		`arch-lint: [presentation-toolkits-no-application] package "pkg/fyne/invalid" imports "app"`,
-		`arch-lint: [presentation-toolkits-no-application] package "pkg/fyne/invalid" imports "main"`,
-		`arch-lint: [presentation-toolkits-no-application] package "pkg/tui/invalid" imports "app"`,
-		`arch-lint: [presentation-toolkits-no-application] package "pkg/tui/invalid" imports "main"`,
+		`arch-lint: [gui-surfaces-no-composition] package "app/domains/drinks/surfaces/gui/invalid" imports "main"`,
+		`arch-lint: [surfaces-use-matching-toolkit] package "app/domains/drinks/surfaces/gui/wrong-toolkit" imports "pkg/toolkits/tui"`,
+		`arch-lint: [surfaces-use-matching-toolkit] package "app/domains/drinks/surfaces/tui/wrong-toolkit" imports "pkg/toolkits/gui"`,
+		`arch-lint: [surfaces-use-matching-toolkit] package "app/domains/drinks/surfaces/cli/wrong-toolkit" imports "pkg/toolkits/gui"`,
+		`arch-lint: [presentation-toolkits-are-independent] package "pkg/toolkits/gui/cross-toolkit" imports "pkg/toolkits/tui"`,
+		`arch-lint: [presentation-toolkits-are-independent] package "pkg/toolkits/tui/cross-toolkit" imports "pkg/toolkits/cli"`,
+		`arch-lint: [presentation-toolkits-are-independent] package "pkg/toolkits/cli/cross-toolkit" imports "pkg/toolkits/gui"`,
+		`arch-lint: [presentation-toolkits-no-application] package "pkg/toolkits/cli/invalid" imports "app"`,
+		`arch-lint: [presentation-toolkits-no-application] package "pkg/toolkits/cli/invalid" imports "main"`,
+		`arch-lint: [presentation-toolkits-no-application] package "pkg/toolkits/gui/invalid" imports "app"`,
+		`arch-lint: [presentation-toolkits-no-application] package "pkg/toolkits/gui/invalid" imports "main"`,
+		`arch-lint: [presentation-toolkits-no-application] package "pkg/toolkits/tui/invalid" imports "app"`,
+		`arch-lint: [presentation-toolkits-no-application] package "pkg/toolkits/tui/invalid" imports "main"`,
 		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/tui/invalid-gui" imports "app/domains/drinks/surfaces/gui"`,
 		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/tui/invalid-gui" imports "app/domains/ingredients/surfaces/gui"`,
 		`arch-lint: [surfaces-are-bespoke] package "app/domains/drinks/surfaces/web/invalid-gui" imports "app/domains/drinks/surfaces/gui"`,

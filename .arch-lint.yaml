@@ -3,8 +3,7 @@ specs:
   - name: presentation-toolkits-no-application
     packages:
       include:
-        - "pkg/fyne/**"
-        - "pkg/tui/**"
+        - "pkg/toolkits/*/**"
     rules:
       forbid:
         - "app/**"
@@ -26,15 +25,36 @@ specs:
         - "app/domains/{module}/queries/**"
         - "app/domains/{module}/handlers/**"
 
-  # GUI surfaces do not depend on composition or terminal-specific mechanics.
-  - name: gui-surfaces-no-composition-or-tui
+  # Toolkits share no implementation details with sibling presentation modes.
+  - name: presentation-toolkits-are-independent
+    packages:
+      include:
+        - "pkg/toolkits/*/**"
+    rules:
+      forbid:
+        - "pkg/toolkits/{toolkit}/**"
+      except:
+        - "pkg/toolkits/{toolkit}/**"
+
+  # Every surface may use only the toolkit with the same presentation mode.
+  - name: surfaces-use-matching-toolkit
+    packages:
+      include:
+        - "app/domains/*/surfaces/*/**"
+    rules:
+      forbid:
+        - "pkg/toolkits/{surface}/**"
+      except:
+        - "app/domains/*/surfaces/{surface}/**"
+
+  # GUI surfaces do not depend on application composition.
+  - name: gui-surfaces-no-composition
     packages:
       include:
         - "app/domains/*/surfaces/gui/**"
     rules:
       forbid:
         - "main/**"
-        - "pkg/tui/**"
 
   # Concrete presentation surfaces are private to their domain and surface kind.
   # Captures make this apply automatically to every current and future surface.
