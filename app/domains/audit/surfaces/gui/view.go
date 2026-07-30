@@ -10,7 +10,7 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
-	ui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
+	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 const (

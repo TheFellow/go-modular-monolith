@@ -22,10 +22,10 @@ import (
 	ordersgui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/gui"
 	tagginggui "github.com/TheFellow/go-modular-monolith/app/domains/tagging/surfaces/gui"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
+	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 const (

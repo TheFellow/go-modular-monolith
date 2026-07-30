@@ -1,6 +1,6 @@
 // Package fyne contains reusable desktop presentation mechanics for Fyne
 // applications. It deliberately has no knowledge of Mixology or its domains.
-package fyne
+package gui
 
 import (
 	"fmt"

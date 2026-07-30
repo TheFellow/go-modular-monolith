@@ -9,7 +9,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
-	ui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
+	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 

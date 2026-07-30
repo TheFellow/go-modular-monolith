@@ -11,7 +11,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
+	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 type View struct {

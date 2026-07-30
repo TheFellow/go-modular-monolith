@@ -19,9 +19,9 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
-	ui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 type Mode uint8

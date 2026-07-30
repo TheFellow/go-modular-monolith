@@ -8,7 +8,7 @@ import (
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
+	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 // Driver locates semantic controls and interacts through Fyne's test driver.

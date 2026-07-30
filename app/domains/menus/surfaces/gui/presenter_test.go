@@ -27,12 +27,12 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	appgui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
+	appgui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func TestDetailTextIncludesTimestampsItemIdentityAndSortedOrder(t *testing.T) {

@@ -1,13 +1,13 @@
 //nolint:paralleltest // concurrency scheduling tests control their own goroutine ordering.
-package fyne_test
+package gui_test
 
 import (
 	"errors"
 	"sync"
 	"testing"
 
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
+	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func TestLatestRequestRejectsOutOfOrderCompletion(t *testing.T) {

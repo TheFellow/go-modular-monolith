@@ -1,4 +1,4 @@
-package fyne
+package gui
 
 import "errors"
 

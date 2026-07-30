@@ -22,12 +22,12 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	appgui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
+	appgui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func TestPresenterRefreshSelectionFilteringAndStaleness(t *testing.T) {

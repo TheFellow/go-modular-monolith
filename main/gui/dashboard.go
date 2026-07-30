@@ -10,7 +10,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	application "github.com/TheFellow/go-modular-monolith/app"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
+	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 const dashboardRecentMax = application.DashboardRecentLimit

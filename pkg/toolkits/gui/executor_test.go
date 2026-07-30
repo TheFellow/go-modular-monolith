@@ -1,5 +1,5 @@
 //nolint:paralleltest // concurrency scheduling tests control their own goroutine ordering.
-package fyne_test
+package gui_test
 
 import (
 	"sync"
@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/fyne"
+	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func TestAsyncExecutorCompletesBackgroundWork(t *testing.T) {
