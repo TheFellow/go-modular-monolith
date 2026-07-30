@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -26,7 +27,6 @@ import (
 	ordersgui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/gui"
 	tagginggui "github.com/TheFellow/go-modular-monolith/app/domains/tagging/surfaces/gui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
@@ -44,6 +44,28 @@ func deterministicDesktopDependencies(onInformation func(string, string, framewo
 		dashboardLoader: func(session *application.Session) dashboardLoader {
 			return sessionDashboardLoader{session: session}
 		},
+	}
+}
+
+func TestSommelierDesktopShowsOnlyReadableWorkspaces(t *testing.T) {
+	gui := test.NewApp()
+	t.Cleanup(gui.Quit)
+	desktop, err := openDesktopWithDependencies(context.Background(), gui, desktopConfig{
+		dataDirectory: t.TempDir(), actor: "sommelier",
+	}, deterministicDesktopDependencies(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = desktop.Close() })
+
+	want := []string{"dashboard", "drinks", "ingredients", "inventory", "menus", "orders"}
+	if got := desktop.shell.RouteIDs(); !slices.Equal(got, want) {
+		t.Fatalf("sommelier routes = %v, want %v", got, want)
+	}
+	for _, hidden := range []string{"audit", "tags"} {
+		if err := desktop.shell.Navigate(hidden); err == nil {
+			t.Fatalf("sommelier could navigate to hidden workspace %q", hidden)
+		}
 	}
 }
 
@@ -278,7 +300,7 @@ func TestDesktopSemanticControlsExerciseEveryWorkspaceAgainstOneSession(t *testi
 	}
 }
 
-func TestRestrictedDesktopSemanticMutationShowsTypedDialogAndDoesNotWrite(t *testing.T) {
+func TestRestrictedDesktopHidesUnauthorizedTagWorkspaceAndDoesNotWrite(t *testing.T) {
 	dataDirectory := t.TempDir()
 	seedGUI := test.NewApp()
 	seed, err := openDesktopWithDependencies(context.Background(), seedGUI, desktopConfig{
@@ -298,11 +320,9 @@ func TestRestrictedDesktopSemanticMutationShowsTypedDialogAndDoesNotWrite(t *tes
 	}
 	seedGUI.Quit()
 
-	dialogs := &fynetest.Dialogs{}
 	gui := test.NewApp()
 	t.Cleanup(gui.Quit)
 	deps := deterministicDesktopDependencies(nil)
-	deps.dialogs = func(framework.Window) fyneui.Dialogs { return dialogs }
 	desktop, err := openDesktopWithDependencies(context.Background(), gui, desktopConfig{
 		dataDirectory: dataDirectory, actor: "bartender",
 	}, deps)
@@ -310,25 +330,11 @@ func TestRestrictedDesktopSemanticMutationShowsTypedDialogAndDoesNotWrite(t *tes
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = desktop.Close() })
-	if err := desktop.shell.Navigate("tags"); err != nil {
-		t.Fatal(err)
+	if slices.Contains(desktop.shell.RouteIDs(), "tags") {
+		t.Fatal("restricted desktop exposed Tags navigation")
 	}
-	driver := fynetest.NewDriver(t, desktop.shell.Content())
-	driver.Tap(tagginggui.ControlAdd)
-	driver.Tap("tags.type.Mixology::Ingredient")
-	driver.Tap("tags.entity.0")
-	driver.Type(tagginggui.ControlValue, "denied=yes")
-	driver.Tap(tagginggui.ControlSubmit)
-
-	errors := dialogs.Errors()
-	if len(errors) != 1 {
-		t.Fatalf("typed error dialogs = %#v", errors)
-	}
-	if state := desktop.presenters["tags"].(*tagginggui.Presenter).State(); state.Mode != tagginggui.EnteringValue || state.Err == nil {
-		t.Fatalf("denied editor state = %#v", state)
-	}
-	if !apperrors.IsPermission(errors[0]) {
-		t.Fatalf("dialog did not retain typed permission error: %v", errors[0])
+	if err := desktop.shell.Navigate("tags"); err == nil {
+		t.Fatal("restricted desktop accepted hidden Tags route")
 	}
 	values, err := desktop.session.Tags.List(desktop.session.Context(), ingredient.EntityUID())
 	if err != nil {

@@ -116,6 +116,12 @@ Run `go run ./main/gui -help` for the complete startup options. The selected
 persona is fixed for that process, so restart the desktop to exercise another
 authorization policy.
 
+The desktop navigation and dashboard only show workspaces whose read path is
+authorized for that persona. Inside a visible workspace, Cedar continues to
+filter individual rows. For example, a sommelier sees Drinks but only wine
+drinks and drinks tagged `audience=sommelier`; Audit and Tags are not shown.
+The active persona also appears in the window title.
+
 The first native build is slower because it compiles Fyne's C bindings.
 
 ## Build and package
