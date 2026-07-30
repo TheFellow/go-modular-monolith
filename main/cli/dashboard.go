@@ -2,19 +2,20 @@ package main
 
 import (
 	"fmt"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/urfave/cli/v3"
 )
 
 func (c *CLI) dashboardCommand() *cli.Command {
-	return &cli.Command{Name: "status", Usage: "Show the application dashboard aggregate", Flags: []cli.Flag{JSONFlag}, Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+	return &cli.Command{Name: "status", Usage: "Show the application dashboard aggregate", Flags: []cli.Flag{clitoolkit.JSONFlag}, Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 		data, err := c.app.Dashboard(ctx)
 		if err != nil {
 			return err
 		}
 		if cmd.Bool("json") {
-			return writeJSON(cmd.Writer, data)
+			return clitoolkit.WriteJSON(cmd.Writer, data)
 		}
 		if _, err = fmt.Fprintf(cmd.Writer, "DRINKS\tINGREDIENTS\tINVENTORY\tLOW_STOCK\tMENUS\tDRAFT_MENUS\tPUBLISHED_MENUS\tORDERS\tPENDING_ORDERS\tAUDIT\n%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", data.DrinkCount, data.IngredientCount, data.InventoryCount, data.LowStockCount, data.MenuCount, data.DraftMenus, data.PublishedMenus, data.OrderCount, data.PendingOrders, data.AuditCount); err != nil {
 			return err

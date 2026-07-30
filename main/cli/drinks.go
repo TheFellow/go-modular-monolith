@@ -2,15 +2,16 @@ package main
 
 import (
 	"fmt"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	drinkscli "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
-	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	clitable "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli/table"
 	"github.com/urfave/cli/v3"
 )
 
@@ -23,7 +24,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List drinks",
 				Flags: appendFilterFlags(append([]cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "name", Usage: "Filter by exact name match"},
 					&cli.StringFlag{
 						Name:    "category",
@@ -61,7 +62,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 						for _, d := range res.Items {
 							out = append(out, drinkscli.FromDomainDrink(*d))
 						}
-						return writeJSON(cmd.Writer, paging.Page[drinkscli.Drink]{Items: out, Next: res.Next})
+						return clitoolkit.WriteJSON(cmd.Writer, paging.Page[drinkscli.Drink]{Items: out, Next: res.Next})
 					}
 
 					if err := clitable.PrintTable(cmd.Writer, drinkscli.ToDrinkRows(res.Items)); err != nil {
@@ -74,7 +75,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 				Name:  "get",
 				Usage: "Get a drink by ID",
 				Flags: []cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Drink ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -88,7 +89,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
+						return clitoolkit.WriteJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
 					return clitable.PrintDetail(cmd.Writer, drinkscli.ToDrinkRow(res))
@@ -98,14 +99,14 @@ func (c *CLI) drinksCommands() *cli.Command {
 				Name:  "create",
 				Usage: "Create a new drink",
 				Flags: appendTagsFlag([]cli.Flag{
-					TemplateFlag,
-					StdinFlag,
-					FileFlag,
-					JSONFlag,
+					clitoolkit.TemplateFlag,
+					clitoolkit.StdinFlag,
+					clitoolkit.FileFlag,
+					clitoolkit.JSONFlag,
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
-						return writeJSON(cmd.Writer, drinkscli.TemplateCreateDrink())
+						return clitoolkit.WriteJSON(cmd.Writer, drinkscli.TemplateCreateDrink())
 					}
 
 					created, err := readDrinkCreateInput(cmd)
@@ -121,7 +122,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
+						return clitoolkit.WriteJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, res.ID.String())
@@ -132,14 +133,14 @@ func (c *CLI) drinksCommands() *cli.Command {
 				Name:  "update",
 				Usage: "Update a drink",
 				Flags: appendTagsFlag([]cli.Flag{
-					TemplateFlag,
-					StdinFlag,
-					FileFlag,
-					JSONFlag,
+					clitoolkit.TemplateFlag,
+					clitoolkit.StdinFlag,
+					clitoolkit.FileFlag,
+					clitoolkit.JSONFlag,
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
-						return writeJSON(cmd.Writer, drinkscli.TemplateUpdateDrink())
+						return clitoolkit.WriteJSON(cmd.Writer, drinkscli.TemplateUpdateDrink())
 					}
 
 					updated, err := readDrinkUpdateInput(cmd)
@@ -155,7 +156,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
+						return clitoolkit.WriteJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, res.ID.String())
@@ -166,7 +167,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 				Name:  "delete",
 				Usage: "Delete a drink by ID",
 				Flags: []cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Drink ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -180,7 +181,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
+						return clitoolkit.WriteJSON(cmd.Writer, drinkscli.FromDomainDrink(*res))
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, res.ID.String())
@@ -192,7 +193,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 }
 
 func readDrinkCreateInput(cmd *cli.Command) (drinksmodels.Drink, error) {
-	input, err := readJSONInput[drinkscli.CreateDrink](cmd)
+	input, err := clitoolkit.ReadJSONInput[drinkscli.CreateDrink](cmd)
 	if err != nil {
 		return drinksmodels.Drink{}, err
 	}
@@ -200,7 +201,7 @@ func readDrinkCreateInput(cmd *cli.Command) (drinksmodels.Drink, error) {
 }
 
 func readDrinkUpdateInput(cmd *cli.Command) (drinksmodels.Drink, error) {
-	input, err := readJSONInput[drinkscli.Drink](cmd)
+	input, err := clitoolkit.ReadJSONInput[drinkscli.Drink](cmd)
 	if err != nil {
 		return drinksmodels.Drink{}, err
 	}
