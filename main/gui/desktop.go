@@ -14,18 +14,28 @@ import (
 	fynedesktop "fyne.io/fyne/v2/driver/desktop"
 
 	application "github.com/TheFellow/go-modular-monolith/app"
+	auditauthz "github.com/TheFellow/go-modular-monolith/app/domains/audit/authz"
 	auditgui "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/gui"
+	drinksdomain "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	drinksgui "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/gui"
+	ingredientsdomain "github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	ingredientsgui "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/gui"
+	inventorydomain "github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventorygui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/gui"
+	menusdomain "github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	menusgui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/gui"
+	ordersdomain "github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersgui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/gui"
+	taggingauthz "github.com/TheFellow/go-modular-monolith/app/domains/tagging/authz"
 	tagginggui "github.com/TheFellow/go-modular-monolith/app/domains/tagging/surfaces/gui"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	pkg_authz "github.com/TheFellow/go-modular-monolith/pkg/authz"
+	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 const (
@@ -131,6 +141,49 @@ type desktopDependencies struct {
 	dashboardLoader func(*application.Session) dashboardLoader
 }
 
+// visibleWorkspaces probes the same authorized read paths used by each
+// workspace. Permission denials remove a workspace; operational failures leave
+// it visible so its surface can report the underlying problem.
+func visibleWorkspaces(session *application.Session) map[string]bool {
+	visible := map[string]bool{"dashboard": true}
+	checks := []struct {
+		id   string
+		read func() error
+	}{
+		{"drinks", func() error {
+			_, err := session.Drinks.Count(session.Context(), drinksdomain.ListRequest{})
+			return err
+		}},
+		{"ingredients", func() error {
+			_, err := session.Ingredients.Count(session.Context(), ingredientsdomain.ListRequest{})
+			return err
+		}},
+		{"inventory", func() error {
+			_, err := session.Inventory.Count(session.Context(), inventorydomain.ListRequest{})
+			return err
+		}},
+		{"menus", func() error { _, err := session.Menus.Count(session.Context(), menusdomain.ListRequest{}); return err }},
+		{"orders", func() error {
+			_, err := session.Orders.Count(session.Context(), ordersdomain.ListRequest{})
+			return err
+		}},
+		{"audit", func() error {
+			resource := auditauthz.AuditEntry{UID: cedar.NewEntityUID(auditauthz.AuditEntryType, "workspace")}
+			return pkg_authz.AuthorizeWithEntity(session.Context().Principal(), auditauthz.ActionList, resource.CedarEntity())
+		}},
+		{"tags", func() error {
+			resource := taggingauthz.TagDiscovery{UID: cedar.NewEntityUID(taggingauthz.TagDiscoveryType, "workspace")}
+			return pkg_authz.AuthorizeWithEntity(session.Context().Principal(), taggingauthz.ActionSummary, resource.CedarEntity())
+		}},
+	}
+	for _, check := range checks {
+		if err := check.read(); err == nil || !apperrors.IsPermission(err) {
+			visible[check.id] = true
+		}
+	}
+	return visible
+}
+
 func openDesktop(ctx context.Context, gui framework.App, config desktopConfig) (*desktop, error) {
 	executor := fyneui.NewManagedExecutor()
 	dispatcher := fyneui.NewGatedDispatcher(fyneui.MainDispatcher{})
@@ -195,11 +248,12 @@ func openDesktopWithDependencies(ctx context.Context, gui framework.App, config 
 		}
 	}
 	dialogs := func() fyneui.Dialogs { return deps.dialogs(d.window) }
+	visible := visibleWorkspaces(d.session)
 	routes := []fyneui.Route{
 		{ID: "dashboard", Label: "Dashboard", Build: owned("dashboard", func() fyneui.View {
 			d.dashboard = newDashboardViewModel(deps.dashboardLoader(d.session), deps.executor, deps.dispatcher)
 			d.presenters["dashboard"] = d.dashboard
-			return newDashboardView(d.dashboard, func(route string) error { return d.shell.Navigate(route) })
+			return newDashboardView(d.dashboard, func(route string) error { return d.shell.Navigate(route) }, visible)
 		})},
 		{ID: "drinks", Label: "Drinks", Build: owned("drinks", func() fyneui.View {
 			presenter := drinksgui.NewPresenter(d.session, drinksgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
@@ -237,12 +291,19 @@ func openDesktopWithDependencies(ctx context.Context, gui framework.App, config 
 			return tagginggui.NewView(presenter)
 		})},
 	}
+	filtered := routes[:0]
+	for _, route := range routes {
+		if visible[route.ID] {
+			filtered = append(filtered, route)
+		}
+	}
+	routes = filtered
 	d.shell, err = fyneui.NewShell(routes, "dashboard")
 	if err != nil {
 		_ = d.Close()
 		return nil, err
 	}
-	d.window = gui.NewWindow("Mixology")
+	d.window = gui.NewWindow("Mixology — " + config.actor)
 	d.window.SetContent(d.shell.Content())
 	d.window.Resize(framework.NewSize(1100, 720))
 	d.window.SetCloseIntercept(d.closeWindow)

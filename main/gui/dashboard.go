@@ -137,6 +137,7 @@ type dashboardView struct {
 	cards    *framework.Container
 	activity *framework.Container
 	navigate func(string) error
+	visible  map[string]bool
 }
 
 type dashboardCard struct{ route, title, description string }
@@ -151,10 +152,13 @@ var dashboardCards = []dashboardCard{
 	{"tags", "Tags", "Tag any entity"},
 }
 
-func newDashboardView(model *dashboardViewModel, navigate func(string) error) *dashboardView {
+func newDashboardView(model *dashboardViewModel, navigate func(string) error, visible ...map[string]bool) *dashboardView {
 	v := &dashboardView{
 		model: model, status: widget.NewLabel(""),
 		cards: container.NewAdaptiveGrid(3), activity: container.NewVBox(), navigate: navigate,
+	}
+	if len(visible) != 0 {
+		v.visible = visible[0]
 	}
 	refresh := fyneui.NewButton("dashboard-refresh", "Refresh", model.Refresh)
 	header := container.NewBorder(nil, nil,
@@ -192,6 +196,9 @@ func (v *dashboardView) render(state dashboardState) {
 
 	v.cards.RemoveAll()
 	for _, definition := range dashboardCards {
+		if v.visible != nil && !v.visible[definition.route] {
+			continue
+		}
 		count, detail := dashboardCardText(definition.route, state.Data)
 		button := fyneui.NewButton("dashboard-open-"+definition.route, "Open", func() { _ = v.navigate(definition.route) })
 		v.cards.Add(widget.NewCard(definition.title+"  "+count, detail, button))
