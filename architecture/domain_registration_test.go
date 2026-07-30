@@ -15,6 +15,8 @@ import (
 // The domain directories remain the source of truth; this test deliberately
 // does not introduce a second registration manifest.
 func TestEveryDomainIsComposed(t *testing.T) {
+	t.Parallel()
+
 	root := repositoryRoot(t)
 	domainEntries, err := os.ReadDir(filepath.Join(root, "app", "domains"))
 	if err != nil {
