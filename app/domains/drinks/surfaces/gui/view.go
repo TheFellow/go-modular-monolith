@@ -176,6 +176,10 @@ func NewView(p *Presenter) *View {
 			ui.ShowCellActions(cell, []ui.RowAction{{Label: "View", Run: func() { p.Select(index) }}})
 			return
 		}
+		if id.Col == 4 {
+			ui.ShowCellTags(cell, values[id.Col])
+			return
+		}
 		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
