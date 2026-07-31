@@ -347,14 +347,11 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 		}
 		v.removeItems[i] = remove
 		remove.Hide()
-		actions := widget.NewSelect([]string{"Remove"}, nil)
-		actions.PlaceHolder = "Actions"
-		actions.OnChanged = func(choice string) {
-			actions.ClearSelected()
+		actions := ui.NewActionSelect([]string{"Remove"}, func(choice string) {
 			if choice == "Remove" {
 				v.presenter.RemoveItem(index)
 			}
-		}
+		})
 		if s.Submitting || s.CatalogLoading {
 			actions.Disable()
 		}

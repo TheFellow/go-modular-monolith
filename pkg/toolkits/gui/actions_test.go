@@ -58,6 +58,23 @@ func TestActionCellRunsSelectedActionAndClearsSelection(t *testing.T) {
 	}
 }
 
+func TestActionSelectIgnoresResetEventWithoutRecursing(t *testing.T) {
+	startTestApp(t)
+	calls := 0
+	selector := NewActionSelect([]string{"Remove"}, func(selected string) {
+		if selected != "Remove" {
+			t.Fatalf("action = %q", selected)
+		}
+		calls++
+	})
+
+	selector.SetSelected("Remove")
+	selector.SetSelected("Remove")
+	if calls != 2 || selector.Selected != "" {
+		t.Fatalf("calls=%d selected=%q", calls, selector.Selected)
+	}
+}
+
 func TestActionCellRebindDoesNotRetainRecycledRowCallback(t *testing.T) {
 	startTestApp(t)
 	cell := NewActionCell()

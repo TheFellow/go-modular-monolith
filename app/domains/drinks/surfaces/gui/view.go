@@ -520,15 +520,11 @@ func (v *View) rebuildRecipe(state State) {
 		if row.Optional {
 			summary += "  ·  Optional"
 		}
-		actions := widget.NewSelect(nil, nil)
-		actions.PlaceHolder = "Actions"
+		options := []string(nil)
 		if state.Mode != Viewing {
-			actions.Options = []string{"Add substitute", "Remove"}
-		} else {
-			actions.Hide()
+			options = []string{"Add substitute", "Remove"}
 		}
-		actions.OnChanged = func(choice string) {
-			actions.ClearSelected()
+		actions := ui.NewActionSelect(options, func(choice string) {
 			switch choice {
 			case "Add substitute":
 				v.recipe[index].choosingSubstitute = true
@@ -536,6 +532,9 @@ func (v *View) rebuildRecipe(state State) {
 			case "Remove":
 				remove.OnTapped()
 			}
+		})
+		if state.Mode == Viewing {
+			actions.Hide()
 		}
 		copyID := widget.NewButtonWithIcon("", ui.IconResource(ui.IconCopy), func() {
 			if app := framework.CurrentApp(); app != nil {

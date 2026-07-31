@@ -285,23 +285,22 @@ func (v *View) buildDetail(s State) *framework.Container {
 			}
 			name := widget.NewLabelWithStyle(v.p.DrinkName(item.DrinkID), framework.TextAlignLeading, framework.TextStyle{Bold: true})
 			meta := widget.NewLabel(fmt.Sprintf("%s  ·  %s  ·  order %d", price, item.Availability, item.SortOrder))
-			actions := widget.NewSelect(nil, nil)
-			actions.PlaceHolder = "Actions"
 			canRemove := s.CanRemoveDrink && m.Status == models.MenuStatusDraft && !s.Dirty && !s.Submitting && !s.Confirming
+			options := []string(nil)
 			if canRemove {
-				actions.Options = []string{"Remove"}
-			} else {
-				actions.Hide()
+				options = []string{"Remove"}
 			}
 			item := item
 			removeTarget := ui.NewButton(controlRemoveDrinkPrefix+item.DrinkID.String(), "Remove", func() { v.p.RemoveDrink(item.DrinkID) })
 			removeTarget.Hide() // compatibility/shortcut target; the visible affordance is the compact action menu.
-			actions.OnChanged = func(choice string) {
-				actions.ClearSelected()
+			actions := ui.NewActionSelect(options, func(choice string) {
 				switch choice {
 				case "Remove":
 					v.p.RemoveDrink(item.DrinkID)
 				}
+			})
+			if !canRemove {
+				actions.Hide()
 			}
 			copyID := widget.NewButtonWithIcon("", ui.IconResource(ui.IconCopy), func() {
 				if app := framework.CurrentApp(); app != nil {
