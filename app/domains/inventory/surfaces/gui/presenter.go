@@ -3,6 +3,7 @@ package gui
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -10,12 +11,14 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventory "github.com/TheFellow/go-modular-monolith/app/domains/inventory"
+	inventoryauthz "github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	pkgAuthz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -29,6 +32,7 @@ type Mode uint8
 
 const (
 	Browse Mode = iota
+	Viewing
 	Adjust
 	Set
 	Tags
@@ -69,6 +73,11 @@ type State struct {
 	Form         Form
 	Err          error
 	Submitting   bool
+	Dirty        bool
+	CanAdjust    bool
+	CanSet       bool
+	CanTag       bool
+	FormInstance uint64
 }
 
 type loadResult struct {
@@ -134,6 +143,8 @@ func (p *Presenter) Load() {
 			selected := selectedID(p.state.Selected)
 			p.state.Rows, p.state.Next = result.Value.rows, result.Value.next
 			p.state.Selected = findRow(p.state.Rows, selected)
+			// Keep a latent selection for command compatibility; Browse still renders
+			// only the collection until the actor explicitly selects a table row.
 			if p.state.Selected == nil && len(p.state.Rows) > 0 {
 				value := p.state.Rows[0]
 				p.state.Selected = &value
@@ -194,8 +205,65 @@ func (p *Presenter) Select(id entity.InventoryID) {
 		return
 	}
 	p.state.Selected = findRow(p.state.Rows, id)
+	if p.state.Selected != nil {
+		p.state.Mode, p.state.Dirty, p.state.Err = Viewing, false, nil
+		p.state.FormInstance++
+		p.permissionsLocked()
+	}
 	p.publishLocked()
 	p.mu.Unlock()
+}
+
+// Back returns to the exact filtered and paged list state used to open detail.
+func (p *Presenter) Back() { p.leaveDetail(false) }
+
+// ResetList returns to an unfiltered first page for navigation and breadcrumbs.
+func (p *Presenter) ResetList() { p.leaveDetail(true) }
+
+func (p *Presenter) leaveDetail(reset bool) {
+	p.mu.Lock()
+	if p.state.Submitting {
+		p.mu.Unlock()
+		return
+	}
+	dirty := p.state.Dirty
+	p.mu.Unlock()
+	proceed := func() {
+		p.mu.Lock()
+		if reset {
+			p.state.Expression, p.state.Stock, p.state.LowStock, p.state.Limit = "", AllStock, LowStockThreshold, paging.DefaultLimit
+			p.state.Cursor, p.state.Next, p.state.History = "", "", nil
+		}
+		p.state.Mode, p.state.Dirty, p.state.Err = Browse, false, nil
+		p.publishLocked()
+		p.mu.Unlock()
+		if reset {
+			p.Load()
+		}
+	}
+	if dirty {
+		if p.dialogs == nil {
+			return
+		}
+		p.dialogs.Confirm("Discard changes?", "Discard unsaved inventory changes?", func(ok bool) {
+			if ok {
+				proceed()
+			}
+		})
+		return
+	}
+	proceed()
+}
+
+func (p *Presenter) permissionsLocked() {
+	if p.state.Selected == nil {
+		return
+	}
+	entity := p.state.Selected.Inventory.CedarEntity()
+	principal := p.app.Context().Principal()
+	p.state.CanAdjust = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionAdjust, entity) == nil
+	p.state.CanSet = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionSet, entity) == nil
+	p.state.CanTag = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionTag, entity) == nil
 }
 
 func (p *Presenter) StartAdjust() { p.start(Adjust) }
@@ -207,7 +275,13 @@ func (p *Presenter) start(mode Mode) {
 	if p.state.Selected == nil {
 		return
 	}
-	p.state.Mode, p.state.Err = mode, nil
+	p.permissionsLocked()
+	allowed := (mode == Adjust && p.state.CanAdjust) || (mode == Set && p.state.CanSet) || (mode == Tags && p.state.CanTag)
+	if !allowed {
+		return
+	}
+	p.state.Mode, p.state.Err, p.state.Dirty = mode, nil, false
+	p.state.FormInstance++
 	p.state.Form = Form{Tags: p.state.Selected.Inventory.Tags.Canonical().String(), ReplaceTags: mode != Tags}
 	switch mode {
 	case Set:
@@ -218,17 +292,51 @@ func (p *Presenter) start(mode Mode) {
 		}
 	case Tags:
 		p.state.Form.Tags = p.state.Selected.Inventory.Tags.Canonical().String()
-	case Browse, Adjust:
+	case Browse, Viewing, Adjust:
 	}
 	p.publishLocked()
 }
 func (p *Presenter) Cancel() {
 	p.mu.Lock()
 	if !p.state.Submitting {
-		p.state.Mode, p.state.Err = Browse, nil
+		if p.state.Mode == Adjust || p.state.Mode == Set || p.state.Mode == Tags {
+			mode := p.state.Mode
+			p.state.Mode = Viewing
+			p.state.Form = Form{}
+			p.state.Dirty, p.state.Err = false, nil
+			p.state.FormInstance++
+			_ = mode
+		}
 	}
 	p.publishLocked()
 	p.mu.Unlock()
+}
+
+func (p *Presenter) SetForm(form Form) {
+	p.mu.Lock()
+	if p.state.Mode != Adjust && p.state.Mode != Set && p.state.Mode != Tags {
+		p.mu.Unlock()
+		return
+	}
+	baseline := p.formForModeLocked(p.state.Mode)
+	p.state.Form, p.state.Dirty = form, !reflect.DeepEqual(form, baseline)
+	p.publishLocked()
+	p.mu.Unlock()
+}
+
+func (p *Presenter) formForModeLocked(mode Mode) Form {
+	if p.state.Selected == nil {
+		return Form{}
+	}
+	f := Form{Tags: p.state.Selected.Inventory.Tags.Canonical().String(), ReplaceTags: mode != Tags}
+	if mode == Set {
+		f.Amount = fmt.Sprintf("%.2f", p.state.Selected.Inventory.Amount.Value())
+		if price, ok := p.state.Selected.Inventory.CostPerUnit.Unwrap(); ok {
+			cents, _ := price.Cents()
+			f.Cost = fmt.Sprintf("%.2f", float64(cents)/100)
+		}
+	}
+	return f
 }
 
 func (p *Presenter) Submit(form Form) bool {
@@ -270,7 +378,7 @@ func (p *Presenter) Submit(form Form) bool {
 			})
 		case Tags:
 			_, err = p.app.Tags.Replace(p.app.Context(), selected.Inventory.EntityUID(), validated.tags)
-		case Browse:
+		case Browse, Viewing:
 			err = apperrors.Invalidf("inventory form is not active")
 		}
 		return err
@@ -279,7 +387,7 @@ func (p *Presenter) Submit(form Form) bool {
 		p.state.Submitting = false
 		p.state.Err = toolkit.PresentError(err)
 		if err == nil {
-			p.state.Mode = Browse
+			p.state.Mode, p.state.Dirty = Viewing, false
 		}
 		p.publishLocked()
 		p.mu.Unlock()
