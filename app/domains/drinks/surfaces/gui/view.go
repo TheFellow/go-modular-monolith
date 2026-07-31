@@ -50,6 +50,8 @@ const (
 	ControlAddIngredient    = "drinks.form.ingredient.add"
 	ControlSave             = "drinks.form.save"
 	ControlCancel           = "drinks.form.cancel"
+	ControlBack             = "drinks.detail.back"
+	ControlBreadcrumb       = "drinks.detail.breadcrumb"
 )
 
 func ingredientControl(i int, field ingredientField) string {
@@ -108,11 +110,12 @@ type recipeWidgets struct {
 type View struct {
 	presenter                                             *Presenter
 	root                                                  *framework.Container
-	list                                                  *widget.List
-	detail, status, formStatus, tagStatus                 *widget.Label
-	detailBox                                             *framework.Container
+	list                                                  *widget.Table
+	status, formStatus, tagStatus                         *widget.Label
+	detailTitle, crumbName                                *widget.Label
 	browse, formPanel, tagsPanel                          *framework.Container
 	filterExpression                                      *ui.SemanticEntry
+	filterBar                                             *ui.FilterBar
 	filterLimit                                           *semanticSelect
 	name, description, steps, garnish, tags, mutationTags *ui.SemanticEntry
 	category, glass                                       *semanticSelect
@@ -126,6 +129,7 @@ type View struct {
 	renderedFormInstance                                  uint64
 	renderedForm                                          Form
 	formRendered                                          bool
+	rendering                                             bool
 }
 
 var _ ui.View = (*View)(nil)
@@ -143,9 +147,8 @@ func NewView(p *Presenter) *View {
 	for _, glass := range glassOptions() {
 		glassPresets = append(glassPresets, ui.FilterOption{Label: glass, Expression: fmt.Sprintf(`glass == %q`, glass)})
 	}
-	bar := ui.NewFilterBar(ControlFilterExpression, ControlApplyFilter, `Filter drinks (for example: name.contains("martini"))`, p.State().Filter.Expression,
-		[]ui.FilterPreset{{ID: ControlFilterCategory, Placeholder: "Category", Options: categoryPresets}},
-		[]ui.FilterPreset{{ID: ControlFilterGlass, Placeholder: "Glass", Options: glassPresets}},
+	bar := ui.NewSingleRowFilterBar(ControlFilterExpression, ControlApplyFilter, `Filter drinks (for example: name.contains("martini"))`, p.State().Filter.Expression,
+		[]ui.FilterPreset{{ID: ControlFilterCategory, Placeholder: "Category", Options: categoryPresets}, {ID: ControlFilterGlass, Placeholder: "Glass", Options: glassPresets}},
 		container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.filterLimit), func(expression string) {
 			limit, _ := strconv.Atoi(v.filterLimit.Selected)
 			if p.SetFilter(Filter{Expression: expression, Limit: limit}) {
@@ -153,13 +156,36 @@ func NewView(p *Presenter) *View {
 			}
 		})
 	v.filterExpression = bar.Expression
+	v.filterBar = bar
 	filters := bar.Content
-	v.list = widget.NewList(func() int { return len(p.State().Items) }, func() framework.CanvasObject { return widget.NewButton("", nil) }, func(i widget.ListItemID, o framework.CanvasObject) {
-		item := p.State().Items[i]
-		button := o.(*widget.Button)
-		button.SetText(item.Name)
-		button.OnTapped = func() { p.Select(i) }
+	columns := []string{"Name", "Category", "Glass", "Ingredients", "Tags"}
+	v.list = widget.NewTable(func() (int, int) { return len(p.State().Items) + 1, len(columns) }, func() framework.CanvasObject {
+		label := widget.NewLabel("")
+		label.Truncation = framework.TextTruncateEllipsis
+		return label
+	}, func(id widget.TableCellID, o framework.CanvasObject) {
+		label := o.(*widget.Label)
+		if id.Row == 0 {
+			label.TextStyle = framework.TextStyle{Bold: true}
+			label.SetText(columns[id.Col])
+			return
+		}
+		label.TextStyle = framework.TextStyle{}
+		item := p.State().Items[id.Row-1]
+		values := []string{item.Name, string(item.Category), string(item.Glass), strconv.Itoa(len(item.Recipe.Ingredients)), item.Tags.Canonical().String()}
+		label.SetText(values[id.Col])
 	})
+	v.list.OnSelected = func(id widget.TableCellID) {
+		if id.Row > 0 {
+			v.list.UnselectAll()
+			p.Select(id.Row - 1)
+		}
+	}
+	v.list.SetColumnWidth(0, 190)
+	v.list.SetColumnWidth(1, 110)
+	v.list.SetColumnWidth(2, 110)
+	v.list.SetColumnWidth(3, 125)
+	v.list.SetColumnWidth(4, 190)
 	v.refresh = ui.NewButton(ControlRefresh, "Refresh", p.Refresh)
 	v.create = ui.Primary(ui.NewButton(ControlCreate, "New drink", p.StartCreate))
 	v.previous = ui.NewButton(ControlPrevious, "Previous", p.PreviousPage)
@@ -167,16 +193,12 @@ func NewView(p *Presenter) *View {
 	edit := ui.NewButton(ControlEdit, "Edit", p.StartEdit)
 	tagsAction := ui.NewButton(ControlTags, "Tags", p.StartTags)
 	deleteAction := ui.Destructive(ui.NewButton(ControlDelete, "Delete", p.Delete))
-	v.detailActions = []*ui.SemanticButton{edit, tagsAction, deleteAction}
-	v.detail = widget.NewLabel("")
-	v.detail.Wrapping = framework.TextWrapWord
-	v.detailBox = container.NewVBox(v.detail)
+	v.detailActions = []*ui.SemanticButton{tagsAction, deleteAction}
 	v.status = widget.NewLabel("")
 	v.browse = ui.StandardListPage(ui.ListPage{
-		Title: "Drinks", Subtitle: "Browse recipes and select a drink to inspect or edit it.", Filters: filters,
+		Title: "Drinks", Filters: filters,
 		CollectionActions: []framework.CanvasObject{v.create, v.refresh},
-		DetailActions:     []framework.CanvasObject{edit, tagsAction, deleteAction},
-		List:              v.list, Detail: container.NewVScroll(v.detailBox), Status: v.status,
+		List:              v.list, Status: v.status,
 		Paging: container.NewHBox(v.previous, v.next), ListRatio: .35,
 	}).(*framework.Container)
 	v.name = ui.NewEntry(ControlName)
@@ -199,20 +221,62 @@ func NewView(p *Presenter) *View {
 		p.SetForm(f)
 	})
 	fields := container.NewVBox(field("Name", v.name), field("Category", v.category), field("Glass", v.glass), field("Description", v.description), widget.NewLabelWithStyle("Recipe", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.recipeBox, v.addIngredient, field("Steps (one per line)", v.steps), field("Garnish", v.garnish), field("Tags (complete set)", v.mutationTags))
-	v.formPanel = ui.StandardFormPage(ui.FormPage{Title: "Drink", Subtitle: "Edit the drink details and structured recipe.", Fields: fields, Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
+	v.detailTitle = widget.NewLabel("Drink")
+	v.crumbName = widget.NewLabel("")
+	back := ui.NewButton(ControlBack, "Back", p.Back)
+	crumb := ui.NewButton(ControlBreadcrumb, "Drinks", p.ResetList)
+	// Retain semantic command targets for global shortcuts and compatibility;
+	// row selection already opens an editable detail when permitted.
+	edit.Hide()
+	tagsAction.Hide()
+	deleteAction.Hide()
+	breadcrumb := container.NewHBox(back, crumb, widget.NewLabel(">"), v.crumbName, edit, tagsAction, deleteAction)
+	v.formPanel = ui.StandardFormPage(ui.FormPage{TitleLabel: v.detailTitle, Breadcrumb: breadcrumb, Fields: fields, Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
 	v.tags = ui.NewEntry(ControlTagValues)
 	v.tagStatus = widget.NewLabel("")
 	v.tagSave = ui.NewButton(ControlSave+".tags", "Save", func() { v.readForm(); p.Save() })
 	v.tagCancel = ui.NewButton(ControlCancel+".tags", "Cancel", p.Cancel)
 	v.tagsPanel = ui.StandardFormPage(ui.FormPage{Title: "Edit tags", Subtitle: "Replace the complete tag set.", Fields: container.NewVBox(widget.NewLabel("Comma-separated key or key=value tags"), v.tags), Status: v.tagStatus, Save: v.tagSave, Cancel: v.tagCancel}).(*framework.Container)
 	v.root = container.NewStack(v.browse, v.formPanel, v.tagsPanel)
+	v.name.OnChanged = func(string) { v.formChanged() }
+	v.category.OnChanged = func(string) { v.formChanged() }
+	v.glass.OnChanged = func(string) { v.formChanged() }
+	v.description.OnChanged = func(string) { v.formChanged() }
+	v.steps.OnChanged = func(string) { v.formChanged() }
+	v.garnish.OnChanged = func(string) { v.formChanged() }
+	v.mutationTags.OnChanged = func(string) { v.formChanged() }
 	p.Observe(v.render)
 	return v
 }
+func (v *View) formChanged() {
+	if v.rendering {
+		return
+	}
+	if state := v.presenter.State(); state.Mode == Viewing {
+		// Fyne has no enabled-looking read-only Entry. Keep the controls enabled
+		// so their text remains selectable/copyable, while rejecting mutations.
+		v.rendering = true
+		v.name.SetText(state.Form.Name)
+		v.category.SetSelected(state.Form.Category)
+		v.glass.SetSelected(state.Form.Glass)
+		v.description.SetText(state.Form.Description)
+		v.steps.SetText(state.Form.Steps)
+		v.garnish.SetText(state.Form.Garnish)
+		v.mutationTags.SetText(state.Form.Tags)
+		v.rebuildRecipe(state)
+		v.rendering = false
+		return
+	} else if state.Mode != Editing {
+		return
+	}
+	v.readForm()
+}
 func (v *View) Title() string                   { return "Drinks" }
 func (v *View) Content() framework.CanvasObject { return v.root }
-func (v *View) Activate()                       { v.presenter.Refresh() }
-func (v *View) HasUnsavedChanges() bool         { return v.presenter.State().Mode != Browsing }
+func (v *View) Activate()                       { v.presenter.ResetList() }
+func (v *View) HasUnsavedChanges() bool {
+	return v.presenter.State().Dirty || v.presenter.State().Mode == Creating || v.presenter.State().Mode == Tagging
+}
 func (v *View) ExecuteCommand(command ui.Command) bool {
 	switch command {
 	case ui.CommandRefresh:
@@ -250,6 +314,8 @@ func (v *View) readForm() {
 	v.presenter.SetForm(Form{Name: v.name.Text, Category: v.category.Selected, Glass: v.glass.Selected, Description: v.description.Text, Recipe: rows, Steps: v.steps.Text, Garnish: v.garnish.Text, Tags: v.mutationTags.Text, ReplaceTags: true})
 }
 func (v *View) render(state State) {
+	v.rendering = true
+	defer func() { v.rendering = false }()
 	if len(state.History) == 0 || state.Loading {
 		v.previous.Disable()
 	} else {
@@ -261,10 +327,10 @@ func (v *View) render(state State) {
 		v.next.Enable()
 	}
 	v.browse.Hidden = state.Mode != Browsing
-	v.formPanel.Hidden = state.Mode != Creating && state.Mode != Editing
+	v.formPanel.Hidden = state.Mode != Creating && state.Mode != Editing && state.Mode != Viewing
 	v.tagsPanel.Hidden = state.Mode != Tagging
 	formChanged := !v.formRendered || v.renderedMode != state.Mode || v.renderedFormInstance != state.FormInstance || !reflect.DeepEqual(v.renderedForm, state.Form)
-	if (state.Mode == Creating || state.Mode == Editing) && formChanged {
+	if (state.Mode == Creating || state.Mode == Editing || state.Mode == Viewing) && formChanged {
 		v.name.SetText(state.Form.Name)
 		if state.Form.Category == "" {
 			v.category.ClearSelected()
@@ -285,19 +351,19 @@ func (v *View) render(state State) {
 		v.renderedMode = state.Mode
 		v.renderedFormInstance = state.FormInstance
 		v.formRendered = true
-	} else if state.Mode == Creating || state.Mode == Editing {
+	} else if state.Mode == Creating || state.Mode == Editing || state.Mode == Viewing {
 		v.updateRecipeOptions(state)
 	} else if state.Mode == Tagging {
 		v.tags.SetText(state.Form.Tags)
 	}
-	if state.Submitting || state.Loading {
+	if state.Submitting || state.Loading || (state.Mode == Editing && !state.Dirty) {
 		v.save.Disable()
 		v.tagSave.Disable()
 	} else {
 		v.save.Enable()
 		v.tagSave.Enable()
 	}
-	if state.Submitting {
+	if state.Submitting || (state.Mode == Editing && !state.Dirty) {
 		v.cancel.Disable()
 		v.tagCancel.Disable()
 	} else {
@@ -316,25 +382,34 @@ func (v *View) render(state State) {
 	}
 	v.tagStatus.SetText(v.formStatus.Text)
 	v.setMutableEnabled(!state.Submitting)
+	if state.Mode == Viewing {
+		v.save.Hide()
+		v.cancel.Hide()
+		v.addIngredient.Hide()
+	} else {
+		v.save.Show()
+		v.cancel.Show()
+		v.addIngredient.Show()
+	}
+	if state.Mode == Creating {
+		v.detailTitle.SetText("New drink")
+		v.crumbName.SetText("New")
+	} else if state.Selected != nil {
+		v.detailTitle.SetText(state.Selected.Name)
+		v.crumbName.SetText(state.Selected.Name)
+	}
 	v.list.Refresh()
 	for _, action := range v.detailActions {
-		action.Hidden = state.Selected == nil
+		allowed := state.Selected != nil
+		switch action.SemanticID() {
+		case ControlTags:
+			allowed = allowed && state.CanTag
+		case ControlDelete:
+			allowed = allowed && state.CanDelete
+		}
+		action.Hidden = !allowed
 		action.Refresh()
 	}
-	v.detailBox.RemoveAll()
-	v.detailBox.Add(v.detail)
-	if state.Selected == nil {
-		v.detail.SetText("Select a drink")
-	} else {
-		tags := state.Selected.Tags.Canonical().String()
-		if tags == "" {
-			tags = "None"
-		}
-		v.detail.SetText(strings.Replace(detailText(state.Selected, state.Ingredients), "\nTags: "+tags, "", 1))
-		v.detailBox.Add(widget.NewLabelWithStyle("Tags", framework.TextAlignLeading, framework.TextStyle{Bold: true}))
-		v.detailBox.Add(ui.TagPills([]string(state.Selected.Tags.Canonical())))
-	}
-	v.detailBox.Refresh()
 	switch {
 	case state.Loading:
 		v.status.SetText("Loading…")
@@ -377,6 +452,13 @@ func (v *View) rebuildRecipe(state State) {
 			f.Recipe = append(f.Recipe[:index], f.Recipe[index+1:]...)
 			v.presenter.SetForm(f)
 		})
+		ingredient.OnChanged = func(string) { v.formChanged() }
+		amount.OnChanged = func(string) { v.formChanged() }
+		unit.OnChanged = func(string) { v.formChanged() }
+		optional.OnChanged = func(bool) { v.formChanged() }
+		for _, check := range substitutes {
+			check.OnChanged = func(bool) { v.formChanged() }
+		}
 		v.recipe = append(v.recipe, recipeWidgets{ingredient: ingredient, amount: amount, unit: unit, optional: optional, substitutes: substitutes, substituteBox: substituteBox, remove: remove})
 		v.recipeBox.Add(widget.NewCard(fmt.Sprintf("Ingredient %d", i+1), "", container.NewVBox(field("Ingredient", ingredient), field("Amount", amount), field("Unit", unit), optional, widget.NewLabel("Substitutes"), substituteBox, remove)))
 	}

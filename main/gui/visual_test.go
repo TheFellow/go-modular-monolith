@@ -13,6 +13,8 @@ import (
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
+	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	drinksgui "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/gui"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	ingredientsgui "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/gui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
@@ -38,6 +40,19 @@ func TestRenderWorkspaceReview(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := desktop.session.Tags.Replace(desktop.session.Context(), ingredient.EntityUID(), tag.Tags{{Key: "featured"}, {Key: "env", Value: "development"}, {Key: "region", Value: "west"}}); err != nil {
+		t.Fatal(err)
+	}
+	drink, err := desktop.session.Drinks.Create(desktop.session.Context(), &drinksmodels.Drink{
+		Name: "Negroni", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeRocks,
+		Description: "A balanced bittersweet classic.", Recipe: drinksmodels.Recipe{
+			Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)}},
+			Steps:       []string{"Stir with ice", "Strain over a large cube"}, Garnish: "Orange peel",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := desktop.session.Tags.Replace(desktop.session.Context(), drink.EntityUID(), tag.Tags{{Key: "classic"}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(directory, 0o755); err != nil {
@@ -72,6 +87,22 @@ func TestRenderWorkspaceReview(t *testing.T) {
 				t.Fatal(err)
 			}
 			desktop.presenters[route].(*ingredientsgui.Presenter).Cancel()
+		}
+		if route == "drinks" {
+			presenter := desktop.presenters[route].(*drinksgui.Presenter)
+			presenter.Select(0)
+			file, err = os.Create(filepath.Join(directory, route+"-negroni.png"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := png.Encode(file, desktop.window.Canvas().Capture()); err != nil {
+				_ = file.Close()
+				t.Fatal(err)
+			}
+			if err := file.Close(); err != nil {
+				t.Fatal(err)
+			}
+			presenter.Back()
 		}
 		if route == "audit" {
 			openFilterDisclosures(desktop.shell.Content())

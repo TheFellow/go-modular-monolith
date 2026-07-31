@@ -45,7 +45,10 @@ func StandardListPage(page ListPage) framework.CanvasObject {
 	if actions := DetailActionBar(page.DetailActions); actions != nil {
 		detail = container.NewBorder(container.NewPadded(actions), nil, nil, nil, page.Detail)
 	}
-	body := ListDetail(page.List, detail, ratio)
+	var body framework.CanvasObject = page.List
+	if detail != nil {
+		body = ListDetail(page.List, detail, ratio)
+	}
 	footer := make([]framework.CanvasObject, 0, 2)
 	if page.Status != nil {
 		footer = append(footer, page.Status)
@@ -89,14 +92,27 @@ func StandardPage(title, subtitle string, actions []framework.CanvasObject, body
 // scroll independently and keep status plus commit/cancel actions visible.
 type FormPage struct {
 	Title, Subtitle string
-	Fields          framework.CanvasObject
-	Status          framework.CanvasObject
-	Save, Cancel    *SemanticButton
+	// TitleLabel allows a domain to update an entity title without rebuilding
+	// the page. Breadcrumb, when present, is rendered above that title.
+	TitleLabel   *widget.Label
+	Breadcrumb   framework.CanvasObject
+	Fields       framework.CanvasObject
+	Status       framework.CanvasObject
+	Save, Cancel *SemanticButton
 }
 
 // StandardFormPage builds a consistent edit-form layout.
 func StandardFormPage(page FormPage) framework.CanvasObject {
-	heading := []framework.CanvasObject{widget.NewLabelWithStyle(page.Title, framework.TextAlignLeading, framework.TextStyle{Bold: true})}
+	title := page.TitleLabel
+	if title == nil {
+		title = widget.NewLabel(page.Title)
+	}
+	title.TextStyle = framework.TextStyle{Bold: true}
+	heading := []framework.CanvasObject{}
+	if page.Breadcrumb != nil {
+		heading = append(heading, page.Breadcrumb)
+	}
+	heading = append(heading, title)
 	if page.Subtitle != "" {
 		label := widget.NewLabel(page.Subtitle)
 		label.Wrapping = framework.TextWrapWord

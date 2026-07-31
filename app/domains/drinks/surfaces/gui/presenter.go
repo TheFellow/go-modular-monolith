@@ -3,11 +3,13 @@ package gui
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	domain "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
+	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsdomain "github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
@@ -16,6 +18,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	pkgAuthz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
@@ -26,6 +29,7 @@ type Mode uint8
 
 const (
 	Browsing Mode = iota
+	Viewing
 	Creating
 	Editing
 	Tagging
@@ -53,17 +57,18 @@ type Form struct {
 	ReplaceTags                        bool
 }
 type State struct {
-	Mode                Mode
-	FormInstance        uint64
-	Loading, Submitting bool
-	Items               []*models.Drink
-	Selected            *models.Drink
-	Filter              Filter
-	Cursor, Next        paging.Cursor
-	History             []paging.Cursor
-	Form                Form
-	Ingredients         []IngredientOption
-	Err                 error
+	Mode                                Mode
+	FormInstance                        uint64
+	Loading, Submitting                 bool
+	CanUpdate, CanDelete, CanTag, Dirty bool
+	Items                               []*models.Drink
+	Selected                            *models.Drink
+	Filter                              Filter
+	Cursor, Next                        paging.Cursor
+	History                             []paging.Cursor
+	Form                                Form
+	Ingredients                         []IngredientOption
+	Err                                 error
 }
 type Dependencies struct {
 	Executor   ui.Executor
@@ -157,10 +162,61 @@ func (p *Presenter) PreviousPage() {
 func (p *Presenter) Select(i int) {
 	if i < 0 || i >= len(p.state.Items) {
 		p.state.Selected = nil
+		p.state.Mode = Browsing
 	} else {
 		p.state.Selected = cloneDrink(p.state.Items[i])
+		p.state.FormInstance++
+		p.state.Form = formFromDrink(p.state.Selected)
+		p.state.CanUpdate = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), drinksauthz.ActionUpdate, p.state.Selected.CedarEntity()) == nil
+		p.state.CanDelete = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), drinksauthz.ActionDelete, p.state.Selected.CedarEntity()) == nil
+		p.state.CanTag = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), drinksauthz.ActionTag, p.state.Selected.CedarEntity()) == nil
+		if p.state.CanUpdate {
+			p.state.Mode = Editing
+		} else {
+			p.state.Mode = Viewing
+		}
+		p.state.Dirty = false
 	}
 	p.publish()
+}
+
+// Back returns to the preserved catalog state. Unlike ResetList it deliberately
+// retains filters, cursor and paging history.
+func (p *Presenter) Back() {
+	p.leaveDetail(false)
+}
+func (p *Presenter) leaveDetail(reset bool) {
+	if p.submit.Active() {
+		return
+	}
+	proceed := func() {
+		if reset {
+			p.state.Filter = Filter{Limit: paging.DefaultLimit}
+			p.state.Cursor, p.state.Next, p.state.History = "", "", nil
+		}
+		p.state.Mode, p.state.Dirty, p.state.Err = Browsing, false, nil
+		p.publish()
+		if reset {
+			p.Refresh()
+		}
+	}
+	if p.state.Dirty {
+		if p.dialogs == nil {
+			return
+		}
+		p.dialogs.Confirm("Discard changes?", "Discard unsaved drink changes?", func(ok bool) {
+			if ok {
+				proceed()
+			}
+		})
+		return
+	}
+	proceed()
+}
+
+// ResetList is used by the breadcrumb and main navigation semantics.
+func (p *Presenter) ResetList() {
+	p.leaveDetail(true)
 }
 func (p *Presenter) StartCreate() {
 	p.state.FormInstance++
@@ -173,6 +229,13 @@ func (p *Presenter) StartEdit() {
 		return
 	}
 	p.state.FormInstance++
+	p.state.CanUpdate = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), drinksauthz.ActionUpdate, p.state.Selected.CedarEntity()) == nil
+	if !p.state.CanUpdate {
+		p.state.Mode = Viewing
+		p.state.Form = formFromDrink(p.state.Selected)
+		p.publish()
+		return
+	}
 	p.state.Mode, p.state.Form, p.state.Err = Editing, formFromDrink(p.state.Selected), nil
 	p.publish()
 	p.loadIngredients()
@@ -190,10 +253,21 @@ func (p *Presenter) Cancel() {
 	if p.submit.Active() {
 		return
 	}
-	p.state.Mode, p.state.Err = Browsing, nil
+	if p.state.Mode == Editing && p.state.Selected != nil {
+		p.state.Form = formFromDrink(p.state.Selected)
+		p.state.FormInstance++
+		p.state.Dirty, p.state.Err = false, nil
+		p.publish()
+		return
+	}
+	p.state.Mode, p.state.Err, p.state.Dirty = Browsing, nil, false
 	p.publish()
 }
-func (p *Presenter) SetForm(f Form) { p.state.Form = cloneForm(f); p.publish() }
+func (p *Presenter) SetForm(f Form) {
+	p.state.Form = cloneForm(f)
+	p.state.Dirty = p.state.Selected != nil && !reflect.DeepEqual(p.state.Form, formFromDrink(p.state.Selected))
+	p.publish()
+}
 func (p *Presenter) loadIngredients() {
 	p.ingredients.Load(func() ([]IngredientOption, error) {
 		return p.listIngredients()
@@ -229,6 +303,9 @@ func (p *Presenter) Save() bool {
 	case Tagging:
 		return p.saveTags()
 	case Creating, Editing:
+		if p.state.Mode == Editing && (!p.state.CanUpdate || !p.state.Dirty) {
+			return false
+		}
 	case Browsing:
 		p.fail(apperrors.Invalidf("no drink form is active"))
 		return false
@@ -328,9 +405,26 @@ func (p *Presenter) mutate(work func() error) bool {
 			p.fail(err)
 			return
 		}
-		p.state.Mode, p.state.Err = Browsing, nil
-		p.publish()
-		p.Refresh()
+		if p.state.Mode == Editing && p.state.Selected != nil {
+			updated, getErr := p.app.Drinks.Get(p.app.Context(), p.state.Selected.ID)
+			if getErr != nil {
+				p.fail(getErr)
+				return
+			}
+			p.state.Selected = cloneDrink(updated)
+			p.state.Form = formFromDrink(updated)
+			p.state.Dirty, p.state.Err = false, nil
+			for i, item := range p.state.Items {
+				if item.ID == updated.ID {
+					p.state.Items[i] = cloneDrink(updated)
+				}
+			}
+			p.publish()
+		} else {
+			p.state.Mode, p.state.Err = Browsing, nil
+			p.publish()
+			p.Refresh()
+		}
 	})
 	if !accepted {
 		p.state.Submitting = false

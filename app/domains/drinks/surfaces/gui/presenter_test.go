@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"fyne.io/fyne/v2/test"
+	"fyne.io/fyne/v2/widget"
 
 	appcore "github.com/TheFellow/go-modular-monolith/app"
 	domain "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
@@ -325,6 +326,129 @@ func TestStateSnapshotsAreDefensiveCopies(t *testing.T) {
 	testutil.Equals(t, got.Selected.Recipe.Steps[0], "Stir")
 	testutil.Equals(t, got.Form.Recipe[0].Amount, "1")
 	testutil.Equals(t, got.Ingredients[0].Name, "Base")
+}
+
+func TestCatalogDetailNavigationPreservesBackAndResetsBreadcrumb(t *testing.T) {
+	f, _, _ := fixtureDrink(t, "Negroni")
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	p.SetFilter(Filter{Expression: `name.contains("Negroni")`, Limit: 25})
+	p.Refresh()
+	p.state.Cursor = "remembered-cursor"
+	p.state.History = []paging.Cursor{"first-page"}
+	p.Select(0)
+	if p.State().Mode != Editing || !p.State().CanUpdate {
+		t.Fatalf("manager did not enter editable detail: %+v", p.State())
+	}
+	p.Back()
+	got := p.State()
+	testutil.Equals(t, got.Filter.Expression, `name.contains("Negroni")`)
+	testutil.Equals(t, got.Cursor, paging.Cursor("remembered-cursor"))
+	testutil.Equals(t, len(got.History), 1)
+
+	p.Select(0)
+	p.ResetList()
+	got = p.State()
+	testutil.Equals(t, got.Mode, Browsing)
+	testutil.Equals(t, got.Filter.Expression, "")
+	testutil.Equals(t, got.Cursor, paging.Cursor(""))
+	testutil.Equals(t, len(got.History), 0)
+}
+
+func TestReadOnlyDetailRejectsEditsWhileEditableDetailTracksAndCancelsDirtyForm(t *testing.T) {
+	a := test.NewApp()
+	defer a.Quit()
+	f, _, drink := fixtureDrink(t, "Negroni")
+	readOnly := appcore.NewSession(f.ActorContext("anonymous"), f.App.App)
+	readPresenter := NewPresenter(readOnly, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	readPresenter.state.Items = []*models.Drink{drink}
+	readView := NewView(readPresenter)
+	readPresenter.Select(0)
+	testutil.Equals(t, readPresenter.State().Mode, Viewing)
+	test.Type(readView.description, "cannot persist")
+	testutil.Equals(t, readView.description.Text, drink.Description)
+	testutil.Equals(t, readView.description.Disabled(), false)
+
+	editPresenter := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	editPresenter.state.Items = []*models.Drink{drink}
+	editView := NewView(editPresenter)
+	editPresenter.Select(0)
+	test.Type(editView.description, "changed")
+	testutil.Equals(t, editPresenter.State().Dirty, true)
+	editPresenter.Cancel()
+	testutil.Equals(t, editPresenter.State().Mode, Editing)
+	testutil.Equals(t, editPresenter.State().Dirty, false)
+	testutil.Equals(t, editView.description.Text, drink.Description)
+}
+
+func TestDrinksViewCatalogAndDetailContract(t *testing.T) {
+	a := test.NewApp()
+	defer a.Quit()
+	f, _, drink := fixtureDrink(t, "Negroni")
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	p.state.Items = []*models.Drink{drink}
+	v := NewView(p)
+	if v.filterBar.Advanced != nil {
+		t.Fatal("drinks filter unexpectedly uses a disclosure row")
+	}
+	rows, columns := v.list.Length()
+	testutil.Equals(t, rows, 2)
+	testutil.Equals(t, columns, 5)
+	for column, want := range []string{"Name", "Category", "Glass", "Ingredients", "Tags"} {
+		cell := v.list.CreateCell()
+		v.list.UpdateCell(widget.TableCellID{Row: 0, Col: column}, cell)
+		testutil.Equals(t, cell.(*widget.Label).Text, want)
+	}
+	if v.browse.Hidden || !v.formPanel.Hidden {
+		t.Fatal("catalog and detail were shown together")
+	}
+	v.list.Select(widget.TableCellID{Row: 1, Col: 0})
+	if !v.browse.Hidden || v.formPanel.Hidden {
+		t.Fatal("row selection did not replace catalog with detail")
+	}
+	if !v.save.Disabled() || !v.cancel.Disabled() {
+		t.Fatal("clean detail enabled Save or Cancel")
+	}
+	test.Type(v.description, "changed")
+	if v.save.Disabled() || v.cancel.Disabled() {
+		t.Fatal("dirty detail did not enable Save and Cancel")
+	}
+
+	readOnly := appcore.NewSession(f.ActorContext("anonymous"), f.App.App)
+	rp := NewPresenter(readOnly, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	rp.state.Items = []*models.Drink{drink}
+	rv := NewView(rp)
+	rp.Select(0)
+	if rv.description.Disabled() {
+		t.Fatal("read-only description is disabled and cannot be selected")
+	}
+	if !rv.save.Hidden || !rv.cancel.Hidden {
+		t.Fatal("read-only detail exposed mutation actions")
+	}
+	for _, action := range rv.detailActions {
+		if !action.Hidden {
+			t.Fatalf("unauthorized action %q is visible", action.SemanticID())
+		}
+	}
+}
+
+func TestDirtyBackAndBreadcrumbRequireConfirmation(t *testing.T) {
+	f, _, drink := fixtureDrink(t, "Negroni")
+	dialogs := &fynetest.Dialogs{}
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: dialogs})
+	p.state.Items = []*models.Drink{drink}
+	p.SetFilter(Filter{Expression: `name == "Negroni"`, Limit: 25})
+	p.Select(0)
+	fm := p.State().Form
+	fm.Description = "dirty"
+	p.SetForm(fm)
+	p.Back()
+	testutil.Equals(t, p.State().Mode, Editing)
+	dialogs.Confirmations()[0].Respond(false)
+	testutil.Equals(t, p.State().Mode, Editing)
+	p.ResetList()
+	dialogs.Confirmations()[1].Respond(true)
+	testutil.Equals(t, p.State().Mode, Browsing)
+	testutil.Equals(t, p.State().Filter.Expression, "")
 }
 
 func TestRefreshExposesEveryPage(t *testing.T) {
