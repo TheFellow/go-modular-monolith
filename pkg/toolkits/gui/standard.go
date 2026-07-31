@@ -207,6 +207,8 @@ func StatusLine(kind StatusKind, message string) framework.CanvasObject {
 	icon := theme.InfoIcon()
 	importance := widget.MediumImportance
 	switch kind {
+	case StatusInformational:
+		// The initialized icon and importance are the informational treatment.
 	case StatusLoading:
 		icon = theme.ViewRefreshIcon()
 	case StatusSuccess:
