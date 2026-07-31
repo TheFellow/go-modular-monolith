@@ -20,12 +20,16 @@ import (
 type ingredientField string
 
 const (
-	ingredientFieldIngredient ingredientField = "ingredient"
-	ingredientFieldAmount     ingredientField = "amount"
-	ingredientFieldUnit       ingredientField = "unit"
-	ingredientFieldOptional   ingredientField = "optional"
-	ingredientFieldRemove     ingredientField = "remove"
-	ingredientFieldSubstitute ingredientField = "substitute"
+	ingredientFieldIngredient       ingredientField = "ingredient"
+	ingredientFieldAmount           ingredientField = "amount"
+	ingredientFieldUnit             ingredientField = "unit"
+	ingredientFieldOptional         ingredientField = "optional"
+	ingredientFieldRemove           ingredientField = "remove"
+	ingredientFieldSubstitute       ingredientField = "substitute"
+	ingredientFieldAddSubstitute    ingredientField = "substitute.add"
+	ingredientFieldCancelSubstitute ingredientField = "substitute.cancel"
+	ingredientFieldChooseSubstitute ingredientField = "substitute.choose"
+	ingredientFieldSubstitutePicker ingredientField = "substitute.picker"
 )
 
 const (
@@ -100,13 +104,18 @@ func newCheck(id, label string) *semanticCheck {
 func (c *semanticCheck) SemanticID() string { return c.id }
 
 type recipeWidgets struct {
-	ingredient    *semanticSelectEntry
-	amount        *ui.SemanticEntry
-	unit          *semanticSelect
-	optional      *semanticCheck
-	substitutes   map[entity.IngredientID]*semanticCheck
-	substituteBox *framework.Container
-	remove        *ui.SemanticButton
+	ingredient         *semanticSelectEntry
+	amount             *ui.SemanticEntry
+	unit               *semanticSelect
+	optional           *semanticCheck
+	substitutes        map[entity.IngredientID]*semanticCheck
+	substituteBox      *framework.Container
+	substitutePicker   *semanticSelectEntry
+	addSubstitute      *ui.SemanticButton
+	confirmSubstitute  *ui.SemanticButton
+	cancelSubstitute   *ui.SemanticButton
+	choosingSubstitute bool
+	remove             *ui.SemanticButton
 }
 type View struct {
 	presenter                         *Presenter
@@ -221,7 +230,7 @@ func NewView(p *Presenter) *View {
 		f.Recipe = append(f.Recipe, RecipeRow{Unit: measurement.UnitOz})
 		p.SetForm(f)
 	})
-	fields := container.NewVBox(field("Name", v.name), field("Category", v.category), field("Glass", v.glass), field("Description", v.description), widget.NewLabelWithStyle("Recipe", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.recipeBox, v.addIngredient, field("Steps (one per line)", v.steps), field("Garnish", v.garnish), field("Tags", v.mutationTags.Content))
+	fields := container.NewVBox(field("Name", v.name), field("Category", v.category), field("Glass", v.glass), field("Description", v.description), widget.NewLabelWithStyle("Ingredients", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.recipeBox, v.addIngredient, field("Steps (one per line)", v.steps), field("Garnish", v.garnish), field("Tags", v.mutationTags.Content))
 	v.detailTitle = widget.NewLabel("Drink")
 	v.crumbName = widget.NewLabel("")
 	back := ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack)
@@ -454,11 +463,18 @@ func (v *View) rebuildRecipe(state State) {
 			selected[id] = true
 		}
 		for _, option := range state.Ingredients {
+			if !selected[option.ID] {
+				continue
+			}
 			check := newCheck(ingredientSubstituteControl(i, option.ID), option.Name)
-			check.SetChecked(selected[option.ID])
+			check.SetChecked(true)
 			substitutes[option.ID] = check
-			substituteBox.Add(check)
 		}
+		substitutePicker := newSelectEntry(ingredientControl(i, ingredientFieldSubstitutePicker), nil)
+		substitutePicker.SetPlaceHolder("Choose a substitute")
+		addSubstitute := ui.NewButton(ingredientControl(i, ingredientFieldChooseSubstitute), "Add substitute", nil)
+		confirmSubstitute := ui.NewButton(ingredientControl(i, ingredientFieldAddSubstitute), "Add", nil)
+		cancelSubstitute := ui.NewButton(ingredientControl(i, ingredientFieldCancelSubstitute), "Cancel", nil)
 		index := i
 		remove := ui.NewButton(ingredientControl(i, ingredientFieldRemove), "Remove", func() {
 			v.readForm()
@@ -466,6 +482,9 @@ func (v *View) rebuildRecipe(state State) {
 			f.Recipe = append(f.Recipe[:index], f.Recipe[index+1:]...)
 			v.presenter.SetForm(f)
 		})
+		if state.Mode == Viewing {
+			remove.Hide()
+		}
 		ingredient.OnChanged = func(string) { v.formChanged() }
 		amount.OnChanged = func(string) { v.formChanged() }
 		unit.OnChanged = func(string) { v.formChanged() }
@@ -473,9 +492,94 @@ func (v *View) rebuildRecipe(state State) {
 		for _, check := range substitutes {
 			check.OnChanged = func(bool) { v.formChanged() }
 		}
-		v.recipe = append(v.recipe, recipeWidgets{ingredient: ingredient, amount: amount, unit: unit, optional: optional, substitutes: substitutes, substituteBox: substituteBox, remove: remove})
-		v.recipeBox.Add(widget.NewCard(fmt.Sprintf("Ingredient %d", i+1), "", container.NewVBox(field("Ingredient", ingredient), field("Amount", amount), field("Unit", unit), optional, widget.NewLabel("Substitutes"), substituteBox, remove)))
+		v.recipe = append(v.recipe, recipeWidgets{ingredient: ingredient, amount: amount, unit: unit, optional: optional, substitutes: substitutes, substituteBox: substituteBox, substitutePicker: substitutePicker, addSubstitute: addSubstitute, confirmSubstitute: confirmSubstitute, cancelSubstitute: cancelSubstitute, remove: remove})
+		addSubstitute.OnTapped = func() {
+			v.recipe[index].choosingSubstitute = true
+			v.rebuildSubstituteControls(index, v.presenter.State())
+		}
+		confirmSubstitute.OnTapped = func() { v.addRecipeSubstitute(index) }
+		cancelSubstitute.OnTapped = func() {
+			v.recipe[index].choosingSubstitute = false
+			v.recipe[index].substitutePicker.SetText("")
+			v.rebuildSubstituteControls(index, v.presenter.State())
+		}
+		v.rebuildSubstituteControls(index, state)
+		rowFields := container.NewVBox(field("Ingredient", ingredient), container.NewGridWithColumns(2, field("Amount", amount), field("Unit", unit)), optional, substituteBox, remove)
+		v.recipeBox.Add(container.NewVBox(container.NewBorder(nil, nil, widget.NewLabel(fmt.Sprintf("%d.", i+1)), nil, rowFields), widget.NewSeparator()))
 	}
+}
+
+func (v *View) addRecipeSubstitute(index int) {
+	if index < 0 || index >= len(v.recipe) {
+		return
+	}
+	w := &v.recipe[index]
+	id := v.optionID(w.substitutePicker.Text)
+	if id == (entity.IngredientID{}) || w.substitutes[id] != nil || id == v.optionID(w.ingredient.Text) {
+		return
+	}
+	check := newCheck(ingredientSubstituteControl(index, id), v.ingredientName(id))
+	check.SetChecked(true)
+	check.OnChanged = func(bool) { v.formChanged() }
+	w.substitutes[id] = check
+	w.substitutePicker.SetText("")
+	w.choosingSubstitute = false
+	v.rebuildSubstituteControls(index, v.presenter.State())
+	v.formChanged()
+}
+
+func (v *View) removeRecipeSubstitute(index int, id entity.IngredientID) {
+	if index < 0 || index >= len(v.recipe) {
+		return
+	}
+	delete(v.recipe[index].substitutes, id)
+	v.rebuildSubstituteControls(index, v.presenter.State())
+	v.formChanged()
+}
+
+func (v *View) rebuildSubstituteControls(index int, state State) {
+	if index < 0 || index >= len(v.recipe) {
+		return
+	}
+	w := &v.recipe[index]
+	w.substituteBox.RemoveAll()
+	selected := make([]entity.IngredientID, 0, len(w.substitutes))
+	for _, option := range state.Ingredients {
+		if check := w.substitutes[option.ID]; check != nil && check.Checked {
+			selected = append(selected, option.ID)
+		}
+	}
+	if len(selected) > 0 {
+		pills := make([]framework.CanvasObject, 0, len(selected))
+		for _, id := range selected {
+			id := id
+			label := ingredientName(state.Ingredients, id)
+			if state.Mode == Viewing {
+				pills = append(pills, ui.TagPills([]string{label}))
+			} else {
+				remove := ui.NewButton(ingredientSubstituteControl(index, id), label+"  ×", func() { v.removeRecipeSubstitute(index, id) })
+				remove.Importance = widget.LowImportance
+				pills = append(pills, remove)
+			}
+		}
+		w.substituteBox.Add(container.NewHBox(widget.NewLabel("Substitutes"), container.NewHBox(pills...)))
+	}
+	if state.Mode != Viewing {
+		primary := v.optionID(w.ingredient.Text)
+		options := make([]string, 0, len(state.Ingredients))
+		for _, option := range state.Ingredients {
+			if option.ID != primary && w.substitutes[option.ID] == nil {
+				options = append(options, optionLabel(option))
+			}
+		}
+		w.substitutePicker.SetOptions(options)
+		if w.choosingSubstitute {
+			w.substituteBox.Add(container.NewBorder(nil, nil, nil, container.NewHBox(w.cancelSubstitute, w.confirmSubstitute), w.substitutePicker))
+		} else {
+			w.substituteBox.Add(container.NewHBox(w.addSubstitute))
+		}
+	}
+	w.substituteBox.Refresh()
 }
 func (v *View) optionID(label string) entity.IngredientID {
 	for _, o := range v.presenter.State().Ingredients {
@@ -492,24 +596,21 @@ func (v *View) updateRecipeOptions(state State) {
 		if i < len(state.Form.Recipe) && w.ingredient.Text == state.Form.Recipe[i].Ingredient.String() {
 			w.ingredient.SetText(v.optionLabel(state.Form.Recipe[i].Ingredient))
 		}
-		selected := make(map[entity.IngredientID]bool)
 		if i < len(state.Form.Recipe) {
 			for _, id := range state.Form.Recipe[i].Substitutes {
-				selected[id] = true
+				if check := w.substitutes[id]; check != nil {
+					check.Text = ingredientName(state.Ingredients, id)
+					check.Refresh()
+					continue
+				}
+				check := newCheck(ingredientSubstituteControl(i, id), ingredientName(state.Ingredients, id))
+				check.SetChecked(true)
+				check.OnChanged = func(bool) { v.formChanged() }
+				w.substitutes[id] = check
 			}
 		}
-		for id, check := range w.substitutes {
-			selected[id] = check.Checked
-		}
-		w.substituteBox.RemoveAll()
-		w.substitutes = make(map[entity.IngredientID]*semanticCheck)
-		for _, option := range state.Ingredients {
-			check := newCheck(ingredientSubstituteControl(i, option.ID), option.Name)
-			check.SetChecked(selected[option.ID])
-			w.substitutes[option.ID] = check
-			w.substituteBox.Add(check)
-		}
 		v.recipe[i] = w
+		v.rebuildSubstituteControls(i, state)
 	}
 }
 func (v *View) setMutableEnabled(enabled bool) {
@@ -529,7 +630,7 @@ func (v *View) setMutableEnabled(enabled bool) {
 		objects = []interface {
 			Enable()
 			Disable()
-		}{row.ingredient, row.amount, row.unit, row.optional, row.remove}
+		}{row.ingredient, row.amount, row.unit, row.optional, row.remove, row.substitutePicker, row.addSubstitute, row.confirmSubstitute, row.cancelSubstitute}
 		for _, object := range objects {
 			if enabled {
 				object.Enable()
@@ -550,6 +651,17 @@ func (v *View) optionLabel(id entity.IngredientID) string {
 	for _, o := range v.presenter.State().Ingredients {
 		if o.ID == id {
 			return optionLabel(o)
+		}
+	}
+	return id.String()
+}
+func (v *View) ingredientName(id entity.IngredientID) string {
+	return ingredientName(v.presenter.State().Ingredients, id)
+}
+func ingredientName(options []IngredientOption, id entity.IngredientID) string {
+	for _, o := range options {
+		if o.ID == id {
+			return o.Name
 		}
 	}
 	return id.String()
