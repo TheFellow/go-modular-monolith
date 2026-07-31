@@ -4,8 +4,8 @@
 
 A modular monolith sample that models a cocktail bar domain with explicit bounded contexts,
 middleware pipelines, Cedar-based authorization, and event-driven coordination. It ships with
-a CLI, a Bubble Tea TUI, and a native Fyne desktop client backed by embedded bstore (bbolt)
-databases.
+a CLI, a Bubble Tea TUI, and a native Fyne desktop client backed by an embedded bstore (bbolt)
+database.
 
 For a guided architectural walkthrough, see the [tutorial series](https://github.com/TheFellow/go-modular-monolith/issues/23).
 
@@ -35,9 +35,10 @@ go test ./...
 ### Run the App
 
 The CLI binary is `mixology` (`main/cli`), and the TUI has its own executable (`main/tui`).
-Both use `data/mixology.db` by default. The native desktop client has its own per-user
-database; see [`main/gui/README.md`](main/gui/README.md) for platform prerequisites, state
-locations, packaging, and troubleshooting.
+The CLI, TUI, desktop client, and seeder all use `data/mixology.db` relative to the current
+working directory by default, so running them from the repository root gives every surface the
+same data. See [`main/gui/README.md`](main/gui/README.md) for desktop platform prerequisites,
+log locations, packaging, and troubleshooting.
 
 ```bash
 # Seed a local database with sample ingredients, drinks, inventory, and a published menu
@@ -75,8 +76,10 @@ go run ./main/tui
 go run ./main/gui
 ```
 
-Set `MIXOLOGY_DB=path/to/other.db` to override the database path used by `go run ./main/seed`.
-The CLI hardcodes `data/mixology.db`.
+`MIXOLOGY_DB=path/to/other.db go run ./main/seed` seeds a different database. The interactive
+entry points currently use `data/mixology.db` without a database-path flag or environment
+override. Because the embedded database permits only one process to own it at a time, close one
+Mixology surface before launching another against the shared file.
 
 ### Filtering Lists
 
@@ -166,7 +169,7 @@ update still reads its required JSON document from a file (or stdin), with tags 
 that input:
 
 ```bash
-mixology drinks update --file ./drink.json -tags="region=east, env=dev, terraform="
+mixology drinks update --file ./drink.json --tags="region=east, env=dev, terraform="
 mixology inventory adjust --ingredient-id ing-abc123 --delta -0.5 --reason used \
   --tags='location=cellar,low-stock'
 mixology menus publish --id mnu-abc123 --tags='service=dinner'
