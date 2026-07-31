@@ -176,6 +176,9 @@ func TestRenderWorkspaceReview(t *testing.T) {
 				t.Fatal(err)
 			}
 			presenter.Back()
+			presenter.StartCreate()
+			captureReview(t, desktop, directory, route+"-create.png")
+			presenter.Cancel()
 		}
 		if route == "inventory" {
 			presenter := desktop.presenters[route].(*inventorygui.Presenter)

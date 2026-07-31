@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
@@ -31,6 +32,17 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	appgui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
+
+func chooseFirstSelectOption(t *testing.T, window framework.Window, selectWidget *semanticSelect) {
+	t.Helper()
+	test.Tap(selectWidget)
+	focused := window.Canvas().Focused()
+	if focused == nil {
+		t.Fatal("opening select did not focus its option menu")
+	}
+	focused.TypedKey(&framework.KeyEvent{Name: framework.KeyDown})
+	focused.TypedKey(&framework.KeyEvent{Name: framework.KeyEnter})
+}
 
 func TestPresenterRefreshSelectionFilteringAndStaleness(t *testing.T) {
 	f, ingredient, first := fixtureDrink(t, "First")
@@ -109,7 +121,7 @@ func TestWidgetCreateEditTagsAndDeletePersist(t *testing.T) {
 	driver.Type(ControlName, "  Daiquiri  ")
 	v.category.SetSelected("cocktail")
 	v.glass.SetSelected("coupe")
-	v.recipe[0].ingredient.SetText(optionLabel(IngredientOption{ID: ingredient.ID, Name: ingredient.Name}))
+	v.recipe[0].ingredient.SetSelected(optionLabel(IngredientOption{ID: ingredient.ID, Name: ingredient.Name}))
 	driver.Type(ingredientControl(0, "amount"), "2")
 	driver.Type(ControlSteps, "Shake\nStrain")
 	driver.Type(ControlGarnish, "lime")
@@ -169,6 +181,44 @@ func TestWidgetCreateEditTagsAndDeletePersist(t *testing.T) {
 		t.Fatal("deleted drink remained visible")
 	}
 	testutil.AuditTouches(t, f.LatestAuditEntry(authz.ActionDelete), created.EntityUID())
+}
+
+func TestCreateIngredientAndSubstitutePickersExposeLoadedOptions(t *testing.T) {
+	a := test.NewApp()
+	defer a.Quit()
+	f, base, _ := fixtureDrink(t, "Existing")
+	substitute := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Alternative", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	v := NewView(p)
+	window := test.NewWindow(v.Content())
+	defer window.Close()
+	driver := fynetest.NewDriver(t, v.Content())
+
+	p.StartCreate()
+	driver.Tap(ControlAddIngredient)
+	if got := len(v.recipe[1].ingredient.Options); got != 2 {
+		t.Fatalf("new ingredient picker has %d options, want 2", got)
+	}
+	chooseFirstSelectOption(t, window, v.recipe[1].ingredient)
+	v.readForm()
+	if got := p.State().Form.Recipe[1].Ingredient; got == (entity.IngredientID{}) {
+		t.Fatal("selecting an ingredient from the open menu did not update the form")
+	}
+
+	// The subordinate substitute picker uses the same constrained interaction
+	// and must remain populated after the recipe row becomes prescribed.
+	form := p.State().Form
+	form.Recipe = []RecipeRow{{Ingredient: base.ID, Amount: "1", Unit: measurement.UnitOz}}
+	p.SetForm(form)
+	v.recipe[0].actions.SetSelected("Add substitute")
+	if got := len(v.recipe[0].substitutePicker.Options); got != 1 {
+		t.Fatalf("substitute picker has %d options, want 1", got)
+	}
+	chooseFirstSelectOption(t, window, v.recipe[0].substitutePicker)
+	appgui.Trigger(v.recipe[0].confirmSubstitute)
+	if v.recipe[0].substitutes[substitute.ID] == nil {
+		t.Fatal("selecting a substitute from the open menu did not add it")
+	}
 }
 
 func TestValidationRetainsFormAndReadOnlyActorCannotMutate(t *testing.T) {
@@ -492,8 +542,8 @@ func TestStructuredRecipeWidgetsUseNamesAndConstrainedChoices(t *testing.T) {
 	p.Select(0)
 	v := NewView(p)
 	p.StartEdit()
-	if !strings.Contains(v.recipe[0].ingredient.Text, "London Dry Gin") || v.recipe[0].substitutes[sub.ID] == nil || v.recipe[0].substitutes[sub.ID].Text != "Old Tom Gin, Barrel Aged" {
-		t.Fatalf("recipe selectors did not render ingredient names: ingredient=%q substitute=%#v", v.recipe[0].ingredient.Text, v.recipe[0].substitutes[sub.ID])
+	if !strings.Contains(v.recipe[0].ingredient.Selected, "London Dry Gin") || v.recipe[0].substitutes[sub.ID] == nil || v.recipe[0].substitutes[sub.ID].Text != "Old Tom Gin, Barrel Aged" {
+		t.Fatalf("recipe selectors did not render ingredient names: ingredient=%q substitute=%#v", v.recipe[0].ingredient.Selected, v.recipe[0].substitutes[sub.ID])
 	}
 	testutil.Equals(t, v.recipe[0].optional.Checked, true)
 	testutil.Equals(t, v.recipe[0].substitutes[sub2.ID].Checked, true)
@@ -532,7 +582,7 @@ func TestStructuredRecipeWidgetsUseNamesAndConstrainedChoices(t *testing.T) {
 	testutil.Equals(t, v.recipe[0].choosingSubstitute, false)
 	v.removeRecipeSubstitute(0, sub.ID)
 	v.recipe[0].addSubstitute.OnTapped()
-	v.recipe[0].substitutePicker.SetText(v.optionLabel(sub.ID))
+	v.recipe[0].substitutePicker.SetSelected(v.optionLabel(sub.ID))
 	v.recipe[0].confirmSubstitute.OnTapped()
 	testutil.Equals(t, v.recipe[0].choosingSubstitute, false)
 	testutil.Equals(t, v.recipe[0].substitutes[sub.ID].Checked, true)
@@ -545,22 +595,28 @@ func TestIngredientLoadDoesNotWipeLiveWidgetEdits(t *testing.T) {
 	executor := &fynetest.ManualExecutor{}
 	p := NewPresenter(f.App, Dependencies{Executor: executor, Dispatcher: appgui.InlineDispatcher{}})
 	v := NewView(p)
+	window := test.NewWindow(v.Content())
+	defer window.Close()
 	driver := fynetest.NewDriver(t, v.Content())
 	p.StartCreate()
 	testutil.Equals(t, v.name.Disabled(), false)
 	driver.Type(ControlName, "Typed while loading")
 	v.category.SetSelected("cocktail")
 	v.glass.SetSelected("coupe")
-	v.recipe[0].ingredient.SetText("search in progress")
 	driver.Type(ingredientControl(0, "amount"), "2.5")
 	driver.Type(ControlSteps, "Do not erase")
 	testutil.Equals(t, executor.RunNext(), true)
 	testutil.Equals(t, v.name.Text, "Typed while loading")
 	testutil.Equals(t, v.category.Selected, "cocktail")
 	testutil.Equals(t, v.glass.Selected, "coupe")
-	testutil.Equals(t, v.recipe[0].ingredient.Text, "search in progress")
+	testutil.Equals(t, v.recipe[0].ingredient.Options, optionLabels(p.State().Ingredients))
 	testutil.Equals(t, v.recipe[0].amount.Text, "2.5")
 	testutil.Equals(t, v.steps.Text, "Do not erase")
+	chooseFirstSelectOption(t, window, v.recipe[0].ingredient)
+	v.readForm()
+	if p.State().Form.Recipe[0].Ingredient == (entity.IngredientID{}) {
+		t.Fatal("late-loaded ingredient options could not be selected from the open menu")
+	}
 }
 
 func TestCreateCancelThenReopenStartsFreshWidgetForm(t *testing.T) {
