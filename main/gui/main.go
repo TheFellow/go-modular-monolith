@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
@@ -25,6 +26,7 @@ func main() {
 		return
 	}
 	gui := app.NewWithID(applicationID)
+	app.SetMetadata(withFyneDoMigration(gui.Metadata()))
 	desktop, err := openDesktop(context.Background(), gui, *config)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -32,6 +34,14 @@ func main() {
 	}
 	defer func() { _ = desktop.Close() }()
 	desktop.window.ShowAndRun()
+}
+
+func withFyneDoMigration(metadata fyne.AppMetadata) fyne.AppMetadata {
+	if metadata.Migrations == nil {
+		metadata.Migrations = make(map[string]bool)
+	}
+	metadata.Migrations["fyneDo"] = true
+	return metadata
 }
 
 func startupConfig(args []string, output io.Writer) (*desktopConfig, error) {
