@@ -11,9 +11,11 @@ import (
 	menus "github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	orders "github.com/TheFellow/go-modular-monolith/app/domains/orders"
+	ordersauthz "github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	pkgAuthz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
@@ -25,6 +27,7 @@ type Mode uint8
 
 const (
 	Browsing Mode = iota
+	Viewing
 	Placing
 	Tagging
 )
@@ -81,6 +84,8 @@ type State struct {
 	Menus                                           []MenuOption
 	Drinks                                          []DrinkOption
 	Err                                             error
+	CanPlace, CanComplete, CanCancel, CanTag        bool
+	Dirty                                           bool
 }
 type Dependencies struct {
 	Executor   ui.Executor
@@ -111,6 +116,7 @@ type Presenter struct {
 func NewPresenter(session *app.Session, deps Dependencies) *Presenter {
 	p := &Presenter{app: session, dialogs: deps.Dialogs, menuDrinks: make(map[entity.MenuID][]DrinkOption)}
 	p.state.Filter.Limit = paging.DefaultLimit
+	p.state.CanPlace = pkgAuthz.AuthorizeWithEntity(session.Context().Principal(), ordersauthz.ActionPlace, (models.Order{}).CedarEntity()) == nil
 	p.load = ui.NewLatestRequest[listResult](deps.Executor, deps.Dispatcher)
 	p.catalog = ui.NewLatestRequest[placeCatalog](deps.Executor, deps.Dispatcher)
 	p.submit = ui.NewSubmission(deps.Executor, deps.Dispatcher)
@@ -148,10 +154,7 @@ func (p *Presenter) Refresh() {
 			selected := selectedID(p.state.Selected)
 			p.state.Rows, p.state.Next, p.state.Err = cloneRows(r.Value.rows), r.Value.next, nil
 			p.state.Selected = findRow(p.state.Rows, selected)
-			if p.state.Selected == nil && len(p.state.Rows) > 0 {
-				row := cloneRow(p.state.Rows[0])
-				p.state.Selected = &row
-			}
+			p.permissions()
 		}
 		p.publish()
 	})
@@ -195,15 +198,62 @@ func (p *Presenter) Select(index int) {
 	} else {
 		row := cloneRow(p.state.Rows[index])
 		p.state.Selected = &row
+		p.state.Mode = Viewing
 	}
+	p.permissions()
 	p.publish()
 }
 
+// Back returns to the exact list state from which the order was opened.
+func (p *Presenter) Back() { p.leaveDetail(false) }
+
+// ResetList is used by the breadcrumb and main navigation. It deliberately
+// clears filter and paging state rather than preserving the prior search.
+func (p *Presenter) ResetList() { p.leaveDetail(true) }
+
+func (p *Presenter) leaveDetail(reset bool) {
+	if p.state.Submitting || p.state.Confirming {
+		return
+	}
+	proceed := func() {
+		p.catalog.Invalidate()
+		p.state.Mode, p.state.Form, p.state.Menus, p.state.Drinks = Browsing, Form{}, nil, nil
+		p.state.Err, p.state.Dirty, p.state.Confirming = nil, false, false
+		if reset {
+			p.state.Selected = nil
+			p.state.Filter, p.state.Cursor, p.state.Next, p.state.History = Filter{Limit: paging.DefaultLimit}, "", "", nil
+		}
+		p.permissions()
+		p.publish()
+		if reset {
+			p.Refresh()
+		}
+	}
+	if !p.state.Dirty {
+		proceed()
+		return
+	}
+	if p.dialogs == nil {
+		return
+	}
+	p.state.Confirming = true
+	p.publish()
+	p.dialogs.Confirm("Discard changes?", "Discard unsaved order changes?", func(ok bool) {
+		p.state.Confirming = false
+		if ok {
+			proceed()
+			return
+		}
+		p.publish()
+	})
+}
+
 func (p *Presenter) StartPlace() {
-	if p.busy() {
+	if p.busy() || !p.state.CanPlace {
 		return
 	}
 	p.state.Mode, p.state.Form, p.state.Menus, p.state.Drinks, p.state.Err = Placing, Form{ReplaceTags: true}, nil, nil, nil
+	p.state.Dirty = false
 	p.publish()
 	p.loadPlaceCatalog()
 }
@@ -283,6 +333,7 @@ func (p *Presenter) ChooseMenu(id entity.MenuID) {
 		return
 	}
 	p.state.Form.MenuID, p.state.Form.Items = id, nil
+	p.state.Dirty = true
 	p.state.Drinks = filterDrinks(p.menuDrinks[id], p.state.Form.DrinkQuery)
 	p.state.Err = nil
 	p.publish()
@@ -323,12 +374,14 @@ func (p *Presenter) AddItem(id entity.DrinkID, quantity int, notes string) bool 
 		if p.state.Form.Items[i].DrinkID == id {
 			p.state.Form.Items[i].Quantity += quantity
 			p.state.Form.Items[i].Notes = strings.TrimSpace(notes)
+			p.state.Dirty = true
 			p.state.Err = nil
 			p.publish()
 			return true
 		}
 	}
 	p.state.Form.Items = append(p.state.Form.Items, PlaceItem{DrinkID: id, Name: found.Name, Quantity: quantity, Notes: strings.TrimSpace(notes)})
+	p.state.Dirty = true
 	p.state.Err = nil
 	p.publish()
 	return true
@@ -338,17 +391,26 @@ func (p *Presenter) RemoveItem(index int) {
 		return
 	}
 	p.state.Form.Items = append(p.state.Form.Items[:index:index], p.state.Form.Items[index+1:]...)
+	p.state.Dirty = true
 	p.publish()
 }
 func (p *Presenter) SetPlaceNotes(notes string) {
 	if p.state.Mode == Placing && !p.state.Submitting {
+		if p.state.Form.Notes == notes {
+			return
+		}
 		p.state.Form.Notes = notes
+		p.state.Dirty = true
 		p.publish()
 	}
 }
 func (p *Presenter) SetPlaceTags(tags string) {
 	if p.state.Mode == Placing && !p.state.Submitting {
+		if p.state.Form.Tags == tags && p.state.Form.ReplaceTags {
+			return
+		}
 		p.state.Form.Tags, p.state.Form.ReplaceTags = tags, true
+		p.state.Dirty = true
 		p.publish()
 	}
 }
@@ -389,11 +451,21 @@ func (p *Presenter) SavePlace() bool {
 	}, true)
 }
 func (p *Presenter) StartTags() {
-	if p.busy() || p.state.Selected == nil {
+	if p.busy() || p.state.Selected == nil || !p.state.CanTag {
 		return
 	}
 	text, _ := tag.FormatCollection(p.state.Selected.Order.Tags)
 	p.state.Mode, p.state.Form, p.state.Err = Tagging, Form{Tags: text}, nil
+	p.state.Dirty = false
+	p.publish()
+}
+func (p *Presenter) SetTagForm(value string) {
+	if p.state.Mode != Tagging || p.state.Submitting || p.state.Selected == nil {
+		return
+	}
+	p.state.Form.Tags = value
+	current, _ := tag.FormatCollection(p.state.Selected.Order.Tags)
+	p.state.Dirty = value != current
 	p.publish()
 }
 func (p *Presenter) SaveTags(value string) bool {
@@ -417,12 +489,24 @@ func (p *Presenter) CancelForm() {
 		return
 	}
 	p.catalog.Invalidate()
-	p.state.Mode, p.state.Form, p.state.Menus, p.state.Drinks, p.state.Err = Browsing, Form{}, nil, nil, nil
+	mode := Browsing
+	if p.state.Selected != nil {
+		mode = Viewing
+	}
+	p.state.Mode, p.state.Form, p.state.Menus, p.state.Drinks, p.state.Err, p.state.Dirty = mode, Form{}, nil, nil, nil, false
 	p.publish()
 }
 
-func (p *Presenter) ConfirmComplete() { p.confirm("Complete order", models.OrderStatusCompleted) }
-func (p *Presenter) ConfirmCancel()   { p.confirm("Cancel order", models.OrderStatusCancelled) }
+func (p *Presenter) ConfirmComplete() {
+	if p.state.CanComplete {
+		p.confirm("Complete order", models.OrderStatusCompleted)
+	}
+}
+func (p *Presenter) ConfirmCancel() {
+	if p.state.CanCancel {
+		p.confirm("Cancel order", models.OrderStatusCancelled)
+	}
+}
 func (p *Presenter) confirm(title string, status models.OrderStatus) {
 	if p.busy() || p.state.Selected == nil || p.state.Selected.Order.Status != models.OrderStatusPending {
 		return
@@ -474,8 +558,13 @@ func (p *Presenter) mutate(work func() error, closeForm bool) bool {
 		p.state.Submitting = false
 		p.state.Err = ui.PresentError(err)
 		if err == nil && closeForm {
-			p.state.Mode = Browsing
+			if p.state.Selected != nil {
+				p.state.Mode = Viewing
+			} else {
+				p.state.Mode = Browsing
+			}
 			p.state.Form = Form{}
+			p.state.Dirty = false
 		}
 		p.publish()
 		ui.ShowPresentation(p.dialogs, err)
@@ -488,6 +577,17 @@ func (p *Presenter) mutate(work func() error, closeForm bool) bool {
 		p.publish()
 	}
 	return accepted
+}
+
+func (p *Presenter) permissions() {
+	p.state.CanComplete, p.state.CanCancel, p.state.CanTag = false, false, false
+	if p.state.Selected == nil {
+		return
+	}
+	principal, resource := p.app.Context().Principal(), p.state.Selected.Order.CedarEntity()
+	p.state.CanComplete = pkgAuthz.AuthorizeWithEntity(principal, ordersauthz.ActionComplete, resource) == nil
+	p.state.CanCancel = pkgAuthz.AuthorizeWithEntity(principal, ordersauthz.ActionCancel, resource) == nil
+	p.state.CanTag = pkgAuthz.AuthorizeWithEntity(principal, ordersauthz.ActionTag, resource) == nil
 }
 
 func (p *Presenter) resolve(order models.Order) (Row, error) {
