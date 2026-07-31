@@ -251,7 +251,7 @@ the originating command.
 ```
 app/
   kernel/          Shared value types (entity IDs, tags, money, measurement, currency, quality)
-  surfaces/tui/    TUI application shell and cross-domain workspace composition
+  surfaces/tui/    Shared Mixology TUI contracts, components, styles, and keys
   domains/         One package per bounded context
     <ctx>/
       module.go        Public API (commands + queries)
@@ -287,7 +287,7 @@ pkg/
 main/
   cli/             CLI executable and command composition
   gui/             Native Fyne desktop executable and application composition
-  tui/             TUI executable bootstrap
+  tui/             TUI executable and cross-domain workspace composition
   seed/            Database seeder
 ```
 

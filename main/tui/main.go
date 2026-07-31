@@ -11,7 +11,6 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/TheFellow/go-modular-monolith/app"
-	appui "github.com/TheFellow/go-modular-monolith/app/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
@@ -106,7 +105,7 @@ func run(ctx context.Context, config tuiConfig, databasePath string) error {
 	application := app.New(ctx, app.Config{Store: database})
 	defer func() { _ = application.Close() }()
 
-	program := tea.NewProgram(appui.NewApp(app.NewSession(ctx, application)), tea.WithAltScreen())
+	program := tea.NewProgram(NewApp(app.NewSession(ctx, application)), tea.WithAltScreen())
 	_, err = program.Run()
 	return err
 }

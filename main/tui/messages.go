@@ -1,4 +1,4 @@
-package tui
+package main
 
 import "github.com/TheFellow/go-modular-monolith/app/surfaces/tui/views"
 
