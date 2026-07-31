@@ -7,12 +7,14 @@ import (
 	"time"
 
 	frameworktest "fyne.io/fyne/v2/test"
+	"fyne.io/fyne/v2/widget"
 
 	application "github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
@@ -39,7 +41,7 @@ func TestPresenterLoadsPagesDetailsAndKeepsStableSelection(t *testing.T) {
 		t.Fatal("filter rejected")
 	}
 	state := presenter.State()
-	if len(state.Rows) != 2 || state.Next == "" || state.Selected == nil {
+	if len(state.Rows) != 2 || state.Next == "" || state.Selected != nil || state.Mode != Browsing {
 		t.Fatalf("first page = %#v", state)
 	}
 	presenter.Select(1)
@@ -137,7 +139,7 @@ func TestPresenterInvalidPageSizePreservesQueryAndRows(t *testing.T) {
 		if after.Filter != before.Filter || after.Cursor != before.Cursor || after.Next != before.Next || len(after.History) != len(before.History) || len(after.Rows) != len(before.Rows) {
 			t.Fatalf("page size %d changed query state: before=%#v after=%#v", limit, before, after)
 		}
-		if after.Selected == nil || before.Selected == nil || after.Selected.Entry.ID != before.Selected.Entry.ID {
+		if (after.Selected == nil) != (before.Selected == nil) || (after.Selected != nil && after.Selected.Entry.ID != before.Selected.Entry.ID) {
 			t.Fatalf("page size %d changed selection", limit)
 		}
 	}
@@ -171,7 +173,9 @@ func TestPresenterSnapshotsAreDefensiveAndTouchesSorted(t *testing.T) {
 	presenter := auditPresenter(fixture)
 	presenter.Refresh()
 	state := presenter.State()
-	if state.Selected == nil || !strings.Contains(detailText(*state.Selected), "ID:") || !strings.Contains(detailText(*state.Selected), "Touched Entities") {
+	presenter.Select(0)
+	state = presenter.State()
+	if state.Selected == nil || state.Selected.Entry.ID.String() == "" || len(state.Selected.Touches) == 0 {
 		t.Fatalf("detail incomplete: %#v", state.Selected)
 	}
 	for i := 1; i < len(state.Selected.Touches); i++ {
@@ -214,10 +218,8 @@ func TestViewDrivesRealRetainedWidgetsAndDisablesDuringLoad(t *testing.T) {
 		t.Fatal("filters enabled during accepted read")
 	}
 	executor.RunNext()
-	state := presenter.State()
-	button := view.rowButtons[state.Rows[0].Entry.ID.String()]
-	frameworktest.Tap(button)
-	if presenter.State().Selected == nil || !strings.Contains(view.detail.Text, "Success: true") {
+	view.list.Select(widget.TableCellID{Row: 1, Col: 0})
+	if presenter.State().Selected == nil || view.browse.Hidden == false || view.detailPanel.Hidden || view.detailFields[7].Text != "true" {
 		t.Fatal("real row widget did not select detail")
 	}
 	view.expression.SetText("(")
@@ -243,7 +245,7 @@ func TestViewValidatesPageSizeThroughRealRetainedWidgets(t *testing.T) {
 		if state.Err == nil || !strings.Contains(view.status.Text, "page size must be greater than zero") {
 			t.Fatalf("page size %q did not render validation: state=%#v status=%q", input, state, view.status.Text)
 		}
-		if state.Filter != before.Filter || len(state.Rows) != len(before.Rows) || state.Selected == nil || before.Selected == nil || state.Selected.Entry.ID != before.Selected.Entry.ID {
+		if state.Filter != before.Filter || len(state.Rows) != len(before.Rows) || (state.Selected == nil) != (before.Selected == nil) || (state.Selected != nil && state.Selected.Entry.ID != before.Selected.Entry.ID) {
 			t.Fatalf("page size %q changed retained query state: before=%#v after=%#v", input, before, state)
 		}
 	}
@@ -280,5 +282,53 @@ func TestAuditSurfaceContainsNoWrites(t *testing.T) {
 	testutil.Ok(t, err)
 	if after != before {
 		t.Fatalf("read-only surface wrote audit entries: before=%d after=%d", before, after)
+	}
+}
+
+func TestListDetailNavigationPreservesBackAndResetsBreadcrumb(t *testing.T) {
+	fixture := testutil.NewFixture(t)
+	createAuditedIngredient(t, fixture, "Navigation")
+	presenter := auditPresenter(fixture)
+	filter := Filter{Expression: "success", Limit: 1}
+	if !presenter.ApplyFilter(filter) {
+		t.Fatal("filter rejected")
+	}
+	presenter.Select(0)
+	if state := presenter.State(); state.Mode != Viewing || state.Selected == nil {
+		t.Fatalf("detail state = %#v", state)
+	}
+	presenter.Back()
+	if state := presenter.State(); state.Mode != Browsing || state.Selected != nil || state.Filter != filter || state.Cursor != "" || len(state.Rows) != 1 {
+		t.Fatalf("back did not preserve list state: %#v", state)
+	}
+	presenter.Select(0)
+	presenter.ResetList()
+	if state := presenter.State(); state.Mode != Browsing || state.Selected != nil || state.Filter.Expression != "" || state.Filter.Limit != paging.DefaultLimit || len(state.History) != 0 {
+		t.Fatalf("breadcrumb did not reset list state: %#v", state)
+	}
+}
+
+func TestAuditDetailIsFullWidthCopyableReadOnlyAndHasNoFilters(t *testing.T) {
+	fixture := testutil.NewFixture(t)
+	createAuditedIngredient(t, fixture, "Read only")
+	presenter := auditPresenter(fixture)
+	view := NewView(presenter)
+	view.Activate()
+	view.list.Select(widget.TableCellID{Row: 1, Col: 0})
+	if !view.browse.Hidden || view.detailPanel.Hidden || len(view.detailFields) != 10 {
+		t.Fatal("detail did not replace the list with the complete audit form")
+	}
+	for _, field := range view.detailFields {
+		if field.Disabled() {
+			t.Fatal("read-only detail field is disabled and cannot be copied")
+		}
+	}
+	original := view.detailFields[1].Text
+	view.detailFields[1].SetText("locally changed")
+	if view.detailFields[1].Text != original {
+		t.Fatal("read-only audit detail accepted a local mutation")
+	}
+	if !view.browse.Hidden {
+		t.Fatal("filter controls leaked into detail view")
 	}
 }

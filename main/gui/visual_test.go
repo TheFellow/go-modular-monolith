@@ -13,6 +13,7 @@ import (
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
+	auditgui "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/gui"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	drinksgui "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/gui"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
@@ -252,6 +253,15 @@ func TestRenderWorkspaceReview(t *testing.T) {
 			presenter.CancelForm()
 		}
 		if route == "audit" {
+			presenter := desktop.presenters[route].(*auditgui.Presenter)
+			if len(presenter.State().Rows) > 0 {
+				presenter.Select(0)
+				captureReview(t, desktop, directory, route+"-detail.png")
+				presenter.Back()
+			}
+			presenter.ApplyFilter(auditgui.Filter{Expression: `action == "missing"`, Limit: 25})
+			captureReview(t, desktop, directory, route+"-empty.png")
+			presenter.ResetList()
 			openFilterDisclosures(desktop.shell.Content())
 			file, err = os.Create(filepath.Join(directory, route+"-expanded.png"))
 			if err != nil {
