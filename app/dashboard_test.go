@@ -23,7 +23,7 @@ func TestDashboardRejectsSessionWithoutApplication(t *testing.T) {
 	}
 }
 
-func TestDashboardAggregateUsesThresholdBoundaryAndAuditOrder(t *testing.T) {
+func TestDashboardUsesThresholdBoundaryAndAuditOrder(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	at := testutil.CreateIngredient(t, f, ingredientmodels.Ingredient{Name: "At threshold", Category: ingredientmodels.CategoryOther, Unit: measurement.UnitOz})

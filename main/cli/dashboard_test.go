@@ -14,7 +14,7 @@ func TestStatusCommandFreshProcessTextJSONAndNonDisclosure(t *testing.T) {
 	h := newCLIE2E(filepath.Join(t.TempDir(), "status.db"))
 	fresh := h.Run("status", "--json")
 	testutil.Ok(t, fresh.Err)
-	var got app.DashboardAggregate
+	var got app.Dashboard
 	testutil.Ok(t, json.Unmarshal([]byte(fresh.Stdout), &got))
 	testutil.Equals(t, got.DrinkCount, 0)
 	testutil.Equals(t, got.IngredientCount, 0)
@@ -26,7 +26,7 @@ func TestStatusCommandFreshProcessTextJSONAndNonDisclosure(t *testing.T) {
 	testutil.StringContains(t, text.Stdout, "RECENT ACTIVITY")
 	anonymous := h.As("anonymous").Run("status", "--json")
 	testutil.Ok(t, anonymous.Err)
-	var hidden app.DashboardAggregate
+	var hidden app.Dashboard
 	testutil.Ok(t, json.Unmarshal([]byte(anonymous.Stdout), &hidden))
 	testutil.Equals(t, hidden.IngredientCount, 1)
 	testutil.ErrorIf(t, contains(anonymous.Stdout+anonymous.Stderr, "Secret Gin"), "anonymous dashboard disclosed entity data")

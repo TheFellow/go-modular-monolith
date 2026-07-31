@@ -54,7 +54,7 @@ func TestDashboardRecentActivityFitsAssignedHeight(t *testing.T) {
 	d := &Dashboard{
 		width:  100,
 		height: 21, // Minimum application height after title and status bars.
-		data:   &app.DashboardAggregate{RecentActivity: recent},
+		data:   &app.Dashboard{RecentActivity: recent},
 	}
 
 	view := d.View()
@@ -65,7 +65,7 @@ func TestDashboardRecentActivityFitsAssignedHeight(t *testing.T) {
 		"expected recent activity to be truncated to available height:\n%s", view)
 }
 
-func TestDashboardLoadsExactApplicationAggregate(t *testing.T) {
+func TestDashboardLoadsExactApplicationData(t *testing.T) {
 	f := testutil.NewFixture(t)
 	want, err := f.App.Dashboard()
 	testutil.Ok(t, err)

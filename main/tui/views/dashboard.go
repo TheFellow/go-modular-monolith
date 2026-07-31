@@ -26,7 +26,7 @@ type Dashboard struct {
 
 	loading bool
 	spinner tui.Spinner
-	data    *app.DashboardAggregate
+	data    *app.Dashboard
 	err     error
 }
 
@@ -36,7 +36,7 @@ const (
 )
 
 type DashboardLoadedMsg struct {
-	Data *app.DashboardAggregate
+	Data *app.Dashboard
 	Err  error
 }
 
@@ -188,7 +188,7 @@ func (d *Dashboard) renderLoading() string {
 func (d *Dashboard) renderCountCards() []dashboardCard {
 	data := d.data
 	if data == nil {
-		unknown := app.UnknownDashboardAggregate()
+		unknown := app.UnknownDashboard()
 		data = &unknown
 	}
 
@@ -203,28 +203,28 @@ func (d *Dashboard) renderCountCards() []dashboardCard {
 	}
 }
 
-func (d *Dashboard) inventorySubtitle(data *app.DashboardAggregate) string {
+func (d *Dashboard) inventorySubtitle(data *app.Dashboard) string {
 	if data.LowStockCount >= 0 {
 		return "Low stock: " + formatCount(data.LowStockCount)
 	}
 	return "Track stock levels"
 }
 
-func (d *Dashboard) menuSubtitle(data *app.DashboardAggregate) string {
+func (d *Dashboard) menuSubtitle(data *app.Dashboard) string {
 	if data.DraftMenus >= 0 && data.PublishedMenus >= 0 {
 		return fmt.Sprintf("Draft %s • Published %s", formatCount(data.DraftMenus), formatCount(data.PublishedMenus))
 	}
 	return "Build drink menus"
 }
 
-func (d *Dashboard) ordersSubtitle(data *app.DashboardAggregate) string {
+func (d *Dashboard) ordersSubtitle(data *app.Dashboard) string {
 	if data.PendingOrders >= 0 {
 		return "Pending: " + formatCount(data.PendingOrders)
 	}
 	return "Review orders"
 }
 
-func (d *Dashboard) auditCountLabel(data *app.DashboardAggregate) string {
+func (d *Dashboard) auditCountLabel(data *app.Dashboard) string {
 	if data.AuditCount < 0 {
 		return "?"
 	}

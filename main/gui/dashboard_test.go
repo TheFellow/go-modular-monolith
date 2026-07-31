@@ -21,12 +21,12 @@ import (
 )
 
 type queuedDashboardLoader struct {
-	results []application.DashboardAggregate
+	results []application.Dashboard
 	errors  []error
 	calls   int
 }
 
-func (l *queuedDashboardLoader) LoadDashboard() (application.DashboardAggregate, error) {
+func (l *queuedDashboardLoader) LoadDashboard() (application.Dashboard, error) {
 	index := l.calls
 	l.calls++
 	return l.results[index], l.errors[index]
@@ -35,7 +35,7 @@ func (l *queuedDashboardLoader) LoadDashboard() (application.DashboardAggregate,
 func TestDashboardPresenterPublishesLoadingLoadedPartialErrorAndRefresh(t *testing.T) {
 	wantErr := errors.New("audit is forbidden")
 	loader := &queuedDashboardLoader{
-		results: []application.DashboardAggregate{{DrinkCount: 1}, {DrinkCount: 2}},
+		results: []application.Dashboard{{DrinkCount: 1}, {DrinkCount: 2}},
 		errors:  []error{wantErr, nil},
 	}
 	executor := &fynetest.ManualExecutor{}
@@ -65,7 +65,7 @@ func TestDashboardPresenterPublishesLoadingLoadedPartialErrorAndRefresh(t *testi
 
 func TestDashboardPresenterRejectsStaleOutOfOrderResults(t *testing.T) {
 	loader := &queuedDashboardLoader{
-		results: []application.DashboardAggregate{{DrinkCount: 1}, {DrinkCount: 2}},
+		results: []application.Dashboard{{DrinkCount: 1}, {DrinkCount: 2}},
 		errors:  make([]error, 2),
 	}
 	executor := &fynetest.ManualExecutor{}
@@ -82,7 +82,7 @@ func TestDashboardPresenterRejectsStaleOutOfOrderResults(t *testing.T) {
 }
 
 func TestDashboardPresenterCloseInvalidatesQueuedPublication(t *testing.T) {
-	loader := &queuedDashboardLoader{results: []application.DashboardAggregate{{DrinkCount: 7}}, errors: []error{nil}}
+	loader := &queuedDashboardLoader{results: []application.Dashboard{{DrinkCount: 7}}, errors: []error{nil}}
 	executor := &fynetest.ManualExecutor{}
 	dispatcher := &fynetest.ManualDispatcher{}
 	model := newDashboardViewModel(loader, executor, dispatcher)
@@ -104,7 +104,7 @@ func TestDashboardViewUsesSemanticRefreshAndWorkspaceControls(t *testing.T) {
 	gui := test.NewApp()
 	t.Cleanup(gui.Quit)
 	loader := &queuedDashboardLoader{
-		results: []application.DashboardAggregate{{DrinkCount: 3}, {DrinkCount: 4}},
+		results: []application.Dashboard{{DrinkCount: 3}, {DrinkCount: 4}},
 		errors:  make([]error, 2),
 	}
 	model := newDashboardViewModel(loader, fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
