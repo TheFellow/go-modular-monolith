@@ -46,7 +46,7 @@ func StandardListPage(page ListPage) framework.CanvasObject {
 	if actions := DetailActionBar(page.DetailActions); actions != nil {
 		detail = container.NewBorder(container.NewPadded(actions), nil, nil, nil, page.Detail)
 	}
-	var body framework.CanvasObject = page.List
+	body := page.List
 	if detail != nil {
 		body = ListDetail(page.List, detail, ratio)
 	}

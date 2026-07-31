@@ -65,7 +65,6 @@ type View struct {
 	limit                                                              *semanticSelect
 	menus, drinks                                                      *widget.Select
 	list                                                               *widget.Table
-	rows                                                               map[string]*ui.SemanticButton
 	removeItems                                                        map[int]*ui.SemanticButton
 	refresh, create, save, cancel                                      *ui.SemanticButton
 	state                                                              State
@@ -107,7 +106,7 @@ func (v *View) render(s State) {
 		body = v.browser(s)
 	case Viewing:
 		body = v.detail(s)
-	default:
+	case Placing, Tagging:
 		body = v.form(s)
 	}
 	v.root.Objects = []framework.CanvasObject{body}

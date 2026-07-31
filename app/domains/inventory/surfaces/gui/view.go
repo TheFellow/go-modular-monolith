@@ -165,15 +165,16 @@ func (v *View) ExecuteCommand(c ui.Command) bool {
 
 func (v *View) mutationFields(mode Mode) framework.CanvasObject {
 	switch mode {
+	case Browse, Viewing:
+		return container.NewVBox()
 	case Adjust:
 		return ui.DetailForm(ui.DetailField("Signed amount", v.amount), ui.DetailField("Cost per unit", v.cost), ui.DetailField("Reason", v.reason), ui.DetailField("Tags", v.tags.Content))
 	case Set:
 		return ui.DetailForm(ui.DetailField("Quantity", v.amount), ui.DetailField("Cost per unit", v.cost), ui.DetailField("Tags", v.tags.Content))
 	case Tags:
 		return ui.DetailForm(ui.DetailField("Tags", v.tags.Content))
-	default:
-		return container.NewVBox()
 	}
+	return container.NewVBox()
 }
 
 func (v *View) detailFields(s State) framework.CanvasObject {

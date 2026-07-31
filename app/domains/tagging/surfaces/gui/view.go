@@ -176,7 +176,6 @@ func (v *View) render(s State) {
 		}
 		v.entityRows.RemoveAll()
 		for i, item := range s.Visible {
-			i := i
 			v.entityRows.Add(ui.NewButton(entityControl(i), item.Name+" — "+item.Detail, func() { p := v.presenter; p.SelectEntity(i) }))
 		}
 		v.entityRows.Refresh()
@@ -248,6 +247,8 @@ func (v *View) renderResults(s State) {
 		if len(s.Result.References) == 0 {
 			v.resultRows.Add(widget.NewLabel("No matching active tag usage."))
 		}
+	case Summary:
+		// Summary uses the catalog view rather than workflow result rows.
 	}
 	v.resultRows.Refresh()
 }

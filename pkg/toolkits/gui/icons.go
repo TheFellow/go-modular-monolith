@@ -34,6 +34,8 @@ const (
 
 func IconResource(icon Icon) framework.Resource {
 	switch icon {
+	case IconNone:
+		return nil
 	case IconAdd:
 		return theme.ContentAddIcon()
 	case IconRefresh:
@@ -70,9 +72,8 @@ func IconResource(icon Icon) framework.Resource {
 		return theme.SearchIcon()
 	case IconCopy:
 		return theme.ContentCopyIcon()
-	default:
-		return nil
 	}
+	return nil
 }
 
 func WithIcon(button *SemanticButton, icon Icon) *SemanticButton {

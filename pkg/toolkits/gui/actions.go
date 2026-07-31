@@ -1,6 +1,8 @@
 package gui
 
 import (
+	"slices"
+
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
@@ -131,11 +133,8 @@ func (actions *ActionSelect) SetSelected(selected string) {
 		actions.Select.SetSelected(selected)
 		return
 	}
-	for _, option := range actions.Options {
-		if option == selected {
-			actions.Select.SetSelected(selected)
-			return
-		}
+	if slices.Contains(actions.Options, selected) {
+		actions.Select.SetSelected(selected)
 	}
 }
 
