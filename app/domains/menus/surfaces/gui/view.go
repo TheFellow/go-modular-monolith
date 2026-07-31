@@ -294,8 +294,7 @@ func (v *View) buildDetail(s State) *framework.Container {
 			removeTarget := ui.NewButton(controlRemoveDrinkPrefix+item.DrinkID.String(), "Remove", func() { v.p.RemoveDrink(item.DrinkID) })
 			removeTarget.Hide() // compatibility/shortcut target; the visible affordance is the compact action menu.
 			actions := ui.NewActionSelect(options, func(choice string) {
-				switch choice {
-				case "Remove":
+				if choice == "Remove" {
 					v.p.RemoveDrink(item.DrinkID)
 				}
 			})
@@ -426,7 +425,6 @@ func (v *View) render(s State) {
 	v.drinkTags.SetEnabled(!busy)
 	v.drinkChoices.RemoveAll()
 	for _, option := range s.Drinks {
-		option := option
 		b := ui.NewButton(controlDrinkChoicePrefix+option.ID.String(), option.Name, func() {
 			f := v.p.State().Form
 			f.Tags, f.ReplaceTags = v.drinkTags.CSV(), true

@@ -9,7 +9,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func TestFormScrollRelayScrollsPageAboveEntry(t *testing.T) {
+func TestFormScrollRelayScrollsPageAboveEntry(t *testing.T) { //nolint:paralleltest // Fyne app and driver state is process-global.
 	app := test.NewApp()
 	t.Cleanup(app.Quit)
 
@@ -32,7 +32,7 @@ func TestFormScrollRelayScrollsPageAboveEntry(t *testing.T) {
 	}
 }
 
-func TestFormScrollRelayScrollsBackAcrossReadOnlyEntry(t *testing.T) {
+func TestFormScrollRelayScrollsBackAcrossReadOnlyEntry(t *testing.T) { //nolint:paralleltest // Fyne app and driver state is process-global.
 	app := test.NewApp()
 	t.Cleanup(app.Quit)
 

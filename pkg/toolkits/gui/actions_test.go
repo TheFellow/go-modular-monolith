@@ -7,7 +7,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func TestRowTableHidesNativeCellSeparators(t *testing.T) {
+func TestRowTableHidesNativeCellSeparators(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
 	table := NewRowTable(func() (int, int) { return 1, 1 }, func() framework.CanvasObject {
 		return NewActionCell()
 	}, func(widget.TableCellID, framework.CanvasObject) {})
@@ -23,7 +23,7 @@ func TestRowTableHidesNativeCellSeparators(t *testing.T) {
 	}
 }
 
-func TestActionCellRecyclesSafelyAcrossTextTagsAndActions(t *testing.T) {
+func TestActionCellRecyclesSafelyAcrossTextTagsAndActions(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
 	startTestApp(t)
 	cell := NewActionCell()
 	ShowCellTags(cell, `featured,"region=west, coast"`)
@@ -44,7 +44,7 @@ func TestActionCellRecyclesSafelyAcrossTextTagsAndActions(t *testing.T) {
 	}
 }
 
-func TestActionCellRunsSelectedActionAndClearsSelection(t *testing.T) {
+func TestActionCellRunsSelectedActionAndClearsSelection(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
 	startTestApp(t)
 	cell := NewActionCell()
 	calls := 0
@@ -58,7 +58,7 @@ func TestActionCellRunsSelectedActionAndClearsSelection(t *testing.T) {
 	}
 }
 
-func TestActionSelectIgnoresResetEventWithoutRecursing(t *testing.T) {
+func TestActionSelectIgnoresResetEventWithoutRecursing(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
 	startTestApp(t)
 	calls := 0
 	selector := NewActionSelect([]string{"Remove"}, func(selected string) {
@@ -75,7 +75,7 @@ func TestActionSelectIgnoresResetEventWithoutRecursing(t *testing.T) {
 	}
 }
 
-func TestActionSelectIgnoresEmptyUnknownAndReentrantSelections(t *testing.T) {
+func TestActionSelectIgnoresEmptyUnknownAndReentrantSelections(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
 	startTestApp(t)
 	calls := 0
 	var selector *ActionSelect
@@ -94,7 +94,7 @@ func TestActionSelectIgnoresEmptyUnknownAndReentrantSelections(t *testing.T) {
 	}
 }
 
-func TestActionSelectRebindIsSilentAndUsesOnlyLatestCallback(t *testing.T) {
+func TestActionSelectRebindIsSilentAndUsesOnlyLatestCallback(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
 	startTestApp(t)
 	first, second := 0, 0
 	selector := NewActionSelect([]string{"View"}, func(string) { first++ })
@@ -107,7 +107,7 @@ func TestActionSelectRebindIsSilentAndUsesOnlyLatestCallback(t *testing.T) {
 	}
 }
 
-func TestActionSelectCannotDispatchWhileDisabledOrHidden(t *testing.T) {
+func TestActionSelectCannotDispatchWhileDisabledOrHidden(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
 	startTestApp(t)
 	calls := 0
 	selector := NewActionSelect([]string{"Remove"}, func(string) { calls++ })
@@ -123,7 +123,7 @@ func TestActionSelectCannotDispatchWhileDisabledOrHidden(t *testing.T) {
 	}
 }
 
-func TestActionSelectRecoversDispatchStateAfterCallbackPanic(t *testing.T) {
+func TestActionSelectRecoversDispatchStateAfterCallbackPanic(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
 	startTestApp(t)
 	selector := NewActionSelect([]string{"Run"}, func(string) { panic("boom") })
 	func() {
@@ -142,7 +142,7 @@ func TestActionSelectRecoversDispatchStateAfterCallbackPanic(t *testing.T) {
 	}
 }
 
-func TestActionCellRebindDoesNotRetainRecycledRowCallback(t *testing.T) {
+func TestActionCellRebindDoesNotRetainRecycledRowCallback(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
 	startTestApp(t)
 	cell := NewActionCell()
 	first, second := 0, 0
@@ -155,7 +155,7 @@ func TestActionCellRebindDoesNotRetainRecycledRowCallback(t *testing.T) {
 	}
 }
 
-func TestConfiguredRowTableUsesResizableNativeHeadersAndTogglesSort(t *testing.T) {
+func TestConfiguredRowTableUsesResizableNativeHeadersAndTogglesSort(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
 	startTestApp(t)
 	table := NewRowTable(func() (int, int) { return 1, 2 }, func() framework.CanvasObject { return NewActionCell() }, func(widget.TableCellID, framework.CanvasObject) {})
 	var directions []SortDirection

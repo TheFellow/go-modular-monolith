@@ -602,7 +602,6 @@ func (v *View) rebuildSubstituteControls(index int, state State) {
 	if len(selected) > 0 {
 		pills := make([]framework.CanvasObject, 0, len(selected))
 		for _, id := range selected {
-			id := id
 			label := ingredientName(state.Ingredients, id)
 			if state.Mode == Viewing {
 				pills = append(pills, ui.TagPills([]string{label}))

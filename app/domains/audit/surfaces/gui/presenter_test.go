@@ -172,9 +172,8 @@ func TestPresenterSnapshotsAreDefensiveAndTouchesSorted(t *testing.T) {
 	testutil.Ok(t, err)
 	presenter := auditPresenter(fixture)
 	presenter.Refresh()
-	state := presenter.State()
 	presenter.Select(0)
-	state = presenter.State()
+	state := presenter.State()
 	if state.Selected == nil || state.Selected.Entry.ID.String() == "" || len(state.Selected.Touches) == 0 {
 		t.Fatalf("detail incomplete: %#v", state.Selected)
 	}

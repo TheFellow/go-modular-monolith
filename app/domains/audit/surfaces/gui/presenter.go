@@ -2,7 +2,6 @@
 package gui
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -364,7 +363,4 @@ func formatDuration(start, completed time.Time) string {
 		return ""
 	}
 	return completed.Sub(start).Round(time.Microsecond).String()
-}
-func summary(row Row) string {
-	return fmt.Sprintf("%s  %s", formatTime(row.Entry.StartedAt), row.Entry.Action)
 }

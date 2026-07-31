@@ -32,7 +32,7 @@ func TestStandardListPageComposesDeclaredRegions(t *testing.T) {
 	}
 }
 
-func TestEmptyCollectionIsIntentionalAndUsesExplicitIcon(t *testing.T) {
+func TestEmptyCollectionIsIntentionalAndUsesExplicitIcon(t *testing.T) { //nolint:paralleltest // Fyne app and driver state is process-global.
 	app := test.NewApp()
 	t.Cleanup(app.Quit)
 	empty := gui.EmptyCollection(gui.IconEmpty, "No ingredients found", "Adjust the filter.")
@@ -41,7 +41,7 @@ func TestEmptyCollectionIsIntentionalAndUsesExplicitIcon(t *testing.T) {
 	}
 }
 
-func TestDetailFormGivesEveryFieldTheSameWidth(t *testing.T) {
+func TestDetailFormGivesEveryFieldTheSameWidth(t *testing.T) { //nolint:paralleltest // Fyne app and driver state is process-global.
 	app := test.NewApp()
 	t.Cleanup(app.Quit)
 	first := gui.DetailField("Short", widget.NewEntry())
