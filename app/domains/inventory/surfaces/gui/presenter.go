@@ -51,6 +51,9 @@ type Row struct {
 	Quantity   string
 	Cost       string
 	Status     string
+	CanAdjust  bool
+	CanSet     bool
+	CanTag     bool
 }
 
 type Form struct {
@@ -133,7 +136,12 @@ func (p *Presenter) Load() {
 			if ingredient == nil {
 				return loadResult{}, apperrors.Internalf("ingredient %s missing", item.IngredientID)
 			}
-			rows = append(rows, makeRow(*item, *ingredient, threshold))
+			row := makeRow(*item, *ingredient, threshold)
+			principal, resource := p.app.Context().Principal(), item.CedarEntity()
+			row.CanAdjust = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionAdjust, resource) == nil
+			row.CanSet = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionSet, resource) == nil
+			row.CanTag = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionTag, resource) == nil
+			rows = append(rows, row)
 		}
 		return loadResult{rows: rows, next: page.Next}, nil
 	}, func(result toolkit.LoadState[loadResult]) {

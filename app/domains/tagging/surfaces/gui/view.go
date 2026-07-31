@@ -50,25 +50,26 @@ func NewView(p *Presenter) *View {
 	v := &View{presenter: p, state: p.State()}
 	bar := ui.NewSingleRowFilterBar(ControlSearch+".summary", ControlSearch+".summary.apply", "Filter tags by key or value", "", nil, nil, func(expression string) { p.Search(expression) })
 	v.search, v.apply = bar.Expression, bar.Apply
-	columns := []string{"Tag", "Total", "Drinks", "Ingredients", "Inventory", "Menus", "Orders"}
+	columns := []string{"Tag", "Total", "Drinks", "Ingredients", "Inventory", "Menus", "Orders", "Actions"}
 	v.list = widget.NewTable(func() (int, int) { return len(v.state.VisibleSummaries) + 1, len(columns) }, func() framework.CanvasObject {
-		label := widget.NewLabel("")
-		label.Truncation = framework.TextTruncateEllipsis
-		return label
+		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
-		label := object.(*widget.Label)
+		cell := object
 		if id.Row == 0 {
-			label.TextStyle = framework.TextStyle{Bold: true}
-			label.SetText(columns[id.Col])
+			ui.ShowCellText(cell, columns[id.Col], true)
 			return
 		}
-		label.TextStyle = framework.TextStyle{}
 		r := v.state.VisibleSummaries[id.Row-1]
 		values := []string{r.Tag, fmt.Sprint(r.Total), fmt.Sprint(r.Drinks), fmt.Sprint(r.Ingredients), fmt.Sprint(r.Inventory), fmt.Sprint(r.Menus), fmt.Sprint(r.Orders)}
-		label.SetText(values[id.Col])
+		if id.Col == len(columns)-1 {
+			index := id.Row - 1
+			ui.ShowCellActions(cell, []ui.RowAction{{Label: "View", Run: func() { p.SelectSummary(index) }}})
+			return
+		}
+		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 {
+		if id.Row > 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
 			p.SelectSummary(id.Row - 1)
 		}
@@ -76,6 +77,7 @@ func NewView(p *Presenter) *View {
 	for i, width := range []float32{260, 70, 80, 100, 90, 70, 70} {
 		v.list.SetColumnWidth(i, width)
 	}
+	v.list.SetColumnWidth(7, 120)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No active tag usage", "Adjust the filter or tag an active entity to begin discovery.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	add := ui.WithIcon(ui.NewButton(ControlAdd+".list", "Tag entity", func() { p.Start(Add) }), ui.IconTag)

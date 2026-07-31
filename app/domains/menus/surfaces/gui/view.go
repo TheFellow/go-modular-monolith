@@ -102,34 +102,43 @@ func NewView(p *Presenter) *View {
 	v.applyFilter = bar.Apply
 	v.descriptionHelp = widget.NewLabel("")
 	v.descriptionHelp.Hide()
-	columns := []string{"Name", "Status", "Items", "Created", "Published", "Tags"}
+	columns := []string{"Name", "Status", "Items", "Created", "Published", "Tags", "Actions"}
 	v.list = widget.NewTable(func() (int, int) { return len(v.state.Items) + 1, len(columns) }, func() framework.CanvasObject {
-		l := widget.NewLabel("")
-		l.Truncation = framework.TextTruncateEllipsis
-		return l
+		return ui.NewActionCell()
 	}, func(id widget.TableCellID, o framework.CanvasObject) {
-		l := o.(*widget.Label)
+		cell := o
 		if id.Row == 0 {
-			l.TextStyle = framework.TextStyle{Bold: true}
-			l.SetText(columns[id.Col])
+			ui.ShowCellText(cell, columns[id.Col], true)
 			return
 		}
-		l.TextStyle = framework.TextStyle{}
 		m := v.state.Items[id.Row-1]
 		published := ""
 		if t, ok := m.PublishedAt.Unwrap(); ok {
 			published = t.Format(time.RFC3339)
 		}
 		values := []string{m.Name, string(m.Status), strconv.Itoa(len(m.Items)), formatTime(m.CreatedAt), published, m.Tags.Canonical().String()}
-		l.SetText(values[id.Col])
+		if id.Col == len(columns)-1 {
+			index := id.Row - 1
+			actions := []ui.RowAction{{Label: "View", Run: func() { p.Select(index) }}}
+			canPublish, canDraft := p.ListPermissions(index)
+			if canPublish {
+				actions = append(actions, ui.RowAction{Label: "Publish", Run: func() { p.Select(index); p.Publish() }})
+			}
+			if canDraft {
+				actions = append(actions, ui.RowAction{Label: "Return to draft", Run: func() { p.Select(index); p.ReturnToDraft() }})
+			}
+			ui.ShowCellActions(cell, actions)
+			return
+		}
+		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 {
+		if id.Row > 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
 			p.Select(id.Row - 1)
 		}
 	}
-	for i, w := range []float32{210, 100, 70, 190, 190, 190} {
+	for i, w := range []float32{210, 100, 70, 190, 190, 190, 140} {
 		v.list.SetColumnWidth(i, w)
 	}
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No menus found", "Adjust the filter or create a menu.")

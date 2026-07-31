@@ -13,6 +13,7 @@ import (
 	"time"
 
 	frameworktest "fyne.io/fyne/v2/test"
+	"fyne.io/fyne/v2/widget"
 
 	appcore "github.com/TheFellow/go-modular-monolith/app"
 	drinkmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
@@ -71,6 +72,25 @@ func TestListDetailNavigationPreservesBackAndResetsBreadcrumb(t *testing.T) {
 	testutil.Equals(t, p.State().Mode, Browsing)
 	testutil.Equals(t, p.State().Filter.Expression, "")
 	testutil.Equals(t, p.State().Filter.Limit, 100)
+}
+
+func TestActionsColumnDoesNotImplicitlySelectRow(t *testing.T) {
+	gui := frameworktest.NewApp()
+	defer gui.Quit()
+	f := testutil.NewFixture(t)
+	menu := testutil.CreateMenu(t, f, "Action menu")
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	p.state.Items = []*models.Menu{menu}
+	v := NewView(p)
+
+	v.list.Select(widget.TableCellID{Row: 1, Col: 6})
+	if p.State().Mode != Browsing {
+		t.Fatalf("actions cell implicitly navigated to mode %v", p.State().Mode)
+	}
+	v.list.Select(widget.TableCellID{Row: 1, Col: 0})
+	if p.State().Mode == Browsing {
+		t.Fatal("ordinary row cell did not navigate")
+	}
 }
 
 func TestReadOnlyActorGetsSelectableDetailWithoutMutationActions(t *testing.T) {

@@ -158,25 +158,26 @@ func NewView(p *Presenter) *View {
 	v.filterExpression = bar.Expression
 	v.filterBar = bar
 	filters := bar.Content
-	columns := []string{"Name", "Category", "Glass", "Ingredients", "Tags"}
+	columns := []string{"Name", "Category", "Glass", "Ingredients", "Tags", "Actions"}
 	v.list = widget.NewTable(func() (int, int) { return len(p.State().Items) + 1, len(columns) }, func() framework.CanvasObject {
-		label := widget.NewLabel("")
-		label.Truncation = framework.TextTruncateEllipsis
-		return label
+		return ui.NewActionCell()
 	}, func(id widget.TableCellID, o framework.CanvasObject) {
-		label := o.(*widget.Label)
+		cell := o
 		if id.Row == 0 {
-			label.TextStyle = framework.TextStyle{Bold: true}
-			label.SetText(columns[id.Col])
+			ui.ShowCellText(cell, columns[id.Col], true)
 			return
 		}
-		label.TextStyle = framework.TextStyle{}
 		item := p.State().Items[id.Row-1]
 		values := []string{item.Name, string(item.Category), string(item.Glass), strconv.Itoa(len(item.Recipe.Ingredients)), item.Tags.Canonical().String()}
-		label.SetText(values[id.Col])
+		if id.Col == len(columns)-1 {
+			index := id.Row - 1
+			ui.ShowCellActions(cell, []ui.RowAction{{Label: "View", Run: func() { p.Select(index) }}})
+			return
+		}
+		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 {
+		if id.Row > 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
 			p.Select(id.Row - 1)
 		}
@@ -186,6 +187,7 @@ func NewView(p *Presenter) *View {
 	v.list.SetColumnWidth(2, 110)
 	v.list.SetColumnWidth(3, 125)
 	v.list.SetColumnWidth(4, 190)
+	v.list.SetColumnWidth(5, 120)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New drink", p.StartCreate), ui.IconAdd))
 	v.previous = ui.WithIcon(ui.NewButton(ControlPrevious, "Previous", p.PreviousPage), ui.IconPrevious)
