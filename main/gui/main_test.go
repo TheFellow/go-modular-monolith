@@ -4,7 +4,32 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"fyne.io/fyne/v2"
 )
+
+func TestFyneDoMigrationPreservesMetadata(t *testing.T) {
+	t.Parallel()
+	metadata := withFyneDoMigration(fyne.AppMetadata{
+		ID:         applicationID,
+		Name:       "Mixology",
+		Migrations: map[string]bool{"other": true},
+	})
+	if metadata.ID != applicationID || metadata.Name != "Mixology" {
+		t.Fatalf("application metadata was not preserved: %#v", metadata)
+	}
+	if !metadata.Migrations["fyneDo"] || !metadata.Migrations["other"] {
+		t.Fatalf("migration metadata = %#v", metadata.Migrations)
+	}
+}
+
+func TestFyneDoMigrationInitializesMissingMigrationMetadata(t *testing.T) {
+	t.Parallel()
+	metadata := withFyneDoMigration(fyne.AppMetadata{})
+	if !metadata.Migrations["fyneDo"] {
+		t.Fatalf("migration metadata = %#v", metadata.Migrations)
+	}
+}
 
 func TestStartupConfigSelectsEverySupportedActor(t *testing.T) {
 	t.Parallel()

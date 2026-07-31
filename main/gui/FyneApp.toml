@@ -1,5 +1,8 @@
 Website = "https://thefellow.github.io/go-modular-monolith/"
 
+[Migrations]
+fyneDo = true
+
 [Details]
 Icon = "Icon.png"
 Name = "Mixology"
