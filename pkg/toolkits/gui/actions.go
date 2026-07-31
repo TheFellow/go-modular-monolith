@@ -28,42 +28,63 @@ func NewActionCell() *framework.Container {
 	actions := widget.NewSelect(nil, nil)
 	actions.PlaceHolder = "Actions"
 	actions.Hide()
-	return container.New(&rowCellLayout{}, label, actions, widget.NewSeparator())
+	pills := container.New(&compactPillRowLayout{})
+	pills.Hide()
+	return container.New(&rowCellLayout{}, label, actions, pills, widget.NewSeparator())
 }
 
-func actionCellParts(object framework.CanvasObject) (*widget.Label, *widget.Select) {
+func actionCellParts(object framework.CanvasObject) (*widget.Label, *widget.Select, *framework.Container) {
 	cell := object.(*framework.Container)
-	return cell.Objects[0].(*widget.Label), cell.Objects[1].(*widget.Select)
+	return cell.Objects[0].(*widget.Label), cell.Objects[1].(*widget.Select), cell.Objects[2].(*framework.Container)
 }
 
 type rowCellLayout struct{}
 
 func (*rowCellLayout) Layout(objects []framework.CanvasObject, size framework.Size) {
-	for _, object := range objects[:2] {
+	for _, object := range objects[:3] {
 		object.Move(framework.NewPos(0, 0))
 		object.Resize(size)
 	}
-	separator := objects[2]
+	separator := objects[3]
 	height := separator.MinSize().Height
 	separator.Move(framework.NewPos(0, size.Height-height))
 	separator.Resize(framework.NewSize(size.Width, height))
 }
 
 func (*rowCellLayout) MinSize(objects []framework.CanvasObject) framework.Size {
-	return objects[0].MinSize().Max(objects[1].MinSize())
+	return objects[0].MinSize().Max(objects[1].MinSize()).Max(objects[2].MinSize())
 }
 
 func ShowCellText(object framework.CanvasObject, text string, header bool) {
-	label, actions := actionCellParts(object)
+	label, actions, pills := actionCellParts(object)
 	actions.Hide()
+	pills.Hide()
 	label.Show()
 	label.TextStyle = framework.TextStyle{Bold: header}
 	label.SetText(text)
 }
 
-func ShowCellActions(object framework.CanvasObject, rowActions []RowAction) {
-	label, actions := actionCellParts(object)
+// ShowCellTags renders a canonical CSV tag collection as compact pills. The
+// container is reused because widget.Table recycles cells while scrolling.
+func ShowCellTags(object framework.CanvasObject, value string) {
+	label, actions, pills := actionCellParts(object)
 	label.Hide()
+	actions.Hide()
+	pills.RemoveAll()
+	for _, tag := range parseTagCSV(value) {
+		pills.Add(compactTagPill(tag))
+	}
+	if len(pills.Objects) == 0 {
+		pills.Add(widget.NewLabel(""))
+	}
+	pills.Show()
+	pills.Refresh()
+}
+
+func ShowCellActions(object framework.CanvasObject, rowActions []RowAction) {
+	label, actions, pills := actionCellParts(object)
+	label.Hide()
+	pills.Hide()
 	actions.Show()
 	actions.Options = actions.Options[:0]
 	byLabel := make(map[string]func(), len(rowActions))
@@ -93,6 +114,12 @@ func ShowCellActions(object framework.CanvasObject, rowActions []RowAction) {
 
 // ActionSelector exposes the selector for focused interaction tests.
 func ActionSelector(object framework.CanvasObject) *widget.Select {
-	_, actions := actionCellParts(object)
+	_, actions, _ := actionCellParts(object)
 	return actions
+}
+
+// CellTagPills exposes the recycled pill container for focused tests.
+func CellTagPills(object framework.CanvasObject) *framework.Container {
+	_, _, pills := actionCellParts(object)
+	return pills
 }

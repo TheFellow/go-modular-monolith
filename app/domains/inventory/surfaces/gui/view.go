@@ -99,6 +99,10 @@ func NewView(p *Presenter) *View {
 			ui.ShowCellActions(cell, actions)
 			return
 		}
+		if id.Col == 6 {
+			ui.ShowCellTags(cell, values[id.Col])
+			return
+		}
 		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {

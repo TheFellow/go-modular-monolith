@@ -15,11 +15,32 @@ func TestRowTableHidesNativeCellSeparators(t *testing.T) {
 		t.Fatal("row table should hide native horizontal and vertical cell separators")
 	}
 	cell := NewActionCell()
-	if len(cell.Objects) != 3 {
-		t.Fatalf("row cell objects = %d, want label, actions, and horizontal separator", len(cell.Objects))
+	if len(cell.Objects) != 4 {
+		t.Fatalf("row cell objects = %d, want label, actions, pills, and horizontal separator", len(cell.Objects))
 	}
-	if _, ok := cell.Objects[2].(*widget.Separator); !ok {
-		t.Fatalf("row cell trailing object = %T, want *widget.Separator", cell.Objects[2])
+	if _, ok := cell.Objects[3].(*widget.Separator); !ok {
+		t.Fatalf("row cell trailing object = %T, want *widget.Separator", cell.Objects[3])
+	}
+}
+
+func TestActionCellRecyclesSafelyAcrossTextTagsAndActions(t *testing.T) {
+	startTestApp(t)
+	cell := NewActionCell()
+	ShowCellTags(cell, `featured,"region=west, coast"`)
+	if CellTagPills(cell).Hidden || len(CellTagPills(cell).Objects) != 2 {
+		t.Fatalf("tag mode hidden=%v pills=%d", CellTagPills(cell).Hidden, len(CellTagPills(cell).Objects))
+	}
+	ShowCellText(cell, "Name", false)
+	if !CellTagPills(cell).Hidden || !cell.Objects[0].Visible() {
+		t.Fatal("text mode retained recycled pill content")
+	}
+	ShowCellActions(cell, []RowAction{{Label: "View"}})
+	if !CellTagPills(cell).Hidden || cell.Objects[0].Visible() || ActionSelector(cell).Hidden {
+		t.Fatal("action mode retained recycled text or pill content")
+	}
+	ShowCellTags(cell, "new")
+	if !ActionSelector(cell).Hidden || len(CellTagPills(cell).Objects) != 1 {
+		t.Fatal("pill mode retained recycled action content")
 	}
 }
 

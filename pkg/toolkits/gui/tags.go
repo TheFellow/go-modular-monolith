@@ -298,14 +298,61 @@ func TagPills(values []string) framework.CanvasObject {
 // TagPillsCSV renders the canonical comma-separated representation used by
 // domain forms without making the GUI toolkit depend on the tag domain.
 func TagPillsCSV(value string) framework.CanvasObject {
-	parts := strings.Split(value, ",")
-	values := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if part = strings.TrimSpace(part); part != "" {
-			values = append(values, part)
+	return TagPills(parseTagCSV(value))
+}
+
+func compactTagPill(value string) framework.CanvasObject {
+	label := widget.NewLabel(value)
+	label.Truncation = framework.TextTruncateEllipsis
+	background := canvas.NewRectangle(theme.Color(theme.ColorNameInputBackground))
+	background.CornerRadius = 10
+	background.StrokeWidth = 1
+	background.StrokeColor = withAlpha(theme.Color(theme.ColorNamePrimary), 150)
+	return container.New(&compactPillLayout{}, background, label)
+}
+
+type compactPillLayout struct{}
+
+func (*compactPillLayout) MinSize(objects []framework.CanvasObject) framework.Size {
+	label := objects[1].(*widget.Label)
+	measured := framework.MeasureText(label.Text, theme.TextSize(), label.TextStyle)
+	// Fyne's Label renderer reserves more horizontal inset than MeasureText
+	// reports. Leave enough room for short tags to render in full while still
+	// bounding long values to their table column.
+	return framework.NewSize(min(measured.Width+40, 160), measured.Height+2)
+}
+
+func (*compactPillLayout) Layout(objects []framework.CanvasObject, size framework.Size) {
+	objects[0].Move(framework.NewPos(0, 2))
+	objects[0].Resize(framework.NewSize(size.Width, max(0, size.Height-4)))
+	objects[1].Move(framework.NewPos(6, 0))
+	objects[1].Resize(framework.NewSize(max(0, size.Width-12), size.Height))
+}
+
+// compactPillRowLayout keeps every pill inside its table cell. Long values are
+// ellipsized and remaining pills share only the width that is still available.
+type compactPillRowLayout struct{}
+
+func (*compactPillRowLayout) MinSize([]framework.CanvasObject) framework.Size {
+	return framework.NewSize(0, theme.Size(theme.SizeNameInlineIcon))
+}
+
+func (*compactPillRowLayout) Layout(objects []framework.CanvasObject, size framework.Size) {
+	remaining := size.Width
+	x := float32(0)
+	for i, object := range objects {
+		gap := float32(0)
+		if i > 0 {
+			gap = tagPillGap
 		}
+		remaining -= gap
+		share := max(0, remaining/float32(len(objects)-i))
+		width := min(object.MinSize().Width, share)
+		object.Move(framework.NewPos(x+gap, 0))
+		object.Resize(framework.NewSize(width, size.Height))
+		x += gap + width
+		remaining -= width
 	}
-	return TagPills(values)
 }
 
 func withAlpha(value color.Color, alpha uint8) color.Color {

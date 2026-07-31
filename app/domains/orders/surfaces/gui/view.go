@@ -170,6 +170,10 @@ func (v *View) browser(s State) framework.CanvasObject {
 			ui.ShowCellActions(cell, actions)
 			return
 		}
+		if id.Col == 8 {
+			ui.ShowCellTags(cell, values[id.Col])
+			return
+		}
 		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
