@@ -32,6 +32,15 @@ func TestStandardListPageComposesDeclaredRegions(t *testing.T) {
 	}
 }
 
+func TestEmptyCollectionIsIntentionalAndUsesExplicitIcon(t *testing.T) {
+	app := test.NewApp()
+	t.Cleanup(app.Quit)
+	empty := gui.EmptyCollection(gui.IconEmpty, "No ingredients found", "Adjust the filter.")
+	if !containsText(empty, "No ingredients found") || !containsText(empty, "Adjust the filter.") {
+		t.Fatal("empty collection omitted its guidance")
+	}
+}
+
 func containsText(object fyne.CanvasObject, want string) bool {
 	switch typed := object.(type) {
 	case *widget.Label:

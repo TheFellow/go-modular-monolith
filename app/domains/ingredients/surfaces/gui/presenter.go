@@ -3,6 +3,7 @@ package gui
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -12,10 +13,12 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
+	ingredientauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	pkgAuthz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
@@ -26,6 +29,7 @@ type Mode uint8
 
 const (
 	Browse Mode = iota
+	Viewing
 	Create
 	Edit
 	Tags
@@ -53,6 +57,12 @@ type State struct {
 	Form         Form
 	Err          error
 	Submitting   bool
+	Dirty        bool
+	CanUpdate    bool
+	CanDelete    bool
+	CanTag       bool
+	CanCreate    bool
+	FormInstance uint64
 }
 
 type Presenter struct {
@@ -74,6 +84,7 @@ type loadResult struct {
 
 func NewPresenter(session *app.Session, executor toolkit.Executor, dispatcher toolkit.Dispatcher, dialogs toolkit.Dialogs) *Presenter {
 	p := &Presenter{app: session, executor: executor, dispatcher: dispatcher, dialogs: dialogs, state: State{Limit: paging.DefaultLimit}}
+	p.state.CanCreate = pkgAuthz.AuthorizeWithEntity(session.Context().Principal(), ingredientauthz.ActionCreate, (models.Ingredient{}).CedarEntity()) == nil
 	p.loads = toolkit.NewLatestRequest[loadResult](executor, dispatcher)
 	p.mutation = toolkit.NewSubmission(executor, dispatcher)
 	return p
@@ -111,10 +122,6 @@ func (p *Presenter) Load() {
 			selected := selectedID(p.state.Selected)
 			p.state.Items, p.state.Next = result.Value.items, result.Value.next
 			p.state.Selected = findIngredient(p.state.Items, selected)
-			if p.state.Selected == nil && len(p.state.Items) > 0 {
-				value := p.state.Items[0]
-				p.state.Selected = &value
-			}
 		}
 		p.publishLocked()
 		p.mu.Unlock()
@@ -170,12 +177,70 @@ func (p *Presenter) PreviousPage() {
 func (p *Presenter) Select(id entity.IngredientID) {
 	p.mu.Lock()
 	p.state.Selected = findIngredient(p.state.Items, id)
+	if p.state.Selected != nil {
+		p.state.FormInstance++
+		p.state.Form = formFromIngredient(p.state.Selected)
+		p.state.CanUpdate = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), ingredientauthz.ActionUpdate, p.state.Selected.CedarEntity()) == nil
+		p.state.CanDelete = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), ingredientauthz.ActionDelete, p.state.Selected.CedarEntity()) == nil
+		p.state.CanTag = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), ingredientauthz.ActionTag, p.state.Selected.CedarEntity()) == nil
+		if p.state.CanUpdate {
+			p.state.Mode = Edit
+		} else {
+			p.state.Mode = Viewing
+		}
+		p.state.Dirty = false
+	}
 	p.publishLocked()
 	p.mu.Unlock()
 }
 
+// Back returns to the exact catalog state from which detail was opened.
+func (p *Presenter) Back() { p.leaveDetail(false) }
+
+// ResetList returns to an unfiltered first page, for breadcrumbs and main navigation.
+func (p *Presenter) ResetList() { p.leaveDetail(true) }
+
+func (p *Presenter) leaveDetail(reset bool) {
+	p.mu.Lock()
+	if p.state.Submitting {
+		p.mu.Unlock()
+		return
+	}
+	proceed := func() {
+		p.mu.Lock()
+		if reset {
+			p.state.Category, p.state.Expression, p.state.Limit = "", "", paging.DefaultLimit
+			p.state.Cursor, p.state.Next, p.state.History = "", "", nil
+		}
+		p.state.Mode, p.state.Dirty, p.state.Err = Browse, false, nil
+		p.publishLocked()
+		p.mu.Unlock()
+		if reset {
+			p.Load()
+		}
+	}
+	dirty := p.state.Dirty
+	p.mu.Unlock()
+	if dirty {
+		if p.dialogs == nil {
+			return
+		}
+		p.dialogs.Confirm("Discard changes?", "Discard unsaved ingredient changes?", func(ok bool) {
+			if ok {
+				proceed()
+			}
+		})
+		return
+	}
+	proceed()
+}
+
 func (p *Presenter) StartCreate() {
 	p.mu.Lock()
+	if !p.state.CanCreate {
+		p.mu.Unlock()
+		return
+	}
 	p.state.Mode, p.state.Form, p.state.Err = Create, Form{}, nil
 	p.publishLocked()
 	p.mu.Unlock()
@@ -184,8 +249,13 @@ func (p *Presenter) StartCreate() {
 func (p *Presenter) StartEdit() {
 	p.mu.Lock()
 	if selected := p.state.Selected; selected != nil {
-		p.state.Mode = Edit
-		p.state.Form = Form{Name: selected.Name, Category: selected.Category, Unit: selected.Unit, Description: selected.Description, Tags: selected.Tags.Canonical().String(), ReplaceTags: true}
+		p.state.CanUpdate = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), ingredientauthz.ActionUpdate, selected.CedarEntity()) == nil
+		if p.state.CanUpdate {
+			p.state.Mode = Edit
+		} else {
+			p.state.Mode = Viewing
+		}
+		p.state.Form = formFromIngredient(selected)
 		p.state.Err = nil
 	}
 	p.publishLocked()
@@ -205,9 +275,21 @@ func (p *Presenter) StartTags() {
 
 func (p *Presenter) Cancel() {
 	p.mu.Lock()
-	if !p.state.Submitting {
-		p.state.Mode, p.state.Err = Browse, nil
+	if !p.state.Submitting && p.state.Mode == Edit && p.state.Selected != nil {
+		p.state.Form = formFromIngredient(p.state.Selected)
+		p.state.FormInstance++
+		p.state.Dirty, p.state.Err = false, nil
+	} else if !p.state.Submitting {
+		p.state.Mode, p.state.Err, p.state.Dirty = Browse, nil, false
 	}
+	p.publishLocked()
+	p.mu.Unlock()
+}
+
+func (p *Presenter) SetForm(form Form) {
+	p.mu.Lock()
+	p.state.Form = form
+	p.state.Dirty = p.state.Selected != nil && !reflect.DeepEqual(form, formFromIngredient(p.state.Selected))
 	p.publishLocked()
 	p.mu.Unlock()
 }
@@ -216,6 +298,17 @@ func (p *Presenter) Submit(form Form) bool {
 	p.mu.Lock()
 	mode, selected := p.state.Mode, p.state.Selected
 	p.state.Form = form
+	if mode == Viewing {
+		p.mu.Unlock()
+		return false
+	}
+	if mode == Edit && selected != nil {
+		p.state.Dirty = !reflect.DeepEqual(form, formFromIngredient(selected))
+	}
+	if mode == Edit && (!p.state.CanUpdate || !p.state.Dirty) {
+		p.mu.Unlock()
+		return false
+	}
 	err := validateForm(mode, form)
 	if err != nil {
 		p.state.Err = toolkit.PresentError(err)
@@ -246,35 +339,54 @@ func (p *Presenter) Submit(form Form) bool {
 			})
 		case Edit:
 			if selected == nil {
-				return fmt.Errorf("ingredient is required")
+				return apperrors.Invalidf("ingredient is required")
 			}
 			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Ingredient, error) {
 				return p.app.Ingredients.Update(ctx, &models.Ingredient{ID: selected.ID, Name: strings.TrimSpace(form.Name), Category: category, Unit: unit, Description: strings.TrimSpace(form.Description)})
 			})
 		case Tags:
 			if selected == nil {
-				return fmt.Errorf("ingredient is required")
+				return apperrors.Invalidf("ingredient is required")
 			}
 			var desired tag.Tags
 			desired, err = tag.ParseCollection(form.Tags)
 			if err == nil {
 				_, err = p.app.Tags.Replace(p.app.Context(), selected.EntityUID(), desired)
 			}
-		case Browse:
-			err = fmt.Errorf("ingredient form is not active")
+		case Browse, Viewing:
+			err = apperrors.FailedPreconditionf("ingredient form is not active")
 		}
 		return err
 	}, func(err error) {
 		p.mu.Lock()
 		p.state.Submitting = false
 		p.state.Err = toolkit.PresentError(err)
-		if err == nil {
-			p.state.Mode = Browse
-		}
+		stayDetail := err == nil && mode == Edit && selected != nil
 		p.publishLocked()
 		p.mu.Unlock()
 		toolkit.ShowPresentation(p.dialogs, err)
-		if err == nil {
+		if stayDetail {
+			updated, getErr := p.app.Ingredients.Get(p.app.Context(), selected.ID)
+			p.mu.Lock()
+			if getErr != nil {
+				p.state.Err = toolkit.PresentError(getErr)
+			} else {
+				p.state.Selected = updated
+				p.state.Form = formFromIngredient(updated)
+				p.state.Dirty = false
+				for i := range p.state.Items {
+					if p.state.Items[i].ID == updated.ID {
+						p.state.Items[i] = *updated
+					}
+				}
+			}
+			p.publishLocked()
+			p.mu.Unlock()
+		} else if err == nil {
+			p.mu.Lock()
+			p.state.Mode, p.state.Dirty = Browse, false
+			p.publishLocked()
+			p.mu.Unlock()
 			p.Load()
 		}
 	})
@@ -329,6 +441,9 @@ func (p *Presenter) delete(id entity.IngredientID) bool {
 	}, func(err error) {
 		p.mu.Lock()
 		p.state.Submitting, p.state.Err = false, toolkit.PresentError(err)
+		if err == nil {
+			p.state.Mode, p.state.Dirty, p.state.Selected = Browse, false, nil
+		}
 		p.publishLocked()
 		p.mu.Unlock()
 		toolkit.ShowPresentation(p.dialogs, err)
@@ -399,6 +514,13 @@ func cloneState(state State) State {
 		state.Selected = &selected
 	}
 	return state
+}
+
+func formFromIngredient(value *models.Ingredient) Form {
+	if value == nil {
+		return Form{}
+	}
+	return Form{Name: value.Name, Category: value.Category, Unit: value.Unit, Description: value.Description, Tags: value.Tags.Canonical().String(), ReplaceTags: true}
 }
 
 func selectedID(value *models.Ingredient) entity.IngredientID {

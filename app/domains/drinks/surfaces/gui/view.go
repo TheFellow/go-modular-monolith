@@ -186,13 +186,13 @@ func NewView(p *Presenter) *View {
 	v.list.SetColumnWidth(2, 110)
 	v.list.SetColumnWidth(3, 125)
 	v.list.SetColumnWidth(4, 190)
-	v.refresh = ui.NewButton(ControlRefresh, "Refresh", p.Refresh)
-	v.create = ui.Primary(ui.NewButton(ControlCreate, "New drink", p.StartCreate))
-	v.previous = ui.NewButton(ControlPrevious, "Previous", p.PreviousPage)
-	v.next = ui.NewButton(ControlNext, "Next", p.NextPage)
+	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
+	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New drink", p.StartCreate), ui.IconAdd))
+	v.previous = ui.WithIcon(ui.NewButton(ControlPrevious, "Previous", p.PreviousPage), ui.IconPrevious)
+	v.next = ui.WithIcon(ui.NewButton(ControlNext, "Next", p.NextPage), ui.IconNext)
 	edit := ui.NewButton(ControlEdit, "Edit", p.StartEdit)
 	tagsAction := ui.NewButton(ControlTags, "Tags", p.StartTags)
-	deleteAction := ui.Destructive(ui.NewButton(ControlDelete, "Delete", p.Delete))
+	deleteAction := ui.Destructive(ui.WithIcon(ui.NewButton(ControlDelete, "Delete", p.Delete), ui.IconDelete))
 	v.detailActions = []*ui.SemanticButton{tagsAction, deleteAction}
 	v.status = widget.NewLabel("")
 	v.browse = ui.StandardListPage(ui.ListPage{
@@ -212,8 +212,8 @@ func NewView(p *Presenter) *View {
 	v.mutationTags = ui.NewEntry(ControlTagValues + ".mutation")
 	v.formStatus = widget.NewLabel("")
 	v.recipeBox = container.NewVBox()
-	v.save = ui.NewButton(ControlSave, "Save", func() { v.readForm(); p.Save() })
-	v.cancel = ui.NewButton(ControlCancel, "Cancel", p.Cancel)
+	v.save = ui.WithIcon(ui.NewButton(ControlSave, "Save", func() { v.readForm(); p.Save() }), ui.IconSave)
+	v.cancel = ui.WithIcon(ui.NewButton(ControlCancel, "Cancel", p.Cancel), ui.IconCancel)
 	v.addIngredient = ui.NewButton(ControlAddIngredient, "Add ingredient", func() {
 		v.readForm()
 		f := p.State().Form
@@ -223,7 +223,7 @@ func NewView(p *Presenter) *View {
 	fields := container.NewVBox(field("Name", v.name), field("Category", v.category), field("Glass", v.glass), field("Description", v.description), widget.NewLabelWithStyle("Recipe", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.recipeBox, v.addIngredient, field("Steps (one per line)", v.steps), field("Garnish", v.garnish), field("Tags (complete set)", v.mutationTags))
 	v.detailTitle = widget.NewLabel("Drink")
 	v.crumbName = widget.NewLabel("")
-	back := ui.NewButton(ControlBack, "Back", p.Back)
+	back := ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack)
 	crumb := ui.NewButton(ControlBreadcrumb, "Drinks", p.ResetList)
 	// Retain semantic command targets for global shortcuts and compatibility;
 	// row selection already opens an editable detail when permitted.

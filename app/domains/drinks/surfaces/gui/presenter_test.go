@@ -166,11 +166,10 @@ func TestWidgetCreateEditTagsAndDeletePersist(t *testing.T) {
 	testutil.AuditTouches(t, f.LatestAuditEntry(authz.ActionDelete), created.EntityUID())
 }
 
-func TestValidationAndPermissionFailuresRetainFormWithoutMutation(t *testing.T) {
+func TestValidationRetainsFormAndReadOnlyActorCannotMutate(t *testing.T) {
 	f, ingredient, drink := fixtureDrink(t, "Wine")
 	dialogs := &fynetest.Dialogs{}
-	anonymous := appcore.NewSession(f.ActorContext("anonymous"), f.App.App)
-	p := NewPresenter(anonymous, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: dialogs})
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: dialogs})
 	p.state.Items = []*models.Drink{drink}
 	p.Select(0)
 	p.StartEdit()
@@ -183,19 +182,20 @@ func TestValidationAndPermissionFailuresRetainFormWithoutMutation(t *testing.T) 
 		t.Fatal("expected validation failure")
 	}
 	testutil.ErrorIsInvalid(t, p.State().Err)
+	anonymous := appcore.NewSession(f.ActorContext("anonymous"), f.App.App)
+	readOnly := NewPresenter(anonymous, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: dialogs})
+	readOnly.state.Items = []*models.Drink{drink}
+	readOnly.Select(0)
+	testutil.Equals(t, readOnly.State().Mode, Viewing)
+	testutil.Equals(t, readOnly.State().CanUpdate, false)
+	form = readOnly.State().Form
 	form.Name = "Forbidden"
-	p.SetForm(form)
-	testutil.Equals(t, p.Save(), true)
-	testutil.Equals(t, p.State().Mode, Editing)
-	if p.State().Err == nil {
-		t.Fatal("expected permission failure")
-	}
+	readOnly.SetForm(form)
+	testutil.Equals(t, readOnly.Save(), false)
 	got, err := f.Drinks.Get(f.OwnerContext(), drink.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, got.Name, "Wine")
-	testutil.Equals(t, p.State().Form.Name, "Forbidden")
-	// Validation remains inline; only the permission failure opens a dialog.
-	testutil.Equals(t, len(dialogs.Errors()), 1)
+	testutil.Equals(t, len(dialogs.Errors()), 0)
 	_ = ingredient
 }
 

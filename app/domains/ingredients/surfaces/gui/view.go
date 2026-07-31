@@ -2,8 +2,8 @@ package gui
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
-	"strings"
 
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -11,7 +11,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 const (
@@ -31,233 +31,259 @@ const (
 	ControlMutationTags = "ingredient-form-mutation-tags"
 	ControlSave         = "ingredient-form-save"
 	ControlCancel       = "ingredient-form-cancel"
+	ControlBack         = "ingredient-detail-back"
+	ControlBreadcrumb   = "ingredient-detail-breadcrumb"
 )
 
 type View struct {
-	presenter *Presenter
-	root      *framework.Container
-
-	expression                                                       *toolkit.SemanticEntry
-	limit                                                            *widget.Select
-	name                                                             *toolkit.SemanticEntry
-	description                                                      *toolkit.SemanticEntry
-	tags                                                             *toolkit.SemanticEntry
-	formCategory                                                     *widget.Select
-	formUnit                                                         *widget.Select
-	save                                                             *toolkit.SemanticButton
-	refresh, create, edit, delete, tagAction, cancel, previous, next *toolkit.SemanticButton
-	rows                                                             map[string]*toolkit.SemanticButton
+	presenter                                     *Presenter
+	root, browse, formPanel, tagsPanel            *framework.Container
+	list                                          *widget.Table
+	listStack                                     *framework.Container
+	empty                                         *framework.Container
+	expression                                    *ui.SemanticEntry
+	limit, formCategory, formUnit                 *widget.Select
+	name, description, tags                       *ui.SemanticEntry
+	tagOnly                                       *ui.SemanticEntry
+	save, cancel, refresh, create, previous, next *ui.SemanticButton
+	tagSave, tagCancel                            *ui.SemanticButton
+	tagAction, delete                             *ui.SemanticButton
+	status, formStatus, detailTitle, crumbName    *widget.Label
+	tagStatus                                     *widget.Label
+	rendering                                     bool
+	renderedMode                                  Mode
+	renderedForm                                  Form
+	renderedInstance                              uint64
+	state                                         State
 }
 
-var _ toolkit.View = (*View)(nil)
-var _ toolkit.Activated = (*View)(nil)
+var _ ui.View = (*View)(nil)
+var _ ui.Activated = (*View)(nil)
 
-func NewView(presenter *Presenter) *View {
-	v := &View{presenter: presenter, root: container.NewStack()}
-	presenter.OnChange(v.render)
-	v.render(presenter.Snapshot())
+func NewView(p *Presenter) *View {
+	v := &View{presenter: p}
+	v.limit = widget.NewSelect([]string{"25", "50", "100"}, nil)
+	v.limit.SetSelected(strconv.Itoa(p.Snapshot().Limit))
+	presets := []ui.FilterOption{{Label: "Any category"}}
+	for _, category := range models.AllCategories() {
+		presets = append(presets, ui.FilterOption{Label: string(category), Expression: fmt.Sprintf(`category == %q`, category)})
+	}
+	bar := ui.NewSingleRowFilterBar(ControlFilter, ControlApplyFilter, `Filter ingredients (for example: name.contains("gin"))`, p.Snapshot().Expression,
+		[]ui.FilterPreset{{ID: "ingredients-filter-category", Placeholder: "Category", Options: presets}},
+		container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.limit), func(expression string) {
+			limit, _ := strconv.Atoi(v.limit.Selected)
+			p.Filter("", expression, limit)
+		})
+	v.expression = bar.Expression
+	v.state = p.Snapshot()
+	columns := []string{"Name", "Category", "Unit", "Description", "Tags"}
+	v.list = widget.NewTable(func() (int, int) { return len(v.state.Items) + 1, len(columns) }, func() framework.CanvasObject {
+		label := widget.NewLabel("")
+		label.Truncation = framework.TextTruncateEllipsis
+		return label
+	}, func(id widget.TableCellID, object framework.CanvasObject) {
+		label := object.(*widget.Label)
+		if id.Row == 0 {
+			label.TextStyle = framework.TextStyle{Bold: true}
+			label.SetText(columns[id.Col])
+			return
+		}
+		label.TextStyle = framework.TextStyle{}
+		item := v.state.Items[id.Row-1]
+		values := []string{item.Name, string(item.Category), string(item.Unit), item.Description, item.Tags.Canonical().String()}
+		label.SetText(values[id.Col])
+	})
+	v.list.OnSelected = func(id widget.TableCellID) {
+		if id.Row > 0 {
+			v.list.UnselectAll()
+			p.Select(v.state.Items[id.Row-1].ID)
+		}
+	}
+	for i, width := range []float32{180, 110, 85, 260, 180} {
+		v.list.SetColumnWidth(i, width)
+	}
+	v.empty = ui.EmptyCollection(ui.IconEmpty, "No ingredients found", "Adjust the filter or create a new ingredient.")
+	v.listStack = container.NewStack(v.list, v.empty)
+	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)
+	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New ingredient", p.StartCreate), ui.IconAdd))
+	v.previous = ui.WithIcon(ui.NewButton(ControlPrevious, "Previous", p.PreviousPage), ui.IconPrevious)
+	v.next = ui.WithIcon(ui.NewButton(ControlNext, "Next", p.NextPage), ui.IconNext)
+	v.tagAction = ui.WithIcon(ui.NewButton(ControlTags, "Tags", p.StartTags), ui.IconTag)
+	v.delete = ui.Destructive(ui.WithIcon(ui.NewButton(ControlDelete, "Delete", p.RequestDelete), ui.IconDelete))
+	v.status = widget.NewLabel("")
+	v.browse = ui.StandardListPage(ui.ListPage{Title: "Ingredients", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, v.refresh}, List: v.listStack, Status: v.status, Paging: container.NewHBox(v.previous, v.next), ListRatio: .35}).(*framework.Container)
+
+	v.name = ui.NewEntry(ControlName)
+	v.description = ui.NewEntry(ControlDescription)
+	v.description.MultiLine = true
+	v.tags = ui.NewEntry(ControlMutationTags)
+	categories := make([]string, 0, len(models.AllCategories()))
+	for _, x := range models.AllCategories() {
+		categories = append(categories, string(x))
+	}
+	v.formCategory = widget.NewSelect(categories, nil)
+	units := make([]string, 0, len(measurement.AllUnits()))
+	for _, x := range measurement.AllUnits() {
+		units = append(units, string(x))
+	}
+	v.formUnit = widget.NewSelect(units, nil)
+	v.save = ui.WithIcon(ui.NewButton(ControlSave, "Save", func() { v.readForm(); p.Submit(p.Snapshot().Form) }), ui.IconSave)
+	v.cancel = ui.WithIcon(ui.NewButton(ControlCancel, "Cancel", p.Cancel), ui.IconCancel)
+	v.detailTitle = widget.NewLabel("Ingredient")
+	v.crumbName = widget.NewLabel("")
+	v.formStatus = widget.NewLabel("")
+	fields := widget.NewForm(widget.NewFormItem("Name", v.name), widget.NewFormItem("Category", v.formCategory), widget.NewFormItem("Unit", v.formUnit), widget.NewFormItem("Description", v.description), widget.NewFormItem("Tags", v.tags))
+	breadcrumb := container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Ingredients", p.ResetList), widget.NewLabel(">"), v.crumbName, v.tagAction, v.delete)
+	v.formPanel = ui.StandardFormPage(ui.FormPage{TitleLabel: v.detailTitle, Breadcrumb: breadcrumb, Fields: fields, Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
+	v.tagOnly = ui.NewEntry(ControlFormTags)
+	v.tagOnly.SetPlaceHolder("featured, region=west")
+	v.tagSave = ui.WithIcon(ui.NewButton(ControlSave+".tags", "Save", func() { p.Submit(Form{Tags: v.tagOnly.Text}) }), ui.IconSave)
+	v.tagCancel = ui.WithIcon(ui.NewButton(ControlCancel+".tags", "Cancel", p.Cancel), ui.IconCancel)
+	v.tagStatus = widget.NewLabel("")
+	v.tagsPanel = ui.StandardFormPage(ui.FormPage{Title: "Edit ingredient tags", Subtitle: "Replace the complete tag set.", Fields: container.NewVBox(widget.NewLabel("Comma-separated key or key=value tags"), v.tagOnly), Status: v.tagStatus, Save: v.tagSave, Cancel: v.tagCancel}).(*framework.Container)
+	v.root = container.NewStack(v.browse, v.formPanel, v.tagsPanel)
+	v.name.OnChanged = func(string) { v.changed() }
+	v.formCategory.OnChanged = func(string) { v.changed() }
+	v.formUnit.OnChanged = func(string) { v.changed() }
+	v.description.OnChanged = func(string) { v.changed() }
+	v.tags.OnChanged = func(string) { v.changed() }
+	p.OnChange(v.render)
+	v.render(p.Snapshot())
 	return v
 }
 
-func (v *View) Title() string { return "Ingredients" }
-
+func (v *View) Title() string                   { return "Ingredients" }
 func (v *View) Content() framework.CanvasObject { return v.root }
-
-func (v *View) Activate()               { v.presenter.Load() }
-func (v *View) HasUnsavedChanges() bool { return v.presenter.Snapshot().Mode != Browse }
-
-func (v *View) ExecuteCommand(command toolkit.Command) bool {
-	state := v.presenter.Snapshot()
-	switch command {
-	case toolkit.CommandRefresh:
-		return state.Mode == Browse && toolkit.Trigger(v.refresh)
-	case toolkit.CommandNew:
-		return state.Mode == Browse && toolkit.Trigger(v.create)
-	case toolkit.CommandSave:
-		return state.Mode != Browse && toolkit.Trigger(v.save)
-	case toolkit.CommandCancel:
-		return state.Mode != Browse && toolkit.Trigger(v.cancel)
+func (v *View) Activate()                       { v.presenter.ResetList() }
+func (v *View) HasUnsavedChanges() bool {
+	s := v.presenter.Snapshot()
+	return s.Dirty || s.Mode == Create || s.Mode == Tags
+}
+func (v *View) ExecuteCommand(c ui.Command) bool {
+	s := v.presenter.Snapshot()
+	switch c {
+	case ui.CommandRefresh:
+		return s.Mode == Browse && ui.Trigger(v.refresh)
+	case ui.CommandNew:
+		return s.Mode == Browse && ui.Trigger(v.create)
+	case ui.CommandSave:
+		if s.Mode == Tags {
+			return ui.Trigger(v.tagSave)
+		}
+		return ui.Trigger(v.save)
+	case ui.CommandCancel:
+		if s.Mode == Tags {
+			return ui.Trigger(v.tagCancel)
+		}
+		return s.Mode != Browse && ui.Trigger(v.cancel)
 	}
 	return false
 }
 
-func (v *View) render(state State) {
-	v.expression = toolkit.NewEntry(ControlFilter)
-	v.expression.SetPlaceHolder(`category == "spirit"`)
-	v.expression.SetText(state.Expression)
-	v.limit = widget.NewSelect([]string{"25", "50", "100"}, nil)
-	v.limit.SetSelected(strconv.Itoa(state.Limit))
-	presetOptions := []toolkit.FilterOption{{Label: "Any category"}}
-	for _, category := range models.AllCategories() {
-		presetOptions = append(presetOptions, toolkit.FilterOption{Label: string(category), Expression: fmt.Sprintf(`category == %q`, category)})
+func (v *View) changed() {
+	if v.rendering {
+		return
 	}
-	bar := toolkit.NewFilterBar(ControlFilter, ControlApplyFilter, `Filter ingredients (for example: name.contains("gin"))`, state.Expression,
-		[]toolkit.FilterPreset{{ID: "ingredients-filter-category", Placeholder: "Category", Options: presetOptions}}, nil,
-		container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.limit), func(expression string) {
-			limit, _ := strconv.Atoi(v.limit.Selected)
-			v.presenter.Filter("", expression, limit)
-		})
-	v.expression = bar.Expression
-	apply := bar.Apply
-	filters := bar.Content
+	s := v.presenter.Snapshot()
+	if s.Mode == Viewing {
+		v.populate(s.Form)
+		return
+	}
+	if s.Mode != Edit && s.Mode != Create {
+		return
+	}
+	v.readForm()
+}
+func (v *View) readForm() {
+	v.presenter.SetForm(Form{Name: v.name.Text, Category: models.Category(v.formCategory.Selected), Unit: measurement.Unit(v.formUnit.Selected), Description: v.description.Text, Tags: v.tags.Text, ReplaceTags: true})
+}
+func (v *View) populate(f Form) {
+	v.rendering = true
+	defer func() { v.rendering = false }()
+	v.name.SetText(f.Name)
+	v.formCategory.SetSelected(string(f.Category))
+	v.formUnit.SetSelected(string(f.Unit))
+	v.description.SetText(f.Description)
+	v.tags.SetText(f.Tags)
+}
 
-	v.refresh = toolkit.NewButton(ControlRefresh, "Refresh", v.presenter.Load)
-	v.create = toolkit.Primary(toolkit.NewButton(ControlCreate, "New ingredient", v.presenter.StartCreate))
-	v.edit = toolkit.NewButton(ControlEdit, "Edit", v.presenter.StartEdit)
-	v.delete = toolkit.Destructive(toolkit.NewButton(ControlDelete, "Delete", v.presenter.RequestDelete))
-	v.tagAction = toolkit.NewButton(ControlTags, "Tags", v.presenter.StartTags)
-	v.previous = toolkit.NewButton(ControlPrevious, "Previous", v.presenter.PreviousPage)
-	v.next = toolkit.NewButton(ControlNext, "Next", v.presenter.NextPage)
-	busy := state.Mode != Browse || state.Submitting || state.Status == toolkit.Loading
-	if busy {
-		for _, button := range []*toolkit.SemanticButton{v.refresh, v.create, v.edit, v.delete, v.tagAction, apply, v.previous, v.next} {
-			button.Disable()
-		}
-		v.expression.Disable()
-		v.limit.Disable()
-		bar.SetEnabled(false)
+func (v *View) render(s State) {
+	v.rendering = true
+	defer func() { v.rendering = false }()
+	v.state = s
+	v.browse.Hidden = s.Mode != Browse
+	v.formPanel.Hidden = s.Mode != Edit && s.Mode != Viewing && s.Mode != Create
+	v.tagsPanel.Hidden = s.Mode != Tags
+	if (s.Mode == Edit || s.Mode == Viewing || s.Mode == Create) && (v.renderedMode != s.Mode || v.renderedInstance != s.FormInstance || !reflect.DeepEqual(v.renderedForm, s.Form)) {
+		v.populate(s.Form)
+		v.renderedMode = s.Mode
+		v.renderedInstance = s.FormInstance
+		v.renderedForm = s.Form
 	}
-	if len(state.History) == 0 {
+	if s.Mode == Tags {
+		v.tagOnly.SetText(s.Form.Tags)
+	}
+	if len(s.History) == 0 || s.Status == ui.Loading {
 		v.previous.Disable()
+	} else {
+		v.previous.Enable()
 	}
-	if state.Next == "" {
+	if s.Next == "" || s.Status == ui.Loading {
 		v.next.Disable()
+	} else {
+		v.next.Enable()
 	}
-	if state.Selected == nil {
-		v.edit.Disable()
-		v.delete.Disable()
-		v.tagAction.Disable()
-	}
-	rows := container.NewVBox()
-	v.rows = make(map[string]*toolkit.SemanticButton, len(state.Items))
-	for i := range state.Items {
-		ingredient := state.Items[i]
-		id := ingredient.ID
-		label := fmt.Sprintf("%s  ·  %s", ingredient.Name, ingredient.Category)
-		button := toolkit.NewButton(ControlSelectPrefix+id.String(), label, func() { v.presenter.Select(id) })
-		if busy {
-			button.Disable()
-		}
-		v.rows[id.String()] = button
-		rows.Add(button)
-	}
-	if len(state.Items) == 0 && state.Status == toolkit.Loaded {
-		rows.Add(widget.NewLabel("No ingredients found"))
-	}
-	list := container.NewScroll(rows)
-
-	detail := v.detail(state)
-	status := ""
-	switch state.Status {
-	case toolkit.Loading:
-		status = "Loading ingredients…"
-	case toolkit.Failed:
-		status = "Unable to load ingredients"
-	case toolkit.Idle, toolkit.Loaded:
-	}
-	if state.Err != nil {
-		status = "Error: " + state.Err.Error()
-	}
-	statusLabel := widget.NewLabel(status)
-	detailActions := []framework.CanvasObject(nil)
-	if state.Mode == Browse && state.Selected != nil {
-		detailActions = []framework.CanvasObject{v.edit, v.tagAction, v.delete}
-	}
-	objects := []framework.CanvasObject{toolkit.StandardListPage(toolkit.ListPage{
-		Title: "Ingredients", Subtitle: "Browse the ingredient catalog and select an item to inspect or edit it.", Filters: filters,
-		CollectionActions: []framework.CanvasObject{v.create, v.refresh},
-		DetailActions:     detailActions,
-		List:              list, Detail: detail, Status: statusLabel,
-		Paging: container.NewHBox(v.previous, v.next), ListRatio: .38,
-	})}
-	v.root.Objects = objects
-	v.root.Refresh()
-}
-
-func (v *View) detail(state State) framework.CanvasObject {
-	if state.Mode != Browse {
-		return v.form(state)
-	}
-	if state.Selected == nil {
-		return toolkit.EmptyDetail("an ingredient")
-	}
-	ingredient := state.Selected
-	values := container.NewVBox(
-		widget.NewLabelWithStyle(ingredient.Name, framework.TextAlignLeading, framework.TextStyle{Bold: true}),
-		widget.NewLabel("ID: "+ingredient.ID.String()),
-		widget.NewLabel("Category: "+string(ingredient.Category)),
-		widget.NewLabel("Unit: "+string(ingredient.Unit)),
-		widget.NewLabelWithStyle("Tags", framework.TextAlignLeading, framework.TextStyle{Bold: true}),
-		toolkit.TagPills([]string(ingredient.Tags.Canonical())),
-	)
-	if strings.TrimSpace(ingredient.Description) != "" {
-		values.Add(widget.NewSeparator())
-		values.Add(widget.NewLabelWithStyle("Description", framework.TextAlignLeading, framework.TextStyle{Bold: true}))
-		description := widget.NewLabel(ingredient.Description)
-		description.Wrapping = framework.TextWrapWord
-		values.Add(description)
-	}
-	return container.NewPadded(values)
-}
-
-func (v *View) form(state State) framework.CanvasObject {
-	if state.Mode == Tags {
-		v.tags = toolkit.NewEntry(ControlFormTags)
-		v.tags.SetPlaceHolder("featured, region=west")
-		v.tags.SetText(state.Form.Tags)
-		return v.formFrame("Edit Tags", container.NewVBox(widget.NewLabel("Complete tag set (CSV)"), v.tags), state, func() Form {
-			return Form{Tags: v.tags.Text}
-		})
-	}
-	v.name = toolkit.NewEntry(ControlName)
-	v.name.SetText(state.Form.Name)
-	v.description = toolkit.NewEntry(ControlDescription)
-	v.description.MultiLine = true
-	v.description.SetText(state.Form.Description)
-	v.tags = toolkit.NewEntry(ControlMutationTags)
-	v.tags.SetPlaceHolder("featured, region=west")
-	v.tags.SetText(state.Form.Tags)
-	categories := make([]string, 0, len(models.AllCategories()))
-	for _, value := range models.AllCategories() {
-		categories = append(categories, string(value))
-	}
-	v.formCategory = widget.NewSelect(categories, nil)
-	v.formCategory.SetSelected(string(state.Form.Category))
-	units := make([]string, 0, len(measurement.AllUnits()))
-	for _, value := range measurement.AllUnits() {
-		units = append(units, string(value))
-	}
-	v.formUnit = widget.NewSelect(units, nil)
-	v.formUnit.SetSelected(string(state.Form.Unit))
-	title := "Create Ingredient"
-	if state.Mode == Edit {
-		title = "Edit Ingredient"
-	}
-	fields := widget.NewForm(
-		widget.NewFormItem("Name", v.name),
-		widget.NewFormItem("Category", v.formCategory),
-		widget.NewFormItem("Unit", v.formUnit),
-		widget.NewFormItem("Description", v.description),
-		widget.NewFormItem("Tags", v.tags),
-	)
-	return v.formFrame(title, fields, state, func() Form {
-		return Form{Name: v.name.Text, Category: models.Category(v.formCategory.Selected), Unit: measurement.Unit(v.formUnit.Selected), Description: v.description.Text, Tags: v.tags.Text, ReplaceTags: true}
-	})
-}
-
-func (v *View) formFrame(title string, fields framework.CanvasObject, state State, value func() Form) framework.CanvasObject {
-	errorText := ""
-	if state.Err != nil {
-		errorText = "Error: " + state.Err.Error()
-	}
-	save := toolkit.NewButton(ControlSave, "Save", func() { v.presenter.Submit(value()) })
-	v.save = save
-	if state.Submitting {
-		save.Disable()
-	}
-	v.cancel = toolkit.NewButton(ControlCancel, "Cancel", v.presenter.Cancel)
-	if state.Submitting {
+	if s.Submitting || (s.Mode == Edit && !s.Dirty) || s.Mode == Viewing {
+		v.save.Disable()
 		v.cancel.Disable()
+	} else {
+		v.save.Enable()
+		v.cancel.Enable()
 	}
-	return toolkit.StandardFormPage(toolkit.FormPage{Title: title, Fields: fields, Status: widget.NewLabel(errorText), Save: save, Cancel: v.cancel})
+	if s.Mode == Viewing {
+		v.save.Hide()
+		v.cancel.Hide()
+	} else {
+		v.save.Show()
+		v.cancel.Show()
+	}
+	v.create.Hidden = !s.CanCreate
+	v.tagAction.Hidden = s.Selected == nil || !s.CanTag || s.Mode == Create
+	v.delete.Hidden = s.Selected == nil || !s.CanDelete || s.Mode == Create
+	v.empty.Hidden = s.Status != ui.Loaded || len(s.Items) != 0
+	v.list.Hidden = s.Status == ui.Loaded && len(s.Items) == 0
+	if s.Selected != nil {
+		v.detailTitle.SetText(s.Selected.Name)
+		v.crumbName.SetText(s.Selected.Name)
+	} else if s.Mode == Create {
+		v.detailTitle.SetText("New ingredient")
+		v.crumbName.SetText("New")
+	}
+	switch {
+	case s.Status == ui.Loading:
+		v.status.SetText("Loading ingredients…")
+	case s.Err != nil:
+		v.status.SetText("Error: " + s.Err.Error())
+	default:
+		v.status.SetText(fmt.Sprintf("%d ingredients", len(s.Items)))
+	}
+	if s.Submitting {
+		v.formStatus.SetText("Saving…")
+		v.tagStatus.SetText("Saving…")
+	} else if s.Err != nil {
+		v.formStatus.SetText("Error: " + s.Err.Error())
+		v.tagStatus.SetText("Error: " + s.Err.Error())
+	} else {
+		v.formStatus.SetText("")
+		v.tagStatus.SetText("")
+	}
+	if s.Submitting {
+		v.tagSave.Disable()
+		v.tagCancel.Disable()
+	} else {
+		v.tagSave.Enable()
+		v.tagCancel.Enable()
+	}
+	v.list.Refresh()
+	v.root.Refresh()
 }
