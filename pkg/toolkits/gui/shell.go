@@ -123,10 +123,10 @@ func (s *Shell) ExecuteCommand(command Command) bool {
 
 // Navigate selects a route, constructing its view on first use.
 func (s *Shell) Navigate(id string) error {
-	if id != s.current && s.needsAbandonConfirmation() && s.confirmAbandon != nil {
-		if _, ok := s.routes[id]; !ok {
-			return fmt.Errorf("unknown fyne shell route %q", id)
-		}
+	if _, ok := s.routes[id]; !ok {
+		return fmt.Errorf("unknown fyne shell route %q", id)
+	}
+	if s.needsAbandonConfirmation() && s.confirmAbandon != nil {
 		s.confirmAbandon(func(ok bool) {
 			if ok {
 				_ = s.navigate(id, true)

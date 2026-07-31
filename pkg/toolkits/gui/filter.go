@@ -45,6 +45,16 @@ type FilterBar struct {
 // NewFilterBar builds a single-line expression bar with common presets on the
 // right and optional uncommon controls behind a collapsed disclosure.
 func NewFilterBar(expressionID, applyID, placeholder, initial string, presets, uncommon []FilterPreset, settings framework.CanvasObject, apply func(string)) *FilterBar {
+	return newFilterBar(expressionID, applyID, placeholder, initial, presets, uncommon, settings, false, apply)
+}
+
+// NewSingleRowFilterBar keeps all controls visible in one compact row. It is
+// intended for catalogs whose complete filter set is small enough to scan.
+func NewSingleRowFilterBar(expressionID, applyID, placeholder, initial string, presets []FilterPreset, settings framework.CanvasObject, apply func(string)) *FilterBar {
+	return newFilterBar(expressionID, applyID, placeholder, initial, presets, nil, settings, true, apply)
+}
+
+func newFilterBar(expressionID, applyID, placeholder, initial string, presets, uncommon []FilterPreset, settings framework.CanvasObject, inlineSettings bool, apply func(string)) *FilterBar {
 	bar := &FilterBar{}
 	bar.Expression = NewEntry(expressionID)
 	bar.Expression.SetPlaceHolder(placeholder)
@@ -73,13 +83,16 @@ func NewFilterBar(expressionID, applyID, placeholder, initial string, presets, u
 	for i, preset := range presets {
 		common = append(common, buildPreset(i, preset))
 	}
+	if inlineSettings && settings != nil {
+		common = append(common, settings)
+	}
 	common = append(common, bar.Apply)
 	top := container.NewBorder(nil, nil, nil, container.NewHBox(common...), bar.Expression)
 	advancedObjects := make([]framework.CanvasObject, 0, len(uncommon)+1)
 	for i, preset := range uncommon {
 		advancedObjects = append(advancedObjects, buildPreset(len(presets)+i, preset))
 	}
-	if settings != nil {
+	if settings != nil && !inlineSettings {
 		advancedObjects = append(advancedObjects, settings)
 	}
 	if len(advancedObjects) == 0 {

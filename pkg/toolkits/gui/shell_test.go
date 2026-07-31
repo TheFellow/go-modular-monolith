@@ -195,3 +195,43 @@ func TestShellConfirmsBeforeLeavingUnsavedEditor(t *testing.T) {
 		t.Fatal("confirmed navigation did not continue")
 	}
 }
+
+func TestShellConfirmsBeforeReactivatingDirtyCurrentRoute(t *testing.T) {
+	startTestApp(t)
+	editor := &dirtyTestView{testView: testView{title: "Editor", content: widget.NewLabel("editor")}, dirty: true}
+	activated := &activatedTestView{testView: editor.testView}
+	shell, err := NewShell([]Route{{ID: "editor", Label: "Editor", Build: func() View {
+		// Combine the lifecycle and dirty contracts for this focused assertion.
+		return structView{View: activated, dirty: editor}
+	}}}, "editor")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var respond func(bool)
+	shell.SetAbandonConfirmation(func(callback func(bool)) { respond = callback })
+	if err := shell.Navigate("editor"); err != nil {
+		t.Fatal(err)
+	}
+	if respond == nil || activated.activations != 0 {
+		t.Fatal("same-route navigation bypassed confirmation")
+	}
+	respond(false)
+	if activated.activations != 0 {
+		t.Fatal("cancelled reactivation ran")
+	}
+	if err := shell.Navigate("editor"); err != nil {
+		t.Fatal(err)
+	}
+	respond(true)
+	if activated.activations != 1 {
+		t.Fatalf("activations = %d, want 1", activated.activations)
+	}
+}
+
+type structView struct {
+	View
+	dirty *dirtyTestView
+}
+
+func (v structView) HasUnsavedChanges() bool { return v.dirty.dirty }
+func (v structView) Activate()               { v.View.(Activated).Activate() }
