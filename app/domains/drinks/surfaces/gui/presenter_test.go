@@ -501,6 +501,11 @@ func TestStructuredRecipeWidgetsUseNamesAndConstrainedChoices(t *testing.T) {
 	if v.recipe[0].actions == nil || !slices.Contains(v.recipe[0].actions.Options, "Add substitute") || !slices.Contains(v.recipe[0].actions.Options, "Remove") {
 		t.Fatalf("prescribed ingredient does not expose compact row actions: %#v", v.recipe[0].actions)
 	}
+	actions := v.recipe[0].actions
+	actions.SetSelected("Add substitute")
+	if actions.Selected != "" || !v.recipe[0].choosingSubstitute {
+		t.Fatalf("ingredient action did not reset safely: selected=%q choosing=%v", actions.Selected, v.recipe[0].choosingSubstitute)
+	}
 	if v.recipe[0].ingredient.Visible() || v.recipe[0].amount.Visible() || v.recipe[0].unit.Visible() {
 		t.Fatal("prescribed ingredient still renders as an editable form band")
 	}

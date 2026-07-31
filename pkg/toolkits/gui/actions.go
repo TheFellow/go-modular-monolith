@@ -75,6 +75,37 @@ type RowAction struct {
 	Run   func()
 }
 
+// ConfigureActionSelect binds a compact action selector so each action can be
+// chosen repeatedly. Clearing a Select emits OnChanged("") in Fyne, therefore
+// reset must be guarded to avoid recursively clearing until the stack overflows.
+func ConfigureActionSelect(actions *widget.Select, options []string, onAction func(string)) {
+	actions.OnChanged = nil
+	actions.Options = append(actions.Options[:0], options...)
+	actions.ClearSelected()
+	clearing := false
+	actions.OnChanged = func(selected string) {
+		if clearing || selected == "" {
+			return
+		}
+		clearing = true
+		actions.ClearSelected()
+		clearing = false
+		if onAction != nil {
+			onAction(selected)
+		}
+	}
+	actions.Refresh()
+}
+
+// NewActionSelect creates a compact action selector with re-entrancy-safe
+// selection reset behavior.
+func NewActionSelect(options []string, onAction func(string)) *widget.Select {
+	actions := widget.NewSelect(nil, nil)
+	actions.PlaceHolder = "Actions"
+	ConfigureActionSelect(actions, options, onAction)
+	return actions
+}
+
 // NewRowTable creates a table styled as aligned rows rather than a boxed grid.
 // Fyne's native separator setting is all-or-nothing, so the table dividers are
 // hidden and NewActionCell supplies a subtle horizontal rule for each row.
@@ -150,30 +181,18 @@ func ShowCellActions(object framework.CanvasObject, rowActions []RowAction) {
 	label.Hide()
 	pills.Hide()
 	actions.Show()
-	actions.Options = actions.Options[:0]
 	byLabel := make(map[string]func(), len(rowActions))
+	options := make([]string, 0, len(rowActions))
 	for _, action := range rowActions {
-		actions.Options = append(actions.Options, action.Label)
+		options = append(options, action.Label)
 		byLabel[action.Label] = action.Run
 	}
-	// Clear before rebinding so an old OnChanged callback cannot fire for the
-	// row whose cell was just recycled.
-	actions.OnChanged = nil
-	actions.ClearSelected()
-	clearing := false
-	actions.OnChanged = func(selected string) {
-		if clearing || selected == "" {
-			return
-		}
+	ConfigureActionSelect(actions, options, func(selected string) {
 		run := byLabel[selected]
-		clearing = true
-		actions.ClearSelected()
-		clearing = false
 		if run != nil {
 			run()
 		}
-	}
-	actions.Refresh()
+	})
 }
 
 // ActionSelector exposes the selector for focused interaction tests.
