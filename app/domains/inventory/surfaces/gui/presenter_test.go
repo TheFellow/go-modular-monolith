@@ -2,10 +2,12 @@
 package gui
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	framework "fyne.io/fyne/v2"
 	frameworktest "fyne.io/fyne/v2/test"
 
 	application "github.com/TheFellow/go-modular-monolith/app"
@@ -16,6 +18,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
@@ -139,15 +142,10 @@ func TestPresenterPermissionFailureRetainsFormWithoutMutation(t *testing.T) {
 	p := NewPresenter(denied, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
 	p.Load()
 	p.StartAdjust()
-	form := Form{Amount: "2.00", Reason: inventorymodels.ReasonReceived}
-	if !p.Submit(form) {
-		t.Fatal("valid request was not submitted")
-	}
 	state := p.Snapshot()
-	if state.Mode != Adjust || state.Err == nil || state.Form != form {
-		t.Fatalf("permission failure state = %#v", state)
+	if state.Mode != Browse || state.CanAdjust || state.CanSet || state.CanTag {
+		t.Fatalf("read-only actor exposed mutation state = %#v", state)
 	}
-	testutil.ErrorIsPermission(t, state.Err)
 	stock, err := fix.Inventory.Get(fix.OwnerContext(), ingredient.ID)
 	testutil.Ok(t, err)
 	if stock.Amount.Value() != 12.5 {
@@ -208,7 +206,7 @@ func TestViewDrivesRealRetainedWidgets(t *testing.T) {
 	frameworktest.Type(view.amount, "2.00")
 	view.reason.SetSelected(string(inventorymodels.ReasonReceived))
 	frameworktest.Tap(view.save)
-	if got := p.Snapshot(); got.Mode != Browse || got.Selected.Status != "OK" {
+	if got := p.Snapshot(); got.Mode != Viewing || got.Selected.Status != "OK" {
 		t.Fatalf("widget state=%#v", got)
 	}
 }
@@ -238,6 +236,155 @@ func TestPresenterUsesConfigurableLowStockThreshold(t *testing.T) {
 	}
 	if p.Filter(LowStock, "", -1, 25) || p.Snapshot().Err == nil {
 		t.Fatal("negative threshold accepted")
+	}
+}
+
+func TestInventoryListDetailBackAndResetSemantics(t *testing.T) {
+	fix, _ := inventoryFixture(t)
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
+	p.Filter(AllStock, `quantity <= 13`, 10, 25)
+	row := p.Snapshot().Rows[0]
+	p.Select(row.Inventory.ID)
+	if got := p.Snapshot(); got.Mode != Viewing || got.Expression != `quantity <= 13` || got.Limit != 25 {
+		t.Fatalf("detail state = %#v", got)
+	}
+	p.Back()
+	if got := p.Snapshot(); got.Mode != Browse || got.Expression != `quantity <= 13` || got.Limit != 25 {
+		t.Fatalf("back did not preserve list state = %#v", got)
+	}
+	p.Select(row.Inventory.ID)
+	p.ResetList()
+	if got := p.Snapshot(); got.Mode != Browse || got.Expression != "" || got.Limit != 100 || got.Cursor != "" || len(got.History) != 0 {
+		t.Fatalf("breadcrumb did not reset list = %#v", got)
+	}
+}
+
+func TestInventoryMutationDirtyCancelAndSaveStayInDetail(t *testing.T) {
+	fix, _ := inventoryFixture(t)
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
+	p.Load()
+	p.Select(p.Snapshot().Rows[0].Inventory.ID)
+	p.StartSet()
+	baseline := p.Snapshot().Form
+	if p.Snapshot().Dirty {
+		t.Fatal("fresh set form is dirty")
+	}
+	changed := baseline
+	changed.Amount = "8.00"
+	p.SetForm(changed)
+	if !p.Snapshot().Dirty {
+		t.Fatal("edited set form is not dirty")
+	}
+	p.Cancel()
+	if got := p.Snapshot(); got.Mode != Viewing || got.Dirty {
+		t.Fatalf("cancel state = %#v", got)
+	}
+	p.StartSet()
+	changed = p.Snapshot().Form
+	changed.Amount = "8.00"
+	p.SetForm(changed)
+	if !p.Submit(changed) {
+		t.Fatal("save rejected")
+	}
+	if got := p.Snapshot(); got.Mode != Viewing || got.Dirty || got.Selected.Inventory.Amount.Value() != 8 {
+		t.Fatalf("saved detail state = %#v", got)
+	}
+}
+
+func TestDirtyInventoryNavigationConfirmsThenPreservesOrResetsList(t *testing.T) {
+	fix, _ := inventoryFixture(t)
+	dialogs := &fynetest.Dialogs{}
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{}, dialogs)
+	p.Filter(AllStock, `quantity <= 13`, 10, 25)
+	p.Select(p.Snapshot().Rows[0].Inventory.ID)
+	p.StartSet()
+	f := p.Snapshot().Form
+	f.Amount = "9.00"
+	p.SetForm(f)
+	p.Back()
+	if p.Snapshot().Mode != Set || len(dialogs.Confirmations()) != 1 {
+		t.Fatal("dirty Back did not confirm")
+	}
+	dialogs.Confirmations()[0].Respond(true)
+	if got := p.Snapshot(); got.Mode != Browse || got.Expression != `quantity <= 13` || got.Limit != 25 {
+		t.Fatalf("confirmed Back state = %#v", got)
+	}
+	p.Select(p.Snapshot().Rows[0].Inventory.ID)
+	p.StartSet()
+	f = p.Snapshot().Form
+	f.Amount = "8.00"
+	p.SetForm(f)
+	p.ResetList()
+	if len(dialogs.Confirmations()) != 2 {
+		t.Fatal("dirty breadcrumb did not confirm")
+	}
+	dialogs.Confirmations()[1].Respond(true)
+	if got := p.Snapshot(); got.Mode != Browse || got.Expression != "" || got.Limit != 100 {
+		t.Fatalf("confirmed breadcrumb state = %#v", got)
+	}
+}
+
+func TestInlineTypedValidationErrorsRemainVisibleForEveryInventoryMutation(t *testing.T) {
+	fix, _ := inventoryFixture(t)
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
+	v := NewView(p)
+	p.Load()
+	p.Select(p.Snapshot().Rows[0].Inventory.ID)
+	cases := []struct {
+		start func()
+		form  Form
+	}{
+		{p.StartAdjust, Form{Amount: "1.234", Reason: inventorymodels.ReasonUsed}},
+		{p.StartSet, Form{Amount: "-1.00"}},
+		{p.StartTags, Form{Tags: "=missing-key"}},
+	}
+	for i, tc := range cases {
+		tc.start()
+		if p.Submit(tc.form) {
+			t.Fatalf("case %d submitted", i)
+		}
+		if got := p.Snapshot(); got.Err == nil || !apperrors.IsInvalid(got.Err) || !strings.Contains(v.formStatus.Text, "Error:") {
+			t.Fatalf("case %d did not render typed invalid error: %#v status=%q", i, got, v.formStatus.Text)
+		}
+		p.Cancel()
+	}
+}
+
+func TestInventoryStandardFormLayoutDoesNotOverlapAtWorkspaceSize(t *testing.T) {
+	fix, _ := inventoryFixture(t)
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
+	v := NewView(p)
+	p.Load()
+	p.Select(p.Snapshot().Rows[0].Inventory.ID)
+	assertStandardPageRegionsDoNotOverlap(t, v.root.Objects[0], framework.NewSize(900, 720)) // 1100px window minus navigation rail.
+	p.StartAdjust()
+	assertStandardPageRegionsDoNotOverlap(t, v.root.Objects[0], framework.NewSize(900, 720))
+}
+
+func assertStandardPageRegionsDoNotOverlap(t *testing.T, object framework.CanvasObject, size framework.Size) {
+	t.Helper()
+	page, ok := object.(*framework.Container)
+	if !ok {
+		t.Fatalf("page type %T", object)
+	}
+	page.Resize(size)
+	page.Refresh()
+	if len(page.Objects) != 3 {
+		t.Fatalf("standard regions = %d", len(page.Objects))
+	}
+	regions := append([]framework.CanvasObject(nil), page.Objects...)
+	slices.SortFunc(regions, func(a, b framework.CanvasObject) int {
+		if a.Position().Y < b.Position().Y {
+			return -1
+		}
+		if a.Position().Y > b.Position().Y {
+			return 1
+		}
+		return 0
+	})
+	heading, body, footer := regions[0], regions[1], regions[2]
+	if heading.Position().Y+heading.Size().Height > body.Position().Y || body.Position().Y+body.Size().Height > footer.Position().Y {
+		t.Fatalf("overlapping standard page regions: heading=%v/%v body=%v/%v footer=%v/%v", heading.Position(), heading.Size(), body.Position(), body.Size(), footer.Position(), footer.Size())
 	}
 }
 

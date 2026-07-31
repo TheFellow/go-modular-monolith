@@ -17,7 +17,11 @@ import (
 	drinksgui "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/gui"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	ingredientsgui "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/gui"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	inventorygui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/gui"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 )
 
@@ -40,6 +44,9 @@ func TestRenderWorkspaceReview(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := desktop.session.Tags.Replace(desktop.session.Context(), ingredient.EntityUID(), tag.Tags{{Key: "featured"}, {Key: "env", Value: "development"}, {Key: "region", Value: "west"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := desktop.session.Inventory.Set(desktop.session.Context(), &inventorymodels.Update{IngredientID: ingredient.ID, Amount: measurement.MustAmount(14, measurement.UnitOz), CostPerUnit: money.NewPriceFromCents(325, currency.USD)}); err != nil {
 		t.Fatal(err)
 	}
 	drink, err := desktop.session.Drinks.Create(desktop.session.Context(), &drinksmodels.Drink{
@@ -131,6 +138,20 @@ func TestRenderWorkspaceReview(t *testing.T) {
 			}
 			presenter.Back()
 		}
+		if route == "inventory" {
+			presenter := desktop.presenters[route].(*inventorygui.Presenter)
+			state := presenter.Snapshot()
+			presenter.Select(state.Rows[0].Inventory.ID)
+			captureReview(t, desktop, directory, route+"-london-dry-gin.png")
+			presenter.Back()
+			presenter.Filter(inventorygui.AllStock, `quantity < 0`, inventorygui.LowStockThreshold, 25)
+			captureReview(t, desktop, directory, route+"-empty.png")
+			presenter.ResetList()
+			presenter.Select(presenter.Snapshot().Rows[0].Inventory.ID)
+			presenter.StartAdjust()
+			captureReview(t, desktop, directory, route+"-adjust.png")
+			presenter.Cancel()
+		}
 		if route == "audit" {
 			openFilterDisclosures(desktop.shell.Content())
 			file, err = os.Create(filepath.Join(directory, route+"-expanded.png"))
@@ -145,6 +166,21 @@ func TestRenderWorkspaceReview(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
+	}
+}
+
+func captureReview(t *testing.T, desktop *desktop, directory, name string) {
+	t.Helper()
+	file, err := os.Create(filepath.Join(directory, name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := png.Encode(file, desktop.window.Canvas().Capture()); err != nil {
+		_ = file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 
