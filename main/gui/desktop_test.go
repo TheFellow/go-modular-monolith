@@ -440,7 +440,7 @@ type blockingDashboardLoader struct {
 	once     sync.Once
 }
 
-func (l *blockingDashboardLoader) LoadDashboard() (dashboardData, error) {
+func (l *blockingDashboardLoader) LoadDashboard() (application.DashboardAggregate, error) {
 	data, err := l.delegate.LoadDashboard()
 	l.once.Do(func() { close(l.started) })
 	<-l.release

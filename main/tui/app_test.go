@@ -374,7 +374,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 
 	type scenario struct {
 		name     string
-		view     View
+		view     views.View
 		model    func(*testutil.Fixture) views.ViewModel
 		activate func(testing.TB, views.ViewModel) views.ViewModel
 	}
@@ -382,7 +382,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 	scenarios := []scenario{
 		{
 			name: "drinks create error",
-			view: ViewDrinks,
+			view: views.ViewDrinks,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 				return tuitest.InitAndLoad(t, drinksui.NewListViewModel(f.App))
@@ -394,7 +394,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 		},
 		{
 			name: "ingredients create error",
-			view: ViewIngredients,
+			view: views.ViewIngredients,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				return tuitest.InitAndLoad(t, ingredientsui.NewListViewModel(f.App))
 			},
@@ -405,7 +405,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 		},
 		{
 			name: "inventory adjust error",
-			view: ViewInventory,
+			view: views.ViewInventory,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 				testutil.SetInventory(t, f, inventorymodels.Update{
@@ -421,7 +421,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 		},
 		{
 			name: "menus create error",
-			view: ViewMenus,
+			view: views.ViewMenus,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				return tuitest.InitAndLoad(t, menusui.NewListViewModel(f.App))
 			},
@@ -432,7 +432,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 		},
 		{
 			name: "orders cancel dialog",
-			view: ViewOrders,
+			view: views.ViewOrders,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 				drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
@@ -465,7 +465,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 
 			app := NewApp(f.App)
 			app.currentView = scenario.view
-			app.prevViews = []View{ViewDashboard}
+			app.prevViews = []views.View{views.ViewDashboard}
 			app.views[scenario.view] = model
 
 			app = updateAppAndRunCmds(t, app, tea.KeyMsg{Type: tea.KeyEsc})
@@ -474,7 +474,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 			testutil.IsFalse(t, app.views[scenario.view].Interaction().HandlesBack)
 
 			app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
-			testutil.Equals(t, app.currentView, ViewDashboard)
+			testutil.Equals(t, app.currentView, views.ViewDashboard)
 		})
 	}
 }
@@ -484,19 +484,19 @@ func TestBackKey_NavigatesWhenDomainHasNoLocalState(t *testing.T) {
 
 	scenarios := []struct {
 		name  string
-		view  View
+		view  views.View
 		model func(*testutil.Fixture) views.ViewModel
 	}{
 		{
-			name: ViewDrinks.String(),
-			view: ViewDrinks,
+			name: views.ViewDrinks.String(),
+			view: views.ViewDrinks,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				return tuitest.InitAndLoad(t, drinksui.NewListViewModel(f.App))
 			},
 		},
 		{
-			name: ViewAudit.String(),
-			view: ViewAudit,
+			name: views.ViewAudit.String(),
+			view: views.ViewAudit,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				return tuitest.InitAndLoad(t, auditui.NewListViewModel(f.App))
 			},
@@ -512,11 +512,11 @@ func TestBackKey_NavigatesWhenDomainHasNoLocalState(t *testing.T) {
 
 			app := NewApp(f.App)
 			app.currentView = scenario.view
-			app.prevViews = []View{ViewDashboard}
+			app.prevViews = []views.View{views.ViewDashboard}
 			app.views[scenario.view] = model
 
 			app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
-			testutil.Equals(t, app.currentView, ViewDashboard)
+			testutil.Equals(t, app.currentView, views.ViewDashboard)
 		})
 	}
 }
@@ -542,7 +542,7 @@ func TestDashboard_NavigatesToTagsShowsHelpAndBack(t *testing.T) {
 	app := NewApp(f.App)
 
 	app = updateAppAndRunCmds(t, app, keyRunes("7"))
-	testutil.Equals(t, app.currentView, ViewTags)
+	testutil.Equals(t, app.currentView, views.ViewTags)
 	testutil.ErrorIf(t, app.currentViewModel().View() == "", "expected tags workspace")
 
 	app = updateAppAndRunCmds(t, app, keyRunes("?"))
@@ -550,9 +550,9 @@ func TestDashboard_NavigatesToTagsShowsHelpAndBack(t *testing.T) {
 	testutil.ErrorIf(t, app.helpHeight() == 0, "expected expanded tags help")
 
 	app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
-	testutil.Equals(t, app.currentView, ViewTags)
+	testutil.Equals(t, app.currentView, views.ViewTags)
 	app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
-	testutil.Equals(t, app.currentView, ViewDashboard)
+	testutil.Equals(t, app.currentView, views.ViewDashboard)
 }
 
 func updateAppOnce(t testing.TB, app *App, msg tea.Msg) *App {

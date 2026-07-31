@@ -17,7 +17,8 @@ import (
 	ordersui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/keys"
 	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/main/tui/views"
+	contracts "github.com/TheFellow/go-modular-monolith/app/surfaces/tui/views"
+	tuiviews "github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
@@ -36,8 +37,8 @@ type viewSizeMsg struct {
 // App is the root model for the TUI application.
 type App struct {
 	// Navigation
-	currentView View
-	prevViews   []View
+	currentView contracts.View
+	prevViews   []contracts.View
 
 	// Application layer
 	app *app.Session
@@ -52,7 +53,7 @@ type App struct {
 	lastError error
 
 	// Child views (lazy initialized)
-	views map[View]views.ViewModel
+	views map[contracts.View]contracts.ViewModel
 }
 
 // NewApp creates a new App with the given application.
@@ -61,12 +62,12 @@ func NewApp(application *app.Session) *App {
 	helpModel.ShowAll = false
 
 	return &App{
-		currentView: ViewDashboard,
+		currentView: contracts.ViewDashboard,
 		app:         application,
 		styles:      styles.App,
 		keys:        keys.App,
 		help:        helpModel,
-		views:       make(map[View]views.ViewModel),
+		views:       make(map[contracts.View]contracts.ViewModel),
 	}
 }
 
@@ -122,10 +123,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.views[a.currentView] = vm
 		return a, cmd
 
-	case NavigateMsg:
+	case contracts.NavigateMsg:
 		return a, a.navigateTo(msg.To)
 
-	case ErrorMsg:
+	case contracts.ErrorMsg:
 		a.lastError = msg.Err
 		return a, nil
 
@@ -165,36 +166,36 @@ func (a *App) View() string {
 }
 
 // currentViewModel returns the ViewModel for the current view, lazy initializing if needed.
-func (a *App) currentViewModel() views.ViewModel {
+func (a *App) currentViewModel() contracts.ViewModel {
 	if a.views == nil {
-		a.views = make(map[View]views.ViewModel)
+		a.views = make(map[contracts.View]contracts.ViewModel)
 	}
 
 	if vm, ok := a.views[a.currentView]; ok {
 		return vm
 	}
 
-	var vm views.ViewModel
+	var vm contracts.ViewModel
 	switch a.currentView {
-	case ViewDashboard:
-		vm = views.NewDashboard(a.app)
-	case ViewDrinks:
+	case contracts.ViewDashboard:
+		vm = tuiviews.NewDashboard(a.app)
+	case contracts.ViewDrinks:
 		vm = drinksui.NewListViewModel(a.app)
-	case ViewIngredients:
+	case contracts.ViewIngredients:
 		vm = ingredientsui.NewListViewModel(a.app)
-	case ViewInventory:
+	case contracts.ViewInventory:
 		vm = inventoryui.NewListViewModel(a.app)
-	case ViewMenus:
+	case contracts.ViewMenus:
 		vm = menusui.NewListViewModel(a.app)
-	case ViewOrders:
+	case contracts.ViewOrders:
 		vm = ordersui.NewListViewModel(a.app)
-	case ViewAudit:
+	case contracts.ViewAudit:
 		vm = auditui.NewListViewModel(a.app)
-	case ViewTags:
-		vm = views.NewTags(a.app)
+	case contracts.ViewTags:
+		vm = tuiviews.NewTags(a.app)
 	default:
-		a.currentView = ViewDashboard
-		vm = views.NewDashboard(a.app)
+		a.currentView = contracts.ViewDashboard
+		vm = tuiviews.NewDashboard(a.app)
 	}
 
 	a.views[a.currentView] = vm
@@ -202,7 +203,7 @@ func (a *App) currentViewModel() views.ViewModel {
 }
 
 // navigateTo pushes current view to stack and switches to target.
-func (a *App) navigateTo(target View) tea.Cmd {
+func (a *App) navigateTo(target contracts.View) tea.Cmd {
 	if !isValidView(target) || target == a.currentView {
 		return nil
 	}
@@ -210,8 +211,8 @@ func (a *App) navigateTo(target View) tea.Cmd {
 	a.prevViews = append(a.prevViews, a.currentView)
 	a.currentView = target
 
-	if a.currentView == ViewDashboard {
-		delete(a.views, ViewDashboard)
+	if a.currentView == contracts.ViewDashboard {
+		delete(a.views, contracts.ViewDashboard)
 	}
 
 	if _, ok := a.views[target]; ok {
@@ -224,9 +225,9 @@ func (a *App) navigateTo(target View) tea.Cmd {
 // navigateBack pops the previous view from the stack.
 func (a *App) navigateBack() tea.Cmd {
 	if len(a.prevViews) == 0 {
-		if a.currentView != ViewDashboard {
-			a.currentView = ViewDashboard
-			delete(a.views, ViewDashboard)
+		if a.currentView != contracts.ViewDashboard {
+			a.currentView = contracts.ViewDashboard
+			delete(a.views, contracts.ViewDashboard)
 			return a.initializeCurrentView()
 		}
 		return nil
@@ -235,8 +236,8 @@ func (a *App) navigateBack() tea.Cmd {
 	idx := len(a.prevViews) - 1
 	a.currentView = a.prevViews[idx]
 	a.prevViews = a.prevViews[:idx]
-	if a.currentView == ViewDashboard {
-		delete(a.views, ViewDashboard)
+	if a.currentView == contracts.ViewDashboard {
+		delete(a.views, contracts.ViewDashboard)
 		return a.initializeCurrentView()
 	}
 	return a.syncWindowCmd()
@@ -331,32 +332,32 @@ func (a *App) renderTooSmallWarning() string {
 	return content
 }
 
-func isValidView(view View) bool {
+func isValidView(view contracts.View) bool {
 	switch view {
-	case ViewDashboard, ViewDrinks, ViewIngredients, ViewInventory, ViewMenus, ViewOrders, ViewAudit, ViewTags:
+	case contracts.ViewDashboard, contracts.ViewDrinks, contracts.ViewIngredients, contracts.ViewInventory, contracts.ViewMenus, contracts.ViewOrders, contracts.ViewAudit, contracts.ViewTags:
 		return true
 	default:
 		return false
 	}
 }
 
-func viewTitle(view View) string {
+func viewTitle(view contracts.View) string {
 	switch view {
-	case ViewDashboard:
+	case contracts.ViewDashboard:
 		return "Dashboard"
-	case ViewDrinks:
+	case contracts.ViewDrinks:
 		return "Drinks"
-	case ViewIngredients:
+	case contracts.ViewIngredients:
 		return "Ingredients"
-	case ViewInventory:
+	case contracts.ViewInventory:
 		return "Inventory"
-	case ViewMenus:
+	case contracts.ViewMenus:
 		return "Menus"
-	case ViewOrders:
+	case contracts.ViewOrders:
 		return "Orders"
-	case ViewAudit:
+	case contracts.ViewAudit:
 		return "Audit"
-	case ViewTags:
+	case contracts.ViewTags:
 		return "Tags"
 	default:
 		return "Unknown"

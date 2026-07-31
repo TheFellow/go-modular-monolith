@@ -15,24 +15,23 @@ import (
 
 const dashboardRecentMax = application.DashboardRecentLimit
 
-type dashboardData = application.DashboardAggregate
 type dashboardLoader interface {
-	LoadDashboard() (dashboardData, error)
+	LoadDashboard() (application.DashboardAggregate, error)
 }
 
 type sessionDashboardLoader struct{ session *application.Session }
 
-func (l sessionDashboardLoader) LoadDashboard() (dashboardData, error) {
+func (l sessionDashboardLoader) LoadDashboard() (application.DashboardAggregate, error) {
 	return l.session.Dashboard()
 }
 
-func unknownDashboardData() dashboardData {
+func unknownDashboardData() application.DashboardAggregate {
 	return application.UnknownDashboardAggregate()
 }
 
 type dashboardState struct {
 	Status fyneui.LoadStatus
-	Data   dashboardData
+	Data   application.DashboardAggregate
 	Err    error
 }
 
@@ -54,7 +53,7 @@ type dashboardViewModel struct {
 }
 
 type dashboardLoadResult struct {
-	data dashboardData
+	data application.DashboardAggregate
 	err  error
 }
 
@@ -220,7 +219,7 @@ func (v *dashboardView) render(state dashboardState) {
 	v.activity.Refresh()
 }
 
-func dashboardCardText(route string, data dashboardData) (string, string) {
+func dashboardCardText(route string, data application.DashboardAggregate) (string, string) {
 	switch route {
 	case "drinks":
 		return formatDashboardCount(data.DrinkCount), "Manage drink recipes"
