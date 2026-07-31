@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -42,8 +43,8 @@ type View struct {
 	root, browse, detail, mutation        *framework.Container
 	list                                  *widget.Table
 	listStack, empty                      *framework.Container
-	tagPreview                            *ui.TagPreview
-	expression, amount, cost, tags        *ui.SemanticEntry
+	expression, amount, cost              *ui.SemanticEntry
+	tags                                  *ui.TagTokenEditor
 	limit, reason                         *widget.Select
 	save, cancel, refresh, previous, next *ui.SemanticButton
 	adjust, set, tagAction                *ui.SemanticButton
@@ -124,8 +125,9 @@ func NewView(p *Presenter) *View {
 	v.title, v.crumb, v.formStatus = widget.NewLabel("Inventory item"), widget.NewLabel(""), widget.NewLabel("")
 	v.detail = ui.StandardFormPage(ui.FormPage{Title: "Inventory item", Breadcrumb: v.breadcrumb(""), Fields: container.NewStack(), Status: v.formStatus}).(*framework.Container)
 
-	v.amount, v.cost, v.tags = ui.NewEntry(ControlAmount), ui.NewEntry(ControlCost), ui.NewEntry(ControlFormTags)
-	v.tagPreview = ui.NewTagPreview("")
+	v.amount, v.cost = ui.NewEntry(ControlAmount), ui.NewEntry(ControlCost)
+	v.tags = ui.NewTagTokenEditor(ControlFormTags, "")
+	v.tags.Normalize = tag.UpsertCollection
 	v.reason = widget.NewSelect([]string{string(inventorymodels.ReasonReceived), string(inventorymodels.ReasonUsed), string(inventorymodels.ReasonSpilled), string(inventorymodels.ReasonExpired), string(inventorymodels.ReasonCorrected)}, nil)
 	v.save = ui.WithIcon(ui.NewButton(ControlSave, "Save", func() { v.readForm(); p.Submit(p.Snapshot().Form) }), ui.IconSave)
 	v.cancel = ui.WithIcon(ui.NewButton(ControlCancel, "Cancel", p.Cancel), ui.IconCancel)
@@ -133,7 +135,7 @@ func NewView(p *Presenter) *View {
 	v.root = container.NewStack(v.browse)
 	v.amount.OnChanged = func(string) { v.changed() }
 	v.cost.OnChanged = func(string) { v.changed() }
-	v.tags.OnChanged = func(value string) { v.tagPreview.SetCSV(value); v.changed() }
+	v.tags.OnChanged = func(string) { v.changed() }
 	v.reason.OnChanged = func(string) { v.changed() }
 	p.OnChange(v.render)
 	v.render(v.state)
@@ -166,11 +168,11 @@ func (v *View) ExecuteCommand(c ui.Command) bool {
 func (v *View) mutationFields(mode Mode) framework.CanvasObject {
 	switch mode {
 	case Adjust:
-		return ui.DetailForm(ui.DetailField("Signed amount", v.amount), ui.DetailField("Cost per unit", v.cost), ui.DetailField("Reason", v.reason), ui.DetailField("Tags (complete set)", ui.TagEditor(v.tagPreview, v.tags)))
+		return ui.DetailForm(ui.DetailField("Signed amount", v.amount), ui.DetailField("Cost per unit", v.cost), ui.DetailField("Reason", v.reason), ui.DetailField("Tags", v.tags.Content))
 	case Set:
-		return ui.DetailForm(ui.DetailField("Quantity", v.amount), ui.DetailField("Cost per unit", v.cost), ui.DetailField("Tags (complete set)", ui.TagEditor(v.tagPreview, v.tags)))
+		return ui.DetailForm(ui.DetailField("Quantity", v.amount), ui.DetailField("Cost per unit", v.cost), ui.DetailField("Tags", v.tags.Content))
 	case Tags:
-		return ui.DetailForm(ui.DetailField("Tags (complete set)", ui.TagEditor(v.tagPreview, v.tags)))
+		return ui.DetailForm(ui.DetailField("Tags", v.tags.Content))
 	default:
 		return container.NewVBox()
 	}
@@ -211,7 +213,7 @@ func (v *View) changed() {
 }
 func (v *View) readForm() {
 	s := v.presenter.Snapshot()
-	f := Form{Amount: v.amount.Text, Cost: v.cost.Text, Tags: v.tags.Text, Reason: inventorymodels.AdjustmentReason(v.reason.Selected), ReplaceTags: s.Mode != Tags}
+	f := Form{Amount: v.amount.Text, Cost: v.cost.Text, Tags: v.tags.CSV(), Reason: inventorymodels.AdjustmentReason(v.reason.Selected), ReplaceTags: s.Mode != Tags}
 	v.presenter.SetForm(f)
 }
 func (v *View) populate(f Form) {
@@ -219,7 +221,7 @@ func (v *View) populate(f Form) {
 	defer func() { v.rendering = false }()
 	v.amount.SetText(f.Amount)
 	v.cost.SetText(f.Cost)
-	v.tags.SetText(f.Tags)
+	v.tags.SetCSV(f.Tags)
 	v.reason.SetSelected(string(f.Reason))
 }
 
@@ -277,6 +279,7 @@ func (v *View) render(s State) {
 		v.save.Enable()
 		v.cancel.Enable()
 	}
+	v.tags.SetEnabled(!s.Submitting)
 	v.empty.Hidden = s.Status != ui.Loaded || len(s.Rows) != 0
 	v.list.Hidden = s.Status == ui.Loaded && len(s.Rows) == 0
 	if s.Submitting {

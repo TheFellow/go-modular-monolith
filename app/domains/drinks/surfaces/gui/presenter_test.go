@@ -139,14 +139,18 @@ func TestWidgetCreateEditTagsAndDeletePersist(t *testing.T) {
 	testutil.Equals(t, got.Description, "Bright and dry")
 	testutil.AuditTouches(t, f.LatestAuditEntry(authz.ActionUpdate), created.EntityUID())
 	driver.Tap(ControlTags)
-	driver.Type(ControlTagValues, " region=west, featured ")
+	driver.Type(ControlTagValues, "region=west")
+	driver.Submit(ControlTagValues)
+	driver.Type(ControlTagValues, "featured")
+	driver.Submit(ControlTagValues)
 	driver.Tap(ControlSave)
 	got, err = f.Drinks.Get(f.OwnerContext(), created.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, got.Tags.Canonical().String(), "featured,region=west")
 	testutil.AuditTouches(t, f.LatestAuditEntry(authz.ActionTag), created.EntityUID())
 	driver.Tap(ControlTags)
-	driver.Type(ControlTagValues, "")
+	driver.Tap(ControlTagValues + ".remove.featured")
+	driver.Tap(ControlTagValues + ".remove.region")
 	driver.Tap(ControlSave)
 	got, err = f.Drinks.Get(f.OwnerContext(), created.ID)
 	testutil.Ok(t, err)
@@ -586,7 +590,7 @@ func TestAcceptedDrinkSubmitDisablesEveryMutableControl(t *testing.T) {
 	executor.RunNext()
 	p.SetForm(Form{Name: "Pending", Category: "cocktail", Glass: "coupe", Recipe: []RecipeRow{{Ingredient: ingredient.ID, Amount: "1", Unit: measurement.UnitOz}}, Steps: "Stir"})
 	p.Save()
-	for name, disabled := range map[string]bool{"name": v.name.Disabled(), "category": v.category.Disabled(), "glass": v.glass.Disabled(), "description": v.description.Disabled(), "steps": v.steps.Disabled(), "garnish": v.garnish.Disabled(), "tags": v.tags.Disabled(), "add": v.addIngredient.Disabled(), "ingredient": v.recipe[0].ingredient.Disabled(), "amount": v.recipe[0].amount.Disabled(), "unit": v.recipe[0].unit.Disabled(), "optional": v.recipe[0].optional.Disabled(), "remove": v.recipe[0].remove.Disabled(), "substitute": v.recipe[0].substitutes[ingredient.ID].Disabled()} {
+	for name, disabled := range map[string]bool{"name": v.name.Disabled(), "category": v.category.Disabled(), "glass": v.glass.Disabled(), "description": v.description.Disabled(), "steps": v.steps.Disabled(), "garnish": v.garnish.Disabled(), "tags": v.tags.Input.Disabled(), "add": v.addIngredient.Disabled(), "ingredient": v.recipe[0].ingredient.Disabled(), "amount": v.recipe[0].amount.Disabled(), "unit": v.recipe[0].unit.Disabled(), "optional": v.recipe[0].optional.Disabled(), "remove": v.recipe[0].remove.Disabled(), "substitute": v.recipe[0].substitutes[ingredient.ID].Disabled()} {
 		if !disabled {
 			t.Fatalf("%s remained enabled during submit", name)
 		}
