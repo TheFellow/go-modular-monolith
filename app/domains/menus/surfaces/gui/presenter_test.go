@@ -53,6 +53,153 @@ func TestDetailTextIncludesTimestampsItemIdentityAndSortedOrder(t *testing.T) {
 	testutil.ErrorIf(t, strings.Contains(detailText(menu, func(id entity.DrinkID) string { return names[id] }), "Published:"), "absent PublishedAt rendered")
 }
 
+func TestListDetailNavigationPreservesBackAndResetsBreadcrumb(t *testing.T) {
+	f := testutil.NewFixture(t)
+	menu := testutil.CreateMenu(t, f, "Filtered menu")
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	testutil.Equals(t, p.SetFilter(Filter{Expression: `name == "Filtered menu"`, Limit: 50}), true)
+	p.Refresh()
+	p.Select(0)
+	testutil.Equals(t, p.State().Mode, Editing)
+	testutil.Equals(t, p.State().Selected.ID, menu.ID)
+	p.Back()
+	testutil.Equals(t, p.State().Mode, Browsing)
+	testutil.Equals(t, p.State().Filter.Expression, `name == "Filtered menu"`)
+	testutil.Equals(t, p.State().Filter.Limit, 50)
+	p.Select(0)
+	p.ResetList()
+	testutil.Equals(t, p.State().Mode, Browsing)
+	testutil.Equals(t, p.State().Filter.Expression, "")
+	testutil.Equals(t, p.State().Filter.Limit, 100)
+}
+
+func TestReadOnlyActorGetsSelectableDetailWithoutMutationActions(t *testing.T) {
+	f := testutil.NewFixture(t)
+	menu := testutil.CreateMenu(t, f, "Read only", testutil.WithDescription("Copy this description"))
+	readOnly := appcore.NewSession(f.ActorContext("bartender"), f.App.App)
+	p := NewPresenter(readOnly, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	p.state.Items = []*models.Menu{menu}
+	p.Select(0)
+	state := p.State()
+	testutil.Equals(t, state.Mode, Viewing)
+	testutil.Equals(t, state.CanUpdate, false)
+	testutil.Equals(t, state.CanCreate, false)
+	gui := frameworktest.NewApp()
+	defer gui.Quit()
+	v := NewView(p)
+	testutil.Equals(t, v.create.Hidden, true)
+	p.StartCreate()
+	testutil.Equals(t, p.State().Mode, Viewing)
+	testutil.Equals(t, v.name.Disabled(), false)
+	testutil.Equals(t, v.description.Disabled(), false)
+	testutil.Equals(t, v.save.Hidden || v.save.Disabled(), true)
+	testutil.Equals(t, v.publish.Hidden, true)
+	testutil.Equals(t, v.delete.Hidden, true)
+	v.description.SetText("attempted mutation")
+	testutil.Equals(t, v.description.Text, "Copy this description")
+}
+
+func TestDraftAndPublishedDetailExposeOnlyApplicableCleanActions(t *testing.T) {
+	gui := frameworktest.NewApp()
+	defer gui.Quit()
+	f := testutil.NewFixture(t)
+	drink := menuDrink(t, f, "State action drink")
+	draft := testutil.CreateMenu(t, f, "Draft actions", testutil.WithDrink(drink))
+	published := testutil.CreateMenu(t, f, "Published actions", testutil.WithDrink(drink), testutil.Published())
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	p.Refresh()
+	selectID := func(id entity.MenuID) {
+		for i, item := range p.State().Items {
+			if item.ID == id {
+				p.Select(i)
+				return
+			}
+		}
+		t.Fatalf("menu %s missing", id)
+	}
+	selectID(draft.ID)
+	v := NewView(p)
+	testutil.Equals(t, v.publish.Hidden, false)
+	testutil.Equals(t, v.draft.Hidden, true)
+	testutil.Equals(t, v.addDrink.Hidden, false)
+	testutil.Equals(t, v.delete.Hidden, false)
+	selectID(published.ID)
+	testutil.Equals(t, v.publish.Hidden, true)
+	testutil.Equals(t, v.draft.Hidden, false)
+	testutil.Equals(t, v.addDrink.Hidden, true)
+	testutil.Equals(t, v.delete.Hidden, true)
+}
+
+func TestDuplicateNameCreateRetainsFormAndPresentsTypedConflict(t *testing.T) {
+	f := testutil.NewFixture(t)
+	testutil.CreateMenu(t, f, "Duplicate")
+	dialogs := &fynetest.Dialogs{}
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: dialogs})
+	p.StartCreate()
+	form := Form{Name: "Duplicate", Description: "Keep this correction", Tags: "season=summer", ReplaceTags: true}
+	p.SetForm(form)
+	if !p.Save() {
+		t.Fatal("duplicate create was not accepted for execution")
+	}
+	state := p.State()
+	testutil.Equals(t, state.Mode, Creating)
+	testutil.Equals(t, state.Form.Description, form.Description)
+	testutil.ErrorIsConflict(t, state.Err)
+	if len(dialogs.Warnings()) != 1 || len(dialogs.Errors()) != 0 {
+		t.Fatalf("conflict dialogs: warnings=%#v errors=%#v", dialogs.Warnings(), dialogs.Errors())
+	}
+}
+
+func TestTaggingUsesDedicatedDirtyEditorWithoutWorkflowActions(t *testing.T) {
+	gui := frameworktest.NewApp()
+	defer gui.Quit()
+	f := testutil.NewFixture(t)
+	menu := testutil.CreateMenu(t, f, "Tagged detail", testutil.WithDescription("Preserved description"))
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	p.state.Items = []*models.Menu{menu}
+	p.Select(0)
+	v := NewView(p)
+	p.StartTags()
+	testutil.Equals(t, v.tagsPanel.Hidden, false)
+	testutil.Equals(t, v.detail.Hidden, true)
+	testutil.Equals(t, v.publish.Hidden, true)
+	testutil.Equals(t, v.addDrink.Hidden, true)
+	v.tags.SetText("featured")
+	testutil.Equals(t, p.State().Dirty, true)
+	testutil.Equals(t, v.save.Disabled(), false)
+	p.Cancel()
+	testutil.Equals(t, p.State().Mode, Browsing)
+}
+
+func TestDirtyDetailHidesWorkflowActionsAndCancelRestores(t *testing.T) {
+	gui := frameworktest.NewApp()
+	defer gui.Quit()
+	f := testutil.NewFixture(t)
+	drink := menuDrink(t, f, "Action drink")
+	menu := testutil.CreateMenu(t, f, "Action menu", testutil.WithDrink(drink))
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	p.Refresh()
+	for i, item := range p.State().Items {
+		if item.ID == menu.ID {
+			p.Select(i)
+			break
+		}
+	}
+	v := NewView(p)
+	testutil.Equals(t, v.publish.Hidden, false)
+	form := p.State().Form
+	form.Description = "local edit"
+	p.SetForm(form)
+	testutil.Equals(t, p.State().Dirty, true)
+	testutil.Equals(t, v.publish.Hidden, true)
+	testutil.Equals(t, v.addDrink.Hidden, true)
+	testutil.Equals(t, v.save.Disabled(), false)
+	p.Cancel()
+	testutil.Equals(t, p.State().Dirty, false)
+	testutil.Equals(t, p.State().Form.Description, menu.Description)
+	testutil.Equals(t, v.publish.Hidden, false)
+}
+
 func TestPresenterRefreshComposesPagingFiltersAndRejectsStaleResult(t *testing.T) {
 	f := testutil.NewFixture(t)
 	first, err := f.Menus.Create(f.OwnerContext(), &models.Menu{Name: "First"})
@@ -241,6 +388,7 @@ func TestWidgetAnalysisValidatesAndRendersCostCurrencyMarginAndAvailability(t *t
 	v := NewView(p)
 	driver := fynetest.NewDriver(t, v.Content())
 	p.Refresh()
+	p.Select(0)
 	driver.Tap(ControlAnalyze)
 	driver.Type(ControlTargetMargin, "NaN")
 	driver.Tap(ControlRunAnalysis)
