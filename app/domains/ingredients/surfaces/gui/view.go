@@ -40,6 +40,7 @@ type View struct {
 	root, browse, formPanel, tagsPanel            *framework.Container
 	list                                          *widget.Table
 	listStack                                     *framework.Container
+	tagDisplay, tagEditPreview                    *ui.TagPreview
 	empty                                         *framework.Container
 	expression                                    *ui.SemanticEntry
 	limit, formCategory, formUnit                 *widget.Select
@@ -119,6 +120,8 @@ func NewView(p *Presenter) *View {
 	v.description = ui.NewEntry(ControlDescription)
 	v.description.MultiLine = true
 	v.tags = ui.NewEntry(ControlMutationTags)
+	v.tagDisplay = ui.NewTagPreview("")
+	v.tagEditPreview = ui.NewTagPreview("")
 	categories := make([]string, 0, len(models.AllCategories()))
 	for _, x := range models.AllCategories() {
 		categories = append(categories, string(x))
@@ -134,7 +137,7 @@ func NewView(p *Presenter) *View {
 	v.detailTitle = widget.NewLabel("Ingredient")
 	v.crumbName = widget.NewLabel("")
 	v.formStatus = widget.NewLabel("")
-	fields := widget.NewForm(widget.NewFormItem("Name", v.name), widget.NewFormItem("Category", v.formCategory), widget.NewFormItem("Unit", v.formUnit), widget.NewFormItem("Description", v.description), widget.NewFormItem("Tags", v.tags))
+	fields := ui.DetailForm(ui.DetailField("Name", v.name), ui.DetailField("Category", v.formCategory), ui.DetailField("Unit", v.formUnit), ui.DetailField("Description", v.description), ui.DetailField("Tags", container.NewVBox(v.tagDisplay.Content, v.tags)))
 	breadcrumb := container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Ingredients", p.ResetList), widget.NewLabel(">"), v.crumbName, v.tagAction, v.delete)
 	v.formPanel = ui.StandardFormPage(ui.FormPage{TitleLabel: v.detailTitle, Breadcrumb: breadcrumb, Fields: fields, Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
 	v.tagOnly = ui.NewEntry(ControlFormTags)
@@ -142,13 +145,14 @@ func NewView(p *Presenter) *View {
 	v.tagSave = ui.WithIcon(ui.NewButton(ControlSave+".tags", "Save", func() { p.Submit(Form{Tags: v.tagOnly.Text}) }), ui.IconSave)
 	v.tagCancel = ui.WithIcon(ui.NewButton(ControlCancel+".tags", "Cancel", p.Cancel), ui.IconCancel)
 	v.tagStatus = widget.NewLabel("")
-	v.tagsPanel = ui.StandardFormPage(ui.FormPage{Title: "Edit ingredient tags", Subtitle: "Replace the complete tag set.", Fields: container.NewVBox(widget.NewLabel("Comma-separated key or key=value tags"), v.tagOnly), Status: v.tagStatus, Save: v.tagSave, Cancel: v.tagCancel}).(*framework.Container)
+	v.tagsPanel = ui.StandardFormPage(ui.FormPage{Title: "Edit ingredient tags", Subtitle: "Replace the complete tag set.", Fields: container.NewVBox(widget.NewLabel("Comma-separated key or key=value tags"), ui.TagEditor(v.tagEditPreview, v.tagOnly)), Status: v.tagStatus, Save: v.tagSave, Cancel: v.tagCancel}).(*framework.Container)
 	v.root = container.NewStack(v.browse, v.formPanel, v.tagsPanel)
 	v.name.OnChanged = func(string) { v.changed() }
 	v.formCategory.OnChanged = func(string) { v.changed() }
 	v.formUnit.OnChanged = func(string) { v.changed() }
 	v.description.OnChanged = func(string) { v.changed() }
-	v.tags.OnChanged = func(string) { v.changed() }
+	v.tags.OnChanged = func(value string) { v.tagDisplay.SetCSV(value); v.changed() }
+	v.tagOnly.OnChanged = func(value string) { v.tagEditPreview.SetCSV(value) }
 	p.OnChange(v.render)
 	v.render(p.Snapshot())
 	return v
@@ -243,9 +247,15 @@ func (v *View) render(s State) {
 		v.cancel.Enable()
 	}
 	if s.Mode == Viewing {
+		v.tagDisplay.SetCSV(s.Form.Tags)
+		v.tagEditPreview.SetCSV(s.Form.Tags)
+		v.tagDisplay.Content.Show()
+		v.tags.Hide()
 		v.save.Hide()
 		v.cancel.Hide()
 	} else {
+		v.tagDisplay.Content.Show()
+		v.tags.Show()
 		v.save.Show()
 		v.cancel.Show()
 	}

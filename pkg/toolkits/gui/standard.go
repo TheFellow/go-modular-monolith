@@ -138,6 +138,20 @@ func StandardFormPage(page FormPage) framework.CanvasObject {
 	return container.NewBorder(container.NewPadded(container.NewVBox(heading...)), container.NewPadded(container.NewVBox(footer...)), nil, nil, container.NewPadded(container.NewVScroll(page.Fields)))
 }
 
+// DetailField places its label above the value so every value receives the
+// same available width. This avoids the uneven control widths produced by
+// independently-sized label columns in nested forms.
+func DetailField(label string, value framework.CanvasObject) framework.CanvasObject {
+	caption := widget.NewLabel(label)
+	caption.TextStyle = framework.TextStyle{Bold: true}
+	return container.NewVBox(caption, value)
+}
+
+// DetailForm is the common, full-width field stack for entity detail pages.
+func DetailForm(fields ...framework.CanvasObject) framework.CanvasObject {
+	return container.NewVBox(fields...)
+}
+
 // ActionBar keeps primary actions leading and secondary/destructive actions
 // trailing across every workspace.
 func ActionBar(primary, other []framework.CanvasObject) framework.CanvasObject {

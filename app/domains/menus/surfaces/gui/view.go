@@ -76,6 +76,7 @@ type View struct {
 	rename, delete, publish, draft, analyze, tagAction, addDrink                    *ui.SemanticButton
 	drinkSearchAction, drinkCancel, runAnalysis, analysisCancel                     *ui.SemanticButton
 	drinkChoices                                                                    *framework.Container
+	drinkTagPreview                                                                 *ui.TagPreview
 	state                                                                           State
 	rendering                                                                       bool
 	renderedMode                                                                    Mode
@@ -167,12 +168,14 @@ func NewView(p *Presenter) *View {
 	v.tagsPanel = v.buildTags(v.state)
 
 	v.drinkSearch, v.drinkTags = ui.NewEntry(ControlDrinkSearch), ui.NewEntry(ControlTagValues+".add-drink")
+	v.drinkTagPreview = ui.NewTagPreview("")
 	v.drinkSearch.SetPlaceHolder("Search active drinks")
 	v.drinkSearchAction = ui.NewButton(ControlDrinkSearch+".apply", "Search", func() { p.SearchDrinks(v.drinkSearch.Text) })
+	v.drinkSearch.OnSubmitted = func(string) { v.drinkSearchAction.OnTapped() }
 	v.drinkChoices = container.NewVBox()
 	v.drinkStatus = widget.NewLabel("")
 	v.drinkCancel = ui.WithIcon(ui.NewButton(ControlCancel+".drink", "Cancel", p.Cancel), ui.IconCancel)
-	v.drinkPanel = container.NewBorder(container.NewVBox(v.breadcrumb("Add drink"), widget.NewLabelWithStyle("Add drink", framework.TextAlignLeading, framework.TextStyle{Bold: true}), container.NewBorder(nil, nil, nil, v.drinkSearchAction, v.drinkSearch), field("Tags (complete set)", v.drinkTags)), container.NewVBox(v.drinkStatus, container.NewHBox(layout.NewSpacer(), v.drinkCancel)), nil, nil, container.NewVScroll(v.drinkChoices))
+	v.drinkPanel = container.NewBorder(container.NewVBox(v.breadcrumb("Add drink"), widget.NewLabelWithStyle("Add drink", framework.TextAlignLeading, framework.TextStyle{Bold: true}), container.NewBorder(nil, nil, nil, v.drinkSearchAction, v.drinkSearch), field("Tags (complete set)", ui.TagEditor(v.drinkTagPreview, v.drinkTags))), container.NewVBox(v.drinkStatus, container.NewHBox(layout.NewSpacer(), v.drinkCancel)), nil, nil, container.NewVScroll(v.drinkChoices))
 	v.targetMargin = ui.NewEntry(ControlTargetMargin)
 	v.runAnalysis = ui.NewButton(ControlRunAnalysis, "Analyze", func() { p.SetAnalysisForm(AnalysisForm{TargetMargin: v.targetMargin.Text}); p.Analyze() })
 	v.analysisCancel = ui.WithIcon(ui.NewButton(ControlCancel+".analysis", "Close", p.Cancel), ui.IconCancel)
@@ -183,6 +186,7 @@ func NewView(p *Presenter) *View {
 	v.name.OnChanged = func(string) { v.changed() }
 	v.description.OnChanged = func(string) { v.changed() }
 	v.tags.OnChanged = func(string) { v.changed() }
+	v.drinkTags.OnChanged = func(value string) { v.drinkTagPreview.SetCSV(value) }
 	p.Observe(v.render)
 	return v
 }
@@ -253,14 +257,18 @@ func (v *View) buildDetail(s State) *framework.Container {
 	} else if selected != nil {
 		name = selected.Name
 	}
-	fields := container.NewVBox(field("Name", v.name), field("Description", v.description), field("Tags", v.tags))
+	tagValue := ui.TagEditor(ui.NewTagPreview(v.tags.Text), v.tags)
+	if s.Mode == Viewing && selected != nil {
+		tagValue = ui.TagPillsCSV(selected.Tags.Canonical().String())
+	}
+	fields := container.NewVBox(field("Name", v.name), field("Description", v.description), field("Tags", tagValue))
 	if selected != nil {
 		m := selected
 		published := ""
 		if t, ok := m.PublishedAt.Unwrap(); ok {
 			published = t.Format(time.RFC3339)
 		}
-		meta := widget.NewForm(widget.NewFormItem("Status", readonly(string(m.Status))), widget.NewFormItem("Created", readonly(formatTime(m.CreatedAt))), widget.NewFormItem("Published", readonly(published)))
+		meta := ui.DetailForm(ui.DetailField("Status", readonly(string(m.Status))), ui.DetailField("Created", readonly(formatTime(m.CreatedAt))), ui.DetailField("Published", readonly(published)))
 		fields.Add(meta)
 		fields.Add(widget.NewLabelWithStyle(fmt.Sprintf("Drinks (%d)", len(m.Items)), framework.TextAlignLeading, framework.TextStyle{Bold: true}))
 		items := append([]models.MenuItem(nil), m.Items...)
@@ -317,7 +325,7 @@ func (v *View) buildTags(s State) *framework.Container {
 	if s.Selected != nil {
 		name = s.Selected.Name
 	}
-	return ui.StandardFormPage(ui.FormPage{Title: "Edit tags", Breadcrumb: v.breadcrumb(name), Fields: container.NewVBox(field("Tags (complete set)", v.tags)), Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
+	return ui.StandardFormPage(ui.FormPage{Title: "Edit tags", Breadcrumb: v.breadcrumb(name), Fields: container.NewVBox(field("Tags (complete set)", ui.TagEditor(ui.NewTagPreview(v.tags.Text), v.tags))), Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
 }
 
 func (v *View) render(s State) {
@@ -479,7 +487,7 @@ func setEnabled(o interface {
 	}
 }
 func field(label string, o framework.CanvasObject) framework.CanvasObject {
-	return container.NewBorder(nil, nil, widget.NewLabel(label), nil, o)
+	return ui.DetailField(label, o)
 }
 func formatTime(t time.Time) string {
 	if t.IsZero() {

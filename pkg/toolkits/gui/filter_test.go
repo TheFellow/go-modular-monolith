@@ -30,3 +30,14 @@ func TestFilterBarPresetsWriteVisibleDomainExpression(t *testing.T) {
 		t.Fatal("advanced filters should start collapsed")
 	}
 }
+
+func TestFilterBarEnterAppliesTrimmedExpression(t *testing.T) {
+	startTestApp(t)
+	applied := ""
+	bar := NewSingleRowFilterBar("filter", "apply", "Filter…", "", nil, nil, func(value string) { applied = value })
+	bar.Expression.SetText("  name == \"Negroni\"  ")
+	bar.Expression.OnSubmitted(bar.Expression.Text)
+	if applied != `name == "Negroni"` {
+		t.Fatalf("Enter applied %q", applied)
+	}
+}

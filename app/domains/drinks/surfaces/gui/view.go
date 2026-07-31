@@ -120,6 +120,8 @@ type View struct {
 	name, description, steps, garnish, tags, mutationTags *ui.SemanticEntry
 	category, glass                                       *semanticSelect
 	recipeBox                                             *framework.Container
+	tagDisplay                                            *ui.TagPreview
+	tagEditPreview                                        *ui.TagPreview
 	recipe                                                []recipeWidgets
 	save, cancel, tagSave, tagCancel                      *ui.SemanticButton
 	addIngredient                                         *ui.SemanticButton
@@ -212,6 +214,8 @@ func NewView(p *Presenter) *View {
 	v.steps.MultiLine = true
 	v.garnish = ui.NewEntry(ControlGarnish)
 	v.mutationTags = ui.NewEntry(ControlTagValues + ".mutation")
+	v.tagDisplay = ui.NewTagPreview("")
+	v.tagEditPreview = ui.NewTagPreview("")
 	v.formStatus = widget.NewLabel("")
 	v.recipeBox = container.NewVBox()
 	v.save = ui.WithIcon(ui.NewButton(ControlSave, "Save", func() { v.readForm(); p.Save() }), ui.IconSave)
@@ -222,7 +226,7 @@ func NewView(p *Presenter) *View {
 		f.Recipe = append(f.Recipe, RecipeRow{Unit: measurement.UnitOz})
 		p.SetForm(f)
 	})
-	fields := container.NewVBox(field("Name", v.name), field("Category", v.category), field("Glass", v.glass), field("Description", v.description), widget.NewLabelWithStyle("Recipe", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.recipeBox, v.addIngredient, field("Steps (one per line)", v.steps), field("Garnish", v.garnish), field("Tags (complete set)", v.mutationTags))
+	fields := container.NewVBox(field("Name", v.name), field("Category", v.category), field("Glass", v.glass), field("Description", v.description), widget.NewLabelWithStyle("Recipe", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.recipeBox, v.addIngredient, field("Steps (one per line)", v.steps), field("Garnish", v.garnish), field("Tags (complete set)", container.NewVBox(v.tagDisplay.Content, v.mutationTags)))
 	v.detailTitle = widget.NewLabel("Drink")
 	v.crumbName = widget.NewLabel("")
 	back := ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack)
@@ -238,7 +242,7 @@ func NewView(p *Presenter) *View {
 	v.tagStatus = widget.NewLabel("")
 	v.tagSave = ui.NewButton(ControlSave+".tags", "Save", func() { v.readForm(); p.Save() })
 	v.tagCancel = ui.NewButton(ControlCancel+".tags", "Cancel", p.Cancel)
-	v.tagsPanel = ui.StandardFormPage(ui.FormPage{Title: "Edit tags", Subtitle: "Replace the complete tag set.", Fields: container.NewVBox(widget.NewLabel("Comma-separated key or key=value tags"), v.tags), Status: v.tagStatus, Save: v.tagSave, Cancel: v.tagCancel}).(*framework.Container)
+	v.tagsPanel = ui.StandardFormPage(ui.FormPage{Title: "Edit tags", Subtitle: "Replace the complete tag set.", Fields: container.NewVBox(widget.NewLabel("Comma-separated key or key=value tags"), ui.TagEditor(v.tagEditPreview, v.tags)), Status: v.tagStatus, Save: v.tagSave, Cancel: v.tagCancel}).(*framework.Container)
 	v.root = container.NewStack(v.browse, v.formPanel, v.tagsPanel)
 	v.name.OnChanged = func(string) { v.formChanged() }
 	v.category.OnChanged = func(string) { v.formChanged() }
@@ -246,7 +250,8 @@ func NewView(p *Presenter) *View {
 	v.description.OnChanged = func(string) { v.formChanged() }
 	v.steps.OnChanged = func(string) { v.formChanged() }
 	v.garnish.OnChanged = func(string) { v.formChanged() }
-	v.mutationTags.OnChanged = func(string) { v.formChanged() }
+	v.mutationTags.OnChanged = func(value string) { v.tagDisplay.SetCSV(value); v.formChanged() }
+	v.tags.OnChanged = func(value string) { v.tagEditPreview.SetCSV(value) }
 	p.Observe(v.render)
 	return v
 }
@@ -383,12 +388,18 @@ func (v *View) render(state State) {
 		v.formStatus.SetText("")
 	}
 	v.tagStatus.SetText(v.formStatus.Text)
+	v.tagDisplay.SetCSV(state.Form.Tags)
+	v.tagEditPreview.SetCSV(state.Form.Tags)
 	v.setMutableEnabled(!state.Submitting)
 	if state.Mode == Viewing {
+		v.tagDisplay.Content.Show()
+		v.mutationTags.Hide()
 		v.save.Hide()
 		v.cancel.Hide()
 		v.addIngredient.Hide()
 	} else {
+		v.tagDisplay.Content.Show()
+		v.mutationTags.Show()
 		v.save.Show()
 		v.cancel.Show()
 		v.addIngredient.Show()
@@ -574,7 +585,7 @@ func unitOptions() []string {
 	return out
 }
 func field(label string, o framework.CanvasObject) framework.CanvasObject {
-	return container.NewBorder(nil, nil, widget.NewLabel(label), nil, o)
+	return ui.DetailField(label, o)
 }
 func detailText(d *models.Drink, options []IngredientOption) string {
 	name := func(id entity.IngredientID) string {
