@@ -56,6 +56,7 @@ func NewView(presenter *Presenter) *View {
 func (v *View) Title() string                   { return "Inventory" }
 func (v *View) Content() framework.CanvasObject { return v.root }
 func (v *View) Activate()                       { v.presenter.Load() }
+func (v *View) HasUnsavedChanges() bool         { return v.presenter.Snapshot().Mode != Browse }
 func (v *View) ExecuteCommand(command toolkit.Command) bool {
 	state := v.presenter.Snapshot()
 	switch command {
@@ -75,33 +76,20 @@ func (v *View) render(state State) {
 	v.expression = toolkit.NewEntry(ControlFilter)
 	v.expression.SetPlaceHolder(`quantity <= 5 && tags contains "featured"`)
 	v.expression.SetText(state.Expression)
-	v.stock = widget.NewSelect([]string{"all", "low stock"}, nil)
-	if state.Stock == LowStock {
-		v.stock.SetSelected("low stock")
-	} else {
-		v.stock.SetSelected("all")
-	}
 	v.limit = widget.NewSelect([]string{"25", "50", "100"}, nil)
 	v.limit.SetSelected(strconv.Itoa(state.Limit))
 	if v.limit.Selected == "" {
 		v.limit.SetSelected("100")
 	}
-	v.threshold = toolkit.NewEntry(ControlThreshold)
-	v.threshold.SetPlaceHolder("Low-stock threshold")
-	v.threshold.SetText(strconv.FormatFloat(state.LowStock, 'f', -1, 64))
-	apply := toolkit.NewButton(ControlApplyFilter, "Apply", func() {
-		limit, _ := strconv.Atoi(v.limit.Selected)
-		threshold, err := strconv.ParseFloat(v.threshold.Text, 64)
-		if err != nil {
-			threshold = -1
-		}
-		stock := AllStock
-		if v.stock.Selected == "low stock" {
-			stock = LowStock
-		}
-		v.presenter.Filter(stock, v.expression.Text, threshold, limit)
-	})
-	filters := container.NewBorder(nil, nil, container.NewHBox(v.stock, v.threshold, v.limit), apply, v.expression)
+	bar := toolkit.NewFilterBar(ControlFilter, ControlApplyFilter, `Filter inventory (for example: tags contains "featured")`, state.Expression,
+		[]toolkit.FilterPreset{{ID: "inventory-stock", Placeholder: "Stock", Options: []toolkit.FilterOption{{Label: "All stock"}, {Label: "Low stock", Expression: "quantity <= 5"}}}}, nil,
+		container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.limit), func(expression string) {
+			limit, _ := strconv.Atoi(v.limit.Selected)
+			v.presenter.Filter(AllStock, expression, state.LowStock, limit)
+		})
+	v.expression = bar.Expression
+	apply := bar.Apply
+	filters := bar.Content
 	prev := toolkit.NewButton(ControlPrevious, "Previous", v.presenter.PreviousPage)
 	if len(state.History) == 0 {
 		prev.Disable()
@@ -124,9 +112,8 @@ func (v *View) render(state State) {
 		next.Disable()
 		apply.Disable()
 		v.expression.Disable()
-		v.stock.Disable()
-		v.threshold.Disable()
 		v.limit.Disable()
+		bar.SetEnabled(false)
 	}
 	rows := container.NewVBox()
 	v.rows = make(map[string]*toolkit.SemanticButton, len(state.Rows))
@@ -154,11 +141,15 @@ func (v *View) render(state State) {
 	if state.Err != nil {
 		status = "Error: " + state.Err.Error()
 	}
+	detailActions := []framework.CanvasObject(nil)
+	if state.Mode == Browse && state.Selected != nil {
+		detailActions = []framework.CanvasObject{adjust, set, tags}
+	}
 	v.root.Objects = []framework.CanvasObject{toolkit.StandardListPage(toolkit.ListPage{
 		Title: "Inventory", Subtitle: "Review stock levels and select an item to adjust or set its quantity.", Filters: filters,
-		PrimaryActions: []framework.CanvasObject{adjust, refresh},
-		OtherActions:   []framework.CanvasObject{set, tags},
-		List:           container.NewScroll(rows), Detail: v.detail(state), Status: widget.NewLabel(status),
+		CollectionActions: []framework.CanvasObject{refresh},
+		DetailActions:     detailActions,
+		List:              container.NewScroll(rows), Detail: v.detail(state), Status: widget.NewLabel(status),
 		Paging: container.NewHBox(prev, next), ListRatio: .42,
 	})}
 	v.root.Refresh()
@@ -178,9 +169,10 @@ func (v *View) detail(state State) framework.CanvasObject {
 	}
 	labels := inventoryDetailLabels(r, tags)
 	objects := []framework.CanvasObject{widget.NewLabelWithStyle(labels[0], framework.TextAlignLeading, framework.TextStyle{Bold: true})}
-	for _, label := range labels[1:6] {
+	for _, label := range labels[1:5] {
 		objects = append(objects, widget.NewLabel(label))
 	}
+	objects = append(objects, widget.NewLabelWithStyle("Tags", framework.TextAlignLeading, framework.TextStyle{Bold: true}), toolkit.TagPills([]string(r.Inventory.Tags.Canonical())))
 	objects = append(objects, widget.NewSeparator())
 	for _, label := range labels[6:] {
 		objects = append(objects, widget.NewLabel(label))

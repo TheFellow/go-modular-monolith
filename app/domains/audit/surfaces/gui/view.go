@@ -62,7 +62,7 @@ type View struct {
 	detail    *widget.Label
 	status    *widget.Label
 
-	scope                          *semanticSelect
+	scope                          *ui.FilterSelect
 	entity, principal, action      *semanticSelectEntry
 	from, to, expression, limit    *ui.SemanticEntry
 	apply, refresh, previous, next *ui.SemanticButton
@@ -74,36 +74,23 @@ var _ ui.Activated = (*View)(nil)
 
 func NewView(presenter *Presenter) *View {
 	v := &View{presenter: presenter, rowButtons: make(map[string]*ui.SemanticButton)}
-	v.scope = newSelect(ControlScope, scopeLabels)
-	v.scope.SetSelected(scopeLabels[0])
-	v.entity = newSelectEntry(ControlEntity, nil)
-	v.entity.SetPlaceHolder(`Entity UID (Type::id)`)
-	v.principal = newSelectEntry(ControlPrincipal, []string{"owner", "manager", "sommelier", "bartender", "anonymous"})
-	v.principal.SetPlaceHolder("Actor or principal UID")
-	v.action = newSelectEntry(ControlAction, nil)
-	v.action.SetPlaceHolder(`Action UID (Type::Action::id)`)
-	v.from = ui.NewEntry(ControlFrom)
-	v.from.SetPlaceHolder("From (RFC3339 or YYYY-MM-DD)")
-	v.to = ui.NewEntry(ControlTo)
-	v.to.SetPlaceHolder("To (RFC3339 or YYYY-MM-DD)")
-	v.expression = ui.NewEntry(ControlExpression)
-	v.expression.SetPlaceHolder("Expression filter")
 	v.limit = ui.NewEntry(ControlLimit)
 	v.limit.SetText(strconv.Itoa(presenter.State().Filter.Limit))
-	v.apply = ui.NewButton(ControlApplyFilter, "Apply", v.applyFilter)
 	v.refresh = ui.NewButton(ControlRefresh, "Refresh", presenter.Refresh)
-
-	filters := widget.NewForm(
-		widget.NewFormItem("Scope", v.scope),
-		widget.NewFormItem("Entity", v.entity),
-		widget.NewFormItem("Principal", v.principal),
-		widget.NewFormItem("Action", v.action),
-		widget.NewFormItem("From", v.from),
-		widget.NewFormItem("To", v.to),
-		widget.NewFormItem("Expression", v.expression),
-		widget.NewFormItem("Page size", v.limit),
-	)
-	filterPanel := widget.NewCard("Filters", "", container.NewVBox(filters, container.NewHBox(layout.NewSpacer(), v.refresh, v.apply)))
+	bar := ui.NewFilterBar(ControlExpression, ControlApplyFilter, `Filter activity (for example: !success && error.contains("permission"))`, presenter.State().Filter.Expression,
+		[]ui.FilterPreset{{ID: ControlScope, Placeholder: "Outcome", Options: []ui.FilterOption{{Label: "Any outcome"}, {Label: "Succeeded", Expression: "success"}, {Label: "Failed", Expression: "!success"}}}},
+		[]ui.FilterPreset{
+			{ID: ControlAction, Placeholder: "Activity", Options: []ui.FilterOption{{Label: "Any activity"}, {Label: "Created", Expression: `action.contains("create")`}, {Label: "Updated", Expression: `action.contains("update")`}, {Label: "Deleted", Expression: `action.contains("delete")`}}},
+			{ID: ControlPrincipal, Placeholder: "Actor", Options: []ui.FilterOption{{Label: "Any actor"}, {Label: "Owner", Expression: `principal.contains("owner")`}, {Label: "Manager", Expression: `principal.contains("manager")`}, {Label: "Bartender", Expression: `principal.contains("bartender")`}}},
+		}, container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.limit), func(expression string) {
+			limit, err := strconv.Atoi(strings.TrimSpace(v.limit.Text))
+			if err != nil {
+				limit = -1
+			}
+			presenter.ApplyFilter(Filter{Expression: expression, Limit: limit})
+		})
+	v.expression, v.apply = bar.Expression, bar.Apply
+	v.scope = bar.Presets[0]
 
 	v.rows = container.NewVBox()
 	v.detail = widget.NewLabel("Select an audit entry")
@@ -113,9 +100,9 @@ func NewView(presenter *Presenter) *View {
 	v.next = ui.NewButton(ControlNext, "Next", presenter.NextPage)
 	paging := container.NewHBox(v.previous, v.next, layout.NewSpacer())
 	v.root = ui.StandardListPage(ui.ListPage{
-		Title: "Audit", Subtitle: "Review application activity and inspect a selected event.", Filters: filterPanel,
-		PrimaryActions: []framework.CanvasObject{v.refresh},
-		List:           container.NewVScroll(v.rows), Detail: container.NewVScroll(v.detail), Status: v.status,
+		Title: "Audit", Subtitle: "Review application activity and inspect a selected event.", Filters: bar.Content,
+		CollectionActions: []framework.CanvasObject{v.refresh},
+		List:              container.NewVScroll(v.rows), Detail: container.NewVScroll(v.detail), Status: v.status,
 		Paging: paging, ListRatio: .42,
 	}).(*framework.Container)
 	presenter.Observe(v.render)
@@ -137,11 +124,7 @@ func (v *View) applyFilter() {
 	if err != nil {
 		limit = -1
 	}
-	v.presenter.ApplyFilter(Filter{
-		Scope: scopeFromLabel(v.scope.Selected), Entity: v.entity.Text,
-		Principal: v.principal.Text, Action: v.action.Text, From: v.from.Text,
-		To: v.to.Text, Expression: v.expression.Text, Limit: limit,
-	})
+	v.presenter.ApplyFilter(Filter{Expression: v.expression.Text, Limit: limit})
 }
 
 func scopeFromLabel(label string) Scope {
@@ -207,7 +190,7 @@ func (v *View) setFilterEnabled(enabled bool) {
 	entries := []interface {
 		Enable()
 		Disable()
-	}{v.scope, v.entity, v.principal, v.action, v.from, v.to, v.expression, v.limit, v.apply, v.refresh}
+	}{v.scope, v.expression, v.limit, v.apply, v.refresh}
 	for _, entry := range entries {
 		if enabled {
 			entry.Enable()

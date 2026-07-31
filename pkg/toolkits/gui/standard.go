@@ -11,13 +11,14 @@ import (
 // catalog-style application surfaces. Domains provide content and commands;
 // the toolkit owns visual hierarchy and placement.
 type ListPage struct {
-	Title, Subtitle string
-	Filters         framework.CanvasObject
-	PrimaryActions  []framework.CanvasObject
-	OtherActions    []framework.CanvasObject
-	List, Detail    framework.CanvasObject
-	Status, Paging  framework.CanvasObject
-	ListRatio       float64
+	Title, Subtitle   string
+	Filters           framework.CanvasObject
+	CollectionActions []framework.CanvasObject
+	OtherActions      []framework.CanvasObject // page-scoped trailing actions, when needed
+	DetailActions     []framework.CanvasObject
+	List, Detail      framework.CanvasObject
+	Status, Paging    framework.CanvasObject
+	ListRatio         float64
 }
 
 // StandardListPage builds a consistent page header, action bar, filter area,
@@ -30,7 +31,7 @@ func StandardListPage(page ListPage) framework.CanvasObject {
 		subtitle.Wrapping = framework.TextWrapWord
 		heading = append(heading, subtitle)
 	}
-	if actions := ActionBar(page.PrimaryActions, page.OtherActions); actions != nil {
+	if actions := ActionBar(page.CollectionActions, page.OtherActions); actions != nil {
 		heading = append(heading, actions)
 	}
 	if page.Filters != nil {
@@ -40,7 +41,11 @@ func StandardListPage(page ListPage) framework.CanvasObject {
 	if ratio <= 0 || ratio >= 1 {
 		ratio = .38
 	}
-	body := ListDetail(page.List, page.Detail, ratio)
+	detail := page.Detail
+	if actions := DetailActionBar(page.DetailActions); actions != nil {
+		detail = container.NewBorder(container.NewPadded(actions), nil, nil, nil, page.Detail)
+	}
+	body := ListDetail(page.List, detail, ratio)
 	footer := make([]framework.CanvasObject, 0, 2)
 	if page.Status != nil {
 		footer = append(footer, page.Status)
@@ -53,6 +58,16 @@ func StandardListPage(page ListPage) framework.CanvasObject {
 		bottom = container.NewVBox(footer...)
 	}
 	return container.NewBorder(container.NewPadded(container.NewVBox(heading...)), bottom, nil, nil, container.NewPadded(body))
+}
+
+// DetailActionBar keeps actions that operate on the selected entity in its
+// own pane and wraps dense action sets into predictable rows.
+func DetailActionBar(actions []framework.CanvasObject) framework.CanvasObject {
+	if len(actions) == 0 {
+		return nil
+	}
+	columns := min(3, len(actions))
+	return container.NewGridWithColumns(columns, actions...)
 }
 
 // StandardPage builds a non-list workflow page with the same heading and

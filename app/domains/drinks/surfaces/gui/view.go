@@ -110,6 +110,7 @@ type View struct {
 	root                                                  *framework.Container
 	list                                                  *widget.List
 	detail, status, formStatus, tagStatus                 *widget.Label
+	detailBox                                             *framework.Container
 	browse, formPanel, tagsPanel                          *framework.Container
 	filterName, filterExpression                          *ui.SemanticEntry
 	filterCategory, filterGlass, filterLimit              *semanticSelect
@@ -120,6 +121,7 @@ type View struct {
 	save, cancel, tagSave, tagCancel                      *ui.SemanticButton
 	addIngredient                                         *ui.SemanticButton
 	refresh, create, previous, next                       *ui.SemanticButton
+	detailActions                                         []*ui.SemanticButton
 	renderedMode                                          Mode
 	renderedFormInstance                                  uint64
 	renderedForm                                          Form
@@ -131,21 +133,27 @@ var _ ui.Activated = (*View)(nil)
 
 func NewView(p *Presenter) *View {
 	v := &View{presenter: p}
-	v.filterName = ui.NewEntry(ControlFilterName)
-	v.filterName.SetPlaceHolder("Exact name")
-	v.filterCategory = newSelect(ControlFilterCategory, append([]string{""}, categoryOptions()...))
-	v.filterGlass = newSelect(ControlFilterGlass, append([]string{""}, glassOptions()...))
-	v.filterExpression = ui.NewEntry(ControlFilterExpression)
-	v.filterExpression.SetPlaceHolder("Expression filter")
 	v.filterLimit = newSelect("drinks.filter.limit", []string{"25", "50", "100"})
 	v.filterLimit.SetSelected(strconv.Itoa(p.State().Filter.Limit))
-	apply := ui.NewButton(ControlApplyFilter, "Apply", func() {
-		limit, _ := strconv.Atoi(v.filterLimit.Selected)
-		if p.SetFilter(Filter{Name: v.filterName.Text, Category: v.filterCategory.Selected, Glass: v.filterGlass.Selected, Expression: v.filterExpression.Text, Limit: limit}) {
-			p.Refresh()
-		}
-	})
-	filters := container.NewVBox(widget.NewLabelWithStyle("Filters", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.filterName, v.filterCategory, v.filterGlass, v.filterExpression, v.filterLimit, apply)
+	categoryPresets := []ui.FilterOption{{Label: "Any category"}}
+	for _, category := range categoryOptions() {
+		categoryPresets = append(categoryPresets, ui.FilterOption{Label: category, Expression: fmt.Sprintf(`category == %q`, category)})
+	}
+	glassPresets := []ui.FilterOption{{Label: "Any glass"}}
+	for _, glass := range glassOptions() {
+		glassPresets = append(glassPresets, ui.FilterOption{Label: glass, Expression: fmt.Sprintf(`glass == %q`, glass)})
+	}
+	bar := ui.NewFilterBar(ControlFilterExpression, ControlApplyFilter, `Filter drinks (for example: name.contains("martini"))`, p.State().Filter.Expression,
+		[]ui.FilterPreset{{ID: ControlFilterCategory, Placeholder: "Category", Options: categoryPresets}},
+		[]ui.FilterPreset{{ID: ControlFilterGlass, Placeholder: "Glass", Options: glassPresets}},
+		container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.filterLimit), func(expression string) {
+			limit, _ := strconv.Atoi(v.filterLimit.Selected)
+			if p.SetFilter(Filter{Expression: expression, Limit: limit}) {
+				p.Refresh()
+			}
+		})
+	v.filterExpression = bar.Expression
+	filters := bar.Content
 	v.list = widget.NewList(func() int { return len(p.State().Items) }, func() framework.CanvasObject { return widget.NewButton("", nil) }, func(i widget.ListItemID, o framework.CanvasObject) {
 		item := p.State().Items[i]
 		button := o.(*widget.Button)
@@ -159,14 +167,16 @@ func NewView(p *Presenter) *View {
 	edit := ui.NewButton(ControlEdit, "Edit", p.StartEdit)
 	tagsAction := ui.NewButton(ControlTags, "Tags", p.StartTags)
 	deleteAction := ui.Destructive(ui.NewButton(ControlDelete, "Delete", p.Delete))
+	v.detailActions = []*ui.SemanticButton{edit, tagsAction, deleteAction}
 	v.detail = widget.NewLabel("")
 	v.detail.Wrapping = framework.TextWrapWord
+	v.detailBox = container.NewVBox(v.detail)
 	v.status = widget.NewLabel("")
 	v.browse = ui.StandardListPage(ui.ListPage{
 		Title: "Drinks", Subtitle: "Browse recipes and select a drink to inspect or edit it.", Filters: filters,
-		PrimaryActions: []framework.CanvasObject{v.create, v.refresh},
-		OtherActions:   []framework.CanvasObject{edit, tagsAction, deleteAction},
-		List:           v.list, Detail: container.NewVScroll(v.detail), Status: v.status,
+		CollectionActions: []framework.CanvasObject{v.create, v.refresh},
+		DetailActions:     []framework.CanvasObject{edit, tagsAction, deleteAction},
+		List:              v.list, Detail: container.NewVScroll(v.detailBox), Status: v.status,
 		Paging: container.NewHBox(v.previous, v.next), ListRatio: .35,
 	}).(*framework.Container)
 	v.name = ui.NewEntry(ControlName)
@@ -202,6 +212,7 @@ func NewView(p *Presenter) *View {
 func (v *View) Title() string                   { return "Drinks" }
 func (v *View) Content() framework.CanvasObject { return v.root }
 func (v *View) Activate()                       { v.presenter.Refresh() }
+func (v *View) HasUnsavedChanges() bool         { return v.presenter.State().Mode != Browsing }
 func (v *View) ExecuteCommand(command ui.Command) bool {
 	switch command {
 	case ui.CommandRefresh:
@@ -306,11 +317,24 @@ func (v *View) render(state State) {
 	v.tagStatus.SetText(v.formStatus.Text)
 	v.setMutableEnabled(!state.Submitting)
 	v.list.Refresh()
+	for _, action := range v.detailActions {
+		action.Hidden = state.Selected == nil
+		action.Refresh()
+	}
+	v.detailBox.RemoveAll()
+	v.detailBox.Add(v.detail)
 	if state.Selected == nil {
 		v.detail.SetText("Select a drink")
 	} else {
-		v.detail.SetText(detailText(state.Selected, state.Ingredients))
+		tags := state.Selected.Tags.Canonical().String()
+		if tags == "" {
+			tags = "None"
+		}
+		v.detail.SetText(strings.Replace(detailText(state.Selected, state.Ingredients), "\nTags: "+tags, "", 1))
+		v.detailBox.Add(widget.NewLabelWithStyle("Tags", framework.TextAlignLeading, framework.TextStyle{Bold: true}))
+		v.detailBox.Add(ui.TagPills([]string(state.Selected.Tags.Canonical())))
 	}
+	v.detailBox.Refresh()
 	switch {
 	case state.Loading:
 		v.status.SetText("Loading…")
