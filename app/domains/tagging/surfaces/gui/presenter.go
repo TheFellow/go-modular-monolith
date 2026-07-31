@@ -71,18 +71,20 @@ type Result struct {
 }
 
 type State struct {
-	Mode       Mode
-	Operation  Operation
-	EntityType cedar.EntityType
-	Entities   []EntityOption
-	Visible    []EntityOption
-	Query      string
-	Target     cedar.EntityUID
-	TargetName string
-	Value      string
-	Result     Result
-	Submitting bool
-	Err        error
+	Mode             Mode
+	Operation        Operation
+	EntityType       cedar.EntityType
+	Entities         []EntityOption
+	Visible          []EntityOption
+	Query            string
+	Target           cedar.EntityUID
+	TargetName       string
+	Value            string
+	Result           Result
+	Catalog          []tagging.Summary
+	VisibleSummaries []tagging.Summary
+	Submitting       bool
+	Err              error
 }
 
 type Dependencies struct {
@@ -160,12 +162,44 @@ func (p *Presenter) SelectType(kind cedar.EntityType) {
 }
 
 func (p *Presenter) Search(query string) {
-	if p.state.Submitting || p.state.Mode != PickingEntity {
+	if p.state.Submitting {
 		return
 	}
 	p.state.Query = query
-	p.applyQuery()
+	if p.state.Mode == PickingEntity {
+		p.applyQuery()
+	} else if p.state.Mode == Results && p.state.Operation == Summary {
+		p.applySummaryQuery()
+	} else {
+		return
+	}
 	p.publish()
+}
+
+// SelectSummary opens the active references for a tag while retaining the
+// exact summary filter so Back can restore the discovery list.
+func (p *Presenter) SelectSummary(index int) {
+	if p.state.Submitting || p.state.Mode != Results || p.state.Operation != Summary || index < 0 || index >= len(p.state.VisibleSummaries) {
+		return
+	}
+	value, err := tag.Parse(p.state.VisibleSummaries[index].Tag)
+	if err != nil {
+		p.fail(err)
+		return
+	}
+	p.state.Operation, p.state.Value = ShowExact, value.String()
+	p.runQuery(func() (any, error) { return p.app.Tags.Show(p.app.Context(), value, true) })
+}
+
+// ResetList is used by main navigation and the breadcrumb. Unlike Back it
+// deliberately discards the retained summary filter.
+func (p *Presenter) ResetList() {
+	if p.state.Submitting || p.app == nil {
+		return
+	}
+	p.load.Invalidate()
+	p.state = State{Operation: Summary}
+	p.runQuery(func() (any, error) { return p.app.Tags.Summary(p.app.Context()) })
 }
 
 func (p *Presenter) SelectEntity(index int) {
@@ -257,7 +291,13 @@ func (p *Presenter) Back() bool {
 		}
 		p.state.Err = nil
 	case Loading, Results, PickingType:
-		p.state = State{Mode: Browsing}
+		if p.state.Mode == Results && p.state.Operation == ShowExact && p.state.Catalog != nil {
+			p.state.Mode, p.state.Operation, p.state.Err = Results, Summary, nil
+			p.state.Result = Result{Summaries: append([]tagging.Summary(nil), p.state.Catalog...)}
+			p.applySummaryQuery()
+		} else {
+			p.state = State{Mode: Browsing}
+		}
 	}
 	p.publish()
 	return true
@@ -287,12 +327,17 @@ func (p *Presenter) runQuery(work func() (any, error)) {
 			result.References, _ = r.Value.([]tagging.Reference)
 		case Summary:
 			result.Summaries, _ = r.Value.([]tagging.Summary)
+			p.state.Catalog = append([]tagging.Summary(nil), result.Summaries...)
+			p.state.Query = ""
 		case Add, Remove:
 			p.state.Mode, p.state.Err = Results, apperrors.Internalf("unexpected tag query")
 			p.publish()
 			return
 		}
 		p.state.Result, p.state.Mode, p.state.Err = cloneResult(result), Results, nil
+		if operation == Summary {
+			p.applySummaryQuery()
+		}
 		p.publish()
 	})
 }
@@ -311,6 +356,16 @@ func (p *Presenter) applyQuery() {
 	for _, option := range p.state.Entities {
 		if query == "" || strings.Contains(strings.ToLower(option.Name+" "+option.Detail), query) {
 			p.state.Visible = append(p.state.Visible, option)
+		}
+	}
+}
+
+func (p *Presenter) applySummaryQuery() {
+	query := strings.ToLower(strings.TrimSpace(p.state.Query))
+	p.state.VisibleSummaries = nil
+	for _, summary := range p.state.Catalog {
+		if query == "" || strings.Contains(strings.ToLower(summary.Tag), query) {
+			p.state.VisibleSummaries = append(p.state.VisibleSummaries, summary)
 		}
 	}
 }
@@ -428,5 +483,7 @@ func cloneState(s State) State {
 	s.Entities = cloneEntities(s.Entities)
 	s.Visible = cloneEntities(s.Visible)
 	s.Result = cloneResult(s.Result)
+	s.Catalog = append([]tagging.Summary(nil), s.Catalog...)
+	s.VisibleSummaries = append([]tagging.Summary(nil), s.VisibleSummaries...)
 	return s
 }

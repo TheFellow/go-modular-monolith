@@ -256,3 +256,50 @@ func TestMutationAuditsTouchedEntity(t *testing.T) {
 	entry := fx.f.LatestAuditEntry(ingredientauthz.ActionTag)
 	testutil.AuditTouches(t, entry, fx.targets[entity.TypeIngredient])
 }
+
+func TestSummaryIsFilterableListAndBackRetainsDiscoveryState(t *testing.T) {
+	fx := fullFixture(t)
+	_, err := fx.f.App.Tags.Upsert(fx.f.OwnerContext(), fx.targets[entity.TypeIngredient], tag.Tag{Key: "region", Value: "west"})
+	testutil.Ok(t, err)
+	p := presenter(fx.f.App)
+	p.ResetList()
+	if s := p.State(); s.Mode != Results || s.Operation != Summary || len(s.VisibleSummaries) != 1 {
+		t.Fatalf("summary list = %#v", s)
+	}
+	p.Search("region")
+	p.SelectSummary(0)
+	if s := p.State(); s.Operation != ShowExact || s.Value != "region=west" || len(s.Result.References) != 1 {
+		t.Fatalf("tag detail = %#v", s)
+	}
+	p.Back()
+	if s := p.State(); s.Operation != Summary || s.Query != "region" || len(s.VisibleSummaries) != 1 {
+		t.Fatalf("back did not retain list state: %#v", s)
+	}
+	p.SelectSummary(0)
+	p.ResetList()
+	if s := p.State(); s.Operation != Summary || s.Query != "" || len(s.VisibleSummaries) != 1 {
+		t.Fatalf("breadcrumb reset = %#v", s)
+	}
+}
+
+func TestSummaryEmptyStateAndTypedDetailNavigationControls(t *testing.T) {
+	fx := fullFixture(t)
+	p := presenter(fx.f.App)
+	v := NewView(p)
+	v.Activate()
+	if !v.list.Hidden || v.empty.Hidden {
+		t.Fatalf("empty summary visibility: list=%v empty=%v", v.list.Hidden, v.empty.Hidden)
+	}
+	_, err := fx.f.App.Tags.Upsert(fx.f.OwnerContext(), fx.targets[entity.TypeDrink], tag.Tag{Key: "classic"})
+	testutil.Ok(t, err)
+	p.ResetList()
+	if v.list.Hidden || !v.empty.Hidden {
+		t.Fatalf("populated summary visibility: list=%v empty=%v", v.list.Hidden, v.empty.Hidden)
+	}
+	p.SelectSummary(0)
+	driver := fynetest.NewDriver(t, v.Content())
+	driver.Tap(ControlBack)
+	if p.State().Operation != Summary {
+		t.Fatalf("typed Back did not return to summary: %#v", p.State())
+	}
+}

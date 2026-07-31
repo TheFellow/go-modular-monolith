@@ -24,6 +24,7 @@ import (
 	menusgui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/gui"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	ordersgui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/gui"
+	tagginggui "github.com/TheFellow/go-modular-monolith/app/domains/tagging/surfaces/gui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
@@ -103,7 +104,7 @@ func TestRenderWorkspaceReview(t *testing.T) {
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, route := range []string{"drinks", "ingredients", "inventory", "menus", "orders", "audit"} {
+	for _, route := range []string{"drinks", "ingredients", "inventory", "menus", "orders", "audit", "tags"} {
 		if err := desktop.shell.Navigate(route); err != nil {
 			t.Fatal(err)
 		}
@@ -274,6 +275,20 @@ func TestRenderWorkspaceReview(t *testing.T) {
 			if err := file.Close(); err != nil {
 				t.Fatal(err)
 			}
+		}
+		if route == "tags" {
+			presenter := desktop.presenters[route].(*tagginggui.Presenter)
+			if len(presenter.State().VisibleSummaries) > 0 {
+				presenter.SelectSummary(0)
+				captureReview(t, desktop, directory, route+"-detail.png")
+				presenter.Back()
+			}
+			presenter.Search("missing")
+			captureReview(t, desktop, directory, route+"-empty.png")
+			presenter.ResetList()
+			presenter.Start(tagginggui.Add)
+			captureReview(t, desktop, directory, route+"-tag-entity.png")
+			presenter.Back()
 		}
 	}
 }
