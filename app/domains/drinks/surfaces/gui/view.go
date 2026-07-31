@@ -117,7 +117,7 @@ type recipeWidgets struct {
 	cancelSubstitute   *ui.SemanticButton
 	choosingSubstitute bool
 	remove             *ui.SemanticButton
-	actions            *widget.Select
+	actions            *ui.ActionSelect
 }
 type View struct {
 	presenter                         *Presenter
@@ -530,7 +530,7 @@ func (v *View) rebuildRecipe(state State) {
 				v.recipe[index].choosingSubstitute = true
 				v.rebuildSubstituteControls(index, v.presenter.State())
 			case "Remove":
-				remove.OnTapped()
+				ui.Trigger(remove)
 			}
 		})
 		if state.Mode == Viewing {

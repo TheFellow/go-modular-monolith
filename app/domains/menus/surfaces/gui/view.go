@@ -174,7 +174,7 @@ func NewView(p *Presenter) *View {
 	v.drinkTags.Normalize = tag.UpsertCollection
 	v.drinkSearch.SetPlaceHolder("Search active drinks")
 	v.drinkSearchAction = ui.NewButton(ControlDrinkSearch+".apply", "Search", func() { p.SearchDrinks(v.drinkSearch.Text) })
-	v.drinkSearch.OnSubmitted = func(string) { v.drinkSearchAction.OnTapped() }
+	ui.SubmitOnEnter(v.drinkSearch, v.drinkSearchAction)
 	v.drinkChoices = container.NewVBox()
 	v.drinkStatus = widget.NewLabel("")
 	v.drinkCancel = ui.WithIcon(ui.NewButton(ControlCancel+".drink", "Cancel", p.Cancel), ui.IconCancel)

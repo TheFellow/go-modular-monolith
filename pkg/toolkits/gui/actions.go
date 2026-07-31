@@ -75,35 +75,74 @@ type RowAction struct {
 	Run   func()
 }
 
-// ConfigureActionSelect binds a compact action selector so each action can be
-// chosen repeatedly. Clearing a Select emits OnChanged("") in Fyne, therefore
-// reset must be guarded to avoid recursively clearing until the stack overflows.
-func ConfigureActionSelect(actions *widget.Select, options []string, onAction func(string)) {
-	actions.OnChanged = nil
-	actions.Options = append(actions.Options[:0], options...)
-	actions.ClearSelected()
-	clearing := false
-	actions.OnChanged = func(selected string) {
-		if clearing || selected == "" {
-			return
-		}
-		clearing = true
-		actions.ClearSelected()
-		clearing = false
-		if onAction != nil {
-			onAction(selected)
-		}
+// ActionSelect is a momentary action menu rather than a value-bearing Select.
+// It owns Fyne's reset callback so callers cannot accidentally introduce the
+// recursive ClearSelected/OnChanged loop that a raw Select permits.
+type ActionSelect struct {
+	widget.Select
+	resetting   bool
+	dispatching bool
+	onAction    func(string)
+}
+
+// NewActionSelect creates a compact, rebindable action selector. Use SetActions
+// when a recycled widget begins representing a different row.
+func NewActionSelect(options []string, onAction func(string)) *ActionSelect {
+	actions := &ActionSelect{}
+	actions.PlaceHolder = "Actions"
+	actions.OnChanged = actions.changed
+	actions.ExtendBaseWidget(actions)
+	actions.SetActions(options, onAction)
+	return actions
+}
+
+func (actions *ActionSelect) changed(selected string) {
+	if actions.resetting || actions.dispatching || selected == "" {
+		return
 	}
+	actions.resetting = true
+	actions.ClearSelected()
+	actions.resetting = false
+	actions.dispatching = true
+	defer func() { actions.dispatching = false }()
+	if actions.onAction != nil {
+		actions.onAction(selected)
+	}
+}
+
+// SetActions atomically replaces both choices and their callback. Resetting is
+// deliberately callback-silent, which makes table-cell recycling deterministic.
+func (actions *ActionSelect) SetActions(options []string, onAction func(string)) {
+	actions.resetting = true
+	actions.ClearSelected()
+	actions.Options = append(actions.Options[:0], options...)
+	actions.onAction = onAction
+	actions.resetting = false
 	actions.Refresh()
 }
 
-// NewActionSelect creates a compact action selector with re-entrancy-safe
-// selection reset behavior.
-func NewActionSelect(options []string, onAction func(string)) *widget.Select {
-	actions := widget.NewSelect(nil, nil)
-	actions.PlaceHolder = "Actions"
-	ConfigureActionSelect(actions, options, onAction)
-	return actions
+// SetSelected accepts only a currently bound action. This shadows the raw
+// Select method, which otherwise accepts stale values after a recycled rebind.
+func (actions *ActionSelect) SetSelected(selected string) {
+	if actions.dispatching || actions.Disabled() || actions.Hidden {
+		return
+	}
+	if selected == "" {
+		actions.Select.SetSelected(selected)
+		return
+	}
+	for _, option := range actions.Options {
+		if option == selected {
+			actions.Select.SetSelected(selected)
+			return
+		}
+	}
+}
+
+// SelectAction is the event-level API for tests and keyboard integrations. It
+// uses the same Fyne selection path as pointer interaction.
+func (actions *ActionSelect) SelectAction(selected string) {
+	actions.SetSelected(selected)
 }
 
 // NewRowTable creates a table styled as aligned rows rather than a boxed grid.
@@ -120,17 +159,16 @@ func NewRowTable(length func() (rows int, cols int), create func() framework.Can
 func NewActionCell() *framework.Container {
 	label := widget.NewLabel("")
 	label.Truncation = framework.TextTruncateEllipsis
-	actions := widget.NewSelect(nil, nil)
-	actions.PlaceHolder = "Actions"
+	actions := NewActionSelect(nil, nil)
 	actions.Hide()
 	pills := container.New(&compactPillRowLayout{})
 	pills.Hide()
 	return container.New(&rowCellLayout{}, label, actions, pills, widget.NewSeparator())
 }
 
-func actionCellParts(object framework.CanvasObject) (*widget.Label, *widget.Select, *framework.Container) {
+func actionCellParts(object framework.CanvasObject) (*widget.Label, *ActionSelect, *framework.Container) {
 	cell := object.(*framework.Container)
-	return cell.Objects[0].(*widget.Label), cell.Objects[1].(*widget.Select), cell.Objects[2].(*framework.Container)
+	return cell.Objects[0].(*widget.Label), cell.Objects[1].(*ActionSelect), cell.Objects[2].(*framework.Container)
 }
 
 type rowCellLayout struct{}
@@ -187,7 +225,7 @@ func ShowCellActions(object framework.CanvasObject, rowActions []RowAction) {
 		options = append(options, action.Label)
 		byLabel[action.Label] = action.Run
 	}
-	ConfigureActionSelect(actions, options, func(selected string) {
+	actions.SetActions(options, func(selected string) {
 		run := byLabel[selected]
 		if run != nil {
 			run()
@@ -196,7 +234,7 @@ func ShowCellActions(object framework.CanvasObject, rowActions []RowAction) {
 }
 
 // ActionSelector exposes the selector for focused interaction tests.
-func ActionSelector(object framework.CanvasObject) *widget.Select {
+func ActionSelector(object framework.CanvasObject) *ActionSelect {
 	_, actions, _ := actionCellParts(object)
 	return actions
 }

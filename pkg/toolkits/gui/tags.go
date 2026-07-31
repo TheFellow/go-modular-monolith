@@ -55,15 +55,16 @@ type TagTokenEditor struct {
 	// Applications should provide their strongly typed tag-domain operation.
 	Normalize func(current, input string) (string, error)
 
-	id     string
-	values []string
-	err    error
+	id      string
+	values  []string
+	err     error
+	enabled bool
 }
 
 // NewTagTokenEditor creates an editor with semantic IDs for its input and
 // remove controls. A remove control has the ID "<id>.remove.<key>".
 func NewTagTokenEditor(id, value string) *TagTokenEditor {
-	e := &TagTokenEditor{id: id, Input: NewEntry(id)}
+	e := &TagTokenEditor{id: id, Input: NewEntry(id), enabled: true}
 	e.Input.SetPlaceHolder("Add tag and press Enter")
 	e.Input.OnSubmitted = func(value string) { e.add(value) }
 	e.SetCSV(value)
@@ -84,6 +85,7 @@ func (e *TagTokenEditor) SetCSV(value string) {
 
 // SetEnabled controls the input and token removal controls.
 func (e *TagTokenEditor) SetEnabled(enabled bool) {
+	e.enabled = enabled
 	if enabled {
 		e.Input.Enable()
 	} else {
@@ -97,6 +99,9 @@ func (e *TagTokenEditor) SetEnabled(enabled bool) {
 }
 
 func (e *TagTokenEditor) add(value string) {
+	if !e.enabled {
+		return
+	}
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return
@@ -137,6 +142,9 @@ func (e *TagTokenEditor) add(value string) {
 }
 
 func (e *TagTokenEditor) remove(key string) {
+	if !e.enabled {
+		return
+	}
 	for index, value := range e.values {
 		if tagKey(value) == key {
 			e.values = append(e.values[:index], e.values[index+1:]...)
@@ -157,7 +165,9 @@ func (e *TagTokenEditor) rebuild() {
 	objects := make([]framework.CanvasObject, 0, len(e.values)+1)
 	for _, value := range e.values {
 		key := tagKey(value)
-		objects = append(objects, newRemovableTagPill(e.id+".remove."+key, value, func() { e.remove(key) }))
+		pill := newRemovableTagPill(e.id+".remove."+key, value, func() { e.remove(key) })
+		pill.setEnabled(e.enabled)
+		objects = append(objects, pill)
 	}
 	objects = append(objects, e.Input)
 	if e.Content == nil {
@@ -241,7 +251,10 @@ func (p *removableTagPill) MouseOut() {
 
 func (p *removableTagPill) setEnabled(enabled bool) {
 	p.enabled = enabled
-	if !enabled {
+	if enabled {
+		p.remove.Enable()
+	} else {
+		p.remove.Disable()
 		p.remove.Hide()
 	}
 }

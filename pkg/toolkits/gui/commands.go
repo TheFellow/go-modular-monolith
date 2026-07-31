@@ -20,9 +20,16 @@ type Commander interface {
 // Trigger invokes an enabled button through the same callback as pointer
 // input. It keeps keyboard availability aligned with the visible control.
 func Trigger(button *SemanticButton) bool {
-	if button == nil || button.Disabled() || button.Hidden {
+	if button == nil || button.OnTapped == nil || button.Disabled() || button.Hidden {
 		return false
 	}
 	button.OnTapped()
 	return true
+}
+
+// SubmitOnEnter binds an entry to the same guarded action as its visible
+// button. This prevents keyboard submission from bypassing hidden/disabled
+// state or acquiring a second copy of the command callback.
+func SubmitOnEnter(entry *SemanticEntry, button *SemanticButton) {
+	entry.OnSubmitted = func(string) { Trigger(button) }
 }

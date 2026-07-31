@@ -41,3 +41,16 @@ func TestFilterBarEnterAppliesTrimmedExpression(t *testing.T) {
 		t.Fatalf("Enter applied %q", applied)
 	}
 }
+
+func TestFilterBarEnterCannotBypassDisabledState(t *testing.T) {
+	startTestApp(t)
+	calls := 0
+	bar := NewSingleRowFilterBar("filter", "apply", "Filter…", "", nil, nil, func(string) { calls++ })
+	bar.SetEnabled(false)
+	bar.Expression.OnSubmitted("ignored")
+	bar.SetEnabled(true)
+	bar.Expression.OnSubmitted("applied")
+	if calls != 1 {
+		t.Fatalf("filter applied %d times, want only enabled submission", calls)
+	}
+}

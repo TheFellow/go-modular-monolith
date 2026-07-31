@@ -111,7 +111,7 @@ func NewView(p *Presenter) *View {
 	v.entitySearch = ui.NewEntry(ControlSearch)
 	v.entitySearch.SetPlaceHolder("Search active entities by name")
 	entityApply := ui.NewButton(ControlSearch+".apply", "Search", func() { p.Search(v.entitySearch.Text) })
-	v.entitySearch.OnSubmitted = func(string) { entityApply.OnTapped() }
+	ui.SubmitOnEnter(v.entitySearch, entityApply)
 	v.entities = container.NewBorder(container.NewBorder(nil, nil, nil, entityApply, v.entitySearch), nil, nil, nil, container.NewVScroll(v.entityRows))
 	v.value = ui.NewEntry(ControlValue)
 	v.submit = ui.Primary(ui.WithIcon(ui.NewButton(ControlSubmit, "Apply", func() { p.SetValue(v.value.Text); p.Submit() }), ui.IconSave))
