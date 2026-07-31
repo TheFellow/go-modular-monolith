@@ -19,7 +19,10 @@ import (
 	ingredientsgui "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/gui"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	inventorygui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/gui"
+	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	menusgui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/gui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
@@ -60,6 +63,26 @@ func TestRenderWorkspaceReview(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := desktop.session.Tags.Replace(desktop.session.Context(), drink.EntityUID(), tag.Tags{{Key: "classic"}}); err != nil {
+		t.Fatal(err)
+	}
+	menu, err := desktop.session.Menus.Create(desktop.session.Context(), &menusmodels.Menu{Name: "Summer Classics", Description: "A concise menu of balanced classics."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	menu, err = desktop.session.Menus.AddDrink(desktop.session.Context(), &menusmodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publishedMenu, err := desktop.session.Menus.Create(desktop.session.Context(), &menusmodels.Menu{Name: "Published Classics", Description: "The currently published menu."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publishedMenu, err = desktop.session.Menus.AddDrink(desktop.session.Context(), &menusmodels.MenuPatch{MenuID: publishedMenu.ID, DrinkID: drink.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publishedMenu, err = desktop.session.Menus.Publish(desktop.session.Context(), publishedMenu)
+	if err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(directory, 0o755); err != nil {
@@ -150,6 +173,44 @@ func TestRenderWorkspaceReview(t *testing.T) {
 			presenter.Select(presenter.Snapshot().Rows[0].Inventory.ID)
 			presenter.StartAdjust()
 			captureReview(t, desktop, directory, route+"-adjust.png")
+			presenter.Cancel()
+		}
+		if route == "menus" {
+			presenter := desktop.presenters[route].(*menusgui.Presenter)
+			selectMenu := func(id entity.MenuID) {
+				for i, item := range presenter.State().Items {
+					if item.ID == id {
+						presenter.Select(i)
+						return
+					}
+				}
+				t.Fatalf("menu %s missing", id)
+			}
+			selectMenu(menu.ID)
+			captureReview(t, desktop, directory, route+"-summer-classics.png")
+			form := presenter.State().Form
+			form.Description = "A changed description awaiting review."
+			presenter.SetForm(form)
+			captureReview(t, desktop, directory, route+"-edit.png")
+			presenter.Cancel()
+			presenter.StartTags()
+			presenter.SetForm(menusgui.Form{Tags: "featured"})
+			captureReview(t, desktop, directory, route+"-tags.png")
+			presenter.Cancel()
+			presenter.ResetList()
+			selectMenu(publishedMenu.ID)
+			captureReview(t, desktop, directory, route+"-published.png")
+			presenter.Back()
+			presenter.StartAnalysis()
+			captureReview(t, desktop, directory, route+"-analysis.png")
+			presenter.Cancel()
+			presenter.Back()
+			presenter.SetFilter(menusgui.Filter{Expression: `name == "missing"`, Limit: 25})
+			presenter.Refresh()
+			captureReview(t, desktop, directory, route+"-empty.png")
+			presenter.ResetList()
+			presenter.StartCreate()
+			captureReview(t, desktop, directory, route+"-create.png")
 			presenter.Cancel()
 		}
 		if route == "audit" {
