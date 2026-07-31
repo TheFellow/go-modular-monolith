@@ -27,6 +27,13 @@ const (
 	ActorActivity
 )
 
+type Mode uint8
+
+const (
+	Browsing Mode = iota
+	Viewing
+)
+
 func (s Scope) valid() bool {
 	switch s {
 	case AllActivity, EntityHistory, ActorActivity:
@@ -48,6 +55,7 @@ type Row struct {
 }
 
 type State struct {
+	Mode         Mode
 	Loading      bool
 	Rows         []Row
 	Selected     *Row
@@ -113,12 +121,9 @@ func (p *Presenter) Refresh() {
 			ui.ShowPresentation(p.dialogs, result.Err)
 		}
 		if result.Status == ui.Loaded {
-			selected := selectedID(p.state.Selected)
 			p.state.Rows, p.state.Next, p.state.Err = cloneRows(result.Value.rows), result.Value.next, nil
-			p.state.Selected = findRow(p.state.Rows, selected)
-			if p.state.Selected == nil && len(p.state.Rows) > 0 {
-				row := cloneRow(p.state.Rows[0])
-				p.state.Selected = &row
+			if p.state.Mode == Viewing {
+				p.state.Selected = findRow(p.state.Rows, selectedID(p.state.Selected))
 			}
 		}
 		p.publish()
@@ -167,8 +172,24 @@ func (p *Presenter) Select(index int) {
 	} else {
 		row := cloneRow(p.state.Rows[index])
 		p.state.Selected = &row
+		p.state.Mode = Viewing
 	}
 	p.publish()
+}
+
+// Back returns to the exact list query and page that opened the detail.
+func (p *Presenter) Back() {
+	p.state.Mode, p.state.Selected = Browsing, nil
+	p.publish()
+}
+
+// ResetList is used by the breadcrumb and main navigation: it deliberately
+// discards the retained filter and paging state.
+func (p *Presenter) ResetList() {
+	p.state.Mode, p.state.Selected = Browsing, nil
+	p.state.Filter = Filter{Limit: paging.DefaultLimit}
+	p.state.Cursor, p.state.Next, p.state.History = "", "", nil
+	p.Refresh()
 }
 
 func normalizeFilter(filter Filter) Filter {
