@@ -26,7 +26,12 @@ func TestFilterBarPresetsWriteVisibleDomainExpression(t *testing.T) {
 	if applied != bar.Expression.Text {
 		t.Fatalf("applied %q, want %q", applied, bar.Expression.Text)
 	}
-	if bar.Advanced == nil || bar.Advanced.Items[0].Open {
+	if bar.Advanced == nil || bar.Advanced.IsOpen() {
 		t.Fatal("advanced filters should start collapsed")
+	}
+	collapsed := bar.Content.MinSize().Height
+	bar.Advanced.SetOpen(true)
+	if !bar.Advanced.IsOpen() || bar.Content.MinSize().Height <= collapsed {
+		t.Fatal("expanded filters should increase layout height and reflow content")
 	}
 }

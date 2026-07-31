@@ -66,6 +66,7 @@ type View struct {
 	detail, status, formStatus, drinkStatus, analysisStatus           *widget.Label
 	descriptionHelp                                                   *widget.Label
 	detailBox                                                         *framework.Container
+	listEmpty                                                         framework.CanvasObject
 	removeActions                                                     *framework.Container
 	filterLimit                                                       *semanticSelect
 	filterStatus                                                      *ui.FilterSelect
@@ -107,6 +108,7 @@ func NewView(p *Presenter) *View {
 		button.SetText(fmt.Sprintf("%s  ·  %s", menu.Name, menu.Status))
 		button.OnTapped = func() { p.Select(i) }
 	})
+	v.listEmpty = ui.EmptyCollection("menus", "Adjust the filters or create the first menu.")
 	v.refresh = ui.NewButton(ControlRefresh, "Refresh", p.Refresh)
 	v.create = ui.Primary(ui.NewButton(ControlCreate, "New menu", p.StartCreate))
 	v.rename = ui.NewButton(ControlRename, "Rename", p.StartRename)
@@ -125,9 +127,10 @@ func NewView(p *Presenter) *View {
 	v.status = widget.NewLabel("")
 	v.browse = ui.StandardListPage(ui.ListPage{
 		Title: "Menus", Subtitle: "Browse menus and select one to manage drinks, publishing, and pricing.", Filters: filters,
+		FilterDisclosure:  bar.Advanced,
 		CollectionActions: []framework.CanvasObject{v.create, v.refresh},
 		DetailActions:     []framework.CanvasObject{v.rename, v.addDrink, v.analyze, v.publish, v.draft, v.tagAction, v.delete},
-		List:              v.list, Detail: container.NewVScroll(v.detailBox), Status: container.NewVBox(v.status, v.removeActions),
+		List:              container.NewStack(v.list, v.listEmpty), Detail: container.NewVScroll(v.detailBox), Status: container.NewVBox(v.status, v.removeActions),
 		Paging: container.NewHBox(v.previous, v.next), ListRatio: .35,
 	}).(*framework.Container)
 	v.name = ui.NewEntry(ControlName)
@@ -280,12 +283,17 @@ func (v *View) render(state State) {
 		v.analysisStatus.SetText(message)
 	}
 	v.list.Refresh()
+	if len(state.Items) == 0 && !state.Loading {
+		v.listEmpty.Show()
+	} else {
+		v.listEmpty.Hide()
+	}
 	v.detailBox.RemoveAll()
-	v.detailBox.Add(v.detail)
 	v.removeActions.RemoveAll()
 	if state.Selected == nil {
-		v.detail.SetText("Select a menu")
+		v.detailBox.Add(ui.EmptyDetail("a menu"))
 	} else {
+		v.detailBox.Add(v.detail)
 		tags := state.Selected.Tags.Canonical().String()
 		if tags == "" {
 			tags = "None"

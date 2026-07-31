@@ -128,7 +128,7 @@ func (v *View) render(state State) {
 		rows.Add(button)
 	}
 	if len(state.Rows) == 0 && state.Status == toolkit.Loaded {
-		rows.Add(widget.NewLabel("No inventory found"))
+		rows.Add(toolkit.EmptyCollection("stock items", "Adjust the filters or add ingredients before tracking stock."))
 	}
 	status := ""
 	switch state.Status {
@@ -147,6 +147,7 @@ func (v *View) render(state State) {
 	}
 	v.root.Objects = []framework.CanvasObject{toolkit.StandardListPage(toolkit.ListPage{
 		Title: "Inventory", Subtitle: "Review stock levels and select an item to adjust or set its quantity.", Filters: filters,
+		FilterDisclosure:  bar.Advanced,
 		CollectionActions: []framework.CanvasObject{refresh},
 		DetailActions:     detailActions,
 		List:              container.NewScroll(rows), Detail: v.detail(state), Status: widget.NewLabel(status),

@@ -148,7 +148,7 @@ func (v *View) browser(state State) framework.CanvasObject {
 		list.Add(button)
 	}
 	if len(state.Rows) == 0 && !state.Loading {
-		list.Add(widget.NewLabel("No orders found"))
+		list.Add(ui.EmptyCollection("orders", "Adjust the filters or place the first order."))
 	}
 	statusText := ""
 	if state.Loading {
@@ -162,7 +162,8 @@ func (v *View) browser(state State) framework.CanvasObject {
 		detailActions = []framework.CanvasObject{complete, tags, cancel}
 	}
 	return ui.StandardListPage(ui.ListPage{
-		Title: "Orders", Subtitle: "Browse orders and select one to review its items and lifecycle actions.", Filters: filters,
+		FilterDisclosure: bar.Advanced,
+		Title:            "Orders", Subtitle: "Browse orders and select one to review its items and lifecycle actions.", Filters: filters,
 		CollectionActions: []framework.CanvasObject{place, refresh},
 		DetailActions:     detailActions,
 		List:              container.NewScroll(list), Detail: v.detail(state), Status: widget.NewLabel(statusText),

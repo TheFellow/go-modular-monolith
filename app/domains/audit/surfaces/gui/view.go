@@ -35,6 +35,7 @@ type View struct {
 	root      *framework.Container
 	rows      *framework.Container
 	detail    *widget.Label
+	detailBox *framework.Container
 	status    *widget.Label
 
 	scope                          *ui.FilterSelect
@@ -67,16 +68,20 @@ func NewView(presenter *Presenter) *View {
 	v.scope = bar.Presets[0]
 
 	v.rows = container.NewVBox()
-	v.detail = widget.NewLabel("Select an audit entry")
-	v.detail.Wrapping = framework.TextWrapWord
+	v.detail = widget.NewLabel("")
+	// Entity identifiers and UUIDs contain no spaces, so break wrapping keeps
+	// them inside the bounded detail pane instead of overflowing its canvas.
+	v.detail.Wrapping = framework.TextWrapBreak
 	v.status = widget.NewLabel("")
+	v.detailBox = container.NewVBox()
 	v.previous = ui.NewButton(ControlPrevious, "Previous", presenter.PreviousPage)
 	v.next = ui.NewButton(ControlNext, "Next", presenter.NextPage)
 	paging := container.NewHBox(v.previous, v.next, layout.NewSpacer())
 	v.root = ui.StandardListPage(ui.ListPage{
 		Title: "Audit", Subtitle: "Review application activity and inspect a selected event.", Filters: bar.Content,
+		FilterDisclosure:  bar.Advanced,
 		CollectionActions: []framework.CanvasObject{v.refresh},
-		List:              container.NewVScroll(v.rows), Detail: container.NewVScroll(v.detail), Status: v.status,
+		List:              container.NewVScroll(v.rows), Detail: container.NewVScroll(v.detailBox), Status: v.status,
 		Paging: paging, ListRatio: .42,
 	}).(*framework.Container)
 	presenter.Observe(v.render)
@@ -103,10 +108,12 @@ func (v *View) applyFilter() {
 
 func (v *View) render(state State) {
 	v.rebuildRows(state)
+	v.detailBox.RemoveAll()
 	if state.Selected == nil {
-		v.detail.SetText("Select an audit entry")
+		v.detailBox.Add(ui.EmptyDetail("an audit entry"))
 	} else {
 		v.detail.SetText(detailText(*state.Selected))
+		v.detailBox.Add(v.detail)
 	}
 	switch {
 	case state.Loading:
@@ -135,6 +142,9 @@ func (v *View) render(state State) {
 func (v *View) rebuildRows(state State) {
 	v.rows.RemoveAll()
 	v.rowButtons = make(map[string]*ui.SemanticButton, len(state.Rows))
+	if len(state.Rows) == 0 && !state.Loading {
+		v.rows.Add(ui.EmptyCollection("audit entries", "Activity appears here as people use Mixology."))
+	}
 	for index, row := range state.Rows {
 		label := summary(row)
 		if !row.Entry.Success {

@@ -111,6 +111,7 @@ type View struct {
 	list                                                  *widget.List
 	detail, status, formStatus, tagStatus                 *widget.Label
 	detailBox                                             *framework.Container
+	listEmpty                                             framework.CanvasObject
 	browse, formPanel, tagsPanel                          *framework.Container
 	filterExpression                                      *ui.SemanticEntry
 	filterLimit                                           *semanticSelect
@@ -160,6 +161,7 @@ func NewView(p *Presenter) *View {
 		button.SetText(item.Name)
 		button.OnTapped = func() { p.Select(i) }
 	})
+	v.listEmpty = ui.EmptyCollection("drinks", "Adjust the filters or create the first drink recipe.")
 	v.refresh = ui.NewButton(ControlRefresh, "Refresh", p.Refresh)
 	v.create = ui.Primary(ui.NewButton(ControlCreate, "New drink", p.StartCreate))
 	v.previous = ui.NewButton(ControlPrevious, "Previous", p.PreviousPage)
@@ -174,9 +176,10 @@ func NewView(p *Presenter) *View {
 	v.status = widget.NewLabel("")
 	v.browse = ui.StandardListPage(ui.ListPage{
 		Title: "Drinks", Subtitle: "Browse recipes and select a drink to inspect or edit it.", Filters: filters,
+		FilterDisclosure:  bar.Advanced,
 		CollectionActions: []framework.CanvasObject{v.create, v.refresh},
 		DetailActions:     []framework.CanvasObject{edit, tagsAction, deleteAction},
-		List:              v.list, Detail: container.NewVScroll(v.detailBox), Status: v.status,
+		List:              container.NewStack(v.list, v.listEmpty), Detail: container.NewVScroll(v.detailBox), Status: v.status,
 		Paging: container.NewHBox(v.previous, v.next), ListRatio: .35,
 	}).(*framework.Container)
 	v.name = ui.NewEntry(ControlName)
@@ -317,15 +320,20 @@ func (v *View) render(state State) {
 	v.tagStatus.SetText(v.formStatus.Text)
 	v.setMutableEnabled(!state.Submitting)
 	v.list.Refresh()
+	if len(state.Items) == 0 && !state.Loading {
+		v.listEmpty.Show()
+	} else {
+		v.listEmpty.Hide()
+	}
 	for _, action := range v.detailActions {
 		action.Hidden = state.Selected == nil
 		action.Refresh()
 	}
 	v.detailBox.RemoveAll()
-	v.detailBox.Add(v.detail)
 	if state.Selected == nil {
-		v.detail.SetText("Select a drink")
+		v.detailBox.Add(ui.EmptyDetail("a drink"))
 	} else {
+		v.detailBox.Add(v.detail)
 		tags := state.Selected.Tags.Canonical().String()
 		if tags == "" {
 			tags = "None"

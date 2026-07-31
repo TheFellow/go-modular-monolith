@@ -23,7 +23,10 @@ These directions are enforced by `.arch-lint.yaml`.
 
 The desktop uses one toolkit-owned application shell and standard page
 layouts. The persistent left navigation rail selects Dashboard or a domain
-workspace and visibly marks the active route. List-backed workspaces open in a
+workspace, visibly marks the active route, and keeps the active authorization
+persona in view. Text labels are reinforced by a small, shared vocabulary of
+native symbols for destinations and repeated actions; symbols never replace
+the visible control name or carry meaning through color alone. List-backed workspaces open in a
 primary/secondary layout: actions and one expression filter above, the list on
 the left, and the selected entity's detail on the right. Common filter presets
 sit beside the expression; less common presets and page size are collapsed
@@ -43,6 +46,10 @@ discard confirmation.
 
 Domain GUI packages supply state, content, and commands; `pkg/toolkits/gui`
 owns shell, list/detail, action hierarchy, empty-detail, and edit-form layout.
+It also owns intentional empty collection/detail states and the repeated icon
+vocabulary, so absence, navigation, and action meaning do not drift between
+domains. Expanded filter disclosures reflow the workspace instead of obscuring
+the master/detail content.
 This follows CODE Framework's standard-layout principle so visual and
 interaction conventions cannot drift independently between domains.
 

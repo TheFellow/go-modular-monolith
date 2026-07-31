@@ -4,6 +4,7 @@ import (
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -13,6 +14,7 @@ import (
 type ListPage struct {
 	Title, Subtitle   string
 	Filters           framework.CanvasObject
+	FilterDisclosure  *FilterDisclosure
 	CollectionActions []framework.CanvasObject
 	OtherActions      []framework.CanvasObject // page-scoped trailing actions, when needed
 	DetailActions     []framework.CanvasObject
@@ -57,7 +59,17 @@ func StandardListPage(page ListPage) framework.CanvasObject {
 	if len(footer) > 0 {
 		bottom = container.NewVBox(footer...)
 	}
-	return container.NewBorder(container.NewPadded(container.NewVBox(heading...)), bottom, nil, nil, container.NewPadded(body))
+	root := container.NewBorder(container.NewPadded(container.NewVBox(heading...)), bottom, nil, nil, container.NewPadded(body))
+	// Dynamic filter disclosures must invalidate the owning Border layout, not
+	// only repaint themselves; otherwise their expanded children can obscure
+	// the list/detail workspace.
+	if page.FilterDisclosure != nil {
+		page.FilterDisclosure.changed = func() {
+			root.Layout.Layout(root.Objects, root.Size())
+			root.Refresh()
+		}
+	}
+	return root
 }
 
 // DetailActionBar keeps actions that operate on the selected entity in its
@@ -148,5 +160,67 @@ func Destructive(button *SemanticButton) *SemanticButton {
 
 // EmptyDetail provides a consistent unselected master/detail state.
 func EmptyDetail(entity string) framework.CanvasObject {
-	return container.NewCenter(widget.NewLabel("Select " + entity + " to view details"))
+	return EmptyState(theme.InfoIcon(), "Nothing selected", "Select "+entity+" from the list to view details.", nil)
+}
+
+// EmptyCollection distinguishes a successful empty query from loading or a
+// broken canvas and gives the user a useful next step.
+func EmptyCollection(entity, guidance string) framework.CanvasObject {
+	if guidance == "" {
+		guidance = "Adjust the filters or add the first " + entity + "."
+	}
+	return EmptyState(theme.ListIcon(), "No "+entity+" found", guidance, nil)
+}
+
+// EmptyState renders intentional absence with a symbol, a concise explanation,
+// and an optional next action. It is shared by empty collections and detail
+// panes so absence never resembles a loading or rendering failure.
+func EmptyState(icon framework.Resource, title, guidance string, action framework.CanvasObject) framework.CanvasObject {
+	objects := []framework.CanvasObject{widget.NewIcon(icon), widget.NewLabelWithStyle(title, framework.TextAlignCenter, framework.TextStyle{Bold: true})}
+	if guidance != "" {
+		label := widget.NewLabel(guidance)
+		label.Alignment = framework.TextAlignCenter
+		label.Wrapping = framework.TextWrapWord
+		objects = append(objects, label)
+	}
+	if action != nil {
+		objects = append(objects, container.NewCenter(action))
+	}
+	return container.NewCenter(container.NewPadded(container.NewVBox(objects...)))
+}
+
+// StatusKind is the repeated visual and textual vocabulary for transient and
+// terminal feedback. Symbols ensure meaning is never carried by color alone.
+type StatusKind uint8
+
+const (
+	StatusInformational StatusKind = iota
+	StatusLoading
+	StatusSuccess
+	StatusWarning
+	StatusError
+)
+
+// StatusLine builds status feedback with a stable symbol and semantic widget
+// importance. Loading remains informational because it is not a warning.
+func StatusLine(kind StatusKind, message string) framework.CanvasObject {
+	icon := theme.InfoIcon()
+	importance := widget.MediumImportance
+	switch kind {
+	case StatusLoading:
+		icon = theme.ViewRefreshIcon()
+	case StatusSuccess:
+		icon = theme.ConfirmIcon()
+		importance = widget.SuccessImportance
+	case StatusWarning:
+		icon = theme.WarningIcon()
+		importance = widget.WarningImportance
+	case StatusError:
+		icon = theme.ErrorIcon()
+		importance = widget.DangerImportance
+	}
+	label := widget.NewLabel(message)
+	label.Importance = importance
+	label.Wrapping = framework.TextWrapWord
+	return container.NewHBox(widget.NewIcon(icon), label)
 }

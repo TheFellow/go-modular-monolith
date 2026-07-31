@@ -38,9 +38,48 @@ type FilterBar struct {
 	Expression *SemanticEntry
 	Apply      *SemanticButton
 	Presets    []*FilterSelect
-	Advanced   *widget.Accordion
+	Advanced   *FilterDisclosure
 	clauses    []string
 }
+
+// FilterDisclosure is a layout-safe disclosure for uncommon filters. Some
+// Accordion renderers update their painted children without invalidating a
+// surrounding Border layout, allowing controls to obscure the workspace.
+// Showing a concrete VBox child updates minimum size and reflows list/detail.
+type FilterDisclosure struct {
+	Content *framework.Container
+	Toggle  *SemanticButton
+	body    framework.CanvasObject
+	open    bool
+	changed func()
+}
+
+func newFilterDisclosure(body framework.CanvasObject) *FilterDisclosure {
+	d := &FilterDisclosure{body: body}
+	d.Toggle = NewButton("filters.more", "More filters", func() { d.SetOpen(!d.open) })
+	d.Toggle.Importance = widget.LowImportance
+	body.Hide()
+	d.Content = container.NewVBox(d.Toggle, body)
+	return d
+}
+
+// SetOpen expands or collapses uncommon filters and forces layout reflow.
+func (d *FilterDisclosure) SetOpen(open bool) {
+	d.open = open
+	if open {
+		d.body.Show()
+		d.Toggle.SetText("Fewer filters")
+	} else {
+		d.body.Hide()
+		d.Toggle.SetText("More filters")
+	}
+	d.Content.Refresh()
+	if d.changed != nil {
+		d.changed()
+	}
+}
+
+func (d *FilterDisclosure) IsOpen() bool { return d.open }
 
 // NewFilterBar builds a single-line expression bar with common presets on the
 // right and optional uncommon controls behind a collapsed disclosure.
@@ -86,8 +125,8 @@ func NewFilterBar(expressionID, applyID, placeholder, initial string, presets, u
 		bar.Content = top
 		return bar
 	}
-	bar.Advanced = widget.NewAccordion(widget.NewAccordionItem("More filters", container.NewPadded(container.NewVBox(advancedObjects...))))
-	bar.Content = container.NewVBox(top, bar.Advanced)
+	bar.Advanced = newFilterDisclosure(container.NewPadded(container.NewVBox(advancedObjects...)))
+	bar.Content = container.NewVBox(top, bar.Advanced.Content)
 	return bar
 }
 

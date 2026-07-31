@@ -12,6 +12,7 @@ import (
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
 	fynedesktop "fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/theme"
 
 	application "github.com/TheFellow/go-modular-monolith/app"
 	auditauthz "github.com/TheFellow/go-modular-monolith/app/domains/audit/authz"
@@ -257,42 +258,42 @@ func openDesktopWithDependencies(ctx context.Context, fyneApp framework.App, con
 	dialogs := func() gui.Dialogs { return deps.dialogs(d.window) }
 	visible := visibleWorkspaces(d.session)
 	routes := []gui.Route{
-		{ID: workspaceDashboard.routeID(), Label: "Dashboard", Build: owned(workspaceDashboard, func() gui.View {
+		{ID: workspaceDashboard.routeID(), Label: "Dashboard", Icon: theme.HomeIcon(), Build: owned(workspaceDashboard, func() gui.View {
 			d.dashboard = newDashboardViewModel(deps.dashboardLoader(d.session), deps.executor, deps.dispatcher)
 			d.presenters[workspaceDashboard.routeID()] = d.dashboard
 			return newDashboardView(d.dashboard, func(route string) error { return d.shell.Navigate(route) }, visible)
 		})},
-		{ID: workspaceDrinks.routeID(), Label: "Drinks", Build: owned(workspaceDrinks, func() gui.View {
+		{ID: workspaceDrinks.routeID(), Label: "Drinks", Icon: theme.MediaMusicIcon(), Build: owned(workspaceDrinks, func() gui.View {
 			presenter := drinksgui.NewPresenter(d.session, drinksgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
 			d.presenters[workspaceDrinks.routeID()] = presenter
 			return drinksgui.NewView(presenter)
 		})},
-		{ID: workspaceIngredients.routeID(), Label: "Ingredients", Build: owned(workspaceIngredients, func() gui.View {
+		{ID: workspaceIngredients.routeID(), Label: "Ingredients", Icon: theme.ListIcon(), Build: owned(workspaceIngredients, func() gui.View {
 			presenter := ingredientsgui.NewPresenter(d.session, deps.executor, deps.dispatcher, dialogs())
 			d.presenters[workspaceIngredients.routeID()] = presenter
 			return ingredientsgui.NewView(presenter)
 		})},
-		{ID: workspaceInventory.routeID(), Label: "Inventory", Build: owned(workspaceInventory, func() gui.View {
+		{ID: workspaceInventory.routeID(), Label: "Inventory", Icon: theme.StorageIcon(), Build: owned(workspaceInventory, func() gui.View {
 			presenter := inventorygui.NewPresenter(d.session, deps.executor, deps.dispatcher, dialogs())
 			d.presenters[workspaceInventory.routeID()] = presenter
 			return inventorygui.NewView(presenter)
 		})},
-		{ID: workspaceMenus.routeID(), Label: "Menus", Build: owned(workspaceMenus, func() gui.View {
+		{ID: workspaceMenus.routeID(), Label: "Menus", Icon: theme.DocumentIcon(), Build: owned(workspaceMenus, func() gui.View {
 			presenter := menusgui.NewPresenter(d.session, menusgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
 			d.presenters[workspaceMenus.routeID()] = presenter
 			return menusgui.NewView(presenter)
 		})},
-		{ID: workspaceOrders.routeID(), Label: "Orders", Build: owned(workspaceOrders, func() gui.View {
+		{ID: workspaceOrders.routeID(), Label: "Orders", Icon: theme.MailComposeIcon(), Build: owned(workspaceOrders, func() gui.View {
 			presenter := ordersgui.NewPresenter(d.session, ordersgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
 			d.presenters[workspaceOrders.routeID()] = presenter
 			return ordersgui.NewView(presenter)
 		})},
-		{ID: workspaceAudit.routeID(), Label: "Audit", Build: owned(workspaceAudit, func() gui.View {
+		{ID: workspaceAudit.routeID(), Label: "Audit", Icon: theme.HistoryIcon(), Build: owned(workspaceAudit, func() gui.View {
 			presenter := auditgui.NewPresenter(d.session, auditgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
 			d.presenters[workspaceAudit.routeID()] = presenter
 			return auditgui.NewView(presenter)
 		})},
-		{ID: workspaceTags.routeID(), Label: "Tags", Build: owned(workspaceTags, func() gui.View {
+		{ID: workspaceTags.routeID(), Label: "Tags", Icon: theme.MailAttachmentIcon(), Build: owned(workspaceTags, func() gui.View {
 			presenter := tagginggui.NewPresenter(d.session, tagginggui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
 			d.presenters[workspaceTags.routeID()] = presenter
 			return tagginggui.NewView(presenter)
@@ -305,7 +306,7 @@ func openDesktopWithDependencies(ctx context.Context, fyneApp framework.App, con
 		}
 	}
 	routes = filtered
-	d.shell, err = gui.NewShell(routes, workspaceDashboard.routeID())
+	d.shell, err = gui.NewShellWithIdentity(routes, workspaceDashboard.routeID(), gui.ShellIdentity{Application: "Mixology", Role: config.actor})
 	if err != nil {
 		_ = d.Close()
 		return nil, err

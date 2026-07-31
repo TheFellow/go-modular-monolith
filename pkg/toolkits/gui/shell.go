@@ -32,7 +32,16 @@ type UnsavedChanges interface{ HasUnsavedChanges() bool }
 type Route struct {
 	ID    string
 	Label string
+	Icon  framework.Resource
 	Build func() View
+}
+
+// ShellIdentity supplies stable context above the navigation rail. The role is
+// visible throughout the application, reducing mistakes in multi-role review
+// and operational sessions.
+type ShellIdentity struct {
+	Application string
+	Role        string
 }
 
 // Shell coordinates navigation and preserves each constructed view for the
@@ -52,6 +61,12 @@ type Shell struct {
 
 // NewShell constructs an application shell and selects initialRoute.
 func NewShell(routes []Route, initialRoute string) (*Shell, error) {
+	return NewShellWithIdentity(routes, initialRoute, ShellIdentity{Application: "Mixology"})
+}
+
+// NewShellWithIdentity constructs a shell with persistent application and
+// authorization context.
+func NewShellWithIdentity(routes []Route, initialRoute string, identity ShellIdentity) (*Shell, error) {
 	if len(routes) == 0 {
 		return nil, fmt.Errorf("fyne shell requires at least one route")
 	}
@@ -65,8 +80,18 @@ func NewShell(routes []Route, initialRoute string) (*Shell, error) {
 	}
 	s.title.TextStyle = framework.TextStyle{Bold: true}
 
-	buttons := make([]framework.CanvasObject, 0, len(routes)+1)
-	buttons = append(buttons, widget.NewLabelWithStyle("Mixology", framework.TextAlignLeading, framework.TextStyle{Bold: true}))
+	if identity.Application == "" {
+		identity.Application = "Application"
+	}
+	identityObjects := []framework.CanvasObject{
+		widget.NewLabelWithStyle(identity.Application, framework.TextAlignLeading, framework.TextStyle{Bold: true}),
+	}
+	if identity.Role != "" {
+		role := widget.NewLabel("Signed in as " + identity.Role)
+		role.Importance = widget.LowImportance
+		identityObjects = append(identityObjects, role)
+	}
+	buttons := make([]framework.CanvasObject, 0, len(routes))
 	for _, route := range routes {
 		if route.ID == "" || route.Label == "" || route.Build == nil {
 			return nil, fmt.Errorf("fyne shell route must have id, label, and builder")
@@ -78,16 +103,18 @@ func NewShell(routes []Route, initialRoute string) (*Shell, error) {
 		s.order = append(s.order, route.ID)
 		id := route.ID
 		button := widget.NewButton(route.Label, func() { _ = s.Navigate(id) })
+		button.Icon = route.Icon
 		button.Alignment = widget.ButtonAlignLeading
 		button.Importance = widget.LowImportance
 		s.navigation[id] = button
 		buttons = append(buttons, button)
 	}
 
-	navigation := container.NewGridWrap(framework.NewSize(184, 42), buttons...)
+	navigation := container.NewGridWrap(framework.NewSize(196, 42), buttons...)
+	rail := container.NewVBox(append(identityObjects, widget.NewSeparator(), navigation, layout.NewSpacer())...)
 	s.content = container.NewBorder(
 		nil, nil,
-		container.NewPadded(container.NewVBox(navigation, layout.NewSpacer())), nil,
+		container.NewPadded(rail), nil,
 		container.NewPadded(s.body),
 	)
 	if err := s.navigate(initialRoute, false); err != nil {

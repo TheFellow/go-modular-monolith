@@ -142,7 +142,7 @@ func (v *View) render(state State) {
 		rows.Add(button)
 	}
 	if len(state.Items) == 0 && state.Status == toolkit.Loaded {
-		rows.Add(widget.NewLabel("No ingredients found"))
+		rows.Add(toolkit.EmptyCollection("ingredients", "Adjust the filters or create a new ingredient."))
 	}
 	list := container.NewScroll(rows)
 
@@ -165,6 +165,7 @@ func (v *View) render(state State) {
 	}
 	objects := []framework.CanvasObject{toolkit.StandardListPage(toolkit.ListPage{
 		Title: "Ingredients", Subtitle: "Browse the ingredient catalog and select an item to inspect or edit it.", Filters: filters,
+		FilterDisclosure:  bar.Advanced,
 		CollectionActions: []framework.CanvasObject{v.create, v.refresh},
 		DetailActions:     detailActions,
 		List:              list, Detail: detail, Status: statusLabel,

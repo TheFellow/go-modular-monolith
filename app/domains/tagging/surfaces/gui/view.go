@@ -125,6 +125,9 @@ func (v *View) render(state State) {
 		for i, item := range state.Visible {
 			v.entityRows.Add(ui.NewButton(entityControl(i), item.Name+" — "+item.Detail, func() { v.presenter.SelectEntity(i) }))
 		}
+		if len(state.Visible) == 0 && !state.Submitting {
+			v.entityRows.Add(ui.EmptyCollection("entities", "Try a broader search or choose another entity type."))
+		}
 		v.entityRows.Refresh()
 	}
 	if state.Mode == EnteringValue {
@@ -194,7 +197,7 @@ func (v *View) renderResults(state State) {
 		}
 	}
 	if len(v.resultRows.Objects) == 1 && (state.Operation == ShowExact || state.Operation == ShowKey || state.Operation == Summary) {
-		v.resultRows.Add(widget.NewLabel("No matching active tag usage."))
+		v.resultRows.Add(ui.EmptyCollection("tag usage", "Try another tag key or return to choose a different operation."))
 	}
 	v.resultRows.Refresh()
 }
