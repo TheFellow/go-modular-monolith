@@ -311,6 +311,9 @@ func openDesktopWithDependencies(ctx context.Context, fyneApp framework.App, con
 		return nil, err
 	}
 	d.window = fyneApp.NewWindow("Mixology — " + config.actor)
+	d.shell.SetAbandonConfirmation(func(respond func(bool)) {
+		dialogs().Confirm("Discard unsaved changes?", "Your edits have not been saved. Discard them and leave this view?", respond)
+	})
 	d.window.SetContent(d.shell.Content())
 	d.window.Resize(framework.NewSize(1100, 720))
 	d.window.SetCloseIntercept(d.closeWindow)
@@ -325,8 +328,10 @@ func openDesktopWithDependencies(ctx context.Context, fyneApp framework.App, con
 // closeWindow is kept separate from composition so lifecycle behavior can be
 // exercised without requiring a native close event.
 func (d *desktop) closeWindow() {
-	_ = d.Close()
-	d.window.Close()
+	d.shell.ConfirmAbandon(func() {
+		_ = d.Close()
+		d.window.Close()
+	})
 }
 
 func (d *desktop) Close() error {

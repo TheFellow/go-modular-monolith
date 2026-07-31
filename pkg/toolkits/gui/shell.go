@@ -24,6 +24,10 @@ type Activated interface {
 	Activate()
 }
 
+// UnsavedChanges is implemented by editable views that need confirmation
+// before the shell replaces them with another route.
+type UnsavedChanges interface{ HasUnsavedChanges() bool }
+
 // Route describes one lazily constructed top-level view.
 type Route struct {
 	ID    string
@@ -43,6 +47,7 @@ type Shell struct {
 	content          framework.CanvasObject
 	navigation       map[string]*widget.Button
 	initialActivated bool
+	confirmAbandon   func(func(bool))
 }
 
 // NewShell constructs an application shell and selects initialRoute.
@@ -94,6 +99,9 @@ func NewShell(routes []Route, initialRoute string) (*Shell, error) {
 // Content returns the shell's root canvas object.
 func (s *Shell) Content() framework.CanvasObject { return s.content }
 
+// SetAbandonConfirmation installs the application-owned confirmation prompt.
+func (s *Shell) SetAbandonConfirmation(confirm func(func(bool))) { s.confirmAbandon = confirm }
+
 // Current returns the selected route ID.
 func (s *Shell) Current() string { return s.current }
 
@@ -115,7 +123,41 @@ func (s *Shell) ExecuteCommand(command Command) bool {
 
 // Navigate selects a route, constructing its view on first use.
 func (s *Shell) Navigate(id string) error {
+	if id != s.current && s.needsAbandonConfirmation() && s.confirmAbandon != nil {
+		if _, ok := s.routes[id]; !ok {
+			return fmt.Errorf("unknown fyne shell route %q", id)
+		}
+		s.confirmAbandon(func(ok bool) {
+			if ok {
+				_ = s.navigate(id, true)
+			}
+		})
+		return nil
+	}
 	return s.navigate(id, true)
+}
+
+// ConfirmAbandon runs proceed immediately unless the current view has an
+// unfinished editor, in which case it delegates to the configured prompt.
+func (s *Shell) ConfirmAbandon(proceed func()) {
+	if !s.needsAbandonConfirmation() || s.confirmAbandon == nil {
+		proceed()
+		return
+	}
+	s.confirmAbandon(func(ok bool) {
+		if ok {
+			proceed()
+		}
+	})
+}
+
+func (s *Shell) needsAbandonConfirmation() bool {
+	view, ok := s.views[s.current]
+	if !ok {
+		return false
+	}
+	dirty, ok := view.(UnsavedChanges)
+	return ok && dirty.HasUnsavedChanges()
 }
 
 // ActivateCurrent activates the initial route after the application has

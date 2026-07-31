@@ -61,6 +61,7 @@ func NewView(presenter *Presenter) *View {
 func (v *View) Title() string                   { return "Orders" }
 func (v *View) Content() framework.CanvasObject { return v.root }
 func (v *View) Activate()                       { v.presenter.Refresh() }
+func (v *View) HasUnsavedChanges() bool         { return v.presenter.State().Mode != Browsing }
 func (v *View) ExecuteCommand(command ui.Command) bool {
 	state := v.presenter.State()
 	switch command {
@@ -90,26 +91,20 @@ func (v *View) browser(state State) framework.CanvasObject {
 	v.expression = ui.NewEntry(ControlFilter)
 	v.expression.SetPlaceHolder(`status == "pending" && tags contains "featured"`)
 	v.expression.SetText(state.Filter.Expression)
-	v.status = widget.NewSelect([]string{"all", "pending", "completed", "cancelled"}, nil)
-	selectedStatus := string(state.Filter.Status)
-	if selectedStatus == "" {
-		selectedStatus = "all"
-	}
-	v.status.SetSelected(selectedStatus)
 	v.limit = widget.NewSelect([]string{"25", "50", "100"}, nil)
 	v.limit.SetSelected(strconv.Itoa(state.Filter.Limit))
 	if v.limit.Selected == "" {
 		v.limit.SetSelected("100")
 	}
-	apply := ui.NewButton(ControlApplyFilter, "Apply", func() {
-		limit, _ := strconv.Atoi(v.limit.Selected)
-		status := models.OrderStatus(v.status.Selected)
-		if status == "all" {
-			status = ""
-		}
-		v.presenter.ApplyFilter(Filter{Status: status, Expression: v.expression.Text, Limit: limit})
-	})
-	filters := container.NewBorder(nil, nil, container.NewHBox(v.status, v.limit), apply, v.expression)
+	bar := ui.NewFilterBar(ControlFilter, ControlApplyFilter, `Filter orders (for example: tags contains "featured")`, state.Filter.Expression,
+		[]ui.FilterPreset{{ID: "orders-status", Placeholder: "Status", Options: []ui.FilterOption{{Label: "Any status"}, {Label: "Pending", Expression: `status == "pending"`}, {Label: "Completed", Expression: `status == "completed"`}, {Label: "Cancelled", Expression: `status == "cancelled"`}}}}, nil,
+		container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.limit), func(expression string) {
+			limit, _ := strconv.Atoi(v.limit.Selected)
+			v.presenter.ApplyFilter(Filter{Expression: expression, Limit: limit})
+		})
+	v.expression = bar.Expression
+	apply := bar.Apply
+	filters := bar.Content
 	refresh := ui.NewButton(ControlRefresh, "Refresh", v.presenter.Refresh)
 	place := ui.Primary(ui.NewButton(ControlPlace, "Place order", v.presenter.StartPlace))
 	v.refresh, v.create = refresh, place
@@ -137,8 +132,8 @@ func (v *View) browser(state State) framework.CanvasObject {
 			b.Disable()
 		}
 		v.expression.Disable()
-		v.status.Disable()
 		v.limit.Disable()
+		bar.SetEnabled(false)
 	}
 	list := container.NewVBox()
 	v.rows = make(map[string]*ui.SemanticButton, len(state.Rows))
@@ -162,11 +157,15 @@ func (v *View) browser(state State) framework.CanvasObject {
 	if state.Err != nil {
 		statusText = "Error: " + state.Err.Error()
 	}
+	detailActions := []framework.CanvasObject(nil)
+	if state.Mode == Browsing && state.Selected != nil {
+		detailActions = []framework.CanvasObject{complete, tags, cancel}
+	}
 	return ui.StandardListPage(ui.ListPage{
 		Title: "Orders", Subtitle: "Browse orders and select one to review its items and lifecycle actions.", Filters: filters,
-		PrimaryActions: []framework.CanvasObject{place, refresh},
-		OtherActions:   []framework.CanvasObject{complete, tags, cancel},
-		List:           container.NewScroll(list), Detail: v.detail(state), Status: widget.NewLabel(statusText),
+		CollectionActions: []framework.CanvasObject{place, refresh},
+		DetailActions:     detailActions,
+		List:              container.NewScroll(list), Detail: v.detail(state), Status: widget.NewLabel(statusText),
 		Paging: container.NewHBox(previous, next), ListRatio: .42,
 	})
 }
@@ -175,11 +174,7 @@ func (v *View) detail(state State) framework.CanvasObject {
 		return ui.EmptyDetail("an order")
 	}
 	r := state.Selected
-	tagText := r.Order.Tags.Canonical().String()
-	if tagText == "" {
-		tagText = "None"
-	}
-	fields := []framework.CanvasObject{widget.NewLabelWithStyle("Order", framework.TextAlignLeading, framework.TextStyle{Bold: true}), widget.NewLabel("ID: " + r.Order.ID.String()), widget.NewLabel("Menu: " + r.MenuName), widget.NewLabel("Status: " + string(r.Order.Status)), widget.NewLabel("Tags: " + tagText), widget.NewLabel("Created: " + formatTime(r.Order.CreatedAt))}
+	fields := []framework.CanvasObject{widget.NewLabelWithStyle("Order", framework.TextAlignLeading, framework.TextStyle{Bold: true}), widget.NewLabel("ID: " + r.Order.ID.String()), widget.NewLabel("Menu: " + r.MenuName), widget.NewLabel("Status: " + string(r.Order.Status)), widget.NewLabelWithStyle("Tags", framework.TextAlignLeading, framework.TextStyle{Bold: true}), ui.TagPills([]string(r.Order.Tags.Canonical())), widget.NewLabel("Created: " + formatTime(r.Order.CreatedAt))}
 	if completed, ok := r.Order.CompletedAt.Unwrap(); ok {
 		fields = append(fields, widget.NewLabel("Completed: "+formatTime(completed)))
 	}

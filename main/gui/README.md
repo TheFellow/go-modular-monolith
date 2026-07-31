@@ -24,10 +24,22 @@ These directions are enforced by `.arch-lint.yaml`.
 The desktop uses one toolkit-owned application shell and standard page
 layouts. The persistent left navigation rail selects Dashboard or a domain
 workspace and visibly marks the active route. List-backed workspaces open in a
-primary/secondary layout: filters and actions above, the list on the left, and
-the selected entity's detail on the right. Create and edit workflows use the
-standard scrolling edit-form layout with persistent status and Save/Cancel
-actions.
+primary/secondary layout: actions and one expression filter above, the list on
+the left, and the selected entity's detail on the right. Common filter presets
+sit beside the expression; less common presets and page size are collapsed
+under **More filters**. Every preset writes its Mixology expression into the
+visible text box, which is the sole source of truth for filtering. Create and
+edit workflows use the standard scrolling edit-form layout with persistent
+status and Save/Cancel actions. Attached tags are rendered as wrapping visual
+pills in entity details and tag-discovery results; CSV text remains limited to
+editing controls and the filter expression language.
+
+Domain views declare this shape through toolkit page objects (`ListPage` and
+`FormPage`) rather than positioning controls themselves. Collection actions
+stay with the list header, actions requiring a selected entity stay in the
+right-hand detail pane, and form commit/cancel actions stay at the bottom right.
+Leaving an unfinished editor—including closing the window—requires explicit
+discard confirmation.
 
 Domain GUI packages supply state, content, and commands; `pkg/toolkits/gui`
 owns shell, list/detail, action hierarchy, empty-detail, and edit-form layout.

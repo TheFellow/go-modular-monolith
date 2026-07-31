@@ -67,7 +67,8 @@ type View struct {
 	descriptionHelp                                                   *widget.Label
 	detailBox                                                         *framework.Container
 	removeActions                                                     *framework.Container
-	filterStatus, filterLimit                                         *semanticSelect
+	filterLimit                                                       *semanticSelect
+	filterStatus                                                      *ui.FilterSelect
 	filterExpression, name, description, tags, drinkSearch, drinkTags *ui.SemanticEntry
 	targetMargin                                                      *ui.SemanticEntry
 	save, cancel, drinkCancel                                         *ui.SemanticButton
@@ -86,18 +87,20 @@ var _ ui.Activated = (*View)(nil)
 
 func NewView(p *Presenter) *View {
 	v := &View{p: p}
-	v.filterStatus = newSelect(ControlFilterStatus, []string{"", string(models.MenuStatusDraft), string(models.MenuStatusPublished), string(models.MenuStatusArchived)})
-	v.filterExpression = ui.NewEntry(ControlFilterExpression)
-	v.filterExpression.SetPlaceHolder("Expression filter")
 	v.filterLimit = newSelect("menus.filter.limit", []string{"25", "50", "100"})
 	v.filterLimit.SetSelected(strconv.Itoa(p.State().Filter.Limit))
-	v.applyFilter = ui.NewButton(ControlApplyFilter, "Apply", func() {
-		limit, _ := strconv.Atoi(v.filterLimit.Selected)
-		if p.SetFilter(Filter{Status: models.MenuStatus(v.filterStatus.Selected), Expression: v.filterExpression.Text, Limit: limit}) {
-			p.Refresh()
-		}
-	})
-	filters := container.NewVBox(widget.NewLabelWithStyle("Filters", framework.TextAlignLeading, framework.TextStyle{Bold: true}), field("Status", v.filterStatus), field("Expression", v.filterExpression), field("Page size", v.filterLimit), v.applyFilter)
+	bar := ui.NewFilterBar(ControlFilterExpression, ControlApplyFilter, `Filter menus (for example: name.contains("summer"))`, p.State().Filter.Expression,
+		[]ui.FilterPreset{{ID: ControlFilterStatus, Placeholder: "Status", Options: []ui.FilterOption{{Label: "Any status"}, {Label: "Draft", Expression: `status == "draft"`}, {Label: "Published", Expression: `status == "published"`}, {Label: "Archived", Expression: `status == "archived"`}}}}, nil,
+		container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.filterLimit), func(expression string) {
+			limit, _ := strconv.Atoi(v.filterLimit.Selected)
+			if p.SetFilter(Filter{Expression: expression, Limit: limit}) {
+				p.Refresh()
+			}
+		})
+	v.filterExpression = bar.Expression
+	v.applyFilter = bar.Apply
+	v.filterStatus = bar.Presets[0]
+	filters := bar.Content
 	v.list = widget.NewList(func() int { return len(p.State().Items) }, func() framework.CanvasObject { return widget.NewButton("", nil) }, func(i widget.ListItemID, object framework.CanvasObject) {
 		menu := p.State().Items[i]
 		button := object.(*widget.Button)
@@ -122,9 +125,9 @@ func NewView(p *Presenter) *View {
 	v.status = widget.NewLabel("")
 	v.browse = ui.StandardListPage(ui.ListPage{
 		Title: "Menus", Subtitle: "Browse menus and select one to manage drinks, publishing, and pricing.", Filters: filters,
-		PrimaryActions: []framework.CanvasObject{v.create, v.refresh},
-		OtherActions:   []framework.CanvasObject{v.rename, v.addDrink, v.analyze, v.publish, v.draft, v.tagAction, v.delete},
-		List:           v.list, Detail: container.NewVScroll(v.detailBox), Status: container.NewVBox(v.status, v.removeActions),
+		CollectionActions: []framework.CanvasObject{v.create, v.refresh},
+		DetailActions:     []framework.CanvasObject{v.rename, v.addDrink, v.analyze, v.publish, v.draft, v.tagAction, v.delete},
+		List:              v.list, Detail: container.NewVScroll(v.detailBox), Status: container.NewVBox(v.status, v.removeActions),
 		Paging: container.NewHBox(v.previous, v.next), ListRatio: .35,
 	}).(*framework.Container)
 	v.name = ui.NewEntry(ControlName)
@@ -157,6 +160,7 @@ func NewView(p *Presenter) *View {
 func (v *View) Title() string                   { return "Menus" }
 func (v *View) Content() framework.CanvasObject { return v.root }
 func (v *View) Activate()                       { v.p.Refresh() }
+func (v *View) HasUnsavedChanges() bool         { return v.p.State().Mode != Browsing }
 func (v *View) ExecuteCommand(command ui.Command) bool {
 	state := v.p.State()
 	switch command {
@@ -225,6 +229,10 @@ func (v *View) render(state State) {
 	}
 	busy := state.Submitting || state.Loading || state.Confirming
 	selected := state.Selected
+	for _, action := range []*ui.SemanticButton{v.rename, v.addDrink, v.analyze, v.publish, v.draft, v.tagAction, v.delete} {
+		action.Hidden = selected == nil
+		action.Refresh()
+	}
 	draft := selected != nil && selected.Status == models.MenuStatusDraft
 	published := selected != nil && selected.Status == models.MenuStatusPublished
 	setEnabled(v.refresh, !busy)
@@ -278,7 +286,13 @@ func (v *View) render(state State) {
 	if state.Selected == nil {
 		v.detail.SetText("Select a menu")
 	} else {
-		v.detail.SetText(detailText(state.Selected, v.p.DrinkName))
+		tags := state.Selected.Tags.Canonical().String()
+		if tags == "" {
+			tags = "None"
+		}
+		v.detail.SetText(strings.Replace(detailText(state.Selected, v.p.DrinkName), "\nTags: "+tags, "", 1))
+		v.detailBox.Add(widget.NewLabelWithStyle("Tags", framework.TextAlignLeading, framework.TextStyle{Bold: true}))
+		v.detailBox.Add(ui.TagPills([]string(state.Selected.Tags.Canonical())))
 		if state.Selected.Status == models.MenuStatusDraft {
 			items := append([]models.MenuItem(nil), state.Selected.Items...)
 			sort.SliceStable(items, func(i, j int) bool { return items[i].SortOrder < items[j].SortOrder })

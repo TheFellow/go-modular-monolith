@@ -25,6 +25,13 @@ type commandTestView struct {
 	enabled  bool
 }
 
+type dirtyTestView struct {
+	testView
+	dirty bool
+}
+
+func (v *dirtyTestView) HasUnsavedChanges() bool { return v.dirty }
+
 func (v *commandTestView) ExecuteCommand(command Command) bool {
 	if !v.enabled {
 		return false
@@ -156,4 +163,35 @@ func startTestApp(t *testing.T) {
 	t.Helper()
 	app := test.NewApp()
 	t.Cleanup(app.Quit)
+}
+
+func TestShellConfirmsBeforeLeavingUnsavedEditor(t *testing.T) {
+	startTestApp(t)
+	editor := &dirtyTestView{testView: testView{title: "Editor", content: widget.NewLabel("editor")}, dirty: true}
+	shell, err := NewShell([]Route{
+		{ID: "editor", Label: "Editor", Build: func() View { return editor }},
+		{ID: "other", Label: "Other", Build: func() View { return &testView{title: "Other", content: widget.NewLabel("other")} }},
+	}, "editor")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var respond func(bool)
+	shell.SetAbandonConfirmation(func(callback func(bool)) { respond = callback })
+	if err := shell.Navigate("other"); err != nil {
+		t.Fatal(err)
+	}
+	if shell.Current() != "editor" || respond == nil {
+		t.Fatal("unsaved editor was replaced without confirmation")
+	}
+	respond(false)
+	if shell.Current() != "editor" {
+		t.Fatal("cancelled navigation changed route")
+	}
+	if err := shell.Navigate("other"); err != nil {
+		t.Fatal(err)
+	}
+	respond(true)
+	if shell.Current() != "other" {
+		t.Fatal("confirmed navigation did not continue")
+	}
 }

@@ -90,6 +90,8 @@ func (v *View) Content() framework.CanvasObject { return v.root }
 // workspaces, the tags landing page has no data to refresh on re-entry.
 func (v *View) Activate() {}
 
+func (v *View) HasUnsavedChanges() bool { return v.presenter.State().Mode == EnteringValue }
+
 func (v *View) ExecuteCommand(command ui.Command) bool {
 	state := v.presenter.State()
 	switch command {
@@ -174,25 +176,21 @@ func (v *View) renderResults(state State) {
 				result = "changed"
 			}
 		}
-		tags := state.Result.Tags.Canonical().String()
-		if tags == "" {
-			tags = "(none)"
-		}
 		v.resultRows.Add(row("ENTITY", "TAGS", "RESULT"))
 		target := state.Result.TargetName
 		if !state.Result.Target.IsZero() {
 			target += " (" + string(state.Result.Target.ID) + ")"
 		}
-		v.resultRows.Add(row(target, tags, result))
+		v.resultRows.Add(rowObjects(widget.NewLabel(target), ui.TagPills([]string(state.Result.Tags.Canonical())), widget.NewLabel(result)))
 	case ShowExact, ShowKey:
 		v.resultRows.Add(row("ENTITY TYPE", "ENTITY ID", "TAG"))
 		for _, r := range state.Result.References {
-			v.resultRows.Add(row(r.EntityType, r.EntityID, r.Tag))
+			v.resultRows.Add(rowObjects(widget.NewLabel(r.EntityType), widget.NewLabel(r.EntityID), ui.TagPills([]string{r.Tag})))
 		}
 	case Summary:
 		v.resultRows.Add(row("TAG", "TOTAL", "DRINKS", "INGREDIENTS", "INVENTORY", "MENUS", "ORDERS"))
 		for _, r := range state.Result.Summaries {
-			v.resultRows.Add(row(r.Tag, fmt.Sprint(r.Total), fmt.Sprint(r.Drinks), fmt.Sprint(r.Ingredients), fmt.Sprint(r.Inventory), fmt.Sprint(r.Menus), fmt.Sprint(r.Orders)))
+			v.resultRows.Add(rowObjects(ui.TagPills([]string{r.Tag}), widget.NewLabel(fmt.Sprint(r.Total)), widget.NewLabel(fmt.Sprint(r.Drinks)), widget.NewLabel(fmt.Sprint(r.Ingredients)), widget.NewLabel(fmt.Sprint(r.Inventory)), widget.NewLabel(fmt.Sprint(r.Menus)), widget.NewLabel(fmt.Sprint(r.Orders))))
 		}
 	}
 	if len(v.resultRows.Objects) == 1 && (state.Operation == ShowExact || state.Operation == ShowKey || state.Operation == Summary) {
@@ -207,6 +205,10 @@ func row(values ...string) framework.CanvasObject {
 		label.Wrapping = framework.TextWrapWord
 		objects = append(objects, label)
 	}
+	return container.NewGridWithColumns(len(objects), objects...)
+}
+
+func rowObjects(objects ...framework.CanvasObject) framework.CanvasObject {
 	return container.NewGridWithColumns(len(objects), objects...)
 }
 func operationLabel(o Operation) string {

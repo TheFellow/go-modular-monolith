@@ -18,9 +18,9 @@ func TestStandardListPageComposesDeclaredRegions(t *testing.T) {
 
 	page := gui.StandardListPage(gui.ListPage{
 		Title: "Drinks", Subtitle: "Browse recipes", Filters: widget.NewLabel("FILTERS"),
-		PrimaryActions: []fyne.CanvasObject{gui.Primary(gui.NewButton("new", "New", nil))},
-		OtherActions:   []fyne.CanvasObject{gui.Destructive(gui.NewButton("delete", "Delete", nil))},
-		List:           widget.NewLabel("LIST"), Detail: widget.NewLabel("DETAIL"),
+		CollectionActions: []fyne.CanvasObject{gui.Primary(gui.NewButton("new", "New", nil))},
+		DetailActions:     []fyne.CanvasObject{gui.Destructive(gui.NewButton("delete", "Delete", nil))},
+		List:              widget.NewLabel("LIST"), Detail: widget.NewLabel("DETAIL"),
 		Status: widget.NewLabel("STATUS"), Paging: container.NewHBox(widget.NewLabel("PAGING")),
 	})
 	window := app.NewWindow("standard")

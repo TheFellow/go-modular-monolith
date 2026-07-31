@@ -71,6 +71,9 @@ func walk(object framework.CanvasObject, visit func(framework.CanvasObject) bool
 		}
 	case *container.Scroll:
 		walk(object.Content, visit)
+	case *container.Split:
+		walk(object.Leading, visit)
+		walk(object.Trailing, visit)
 	case *widget.Card:
 		walk(object.Content, visit)
 	}

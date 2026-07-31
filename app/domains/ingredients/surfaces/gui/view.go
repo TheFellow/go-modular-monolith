@@ -63,7 +63,8 @@ func (v *View) Title() string { return "Ingredients" }
 
 func (v *View) Content() framework.CanvasObject { return v.root }
 
-func (v *View) Activate() { v.presenter.Load() }
+func (v *View) Activate()               { v.presenter.Load() }
+func (v *View) HasUnsavedChanges() bool { return v.presenter.Snapshot().Mode != Browse }
 
 func (v *View) ExecuteCommand(command toolkit.Command) bool {
 	state := v.presenter.Snapshot()
@@ -88,23 +89,21 @@ func (v *View) render(state State) {
 	for _, category := range models.AllCategories() {
 		categoryOptions = append(categoryOptions, string(category))
 	}
-	v.category = widget.NewSelect(categoryOptions, nil)
-	selectedCategory := "all"
-	if state.Category != "" {
-		selectedCategory = string(state.Category)
-	}
-	v.category.SetSelected(selectedCategory)
 	v.limit = widget.NewSelect([]string{"25", "50", "100"}, nil)
 	v.limit.SetSelected(strconv.Itoa(state.Limit))
-	apply := toolkit.NewButton(ControlApplyFilter, "Apply", func() {
-		category := models.Category(v.category.Selected)
-		if v.category.Selected == "all" {
-			category = ""
-		}
-		limit, _ := strconv.Atoi(v.limit.Selected)
-		v.presenter.Filter(category, v.expression.Text, limit)
-	})
-	filters := container.NewBorder(nil, nil, container.NewHBox(v.category, v.limit), apply, v.expression)
+	presetOptions := []toolkit.FilterOption{{Label: "Any category"}}
+	for _, category := range models.AllCategories() {
+		presetOptions = append(presetOptions, toolkit.FilterOption{Label: string(category), Expression: fmt.Sprintf(`category == %q`, category)})
+	}
+	bar := toolkit.NewFilterBar(ControlFilter, ControlApplyFilter, `Filter ingredients (for example: name.contains("gin"))`, state.Expression,
+		[]toolkit.FilterPreset{{ID: "ingredients-filter-category", Placeholder: "Category", Options: presetOptions}}, nil,
+		container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.limit), func(expression string) {
+			limit, _ := strconv.Atoi(v.limit.Selected)
+			v.presenter.Filter("", expression, limit)
+		})
+	v.expression = bar.Expression
+	apply := bar.Apply
+	filters := bar.Content
 
 	v.refresh = toolkit.NewButton(ControlRefresh, "Refresh", v.presenter.Load)
 	v.create = toolkit.Primary(toolkit.NewButton(ControlCreate, "New ingredient", v.presenter.StartCreate))
@@ -119,8 +118,8 @@ func (v *View) render(state State) {
 			button.Disable()
 		}
 		v.expression.Disable()
-		v.category.Disable()
 		v.limit.Disable()
+		bar.SetEnabled(false)
 	}
 	if len(state.History) == 0 {
 		v.previous.Disable()
@@ -164,11 +163,15 @@ func (v *View) render(state State) {
 		status = "Error: " + state.Err.Error()
 	}
 	statusLabel := widget.NewLabel(status)
+	detailActions := []framework.CanvasObject(nil)
+	if state.Mode == Browse && state.Selected != nil {
+		detailActions = []framework.CanvasObject{v.edit, v.tagAction, v.delete}
+	}
 	objects := []framework.CanvasObject{toolkit.StandardListPage(toolkit.ListPage{
 		Title: "Ingredients", Subtitle: "Browse the ingredient catalog and select an item to inspect or edit it.", Filters: filters,
-		PrimaryActions: []framework.CanvasObject{v.create, v.refresh},
-		OtherActions:   []framework.CanvasObject{v.edit, v.tagAction, v.delete},
-		List:           list, Detail: detail, Status: statusLabel,
+		CollectionActions: []framework.CanvasObject{v.create, v.refresh},
+		DetailActions:     detailActions,
+		List:              list, Detail: detail, Status: statusLabel,
 		Paging: container.NewHBox(v.previous, v.next), ListRatio: .38,
 	})}
 	v.root.Objects = objects
@@ -183,16 +186,13 @@ func (v *View) detail(state State) framework.CanvasObject {
 		return toolkit.EmptyDetail("an ingredient")
 	}
 	ingredient := state.Selected
-	tags := ingredient.Tags.Canonical().String()
-	if tags == "" {
-		tags = "None"
-	}
 	values := container.NewVBox(
 		widget.NewLabelWithStyle(ingredient.Name, framework.TextAlignLeading, framework.TextStyle{Bold: true}),
 		widget.NewLabel("ID: "+ingredient.ID.String()),
 		widget.NewLabel("Category: "+string(ingredient.Category)),
 		widget.NewLabel("Unit: "+string(ingredient.Unit)),
-		widget.NewLabel("Tags: "+tags),
+		widget.NewLabelWithStyle("Tags", framework.TextAlignLeading, framework.TextStyle{Bold: true}),
+		toolkit.TagPills([]string(ingredient.Tags.Canonical())),
 	)
 	if strings.TrimSpace(ingredient.Description) != "" {
 		values.Add(widget.NewSeparator())

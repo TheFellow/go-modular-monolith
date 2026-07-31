@@ -220,11 +220,11 @@ func TestViewDrivesRealRetainedWidgetsAndDisablesDuringLoad(t *testing.T) {
 	if presenter.State().Selected == nil || !strings.Contains(view.detail.Text, "Success: true") {
 		t.Fatal("real row widget did not select detail")
 	}
-	view.scope.SetSelected(scopeLabels[1])
-	frameworktest.Type(view.entity, "bad")
-	frameworktest.Tap(view.apply)
+	view.expression.SetText("(")
+	view.applyFilter()
+	executor.RunNext()
 	if presenter.State().Err == nil || !strings.Contains(view.status.Text, "Error:") {
-		t.Fatal("widget filter validation not rendered")
+		t.Fatalf("widget filter validation not rendered: state=%#v status=%q expression=%q disabled=%t", presenter.State(), view.status.Text, view.expression.Text, view.apply.Disabled())
 	}
 }
 

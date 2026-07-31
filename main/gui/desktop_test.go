@@ -216,6 +216,33 @@ func TestDesktopRoutesBuildConcreteDomainViewsAndActivationReadsCurrentData(t *t
 	}
 }
 
+func TestDesktopConfirmsBeforeNavigatingAwayFromEditor(t *testing.T) {
+	guiApp := test.NewApp()
+	t.Cleanup(guiApp.Quit)
+	confirmations := &fynetest.Dialogs{}
+	deps := deterministicDesktopDependencies(nil)
+	deps.dialogs = func(framework.Window) toolkit.Dialogs { return confirmations }
+	desktop, err := openDesktopWithDependencies(context.Background(), guiApp, desktopConfig{dataDirectory: t.TempDir(), actor: "owner"}, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = desktop.Close() })
+	if err := desktop.shell.Navigate("drinks"); err != nil {
+		t.Fatal(err)
+	}
+	desktop.presenters["drinks"].(*drinksgui.Presenter).StartCreate()
+	if err := desktop.shell.Navigate("ingredients"); err != nil {
+		t.Fatal(err)
+	}
+	if desktop.shell.Current() != "drinks" || len(confirmations.Confirmations()) != 1 {
+		t.Fatal("editor navigation was not held for confirmation")
+	}
+	confirmations.Confirmations()[0].Respond(true)
+	if desktop.shell.Current() != "ingredients" {
+		t.Fatal("confirmed editor navigation did not continue")
+	}
+}
+
 func TestDesktopSemanticControlsExerciseEveryWorkspaceAgainstOneSession(t *testing.T) {
 	gui := test.NewApp()
 	t.Cleanup(gui.Quit)
