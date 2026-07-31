@@ -283,12 +283,39 @@ func (v *View) buildDetail(s State) *framework.Container {
 			if p, ok := item.Price.Unwrap(); ok {
 				price = p.String()
 			}
-			line := fmt.Sprintf("%s  ·  %s  ·  %s  ·  order %d", v.p.DrinkName(item.DrinkID), price, item.Availability, item.SortOrder)
-			row := []framework.CanvasObject{widget.NewLabel(line)}
-			if s.CanRemoveDrink && m.Status == models.MenuStatusDraft && !s.Dirty && !s.Submitting && !s.Confirming {
-				row = append(row, ui.WithIcon(ui.NewButton(controlRemoveDrinkPrefix+item.DrinkID.String(), "Remove", func() { v.p.RemoveDrink(item.DrinkID) }), ui.IconDelete))
+			name := widget.NewLabelWithStyle(v.p.DrinkName(item.DrinkID), framework.TextAlignLeading, framework.TextStyle{Bold: true})
+			meta := widget.NewLabel(fmt.Sprintf("%s  ·  %s  ·  order %d", price, item.Availability, item.SortOrder))
+			actions := widget.NewSelect(nil, nil)
+			actions.PlaceHolder = "Actions"
+			canRemove := s.CanRemoveDrink && m.Status == models.MenuStatusDraft && !s.Dirty && !s.Submitting && !s.Confirming
+			if canRemove {
+				actions.Options = []string{"Remove"}
+			} else {
+				actions.Hide()
 			}
-			fields.Add(container.NewBorder(nil, nil, nil, container.NewHBox(row[1:]...), row[0]))
+			item := item
+			removeTarget := ui.NewButton(controlRemoveDrinkPrefix+item.DrinkID.String(), "Remove", func() { v.p.RemoveDrink(item.DrinkID) })
+			removeTarget.Hide() // compatibility/shortcut target; the visible affordance is the compact action menu.
+			actions.OnChanged = func(choice string) {
+				actions.ClearSelected()
+				switch choice {
+				case "Remove":
+					v.p.RemoveDrink(item.DrinkID)
+				}
+			}
+			copyID := widget.NewButtonWithIcon("", ui.IconResource(ui.IconCopy), func() {
+				if app := framework.CurrentApp(); app != nil {
+					app.Clipboard().SetContent(item.DrinkID.String())
+				}
+			})
+			copyID.Importance = widget.LowImportance
+			if s.Submitting || s.Confirming {
+				actions.Disable()
+				copyID.Disable()
+			}
+			line := container.NewBorder(nil, nil, nil, meta, name)
+			trailing := container.NewCenter(container.NewHBox(copyID, actions))
+			fields.Add(container.NewVBox(container.NewBorder(nil, nil, nil, trailing, line), removeTarget, widget.NewSeparator()))
 		}
 	}
 	actions := []framework.CanvasObject{}

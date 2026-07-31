@@ -8,6 +8,7 @@ import (
 
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
@@ -116,6 +117,7 @@ type recipeWidgets struct {
 	cancelSubstitute   *ui.SemanticButton
 	choosingSubstitute bool
 	remove             *ui.SemanticButton
+	actions            *widget.Select
 }
 type View struct {
 	presenter                         *Presenter
@@ -230,7 +232,7 @@ func NewView(p *Presenter) *View {
 		f.Recipe = append(f.Recipe, RecipeRow{Unit: measurement.UnitOz})
 		p.SetForm(f)
 	})
-	fields := container.NewVBox(field("Name", v.name), field("Category", v.category), field("Glass", v.glass), field("Description", v.description), widget.NewLabelWithStyle("Ingredients", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.recipeBox, v.addIngredient, field("Steps (one per line)", v.steps), field("Garnish", v.garnish), field("Tags", v.mutationTags.Content))
+	fields := container.NewVBox(field("Name", v.name), field("Category", v.category), field("Glass", v.glass), field("Description", v.description), widget.NewLabelWithStyle("Ingredients", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.recipeBox, container.NewHBox(layout.NewSpacer(), v.addIngredient), field("Steps (one per line)", v.steps), field("Garnish", v.garnish), field("Tags", v.mutationTags.Content))
 	v.detailTitle = widget.NewLabel("Drink")
 	v.crumbName = widget.NewLabel("")
 	back := ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack)
@@ -504,8 +506,56 @@ func (v *View) rebuildRecipe(state State) {
 			v.rebuildSubstituteControls(index, v.presenter.State())
 		}
 		v.rebuildSubstituteControls(index, state)
-		rowFields := container.NewVBox(field("Ingredient", ingredient), container.NewGridWithColumns(2, field("Amount", amount), field("Unit", unit)), optional, substituteBox, remove)
-		v.recipeBox.Add(container.NewVBox(container.NewBorder(nil, nil, widget.NewLabel(fmt.Sprintf("%d.", i+1)), nil, rowFields), widget.NewSeparator()))
+		// A saved recipe component is prescribed as a whole. Present it as a
+		// compact line item instead of making immutable identity and measurements
+		// look like a large editable form. A newly-added blank component remains
+		// an explicit editor until the drink is saved.
+		if row.Ingredient == (entity.IngredientID{}) {
+			rowFields := container.NewVBox(container.NewGridWithColumns(3, ingredient, amount, unit), optional)
+			v.recipeBox.Add(container.NewVBox(container.NewBorder(nil, nil, nil, remove, rowFields), substituteBox, widget.NewSeparator()))
+			continue
+		}
+		name := widget.NewLabelWithStyle(v.ingredientName(row.Ingredient), framework.TextAlignLeading, framework.TextStyle{Bold: true})
+		summary := fmt.Sprintf("%s %s", row.Amount, row.Unit)
+		if row.Optional {
+			summary += "  ·  Optional"
+		}
+		actions := widget.NewSelect(nil, nil)
+		actions.PlaceHolder = "Actions"
+		if state.Mode != Viewing {
+			actions.Options = []string{"Add substitute", "Remove"}
+		} else {
+			actions.Hide()
+		}
+		actions.OnChanged = func(choice string) {
+			actions.ClearSelected()
+			switch choice {
+			case "Add substitute":
+				v.recipe[index].choosingSubstitute = true
+				v.rebuildSubstituteControls(index, v.presenter.State())
+			case "Remove":
+				remove.OnTapped()
+			}
+		}
+		copyID := widget.NewButtonWithIcon("", ui.IconResource(ui.IconCopy), func() {
+			if app := framework.CurrentApp(); app != nil {
+				app.Clipboard().SetContent(row.Ingredient.String())
+			}
+		})
+		copyID.Importance = widget.LowImportance
+		if state.Submitting {
+			actions.Disable()
+			copyID.Disable()
+		}
+		v.recipe[index].actions = actions
+		ingredient.Hide()
+		amount.Hide()
+		unit.Hide()
+		optional.Hide()
+		remove.Hide()
+		line := container.NewBorder(nil, nil, nil, widget.NewLabel(summary), name)
+		trailing := container.NewCenter(container.NewHBox(copyID, actions))
+		v.recipeBox.Add(container.NewVBox(container.NewBorder(nil, nil, nil, trailing, line), substituteBox, widget.NewSeparator()))
 	}
 }
 
@@ -575,7 +625,7 @@ func (v *View) rebuildSubstituteControls(index int, state State) {
 		w.substitutePicker.SetOptions(options)
 		if w.choosingSubstitute {
 			w.substituteBox.Add(container.NewBorder(nil, nil, nil, container.NewHBox(w.cancelSubstitute, w.confirmSubstitute), w.substitutePicker))
-		} else {
+		} else if primary == (entity.IngredientID{}) {
 			w.substituteBox.Add(container.NewHBox(w.addSubstitute))
 		}
 	}
@@ -631,6 +681,9 @@ func (v *View) setMutableEnabled(enabled bool) {
 			Enable()
 			Disable()
 		}{row.ingredient, row.amount, row.unit, row.optional, row.remove, row.substitutePicker, row.addSubstitute, row.confirmSubstitute, row.cancelSubstitute}
+		if row.actions != nil {
+			objects = append(objects, row.actions)
+		}
 		for _, object := range objects {
 			if enabled {
 				object.Enable()
