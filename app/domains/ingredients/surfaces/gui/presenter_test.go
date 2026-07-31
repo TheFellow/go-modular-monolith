@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	frameworktest "fyne.io/fyne/v2/test"
+	"fyne.io/fyne/v2/widget"
 
 	application "github.com/TheFellow/go-modular-monolith/app"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
@@ -15,6 +16,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
@@ -38,7 +40,7 @@ func TestPresenterLoadsSelectsAndFiltersByExactCategoryAndExpression(t *testing.
 	presenter, _ := newTestPresenter(fix.App, toolkit.InlineExecutor{})
 	presenter.Load()
 	state := presenter.Snapshot()
-	if len(state.Items) != 2 || state.Selected == nil {
+	if len(state.Items) != 2 || state.Selected != nil {
 		t.Fatalf("initial state = %#v", state)
 	}
 	presenter.Filter(models.CategorySpirit, `name == "London Gin"`)
@@ -130,25 +132,83 @@ func TestPresenterCreatesPersistsAndAuditsTouchedIngredient(t *testing.T) {
 	testutil.AuditTouches(t, entry, state.Items[0].ID.EntityUID())
 }
 
-func TestPresenterEditPermissionFailureRetainsFormWithoutMutation(t *testing.T) {
+func TestDuplicateNameCreateRetainsFormAndPresentsTypedConflict(t *testing.T) {
+	fix, _, _ := ingredientFixture(t)
+	presenter, dialogs := newTestPresenter(fix.App, toolkit.InlineExecutor{})
+	presenter.Load()
+	presenter.StartCreate()
+	form := Form{Name: "London Gin", Category: models.CategorySpirit, Unit: measurement.UnitOz, Description: "Keep this correction"}
+	if !presenter.Submit(form) {
+		t.Fatal("duplicate create was not accepted for execution")
+	}
+	state := presenter.Snapshot()
+	if state.Mode != Create || state.Form.Description != form.Description || state.Err == nil {
+		t.Fatalf("conflict did not retain form: %#v", state)
+	}
+	testutil.ErrorIsConflict(t, state.Err)
+	if state.Err.Error() == "internal error" {
+		t.Fatal("typed conflict was reduced to generic failure")
+	}
+	if len(dialogs.Warnings()) != 1 || len(dialogs.Errors()) != 0 {
+		t.Fatalf("conflict dialogs: warnings=%#v errors=%#v", dialogs.Warnings(), dialogs.Errors())
+	}
+}
+
+func TestPresenterReadOnlyActorGetsSelectableNonEditableDetail(t *testing.T) {
 	fix, gin, _ := ingredientFixture(t)
 	denied := application.NewSession(fix.ActorContext("bartender"), fix.App.App)
 	presenter, _ := newTestPresenter(denied, toolkit.InlineExecutor{})
 	presenter.Load()
 	presenter.Select(gin.ID)
-	presenter.StartEdit()
-	form := presenter.Snapshot().Form
-	form.Description = "Denied change"
-	presenter.Submit(form)
 	state := presenter.Snapshot()
-	if state.Mode != Edit || state.Err == nil || state.Form.Description != "Denied change" {
-		t.Fatalf("denied form was not retained: %#v", state)
+	if state.Mode != Viewing || state.CanUpdate || state.Form.Description != "Juniper" {
+		t.Fatalf("read-only detail state = %#v", state)
 	}
-	testutil.ErrorIsPermission(t, state.Err)
 	stored, err := fix.Ingredients.Get(fix.OwnerContext(), gin.ID)
 	testutil.Ok(t, err)
 	if stored.Description != "Juniper" {
 		t.Fatalf("denied update mutated ingredient: %#v", stored)
+	}
+}
+
+func TestDetailBackPreservesCatalogStateAndBreadcrumbResetsIt(t *testing.T) {
+	fix, gin, _ := ingredientFixture(t)
+	presenter, _ := newTestPresenter(fix.App, toolkit.InlineExecutor{})
+	presenter.Filter("", `name.contains("Gin")`, 25)
+	presenter.Select(gin.ID)
+	presenter.Back()
+	state := presenter.Snapshot()
+	if state.Mode != Browse || state.Expression != `name.contains("Gin")` || state.Limit != 25 {
+		t.Fatalf("back did not preserve list state: %#v", state)
+	}
+	presenter.Select(gin.ID)
+	presenter.ResetList()
+	state = presenter.Snapshot()
+	if state.Mode != Browse || state.Expression != "" || state.Limit != paging.DefaultLimit {
+		t.Fatalf("breadcrumb did not reset list state: %#v", state)
+	}
+}
+
+func TestDetailCancelRevertsDirtyFormAndBackConfirmsDiscard(t *testing.T) {
+	fix, gin, _ := ingredientFixture(t)
+	presenter, dialogs := newTestPresenter(fix.App, toolkit.InlineExecutor{})
+	presenter.Load()
+	presenter.Select(gin.ID)
+	form := presenter.Snapshot().Form
+	form.Description = "Changed"
+	presenter.SetForm(form)
+	if !presenter.Snapshot().Dirty {
+		t.Fatal("changed form was not dirty")
+	}
+	presenter.Back()
+	if presenter.Snapshot().Mode != Edit || len(dialogs.Confirmations()) != 1 {
+		t.Fatal("dirty back did not ask for confirmation")
+	}
+	dialogs.Confirmations()[0].Respond(false)
+	presenter.Cancel()
+	state := presenter.Snapshot()
+	if state.Dirty || state.Form.Description != "Juniper" || state.Mode != Edit {
+		t.Fatalf("cancel did not revert local edits: %#v", state)
 	}
 }
 
@@ -314,7 +374,13 @@ func TestViewDrivesRealWidgetsAndShowsCompleteDetail(t *testing.T) {
 	view := NewView(presenter)
 	view.Activate()
 	driver := fynetest.NewDriver(t, view.Content())
-	frameworktest.Tap(view.rows[gin.ID.String()])
+	row := 0
+	for i := range presenter.Snapshot().Items {
+		if presenter.Snapshot().Items[i].ID == gin.ID {
+			row = i + 1
+		}
+	}
+	view.list.Select(widget.TableCellID{Row: row, Col: 0})
 	if selected := presenter.Snapshot().Selected; selected == nil || selected.ID != gin.ID {
 		t.Fatalf("real list button did not select ingredient: %#v", selected)
 	}
@@ -333,5 +399,89 @@ func TestViewDrivesRealWidgetsAndShowsCompleteDetail(t *testing.T) {
 	selected := presenter.Snapshot().Selected
 	if selected == nil || selected.ID.String() == "" || selected.Category != models.CategorySpirit || selected.Unit != measurement.UnitOz || selected.Description != "Juniper" {
 		t.Fatalf("detail selection is incomplete: %#v", selected)
+	}
+}
+
+func TestViewListDetailStatesPermissionsAndEmptyCollection(t *testing.T) {
+	gui := frameworktest.NewApp()
+	t.Cleanup(gui.Quit)
+	fix, gin, _ := ingredientFixture(t)
+	presenter, _ := newTestPresenter(fix.App, toolkit.InlineExecutor{})
+	view := NewView(presenter)
+	view.Activate()
+	for column, want := range []string{"Name", "Category", "Unit", "Description", "Tags"} {
+		cell := view.list.CreateCell().(*widget.Label)
+		view.list.UpdateCell(widget.TableCellID{Row: 0, Col: column}, cell)
+		if cell.Text != want {
+			t.Fatalf("header %d = %q, want %q", column, cell.Text, want)
+		}
+	}
+	if view.expression.Hidden || view.browse.Hidden || !view.formPanel.Hidden {
+		t.Fatal("list did not own the one-row filter state")
+	}
+	presenter.Select(gin.ID)
+	if !view.browse.Hidden || view.formPanel.Hidden || !view.save.Disabled() || !view.cancel.Disabled() {
+		t.Fatal("clean detail visibility/actions are wrong")
+	}
+	if view.tagAction.Hidden || view.delete.Hidden {
+		t.Fatal("authorized detail actions are hidden")
+	}
+	form := presenter.Snapshot().Form
+	form.Description = "Changed"
+	presenter.SetForm(form)
+	if view.save.Disabled() || view.cancel.Disabled() {
+		t.Fatal("dirty detail actions were not enabled")
+	}
+	presenter.Cancel()
+	presenter.StartTags()
+	if view.tagsPanel.Hidden || !view.formPanel.Hidden || view.tagOnly.Text != "" {
+		t.Fatal("tags-only workflow is not isolated")
+	}
+	presenter.Cancel()
+	presenter.Filter("", `name == "missing"`)
+	if view.empty.Hidden || !view.list.Hidden {
+		t.Fatal("successful empty collection state is not visible")
+	}
+}
+
+func TestViewReadOnlyDetailKeepsCopyableControlsEnabled(t *testing.T) {
+	gui := frameworktest.NewApp()
+	t.Cleanup(gui.Quit)
+	fix, gin, _ := ingredientFixture(t)
+	readOnly := application.NewSession(fix.ActorContext("anonymous"), fix.App.App)
+	presenter, _ := newTestPresenter(readOnly, toolkit.InlineExecutor{})
+	view := NewView(presenter)
+	view.Activate()
+	presenter.Select(gin.ID)
+	if presenter.Snapshot().Mode != Viewing || view.name.Disabled() || view.description.Disabled() || view.formCategory.Disabled() || view.formUnit.Disabled() {
+		t.Fatal("read-only controls must remain enabled and selectable")
+	}
+	if !view.save.Hidden || !view.cancel.Hidden || !view.tagAction.Hidden || !view.delete.Hidden {
+		t.Fatal("unauthorized actions are visible")
+	}
+}
+
+func TestTagsFormKeepsInvalidSyntaxVisibleAndRetainsInput(t *testing.T) {
+	gui := frameworktest.NewApp()
+	t.Cleanup(gui.Quit)
+	fix, gin, _ := ingredientFixture(t)
+	presenter, dialogs := newTestPresenter(fix.App, toolkit.InlineExecutor{})
+	view := NewView(presenter)
+	view.Activate()
+	presenter.Select(gin.ID)
+	presenter.StartTags()
+	invalid := `"unterminated`
+	view.tagOnly.SetText(invalid)
+	frameworktest.Tap(view.tagSave)
+	state := presenter.Snapshot()
+	if state.Mode != Tags || state.Form.Tags != invalid || state.Err == nil {
+		t.Fatalf("invalid tags state = %#v", state)
+	}
+	testutil.ErrorIsInvalid(t, state.Err)
+	if view.tagStatus.Text == "" || view.tagOnly.Text != invalid {
+		t.Fatal("inline tag error or form input is not visible")
+	}
+	if len(dialogs.Errors()) != 0 || len(dialogs.Warnings()) != 0 {
+		t.Fatal("inline validation unexpectedly opened a dialog")
 	}
 }

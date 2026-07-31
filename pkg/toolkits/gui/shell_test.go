@@ -81,6 +81,27 @@ func TestShellNavigatesLazilyAndPreservesViews(t *testing.T) {
 	}
 }
 
+func TestShellShowsPersistentIdentityAndExplicitRouteIcon(t *testing.T) {
+	startTestApp(t)
+	shell, err := NewShell([]Route{{ID: "home", Label: "Home", Icon: IconDashboard, Build: func() View { return &testView{title: "Home", content: widget.NewLabel("home")} }}}, "home")
+	if err != nil {
+		t.Fatal(err)
+	}
+	shell.SetIdentity("Mixology", "Local user", "manager")
+	if shell.identity.Text != "Mixology\nLocal user · manager" {
+		t.Fatalf("identity = %q", shell.identity.Text)
+	}
+	if shell.navigation["home"].Icon != IconResource(IconDashboard) {
+		t.Fatal("route did not use its enumerated icon")
+	}
+	if err := shell.Navigate("home"); err != nil {
+		t.Fatal(err)
+	}
+	if shell.identity.Text == "" {
+		t.Fatal("identity did not persist")
+	}
+}
+
 func TestShellActivatesInitialViewAndEveryReentryWithoutRebuilding(t *testing.T) {
 	startTestApp(t)
 	home := &activatedTestView{testView: testView{title: "Home", content: widget.NewLabel("home")}}

@@ -257,42 +257,42 @@ func openDesktopWithDependencies(ctx context.Context, fyneApp framework.App, con
 	dialogs := func() gui.Dialogs { return deps.dialogs(d.window) }
 	visible := visibleWorkspaces(d.session)
 	routes := []gui.Route{
-		{ID: workspaceDashboard.routeID(), Label: "Dashboard", Build: owned(workspaceDashboard, func() gui.View {
+		{ID: workspaceDashboard.routeID(), Label: "Dashboard", Icon: gui.IconDashboard, Build: owned(workspaceDashboard, func() gui.View {
 			d.dashboard = newDashboardViewModel(deps.dashboardLoader(d.session), deps.executor, deps.dispatcher)
 			d.presenters[workspaceDashboard.routeID()] = d.dashboard
 			return newDashboardView(d.dashboard, func(route string) error { return d.shell.Navigate(route) }, visible)
 		})},
-		{ID: workspaceDrinks.routeID(), Label: "Drinks", Build: owned(workspaceDrinks, func() gui.View {
+		{ID: workspaceDrinks.routeID(), Label: "Drinks", Icon: gui.IconDrinks, Build: owned(workspaceDrinks, func() gui.View {
 			presenter := drinksgui.NewPresenter(d.session, drinksgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
 			d.presenters[workspaceDrinks.routeID()] = presenter
 			return drinksgui.NewView(presenter)
 		})},
-		{ID: workspaceIngredients.routeID(), Label: "Ingredients", Build: owned(workspaceIngredients, func() gui.View {
+		{ID: workspaceIngredients.routeID(), Label: "Ingredients", Icon: gui.IconIngredients, Build: owned(workspaceIngredients, func() gui.View {
 			presenter := ingredientsgui.NewPresenter(d.session, deps.executor, deps.dispatcher, dialogs())
 			d.presenters[workspaceIngredients.routeID()] = presenter
 			return ingredientsgui.NewView(presenter)
 		})},
-		{ID: workspaceInventory.routeID(), Label: "Inventory", Build: owned(workspaceInventory, func() gui.View {
+		{ID: workspaceInventory.routeID(), Label: "Inventory", Icon: gui.IconInventory, Build: owned(workspaceInventory, func() gui.View {
 			presenter := inventorygui.NewPresenter(d.session, deps.executor, deps.dispatcher, dialogs())
 			d.presenters[workspaceInventory.routeID()] = presenter
 			return inventorygui.NewView(presenter)
 		})},
-		{ID: workspaceMenus.routeID(), Label: "Menus", Build: owned(workspaceMenus, func() gui.View {
+		{ID: workspaceMenus.routeID(), Label: "Menus", Icon: gui.IconMenus, Build: owned(workspaceMenus, func() gui.View {
 			presenter := menusgui.NewPresenter(d.session, menusgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
 			d.presenters[workspaceMenus.routeID()] = presenter
 			return menusgui.NewView(presenter)
 		})},
-		{ID: workspaceOrders.routeID(), Label: "Orders", Build: owned(workspaceOrders, func() gui.View {
+		{ID: workspaceOrders.routeID(), Label: "Orders", Icon: gui.IconOrders, Build: owned(workspaceOrders, func() gui.View {
 			presenter := ordersgui.NewPresenter(d.session, ordersgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
 			d.presenters[workspaceOrders.routeID()] = presenter
 			return ordersgui.NewView(presenter)
 		})},
-		{ID: workspaceAudit.routeID(), Label: "Audit", Build: owned(workspaceAudit, func() gui.View {
+		{ID: workspaceAudit.routeID(), Label: "Audit", Icon: gui.IconAudit, Build: owned(workspaceAudit, func() gui.View {
 			presenter := auditgui.NewPresenter(d.session, auditgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
 			d.presenters[workspaceAudit.routeID()] = presenter
 			return auditgui.NewView(presenter)
 		})},
-		{ID: workspaceTags.routeID(), Label: "Tags", Build: owned(workspaceTags, func() gui.View {
+		{ID: workspaceTags.routeID(), Label: "Tags", Icon: gui.IconTags, Build: owned(workspaceTags, func() gui.View {
 			presenter := tagginggui.NewPresenter(d.session, tagginggui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
 			d.presenters[workspaceTags.routeID()] = presenter
 			return tagginggui.NewView(presenter)
@@ -310,6 +310,7 @@ func openDesktopWithDependencies(ctx context.Context, fyneApp framework.App, con
 		_ = d.Close()
 		return nil, err
 	}
+	d.shell.SetIdentity("Mixology", "Local user", config.actor)
 	d.window = fyneApp.NewWindow("Mixology — " + config.actor)
 	d.shell.SetAbandonConfirmation(func(respond func(bool)) {
 		dialogs().Confirm("Discard unsaved changes?", "Your edits have not been saved. Discard them and leave this view?", respond)

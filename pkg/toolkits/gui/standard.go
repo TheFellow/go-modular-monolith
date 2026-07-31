@@ -166,3 +166,10 @@ func Destructive(button *SemanticButton) *SemanticButton {
 func EmptyDetail(entity string) framework.CanvasObject {
 	return container.NewCenter(widget.NewLabel("Select " + entity + " to view details"))
 }
+
+// EmptyCollection presents an intentional successful-empty catalog state.
+func EmptyCollection(icon Icon, title, guidance string) *framework.Container {
+	return container.NewCenter(container.NewVBox(widget.NewIcon(IconResource(icon)),
+		widget.NewLabelWithStyle(title, framework.TextAlignCenter, framework.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle(guidance, framework.TextAlignCenter, framework.TextStyle{})))
+}

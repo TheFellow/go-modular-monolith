@@ -74,8 +74,9 @@ func TestRenderWorkspaceReview(t *testing.T) {
 			t.Fatal(err)
 		}
 		if route == "ingredients" {
-			desktop.presenters[route].(*ingredientsgui.Presenter).StartEdit()
-			file, err = os.Create(filepath.Join(directory, route+"-edit.png"))
+			presenter := desktop.presenters[route].(*ingredientsgui.Presenter)
+			presenter.Select(ingredient.ID)
+			file, err = os.Create(filepath.Join(directory, route+"-london-dry-gin.png"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -86,7 +87,33 @@ func TestRenderWorkspaceReview(t *testing.T) {
 			if err := file.Close(); err != nil {
 				t.Fatal(err)
 			}
-			desktop.presenters[route].(*ingredientsgui.Presenter).Cancel()
+			presenter.Back()
+			presenter.Filter("", `name == "missing"`)
+			file, err = os.Create(filepath.Join(directory, route+"-empty.png"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := png.Encode(file, desktop.window.Canvas().Capture()); err != nil {
+				_ = file.Close()
+				t.Fatal(err)
+			}
+			if err := file.Close(); err != nil {
+				t.Fatal(err)
+			}
+			presenter.ResetList()
+			presenter.StartCreate()
+			file, err = os.Create(filepath.Join(directory, route+"-create.png"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := png.Encode(file, desktop.window.Canvas().Capture()); err != nil {
+				_ = file.Close()
+				t.Fatal(err)
+			}
+			if err := file.Close(); err != nil {
+				t.Fatal(err)
+			}
+			presenter.Cancel()
 		}
 		if route == "drinks" {
 			presenter := desktop.presenters[route].(*drinksgui.Presenter)

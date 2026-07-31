@@ -309,6 +309,8 @@ func (p *Presenter) Save() bool {
 	case Browsing:
 		p.fail(apperrors.Invalidf("no drink form is active"))
 		return false
+	case Viewing:
+		return false
 	}
 	drink, err := p.formDrink()
 	if err != nil {

@@ -32,6 +32,7 @@ type UnsavedChanges interface{ HasUnsavedChanges() bool }
 type Route struct {
 	ID    string
 	Label string
+	Icon  Icon
 	Build func() View
 }
 
@@ -43,6 +44,7 @@ type Shell struct {
 	views            map[string]View
 	current          string
 	title            *widget.Label
+	identity         *widget.Label
 	body             *framework.Container
 	content          framework.CanvasObject
 	navigation       map[string]*widget.Button
@@ -61,12 +63,13 @@ func NewShell(routes []Route, initialRoute string) (*Shell, error) {
 		views:      make(map[string]View, len(routes)),
 		navigation: make(map[string]*widget.Button, len(routes)),
 		title:      widget.NewLabel(""),
+		identity:   widget.NewLabel("Mixology\nSigned in"),
 		body:       container.NewStack(),
 	}
 	s.title.TextStyle = framework.TextStyle{Bold: true}
 
 	buttons := make([]framework.CanvasObject, 0, len(routes)+1)
-	buttons = append(buttons, widget.NewLabelWithStyle("Mixology", framework.TextAlignLeading, framework.TextStyle{Bold: true}))
+	buttons = append(buttons, s.identity)
 	for _, route := range routes {
 		if route.ID == "" || route.Label == "" || route.Build == nil {
 			return nil, fmt.Errorf("fyne shell route must have id, label, and builder")
@@ -78,6 +81,7 @@ func NewShell(routes []Route, initialRoute string) (*Shell, error) {
 		s.order = append(s.order, route.ID)
 		id := route.ID
 		button := widget.NewButton(route.Label, func() { _ = s.Navigate(id) })
+		button.Icon = IconResource(route.Icon)
 		button.Alignment = widget.ButtonAlignLeading
 		button.Importance = widget.LowImportance
 		s.navigation[id] = button
@@ -98,6 +102,11 @@ func NewShell(routes []Route, initialRoute string) (*Shell, error) {
 
 // Content returns the shell's root canvas object.
 func (s *Shell) Content() framework.CanvasObject { return s.content }
+
+// SetIdentity keeps application and actor/role context visible across routes.
+func (s *Shell) SetIdentity(application, actor, role string) {
+	s.identity.SetText(fmt.Sprintf("%s\n%s · %s", application, actor, role))
+}
 
 // SetAbandonConfirmation installs the application-owned confirmation prompt.
 func (s *Shell) SetAbandonConfirmation(confirm func(func(bool))) { s.confirmAbandon = confirm }
