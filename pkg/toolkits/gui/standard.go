@@ -2,6 +2,7 @@ package gui
 
 import (
 	framework "fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
@@ -135,7 +136,29 @@ func StandardFormPage(page FormPage) framework.CanvasObject {
 	if len(actions) > 0 {
 		footer = append(footer, container.NewHBox(layout.NewSpacer(), container.NewHBox(actions...)))
 	}
-	return container.NewBorder(container.NewPadded(container.NewVBox(heading...)), container.NewPadded(container.NewVBox(footer...)), nil, nil, container.NewPadded(container.NewVScroll(page.Fields)))
+	return container.NewBorder(container.NewPadded(container.NewVBox(heading...)), container.NewPadded(container.NewVBox(footer...)), nil, nil, container.NewPadded(newFormScroll(page.Fields)))
+}
+
+// formScrollRelay sits above a form's fields for scroll hit-testing only. Fyne
+// Entries contain private scroll widgets, including single-line and read-only
+// Entries, which otherwise consume wheel events before the surrounding page
+// sees them. The relay is intentionally not tappable, mouseable, or draggable,
+// so focus, editing, selection, copying, and scrollbar dragging still reach the
+// controls beneath it.
+type formScrollRelay struct {
+	*canvas.Rectangle
+	target *container.Scroll
+}
+
+func (r *formScrollRelay) Scrolled(event *framework.ScrollEvent) {
+	r.target.Scrolled(event)
+}
+
+func newFormScroll(fields framework.CanvasObject) *container.Scroll {
+	page := container.NewVScroll(nil)
+	relay := &formScrollRelay{Rectangle: canvas.NewRectangle(nil), target: page}
+	page.Content = container.NewStack(fields, relay)
+	return page
 }
 
 // DetailField places its label above the value so every value receives the
