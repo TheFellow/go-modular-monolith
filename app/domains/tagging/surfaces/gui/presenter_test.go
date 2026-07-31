@@ -10,6 +10,7 @@ import (
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
@@ -20,6 +21,18 @@ import (
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 	cedar "github.com/cedar-policy/cedar-go"
 )
+
+func TestSummarySortingCoversCompleteInMemoryCatalogAndTogglesDirection(t *testing.T) {
+	p := &Presenter{state: State{Mode: Results, Operation: Summary, VisibleSummaries: []tagging.Summary{{Tag: "z", Total: 1}, {Tag: "a", Total: 3}, {Tag: "m", Total: 2}}}}
+	p.SortSummaries(1, ui.SortAscending)
+	if got := p.state.VisibleSummaries; got[0].Total != 1 || got[2].Total != 3 {
+		t.Fatalf("ascending totals = %#v", got)
+	}
+	p.SortSummaries(1, ui.SortDescending)
+	if got := p.state.VisibleSummaries; got[0].Total != 3 || got[2].Total != 1 {
+		t.Fatalf("descending totals = %#v", got)
+	}
+}
 
 type tagFixtures struct {
 	f       *testutil.Fixture

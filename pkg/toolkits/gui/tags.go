@@ -311,6 +311,24 @@ func compactTagPill(value string) framework.CanvasObject {
 	return container.New(&compactPillLayout{}, background, label)
 }
 
+// TagPillColumnWidth returns the width required to display the widest tag row
+// without shortening an individual pill. The table can then scroll
+// horizontally when that natural width is wider than the viewport.
+func TagPillColumnWidth(values []string, minimum float32) float32 {
+	width := minimum
+	for _, value := range values {
+		rowWidth := float32(0)
+		for i, tag := range parseTagCSV(value) {
+			if i > 0 {
+				rowWidth += tagPillGap
+			}
+			rowWidth += compactTagPill(tag).MinSize().Width
+		}
+		width = max(width, rowWidth)
+	}
+	return width
+}
+
 type compactPillLayout struct{}
 
 func (*compactPillLayout) MinSize(objects []framework.CanvasObject) framework.Size {
@@ -319,7 +337,7 @@ func (*compactPillLayout) MinSize(objects []framework.CanvasObject) framework.Si
 	// Fyne's Label renderer reserves more horizontal inset than MeasureText
 	// reports. Leave enough room for short tags to render in full while still
 	// bounding long values to their table column.
-	return framework.NewSize(min(measured.Width+40, 160), measured.Height+2)
+	return framework.NewSize(measured.Width+40, measured.Height+2)
 }
 
 func (*compactPillLayout) Layout(objects []framework.CanvasObject, size framework.Size) {
@@ -329,8 +347,9 @@ func (*compactPillLayout) Layout(objects []framework.CanvasObject, size framewor
 	objects[1].Resize(framework.NewSize(max(0, size.Width-12), size.Height))
 }
 
-// compactPillRowLayout keeps every pill inside its table cell. Long values are
-// ellipsized and remaining pills share only the width that is still available.
+// compactPillRowLayout preserves each pill's natural width. Table tag columns
+// start wide enough for their content and can be widened with the native header
+// divider instead of silently clipping a tag's text.
 type compactPillRowLayout struct{}
 
 func (*compactPillRowLayout) MinSize([]framework.CanvasObject) framework.Size {
@@ -338,20 +357,16 @@ func (*compactPillRowLayout) MinSize([]framework.CanvasObject) framework.Size {
 }
 
 func (*compactPillRowLayout) Layout(objects []framework.CanvasObject, size framework.Size) {
-	remaining := size.Width
 	x := float32(0)
 	for i, object := range objects {
 		gap := float32(0)
 		if i > 0 {
 			gap = tagPillGap
 		}
-		remaining -= gap
-		share := max(0, remaining/float32(len(objects)-i))
-		width := min(object.MinSize().Width, share)
+		width := object.MinSize().Width
 		object.Move(framework.NewPos(x+gap, 0))
 		object.Resize(framework.NewSize(width, size.Height))
 		x += gap + width
-		remaining -= width
 	}
 }
 

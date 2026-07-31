@@ -69,6 +69,15 @@ func TestTagPillsCSVTrimsAndOmitsEmptyValues(t *testing.T) {
 	}
 }
 
+func TestTagPillColumnWidthPreservesLongAndMultiplePills(t *testing.T) {
+	startTestApp(t)
+	long := "environment=a-very-long-production-environment-name"
+	want := compactTagPill(long).MinSize().Width + tagPillGap + compactTagPill("featured").MinSize().Width
+	if got := TagPillColumnWidth([]string{long + ",featured"}, 100); got < want {
+		t.Fatalf("tag column width %v clips natural pill row width %v", got, want)
+	}
+}
+
 func TestTagPreviewRefreshesEditablePills(t *testing.T) {
 	startTestApp(t)
 	preview := NewTagPreview("classic")

@@ -218,7 +218,7 @@ func TestViewDrivesRealRetainedWidgetsAndDisablesDuringLoad(t *testing.T) {
 		t.Fatal("filters enabled during accepted read")
 	}
 	executor.RunNext()
-	view.list.Select(widget.TableCellID{Row: 1, Col: 0})
+	view.list.Select(widget.TableCellID{Row: 0, Col: 0})
 	if presenter.State().Selected == nil || view.browse.Hidden == false || view.detailPanel.Hidden || view.detailFields[7].Text != "true" {
 		t.Fatal("real row widget did not select detail")
 	}
@@ -314,7 +314,7 @@ func TestAuditDetailIsFullWidthCopyableReadOnlyAndHasNoFilters(t *testing.T) {
 	presenter := auditPresenter(fixture)
 	view := NewView(presenter)
 	view.Activate()
-	view.list.Select(widget.TableCellID{Row: 1, Col: 0})
+	view.list.Select(widget.TableCellID{Row: 0, Col: 0})
 	if !view.browse.Hidden || view.detailPanel.Hidden || len(view.detailFields) != 10 {
 		t.Fatal("detail did not replace the list with the complete audit form")
 	}

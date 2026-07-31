@@ -3,6 +3,7 @@ package gui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
@@ -71,20 +72,22 @@ type Result struct {
 }
 
 type State struct {
-	Mode             Mode
-	Operation        Operation
-	EntityType       cedar.EntityType
-	Entities         []EntityOption
-	Visible          []EntityOption
-	Query            string
-	Target           cedar.EntityUID
-	TargetName       string
-	Value            string
-	Result           Result
-	Catalog          []tagging.Summary
-	VisibleSummaries []tagging.Summary
-	Submitting       bool
-	Err              error
+	Mode              Mode
+	Operation         Operation
+	EntityType        cedar.EntityType
+	Entities          []EntityOption
+	Visible           []EntityOption
+	Query             string
+	Target            cedar.EntityUID
+	TargetName        string
+	Value             string
+	Result            Result
+	Catalog           []tagging.Summary
+	VisibleSummaries  []tagging.Summary
+	Submitting        bool
+	Err               error
+	SummarySort       int
+	SummaryDescending bool
 }
 
 type Dependencies struct {
@@ -173,6 +176,18 @@ func (p *Presenter) Search(query string) {
 	} else {
 		return
 	}
+	p.publish()
+}
+
+// SortSummaries sorts the complete in-memory tag summary result. Unlike the
+// cursor-paged domain lists, this is never a misleading current-page sort.
+func (p *Presenter) SortSummaries(column int, direction ui.SortDirection) {
+	if p.state.Mode != Results || p.state.Operation != Summary || column < 0 || column > 6 {
+		return
+	}
+	p.state.SummarySort = column + 1
+	p.state.SummaryDescending = direction == ui.SortDescending
+	p.sortSummaries()
 	p.publish()
 }
 
@@ -368,6 +383,46 @@ func (p *Presenter) applySummaryQuery() {
 			p.state.VisibleSummaries = append(p.state.VisibleSummaries, summary)
 		}
 	}
+	p.sortSummaries()
+}
+
+func (p *Presenter) sortSummaries() {
+	column := p.state.SummarySort - 1
+	if column < 0 {
+		return
+	}
+	value := func(s tagging.Summary) any {
+		switch column {
+		case 0:
+			return s.Tag
+		case 1:
+			return s.Total
+		case 2:
+			return s.Drinks
+		case 3:
+			return s.Ingredients
+		case 4:
+			return s.Inventory
+		case 5:
+			return s.Menus
+		default:
+			return s.Orders
+		}
+	}
+	sort.SliceStable(p.state.VisibleSummaries, func(i, j int) bool {
+		a, b := value(p.state.VisibleSummaries[i]), value(p.state.VisibleSummaries[j])
+		less := false
+		switch x := a.(type) {
+		case string:
+			less = x < b.(string)
+		case int:
+			less = x < b.(int)
+		}
+		if p.state.SummaryDescending {
+			return !less && a != b
+		}
+		return less
+	})
 }
 
 func (p *Presenter) loadEntities(kind cedar.EntityType) ([]EntityOption, error) {

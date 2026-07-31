@@ -83,11 +83,11 @@ func TestActionsColumnDoesNotImplicitlySelectRow(t *testing.T) {
 	p.state.Items = []*models.Menu{menu}
 	v := NewView(p)
 
-	v.list.Select(widget.TableCellID{Row: 1, Col: 6})
+	v.list.Select(widget.TableCellID{Row: 0, Col: 6})
 	if p.State().Mode != Browsing {
 		t.Fatalf("actions cell implicitly navigated to mode %v", p.State().Mode)
 	}
-	v.list.Select(widget.TableCellID{Row: 1, Col: 0})
+	v.list.Select(widget.TableCellID{Row: 0, Col: 0})
 	if p.State().Mode == Browsing {
 		t.Fatal("ordinary row cell did not navigate")
 	}

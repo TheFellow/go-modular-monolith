@@ -6,6 +6,70 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+type SortDirection uint8
+
+const (
+	SortAscending SortDirection = iota + 1
+	SortDescending
+)
+
+type TableColumn struct {
+	Title    string
+	Width    float32
+	Sortable bool
+}
+
+// ConfigureRowTable adds Fyne's native sticky header row. Native headers carry
+// the column-divider drag affordances, so widths remain attached to the table
+// for its entire lifetime (including refresh, filtering and detail/back).
+func ConfigureRowTable(table *widget.Table, columns []TableColumn, onSort func(int, SortDirection)) {
+	table.ShowHeaderRow = true
+	table.CreateHeader = func() framework.CanvasObject { return widget.NewButton("", nil) }
+	var sortedColumn = -1
+	direction := SortAscending
+	table.UpdateHeader = func(id widget.TableCellID, object framework.CanvasObject) {
+		button := object.(*widget.Button)
+		if id.Row != -1 || id.Col < 0 || id.Col >= len(columns) {
+			button.SetText("")
+			button.Disable()
+			return
+		}
+		column := columns[id.Col]
+		text := column.Title
+		if id.Col == sortedColumn {
+			if direction == SortAscending {
+				text += "  ↑"
+			} else {
+				text += "  ↓"
+			}
+		}
+		button.SetText(text)
+		button.OnTapped = nil
+		if !column.Sortable || onSort == nil {
+			button.Disable()
+			return
+		}
+		button.Enable()
+		col := id.Col
+		button.OnTapped = func() {
+			if sortedColumn == col {
+				if direction == SortAscending {
+					direction = SortDescending
+				} else {
+					direction = SortAscending
+				}
+			} else {
+				sortedColumn, direction = col, SortAscending
+			}
+			onSort(col, direction)
+			table.Refresh()
+		}
+	}
+	for col, column := range columns {
+		table.SetColumnWidth(col, column.Width)
+	}
+}
+
 type RowAction struct {
 	Label string
 	Run   func()

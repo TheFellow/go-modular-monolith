@@ -442,6 +442,20 @@ func TestHeadlessWidgetsPlaceOrderAndRetainCommaNames(t *testing.T) {
 	testutil.Equals(t, page.Items[0].Items[0].Notes, "with, twist\nserve very cold")
 }
 
+func TestOrdersListRetainsTableInstanceAcrossRenders(t *testing.T) {
+	gui := frameworktest.NewApp()
+	defer gui.Quit()
+	f := testutil.NewFixture(t)
+	p := newInlinePresenter(f)
+	v := NewView(p)
+	v.browser(p.State())
+	first := v.list
+	v.browser(p.State())
+	if v.list != first {
+		t.Fatal("orders refresh recreated the table and discarded resized column widths")
+	}
+}
+
 func TestHeadlessWidgetsTagAndCompleteSelectedOrder(t *testing.T) {
 	gui := frameworktest.NewApp()
 	defer gui.Quit()

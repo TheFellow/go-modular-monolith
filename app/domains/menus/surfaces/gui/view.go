@@ -83,6 +83,7 @@ type View struct {
 	renderedMode                                                   Mode
 	renderedForm                                                   Form
 	renderedInstance                                               uint64
+	tagNaturalWidth                                                float32
 }
 
 var _ ui.View = (*View)(nil)
@@ -105,22 +106,18 @@ func NewView(p *Presenter) *View {
 	v.descriptionHelp = widget.NewLabel("")
 	v.descriptionHelp.Hide()
 	columns := []string{"Name", "Status", "Items", "Created", "Published", "Tags", "Actions"}
-	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Items) + 1, len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Items), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, o framework.CanvasObject) {
 		cell := o
-		if id.Row == 0 {
-			ui.ShowCellText(cell, columns[id.Col], true)
-			return
-		}
-		m := v.state.Items[id.Row-1]
+		m := v.state.Items[id.Row]
 		published := ""
 		if t, ok := m.PublishedAt.Unwrap(); ok {
 			published = t.Format(time.RFC3339)
 		}
 		values := []string{m.Name, string(m.Status), strconv.Itoa(len(m.Items)), formatTime(m.CreatedAt), published, m.Tags.Canonical().String()}
 		if id.Col == len(columns)-1 {
-			index := id.Row - 1
+			index := id.Row
 			actions := []ui.RowAction{{Label: "View", Run: func() { p.Select(index) }}}
 			canPublish, canDraft := p.ListPermissions(index)
 			if canPublish {
@@ -139,14 +136,12 @@ func NewView(p *Presenter) *View {
 		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 && id.Col < len(columns)-1 {
+		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
-			p.Select(id.Row - 1)
+			p.Select(id.Row)
 		}
 	}
-	for i, w := range []float32{210, 100, 70, 190, 190, 190, 140} {
-		v.list.SetColumnWidth(i, w)
-	}
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 210}, {Title: "Status", Width: 100}, {Title: "Items", Width: 70}, {Title: "Created", Width: 190}, {Title: "Published", Width: 190}, {Title: "Tags", Width: 190}, {Title: "Actions", Width: 140}}, nil)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No menus found", "Adjust the filter or create a menu.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
@@ -336,6 +331,16 @@ func (v *View) buildTags(s State) *framework.Container {
 }
 
 func (v *View) render(s State) {
+	if len(s.Items) > 0 {
+		values := make([]string, len(s.Items))
+		for i, item := range s.Items {
+			values[i] = item.Tags.Canonical().String()
+		}
+		if width := ui.TagPillColumnWidth(values, 190); width > v.tagNaturalWidth {
+			v.list.SetColumnWidth(5, width)
+			v.tagNaturalWidth = width
+		}
+	}
 	v.state = s
 	if s.Mode == AddingDrink && v.renderedMode != AddingDrink {
 		v.drinkSearch.SetText(s.Form.DrinkQuery)

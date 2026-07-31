@@ -57,33 +57,26 @@ func NewView(p *Presenter) *View {
 	v.expression, v.apply, v.scope = bar.Expression, bar.Apply, bar.Presets[0]
 
 	columns := []string{"Started", "Completed", "Duration", "Action", "Resource", "Principal", "Success", "Touches", "Error", "Actions"}
-	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Rows) + 1, len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Rows), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
 		cell := object
-		if id.Row == 0 {
-			ui.ShowCellText(cell, columns[id.Col], true)
-			return
-		}
-		r := v.state.Rows[id.Row-1]
+		r := v.state.Rows[id.Row]
 		values := []string{formatTime(r.Entry.StartedAt), formatTime(r.Entry.CompletedAt), formatDuration(r.Entry.StartedAt, r.Entry.CompletedAt), r.Entry.Action, r.Entry.Resource.String(), r.Entry.Principal.String(), strconv.FormatBool(r.Entry.Success), strconv.Itoa(len(r.Touches)), r.Entry.Error}
 		if id.Col == len(columns)-1 {
-			index := id.Row - 1
+			index := id.Row
 			ui.ShowCellActions(cell, []ui.RowAction{{Label: "View", Run: func() { p.Select(index) }}})
 			return
 		}
 		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 && id.Col < len(columns)-1 {
+		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
-			p.Select(id.Row - 1)
+			p.Select(id.Row)
 		}
 	}
-	for i, width := range []float32{170, 170, 90, 210, 220, 190, 70, 65, 240} {
-		v.list.SetColumnWidth(i, width)
-	}
-	v.list.SetColumnWidth(9, 120)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Started", Width: 170}, {Title: "Completed", Width: 170}, {Title: "Duration", Width: 90}, {Title: "Action", Width: 210}, {Title: "Resource", Width: 220}, {Title: "Principal", Width: 190}, {Title: "Success", Width: 70}, {Title: "Touches", Width: 65}, {Title: "Error", Width: 240}, {Title: "Actions", Width: 120}}, nil)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No audit activity found", "Adjust the filter or return later after application activity occurs.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
