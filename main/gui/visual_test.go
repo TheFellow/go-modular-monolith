@@ -21,6 +21,8 @@ import (
 	inventorygui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/gui"
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	menusgui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/gui"
+	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	ordersgui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/gui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
@@ -82,6 +84,18 @@ func TestRenderWorkspaceReview(t *testing.T) {
 		t.Fatal(err)
 	}
 	publishedMenu, err = desktop.session.Menus.Publish(desktop.session.Context(), publishedMenu)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pendingOrder, err := desktop.session.Orders.Place(desktop.session.Context(), &ordersmodels.Order{MenuID: publishedMenu.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 2, Notes: "Orange peel on the side"}}, Notes: "Bar seat four"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	completedOrder, err := desktop.session.Orders.Place(desktop.session.Context(), &ordersmodels.Order{MenuID: publishedMenu.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 1}}, Notes: "Already served"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	completedOrder, err = desktop.session.Orders.Complete(desktop.session.Context(), completedOrder)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,6 +226,30 @@ func TestRenderWorkspaceReview(t *testing.T) {
 			presenter.StartCreate()
 			captureReview(t, desktop, directory, route+"-create.png")
 			presenter.Cancel()
+		}
+		if route == "orders" {
+			presenter := desktop.presenters[route].(*ordersgui.Presenter)
+			selectOrder := func(id entity.OrderID) {
+				for i, row := range presenter.State().Rows {
+					if row.Order.ID == id {
+						presenter.Select(i)
+						return
+					}
+				}
+				t.Fatalf("order %s missing", id)
+			}
+			selectOrder(pendingOrder.ID)
+			captureReview(t, desktop, directory, route+"-pending.png")
+			presenter.Back()
+			selectOrder(completedOrder.ID)
+			captureReview(t, desktop, directory, route+"-completed.png")
+			presenter.ResetList()
+			presenter.ApplyFilter(ordersgui.Filter{Expression: `notes == "missing"`, Limit: 25})
+			captureReview(t, desktop, directory, route+"-empty.png")
+			presenter.ResetList()
+			presenter.StartPlace()
+			captureReview(t, desktop, directory, route+"-place.png")
+			presenter.CancelForm()
 		}
 		if route == "audit" {
 			openFilterDisclosures(desktop.shell.Content())

@@ -27,6 +27,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
@@ -89,6 +90,119 @@ func TestPresenterTraversesForwardAndBackwardPages(t *testing.T) {
 	testutil.Equals(t, len(previous.History), 0)
 }
 
+func TestPresenterDetailBackPreservesListStateAndBreadcrumbResetClearsIt(t *testing.T) {
+	f := testutil.NewFixture(t)
+	drink := availableDrink(t, f, "Navigation")
+	menu := testutil.CreateMenu(t, f, "Navigation", testutil.WithDrink(drink), testutil.Published())
+	for range 2 {
+		testutil.PlaceOrder(t, f, models.Order{MenuID: menu.ID, Items: []models.OrderItem{{DrinkID: drink.ID, Quantity: 1}}})
+	}
+	p := newInlinePresenter(f)
+	testutil.Equals(t, p.ApplyFilter(Filter{Expression: `status == "pending"`, Limit: 1}), true)
+	p.NextPage()
+	before := p.State()
+	p.Select(0)
+	testutil.Equals(t, p.State().Mode, Viewing)
+	p.Back()
+	after := p.State()
+	testutil.Equals(t, after.Mode, Browsing)
+	testutil.Equals(t, after.Filter, before.Filter)
+	testutil.Equals(t, after.Cursor, before.Cursor)
+	testutil.Equals(t, after.History, before.History)
+	p.Select(0)
+	p.ResetList()
+	reset := p.State()
+	testutil.Equals(t, reset.Mode, Browsing)
+	testutil.Equals(t, reset.Filter.Expression, "")
+	testutil.Equals(t, reset.Filter.Limit, paging.DefaultLimit)
+	testutil.Equals(t, len(reset.History), 0)
+	testutil.Equals(t, reset.Selected == nil, true)
+}
+
+func TestPresenterExposesOnlyAuthorizedOrderActions(t *testing.T) {
+	f := testutil.NewFixture(t)
+	drink := availableDrink(t, f, "Authorization")
+	menu := testutil.CreateMenu(t, f, "Authorization", testutil.WithDrink(drink), testutil.Published())
+	testutil.PlaceOrder(t, f, models.Order{MenuID: menu.ID, Items: []models.OrderItem{{DrinkID: drink.ID, Quantity: 1}}})
+
+	owner := newInlinePresenter(f)
+	owner.Refresh()
+	owner.Select(0)
+	state := owner.State()
+	if !state.CanPlace || !state.CanComplete || !state.CanCancel || !state.CanTag {
+		t.Fatalf("owner actions missing: %#v", state)
+	}
+
+	reader := NewPresenter(application.NewSession(f.ActorContext("sommelier"), f.App.App), Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: &fynetest.Dialogs{}})
+	reader.Refresh()
+	reader.Select(0)
+	state = reader.State()
+	if state.CanPlace || state.CanComplete || state.CanCancel || state.CanTag {
+		t.Fatalf("read-only actor actions disclosed: %#v", state)
+	}
+}
+
+func TestDirtyPlaceBackAndResetRequireConfirmationAndRetainInput(t *testing.T) {
+	f := testutil.NewFixture(t)
+	drink := availableDrink(t, f, "Dirty placement")
+	menu := testutil.CreateMenu(t, f, "Dirty placement", testutil.WithDrink(drink), testutil.Published())
+	dialogs := &fynetest.Dialogs{}
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: dialogs})
+	p.ApplyFilter(Filter{Expression: `status == "pending"`, Limit: 1})
+	p.StartPlace()
+	p.ChooseMenu(menu.ID)
+	testutil.Equals(t, p.AddItem(drink.ID, 2, "keep this note"), true)
+	p.SetPlaceNotes("keep this order note")
+
+	p.Back()
+	testutil.Equals(t, len(dialogs.Confirmations()), 1)
+	testutil.Equals(t, p.State().Confirming, true)
+	dialogs.Confirmations()[0].Respond(false)
+	state := p.State()
+	testutil.Equals(t, state.Mode, Placing)
+	testutil.Equals(t, state.Form.Notes, "keep this order note")
+	testutil.Equals(t, state.Form.Items[0].Notes, "keep this note")
+	testutil.Equals(t, state.Filter.Expression, `status == "pending"`)
+
+	p.ResetList()
+	testutil.Equals(t, len(dialogs.Confirmations()), 2)
+	dialogs.Confirmations()[1].Respond(true)
+	state = p.State()
+	testutil.Equals(t, state.Mode, Browsing)
+	testutil.Equals(t, state.Dirty, false)
+	testutil.Equals(t, state.Filter.Expression, "")
+	testutil.Equals(t, state.Filter.Limit, paging.DefaultLimit)
+}
+
+func TestDirtyTagsBackAndResetRequireConfirmationAndRetainInput(t *testing.T) {
+	f := testutil.NewFixture(t)
+	drink := availableDrink(t, f, "Dirty tags")
+	menu := testutil.CreateMenu(t, f, "Dirty tags", testutil.WithDrink(drink), testutil.Published())
+	testutil.PlaceOrder(t, f, models.Order{MenuID: menu.ID, Items: []models.OrderItem{{DrinkID: drink.ID, Quantity: 1}}})
+	dialogs := &fynetest.Dialogs{}
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: dialogs})
+	p.ApplyFilter(Filter{Expression: `status == "pending"`, Limit: 1})
+	p.Select(0)
+	p.StartTags()
+	p.SetTagForm("featured,region=west")
+
+	p.ResetList()
+	testutil.Equals(t, len(dialogs.Confirmations()), 1)
+	dialogs.Confirmations()[0].Respond(false)
+	state := p.State()
+	testutil.Equals(t, state.Mode, Tagging)
+	testutil.Equals(t, state.Form.Tags, "featured,region=west")
+	testutil.Equals(t, state.Filter.Expression, `status == "pending"`)
+
+	p.Back()
+	testutil.Equals(t, len(dialogs.Confirmations()), 2)
+	dialogs.Confirmations()[1].Respond(true)
+	state = p.State()
+	testutil.Equals(t, state.Mode, Browsing)
+	testutil.Equals(t, state.Filter.Expression, `status == "pending"`)
+	testutil.Equals(t, state.Filter.Limit, 1)
+}
+
 func TestPlaceCatalogPreservesDirtyFormRejectsStaleAndPlacesOnlyAvailableDrink(t *testing.T) {
 	f := testutil.NewFixture(t)
 	drink := availableDrink(t, f, "Gin, Fizz")
@@ -136,6 +250,7 @@ func TestPlaceValidationTagsAndTerminalConfirmationsPersist(t *testing.T) {
 	dialogs := &fynetest.Dialogs{}
 	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: dialogs})
 	p.Refresh()
+	p.Select(0)
 	p.StartTags()
 	testutil.Equals(t, p.SaveTags(" region=west,featured "), true)
 	stored, err := f.Orders.Get(f.OwnerContext(), order.ID)
@@ -246,6 +361,7 @@ func TestTagValidationAndAuthorizationFailuresRetainCorrectableForms(t *testing.
 	order := testutil.PlaceOrder(t, f, models.Order{MenuID: menu.ID, Items: []models.OrderItem{{DrinkID: drink.ID, Quantity: 1}}})
 	p := newInlinePresenter(f)
 	p.Refresh()
+	p.Select(0)
 	p.StartTags()
 	testutil.Equals(t, p.SaveTags("region=west,region=east"), false)
 	testutil.ErrorIsInvalid(t, p.State().Err)
@@ -254,26 +370,18 @@ func TestTagValidationAndAuthorizationFailuresRetainCorrectableForms(t *testing.
 	denied := application.NewSession(f.ActorContext("sommelier"), f.App.App)
 	p = NewPresenter(denied, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: &fynetest.Dialogs{}})
 	p.Refresh()
+	p.Select(0)
 	p.StartTags()
-	if p.State().Selected == nil || p.State().Mode != Tagging {
-		t.Fatalf("denied presenter did not enter tag form: mode=%v err=%v rows=%d", p.State().Mode, p.State().Err, len(p.State().Rows))
-	}
-	testutil.Equals(t, p.SaveTags("featured"), true)
-	testutil.ErrorIsPermission(t, p.State().Err)
-	testutil.Equals(t, p.State().Mode, Tagging)
-	testutil.Equals(t, p.State().Form.Tags, "featured")
+	testutil.Equals(t, p.State().Mode, Viewing)
+	testutil.Equals(t, p.State().CanTag, false)
+	testutil.Equals(t, p.SaveTags("featured"), false)
 	stored, err := f.Orders.Get(f.OwnerContext(), order.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(stored.Tags), 0)
 
-	p.CancelForm()
 	p.StartPlace()
-	p.state.Form = Form{MenuID: menu.ID, Notes: "retain order notes", Items: []PlaceItem{{DrinkID: drink.ID, Name: drink.Name, Quantity: 2, Notes: "retain item notes"}}}
-	testutil.Equals(t, p.SavePlace(), true)
-	testutil.ErrorIsPermission(t, p.State().Err)
-	testutil.Equals(t, p.State().Mode, Placing)
-	testutil.Equals(t, p.State().Form.Notes, "retain order notes")
-	testutil.Equals(t, p.State().Form.Items[0].Notes, "retain item notes")
+	testutil.Equals(t, p.State().Mode, Viewing)
+	testutil.Equals(t, p.State().CanPlace, false)
 	page, err := f.Orders.List(f.OwnerContext(), orders.ListRequest{})
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(page.Items), 1)
@@ -346,6 +454,7 @@ func TestHeadlessWidgetsTagAndCompleteSelectedOrder(t *testing.T) {
 	v := NewView(p)
 	driver := fynetest.NewDriver(t, v.Content())
 	p.Refresh()
+	p.Select(0)
 	driver.Tap("orders-tags")
 	driver.Type("orders-tags-value", "featured")
 	driver.Tap("orders-tags-save")
@@ -441,6 +550,7 @@ func TestCLIAndFyneShareOrderPersistenceContract(t *testing.T) {
 	p.Refresh()
 	testutil.Equals(t, len(p.State().Rows), 1)
 	testutil.Equals(t, p.State().Rows[0].Order.ID.String(), orderID)
+	p.Select(0)
 	p.ConfirmComplete()
 	dialogs.Confirmations()[0].Respond(true)
 	testutil.Ok(t, core.Close())
