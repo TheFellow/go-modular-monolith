@@ -364,19 +364,22 @@ func (v *placeVM) Update(msg tea.Msg) tea.Cmd {
 				v.finishEdit(true)
 				return nil
 			case keyname.InsertLine:
-				if v.field == placeFieldItemNotes {
+				switch v.field {
+				case placeFieldItemNotes:
 					v.itemNotes.SetValue(v.itemNotes.Value() + "\n")
 					return nil
-				}
-				if v.field == placeFieldOrderNotes {
+				case placeFieldOrderNotes:
 					v.orderNotes.SetValue(v.orderNotes.Value() + "\n")
 					return nil
+				case placeFieldMenu, placeFieldDrink, placeFieldQuantity, placeFieldTags:
 				}
 			case keyname.Enter:
-				if v.field == placeFieldMenu {
+				switch v.field {
+				case placeFieldMenu:
 					v.chooseMenu()
-				} else if v.field == placeFieldDrink {
+				case placeFieldDrink:
 					v.add()
+				case placeFieldQuantity, placeFieldItemNotes, placeFieldOrderNotes, placeFieldTags:
 				}
 				v.finishEdit(false)
 				return nil
@@ -400,17 +403,22 @@ func (v *placeVM) Update(msg tea.Msg) tea.Cmd {
 					v.refocus()
 					return nil
 				}
-				if v.field == placeFieldMenu && key.String() == keyname.Up && v.menuIndex > 0 {
-					v.menuIndex--
-				}
-				if v.field == placeFieldMenu && key.String() == keyname.Down && v.menuIndex+1 < len(v.visibleMenus) {
-					v.menuIndex++
-				}
-				if v.field == placeFieldDrink && key.String() == keyname.Up && v.drinkIndex > 0 {
-					v.drinkIndex--
-				}
-				if v.field == placeFieldDrink && key.String() == keyname.Down && v.drinkIndex+1 < len(v.visibleDrinks) {
-					v.drinkIndex++
+				switch v.field {
+				case placeFieldMenu:
+					if key.String() == keyname.Up && v.menuIndex > 0 {
+						v.menuIndex--
+					}
+					if key.String() == keyname.Down && v.menuIndex+1 < len(v.visibleMenus) {
+						v.menuIndex++
+					}
+				case placeFieldDrink:
+					if key.String() == keyname.Up && v.drinkIndex > 0 {
+						v.drinkIndex--
+					}
+					if key.String() == keyname.Down && v.drinkIndex+1 < len(v.visibleDrinks) {
+						v.drinkIndex++
+					}
+				case placeFieldQuantity, placeFieldItemNotes, placeFieldOrderNotes, placeFieldTags:
 				}
 				return nil
 			}
