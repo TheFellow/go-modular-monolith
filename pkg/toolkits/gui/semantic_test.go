@@ -8,15 +8,15 @@ import (
 	"fyne.io/fyne/v2/test"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func TestSemanticDriverInteractsWithActualWidgets(t *testing.T) {
 	app := test.NewApp()
 	t.Cleanup(app.Quit)
-	entry := fyneui.NewEntry("drink-name")
+	entry := gui.NewEntry("drink-name")
 	tapped := false
-	button := fyneui.NewButton("save-drink", "Save", func() { tapped = true })
+	button := gui.NewButton("save-drink", "Save", func() { tapped = true })
 	driver := fynetest.NewDriver(t, container.NewVBox(entry, button))
 
 	driver.Type("drink-name", "Gimlet")
@@ -29,9 +29,9 @@ func TestSemanticDriverInteractsWithActualWidgets(t *testing.T) {
 func TestListDetailPreservesSuppliedObjectsAndRatio(t *testing.T) {
 	app := test.NewApp()
 	t.Cleanup(app.Quit)
-	left := fyneui.NewEntry("left")
-	right := fyneui.NewEntry("right")
-	split := fyneui.ListDetail(left, right, .35)
+	left := gui.NewEntry("left")
+	right := gui.NewEntry("right")
+	split := gui.ListDetail(left, right, .35)
 	if split.Leading != left || split.Trailing != right || split.Offset != .35 {
 		t.Fatalf("unexpected split: %#v", split)
 	}

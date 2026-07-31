@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keyname"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -56,11 +57,11 @@ func (s *SelectField) Update(msg tea.Msg) (Field, tea.Cmd) {
 		return s, nil
 	}
 	switch keyMsg.String() {
-	case "up":
+	case keyname.Up:
 		s.move(-1)
-	case "down":
+	case keyname.Down:
 		s.move(1)
-	case "enter":
+	case keyname.Enter:
 		s.open = !s.open
 	}
 	return s, nil
@@ -113,6 +114,12 @@ func (s *SelectField) Focus() {
 func (s *SelectField) Blur() {
 	s.focused = false
 	s.open = false
+}
+
+func (s *SelectField) BeginEdit() tea.Cmd { s.open = true; return nil }
+func (s *SelectField) EndEdit()           { s.open = false }
+func (s *SelectField) OwnsNavigation(msg tea.KeyMsg) bool {
+	return msg.Type == tea.KeyUp || msg.Type == tea.KeyDown
 }
 
 // IsFocused returns true if the field is focused.

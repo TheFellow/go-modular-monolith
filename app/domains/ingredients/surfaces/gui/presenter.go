@@ -19,7 +19,7 @@ import (
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 type Mode uint8
@@ -41,7 +41,7 @@ type Form struct {
 }
 
 type State struct {
-	Status       fyneui.LoadStatus
+	Status       toolkit.LoadStatus
 	Items        []models.Ingredient
 	Selected     *models.Ingredient
 	Category     models.Category
@@ -57,11 +57,11 @@ type State struct {
 
 type Presenter struct {
 	app        *app.Session
-	executor   fyneui.Executor
-	dispatcher fyneui.Dispatcher
-	dialogs    fyneui.Dialogs
-	loads      *fyneui.LatestRequest[loadResult]
-	mutation   *fyneui.Submission
+	executor   toolkit.Executor
+	dispatcher toolkit.Dispatcher
+	dialogs    toolkit.Dialogs
+	loads      *toolkit.LatestRequest[loadResult]
+	mutation   *toolkit.Submission
 
 	mu      sync.Mutex
 	state   State
@@ -72,10 +72,10 @@ type loadResult struct {
 	next  paging.Cursor
 }
 
-func NewPresenter(session *app.Session, executor fyneui.Executor, dispatcher fyneui.Dispatcher, dialogs fyneui.Dialogs) *Presenter {
+func NewPresenter(session *app.Session, executor toolkit.Executor, dispatcher toolkit.Dispatcher, dialogs toolkit.Dialogs) *Presenter {
 	p := &Presenter{app: session, executor: executor, dispatcher: dispatcher, dialogs: dialogs, state: State{Limit: paging.DefaultLimit}}
-	p.loads = fyneui.NewLatestRequest[loadResult](executor, dispatcher)
-	p.mutation = fyneui.NewSubmission(executor, dispatcher)
+	p.loads = toolkit.NewLatestRequest[loadResult](executor, dispatcher)
+	p.mutation = toolkit.NewSubmission(executor, dispatcher)
 	return p
 }
 
@@ -104,10 +104,10 @@ func (p *Presenter) Load() {
 			items = append(items, *item)
 		}
 		return loadResult{items: items, next: page.Next}, nil
-	}, func(result fyneui.LoadState[loadResult]) {
+	}, func(result toolkit.LoadState[loadResult]) {
 		p.mu.Lock()
-		p.state.Status, p.state.Err = result.Status, fyneui.PresentError(result.Err)
-		if result.Status == fyneui.Loaded {
+		p.state.Status, p.state.Err = result.Status, toolkit.PresentError(result.Err)
+		if result.Status == toolkit.Loaded {
 			selected := selectedID(p.state.Selected)
 			p.state.Items, p.state.Next = result.Value.items, result.Value.next
 			p.state.Selected = findIngredient(p.state.Items, selected)
@@ -118,8 +118,8 @@ func (p *Presenter) Load() {
 		}
 		p.publishLocked()
 		p.mu.Unlock()
-		if result.Status == fyneui.Failed {
-			fyneui.ShowPresentation(p.dialogs, result.Err)
+		if result.Status == toolkit.Failed {
+			toolkit.ShowPresentation(p.dialogs, result.Err)
 		}
 	})
 }
@@ -131,7 +131,7 @@ func (p *Presenter) Filter(category models.Category, expression string, limits .
 	}
 	if limit <= 0 {
 		p.mu.Lock()
-		p.state.Err = fyneui.PresentError(fmt.Errorf("page size must be greater than zero"))
+		p.state.Err = toolkit.PresentError(fmt.Errorf("page size must be greater than zero"))
 		p.publishLocked()
 		p.mu.Unlock()
 		return false
@@ -145,7 +145,7 @@ func (p *Presenter) Filter(category models.Category, expression string, limits .
 }
 func (p *Presenter) NextPage() {
 	p.mu.Lock()
-	if p.state.Next == "" || p.state.Status == fyneui.Loading {
+	if p.state.Next == "" || p.state.Status == toolkit.Loading {
 		p.mu.Unlock()
 		return
 	}
@@ -156,7 +156,7 @@ func (p *Presenter) NextPage() {
 }
 func (p *Presenter) PreviousPage() {
 	p.mu.Lock()
-	if len(p.state.History) == 0 || p.state.Status == fyneui.Loading {
+	if len(p.state.History) == 0 || p.state.Status == toolkit.Loading {
 		p.mu.Unlock()
 		return
 	}
@@ -218,7 +218,7 @@ func (p *Presenter) Submit(form Form) bool {
 	p.state.Form = form
 	err := validateForm(mode, form)
 	if err != nil {
-		p.state.Err = fyneui.PresentError(err)
+		p.state.Err = toolkit.PresentError(err)
 		p.publishLocked()
 		p.mu.Unlock()
 		return false
@@ -267,13 +267,13 @@ func (p *Presenter) Submit(form Form) bool {
 	}, func(err error) {
 		p.mu.Lock()
 		p.state.Submitting = false
-		p.state.Err = fyneui.PresentError(err)
+		p.state.Err = toolkit.PresentError(err)
 		if err == nil {
 			p.state.Mode = Browse
 		}
 		p.publishLocked()
 		p.mu.Unlock()
-		fyneui.ShowPresentation(p.dialogs, err)
+		toolkit.ShowPresentation(p.dialogs, err)
 		if err == nil {
 			p.Load()
 		}
@@ -299,10 +299,10 @@ func (p *Presenter) RequestDelete() {
 		p.dispatcher.Dispatch(func() {
 			if err != nil {
 				p.mu.Lock()
-				p.state.Err = fyneui.PresentError(err)
+				p.state.Err = toolkit.PresentError(err)
 				p.publishLocked()
 				p.mu.Unlock()
-				fyneui.ShowPresentation(p.dialogs, err)
+				toolkit.ShowPresentation(p.dialogs, err)
 				return
 			}
 			message := fmt.Sprintf("Delete %q?", target.Name)
@@ -328,10 +328,10 @@ func (p *Presenter) delete(id entity.IngredientID) bool {
 		return err
 	}, func(err error) {
 		p.mu.Lock()
-		p.state.Submitting, p.state.Err = false, fyneui.PresentError(err)
+		p.state.Submitting, p.state.Err = false, toolkit.PresentError(err)
 		p.publishLocked()
 		p.mu.Unlock()
-		fyneui.ShowPresentation(p.dialogs, err)
+		toolkit.ShowPresentation(p.dialogs, err)
 		if err == nil {
 			p.Load()
 		}

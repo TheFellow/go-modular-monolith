@@ -63,3 +63,22 @@ func TestTagEditorAllowsOnlyOneSaveInFlight(t *testing.T) {
 	testutil.ErrorIf(t, typed != nil, "input should be ignored while saving")
 	testutil.Equals(t, editor.field.Value(), any("featured"))
 }
+
+func TestTagEditorCanClearAnExistingSetThroughKeyboardEditing(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, models.Ingredient{Name: "Clear Tonic", Category: models.CategoryMixer, Unit: measurement.UnitMl})
+	_, err := f.App.Tags.Upsert(f.OwnerContext(), ingredient.EntityUID(), tag.Tag{Key: "featured"})
+	testutil.Ok(t, err)
+
+	editor := NewTagEditor(f.App, ingredient.EntityUID(), ingredient.Name, tag.Tags{{Key: "featured"}})
+	editor.Init()
+	editor, _ = editor.Update(tea.KeyMsg{Type: tea.KeyCtrlU})
+	testutil.Equals(t, editor.field.Value(), any(""))
+	editor, cmd := editor.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	testutil.ErrorIf(t, cmd == nil, "clear did not start a save")
+	msg := cmd()
+	saved, ok := msg.(TagsSavedMsg)
+	testutil.ErrorIf(t, !ok, "clear returned %T", msg)
+	testutil.Equals(t, len(saved.Tags), 0)
+}

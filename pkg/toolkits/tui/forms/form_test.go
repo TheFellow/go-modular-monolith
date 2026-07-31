@@ -53,3 +53,37 @@ func TestFormValidation(t *testing.T) {
 	testutil.Ok(t, age.SetValue("21"))
 	testutil.Ok(t, form.Validate())
 }
+
+func TestFormUsesBrowseThenEditInteraction(t *testing.T) {
+	t.Parallel()
+
+	keys := forms.FormKeys{
+		NextField: key.NewBinding(key.WithKeys("down")),
+		PrevField: key.NewBinding(key.WithKeys("up")),
+		Edit:      key.NewBinding(key.WithKeys("e")),
+		Accept:    key.NewBinding(key.WithKeys("enter")),
+		Cancel:    key.NewBinding(key.WithKeys("esc")),
+	}
+	name := forms.NewTextField("Name", forms.WithInitialValue("Original"))
+	note := forms.NewTextField("Note")
+	form := forms.New(forms.FormStyles{}, keys, name, note)
+	form.Init()
+
+	form, _ = form.Update(tea.KeyMsg{Type: tea.KeyDown})
+	testutil.Equals(t, form.FocusedField().Label(), "Note")
+	form, _ = form.Update(tea.KeyMsg{Type: tea.KeyUp})
+	testutil.Equals(t, form.FocusedField().Label(), "Name")
+
+	form, _ = form.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	testutil.Equals(t, form.IsEditing(), true)
+	form, _ = form.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(" changed")})
+	form, _ = form.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	testutil.Equals(t, form.IsEditing(), false)
+	testutil.Equals(t, name.Value(), "Original")
+
+	form, _ = form.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	form, _ = form.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(" accepted")})
+	form, _ = form.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	testutil.Equals(t, form.IsEditing(), false)
+	testutil.Equals(t, name.Value(), "Original accepted")
+}

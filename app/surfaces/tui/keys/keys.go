@@ -3,6 +3,7 @@ package keys
 import (
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keyname"
 	"github.com/charmbracelet/bubbles/key"
 )
 
@@ -104,8 +105,8 @@ func newKeyMap() KeyMap {
 			key.WithHelp("?", "help"),
 		),
 		Back: key.NewBinding(
-			key.WithKeys("esc"),
-			key.WithHelp("esc", "back"),
+			key.WithKeys(keyname.Escape),
+			key.WithHelp(keyname.Escape, "back"),
 		),
 		Nav1: key.NewBinding(
 			key.WithKeys("1"),
@@ -136,16 +137,16 @@ func newKeyMap() KeyMap {
 			key.WithHelp("7", "tags"),
 		),
 		Up: key.NewBinding(
-			key.WithKeys("up", "k"),
+			key.WithKeys(keyname.Up, keyname.VimUp),
 			key.WithHelp("↑/k", "up"),
 		),
 		Down: key.NewBinding(
-			key.WithKeys("down", "j"),
+			key.WithKeys(keyname.Down, keyname.VimDown),
 			key.WithHelp("↓/j", "down"),
 		),
 		Enter: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "select"),
+			key.WithKeys(keyname.Enter),
+			key.WithHelp(keyname.Enter, "select"),
 		),
 		Refresh: key.NewBinding(
 			key.WithKeys("r"),
@@ -156,8 +157,8 @@ func newKeyMap() KeyMap {
 			key.WithHelp("c", "create"),
 		),
 		Edit: key.NewBinding(
-			key.WithKeys("e"),
-			key.WithHelp("e", "edit"),
+			key.WithKeys(keyname.Edit),
+			key.WithHelp(keyname.Edit, "edit"),
 		),
 		Delete: key.NewBinding(
 			key.WithKeys("d"),
@@ -192,23 +193,23 @@ func newKeyMap() KeyMap {
 			key.WithHelp("s", "set"),
 		),
 		NextField: key.NewBinding(
-			key.WithKeys("tab"),
-			key.WithHelp("tab", "next"),
+			key.WithKeys(keyname.Down, keyname.VimDown, keyname.Tab),
+			key.WithHelp("↓/j", "next field"),
 		),
 		PrevField: key.NewBinding(
-			key.WithKeys("shift+tab"),
-			key.WithHelp("shift+tab", "previous"),
+			key.WithKeys(keyname.Up, keyname.VimUp, keyname.ShiftTab),
+			key.WithHelp("↑/k", "previous field"),
 		),
 		Submit: key.NewBinding(
-			key.WithKeys("ctrl+s"),
-			key.WithHelp("ctrl+s", "submit"),
+			key.WithKeys(keyname.Submit),
+			key.WithHelp(keyname.Submit, "submit"),
 		),
 		Confirm: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "confirm"),
+			key.WithKeys(keyname.Enter),
+			key.WithHelp(keyname.Enter, "confirm"),
 		),
 		SwitchBtn: key.NewBinding(
-			key.WithKeys("tab", "left", "right"),
+			key.WithKeys(keyname.Tab, keyname.Left, keyname.Right),
 			key.WithHelp("tab/←/→", "switch"),
 		),
 	}
@@ -259,6 +260,8 @@ func formKeysFrom(k KeyMap) forms.FormKeys {
 	return forms.FormKeys{
 		NextField: k.NextField,
 		PrevField: k.PrevField,
+		Edit:      k.Edit,
+		Accept:    k.Enter,
 		Submit:    k.Submit,
 		Cancel:    k.Back,
 	}

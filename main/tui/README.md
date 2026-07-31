@@ -45,6 +45,18 @@ graph TD
   handle recurring concerns such as list layout, loading, filtering, and sizing.
 - Extract shared behavior only after it has proven useful in multiple views.
 
+### Interaction model
+
+- Use `↑` and `↓` (or `k` and `j`) to select list rows and form fields.
+- Press `e` to edit the selected value. `Enter` accepts that value and `Esc`
+  restores it.
+- `Ctrl+S` saves the enclosing create/edit workflow; `Esc` outside an active
+  value edit leaves the workflow.
+- Drink recipes use `↑`/`↓` to move through recipe fields and `←`/`→` to move
+  through ingredient choices. `Enter` selects, toggles, adds, or removes.
+- `Tab` and `Shift+Tab` remain compatibility aliases for next/previous field,
+  but are not the primary navigation model.
+
 ### Fresh Context Pattern
 - Each operation uses a new context to avoid attribute leakage across actions.
 - Matches CLI semantics and keeps log fields scoped to a single action.

@@ -66,7 +66,7 @@ func NewView(p *Presenter) *View {
 	v.entities = container.NewBorder(container.NewBorder(nil, nil, nil, v.searchButton, v.search), nil, nil, nil, container.NewVScroll(v.entityRows))
 	v.value = ui.NewEntry(ControlValue)
 	v.value.SetPlaceHolder("key or key=value")
-	v.submit = ui.NewButton(ControlSubmit, "Submit", func() { p.SetValue(v.value.Text); p.Submit() })
+	v.submit = ui.Primary(ui.NewButton(ControlSubmit, "Submit", func() { p.SetValue(v.value.Text); p.Submit() }))
 	v.formTitle = widget.NewLabelWithStyle("Tag", framework.TextAlignLeading, framework.TextStyle{Bold: true})
 	v.form = container.NewVBox(v.formTitle, v.value, container.NewHBox(layout.NewSpacer(), v.submit))
 	v.resultRows = container.NewVBox()
@@ -75,7 +75,7 @@ func NewView(p *Presenter) *View {
 	v.status.Wrapping = framework.TextWrapWord
 	v.back = ui.NewButton(ControlBack, "Back", func() { p.Back() })
 	content := container.NewStack(v.operations, v.types, v.entities, v.form, v.results)
-	v.root = container.NewBorder(widget.NewLabelWithStyle("Tags", framework.TextAlignLeading, framework.TextStyle{Bold: true}), container.NewVBox(v.status, container.NewHBox(v.back)), nil, nil, content)
+	v.root = ui.StandardPage("Tags", "Inspect and manage tags across application entities.", nil, content, container.NewVBox(v.status, container.NewHBox(v.back))).(*framework.Container)
 	p.Observe(v.render)
 	return v
 }

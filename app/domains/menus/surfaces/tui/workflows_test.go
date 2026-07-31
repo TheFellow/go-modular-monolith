@@ -203,6 +203,8 @@ func TestMenuTUIFilterOwnsInputSupportsBackAndReportsInvalidExpressions(t *testi
 	driver.Press("q")
 	driver.RequireText("Filter Menus")
 	driver.Press("esc")
+	driver.RequireText("Filter Menus")
+	driver.Press("esc")
 	driver.RequireText("Visible menu")
 
 	driver.Press("f")
@@ -221,7 +223,9 @@ func TestMenuTUIStatusFilterUsesDomainListContract(t *testing.T) {
 	driver := newMenuDriver(t, f)
 
 	driver.Press("f")
+	driver.Press("e")
 	driver.Press("down") // all -> draft
+	driver.Press("enter")
 	driver.Press("ctrl+s")
 	driver.RequireText("Draft only")
 	if strings.Contains(driver.Screen(), "Published only") {

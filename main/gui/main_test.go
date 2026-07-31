@@ -12,7 +12,7 @@ func TestStartupConfigSelectsEverySupportedActor(t *testing.T) {
 		t.Run(actor, func(t *testing.T) {
 			t.Parallel()
 			config, err := startupConfig([]string{"-actor", actor}, new(bytes.Buffer))
-			if err != nil || config == nil || config.actor != actor || config.dataDirectory == "" {
+			if err != nil || config == nil || config.actor != actor || config.dataDirectory == "" || config.databasePath != defaultDatabasePath {
 				t.Fatalf("startup config = %#v, %v", config, err)
 			}
 		})
@@ -22,7 +22,7 @@ func TestStartupConfigSelectsEverySupportedActor(t *testing.T) {
 func TestStartupConfigDefaultsFreshDesktopToOwnerAndSupportsAlias(t *testing.T) {
 	t.Parallel()
 	config, err := startupConfig(nil, new(bytes.Buffer))
-	if err != nil || config == nil || config.actor != "owner" {
+	if err != nil || config == nil || config.actor != "owner" || config.databasePath != defaultDatabasePath {
 		t.Fatalf("default startup config = %#v, %v", config, err)
 	}
 	config, err = startupConfig([]string{"-as", "bartender"}, new(bytes.Buffer))

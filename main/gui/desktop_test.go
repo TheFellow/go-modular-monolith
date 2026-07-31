@@ -29,7 +29,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func deterministicDesktopDependencies(onInformation func(string, string, framework.Window)) desktopDependencies {
@@ -37,8 +37,8 @@ func deterministicDesktopDependencies(onInformation func(string, string, framewo
 		onInformation = func(string, string, framework.Window) {}
 	}
 	return desktopDependencies{
-		executor: fyneui.InlineExecutor{}, dispatcher: fyneui.InlineDispatcher{},
-		dialogs:         func(window framework.Window) fyneui.Dialogs { return fyneui.WindowDialogs{Window: window} },
+		executor: toolkit.InlineExecutor{}, dispatcher: toolkit.InlineDispatcher{},
+		dialogs:         func(window framework.Window) toolkit.Dialogs { return toolkit.WindowDialogs{Window: window} },
 		showInformation: onInformation,
 		openURL:         func(*url.URL) error { return nil },
 		dashboardLoader: func(session *application.Session) dashboardLoader {
@@ -120,7 +120,7 @@ func TestDesktopDashboardWorkflowNavigatesAllWorkspacesAndPreservesState(t *test
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = desktop.Close() })
-	if got := desktop.dashboard.Snapshot(); got.Status != fyneui.Loaded || got.Err != nil {
+	if got := desktop.dashboard.Snapshot(); got.Status != toolkit.Loaded || got.Err != nil {
 		t.Fatalf("initial dashboard = %#v", got)
 	}
 
@@ -258,11 +258,11 @@ func TestDesktopSemanticControlsExerciseEveryWorkspaceAgainstOneSession(t *testi
 					t.Fatalf("drinks refresh = %#v", state)
 				}
 			case "ingredients":
-				if state := desktop.presenters[item.route].(*ingredientsgui.Presenter).Snapshot(); state.Status != fyneui.Loaded || state.Err != nil {
+				if state := desktop.presenters[item.route].(*ingredientsgui.Presenter).Snapshot(); state.Status != toolkit.Loaded || state.Err != nil {
 					t.Fatalf("ingredients refresh = %#v", state)
 				}
 			case "inventory":
-				if state := desktop.presenters[item.route].(*inventorygui.Presenter).Snapshot(); state.Status != fyneui.Loaded || state.Err != nil {
+				if state := desktop.presenters[item.route].(*inventorygui.Presenter).Snapshot(); state.Status != toolkit.Loaded || state.Err != nil {
 					t.Fatalf("inventory refresh = %#v", state)
 				}
 			case "menus":
@@ -454,8 +454,8 @@ func TestDesktopCloseWaitsForInFlightDashboardLoaderWorkBeforeClosingDatabase(t 
 	started := make(chan struct{})
 	release := make(chan struct{})
 	deps := deterministicDesktopDependencies(nil)
-	deps.executor = fyneui.AsyncExecutor{}
-	deps.dispatcher = fyneui.MainDispatcher{}
+	deps.executor = toolkit.AsyncExecutor{}
+	deps.dispatcher = toolkit.MainDispatcher{}
 	deps.dashboardLoader = func(session *application.Session) dashboardLoader {
 		return &blockingDashboardLoader{
 			delegate: sessionDashboardLoader{session: session}, started: started, release: release,
@@ -505,8 +505,8 @@ func TestDesktopCloseWaitsForInFlightDashboardLoaderWorkBeforeClosingDatabase(t 
 func TestDesktopCloseDrainsRealDomainLoadAndMutationBeforeStoreShutdown(t *testing.T) {
 	gui := test.NewApp()
 	t.Cleanup(gui.Quit)
-	executor := fyneui.NewManagedExecutor()
-	dispatcher := fyneui.NewGatedDispatcher(fyneui.InlineDispatcher{})
+	executor := toolkit.NewManagedExecutor()
+	dispatcher := toolkit.NewGatedDispatcher(toolkit.InlineDispatcher{})
 	deps := deterministicDesktopDependencies(nil)
 	deps.executor = executor
 	deps.dispatcher = dispatcher

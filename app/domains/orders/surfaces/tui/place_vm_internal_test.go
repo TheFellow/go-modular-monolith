@@ -70,17 +70,17 @@ func TestPlaceVMOwnsEachSearchKeyExactlyOnceAndAcceptsMultilineNotes(t *testing.
 	testutil.Equals(t, len(v.visibleMenus), 1)
 
 	v.menu = &placeMenu{id: entity.NewMenuID(), name: "Menu"}
-	v.focus = 3
+	v.field = placeFieldItemNotes
 	v.refocus()
 	v.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("first")})
-	v.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	v.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
 	v.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("second")})
 	testutil.ErrorIf(t, !strings.Contains(v.itemNotes.Value(), "first\nsecond"), "multiline item notes were not retained: %q", v.itemNotes.Value())
 
-	v.focus = 4
+	v.field = placeFieldOrderNotes
 	v.refocus()
 	v.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("order")})
-	v.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	v.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
 	v.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("note")})
 	testutil.ErrorIf(t, !strings.Contains(v.orderNotes.Value(), "order\nnote"), "multiline order notes were not retained: %q", v.orderNotes.Value())
 }

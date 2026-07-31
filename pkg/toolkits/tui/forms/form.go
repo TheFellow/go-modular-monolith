@@ -26,6 +26,8 @@ type Form struct {
 	width     int
 	styles    FormStyles
 	keys      FormKeys
+	editing   bool
+	original  any
 }
 
 // New creates a new form with the provided styles, keys, and fields.
@@ -69,6 +71,44 @@ func (f *Form) Update(msg tea.Msg) (*Form, tea.Cmd) {
 		f.SetWidth(typed.Width)
 		return f, nil
 	case tea.KeyMsg:
+		if f.editing {
+			if key.Matches(typed, f.keys.Submit) {
+				f.finishEdit(false)
+				f.submitted = true
+				f.err = f.Validate()
+				return f, nil
+			}
+			if typed.Type == tea.KeyDown || typed.Type == tea.KeyTab {
+				if owner, ok := f.fields[f.focused].(navigationOwner); !ok || !owner.OwnsNavigation(typed) {
+					f.finishEdit(false)
+					f.FocusNext()
+					return f, nil
+				}
+			}
+			if typed.Type == tea.KeyUp || typed.Type == tea.KeyShiftTab {
+				if owner, ok := f.fields[f.focused].(navigationOwner); !ok || !owner.OwnsNavigation(typed) {
+					f.finishEdit(false)
+					f.FocusPrev()
+					return f, nil
+				}
+			}
+			switch {
+			case key.Matches(typed, f.keys.Accept):
+				if owner, ok := f.fields[f.focused].(acceptOwner); !ok || !owner.OwnsAccept() {
+					f.finishEdit(false)
+					return f, nil
+				}
+			case key.Matches(typed, f.keys.Cancel):
+				f.finishEdit(true)
+				return f, nil
+			}
+			updated, cmd := f.fields[f.focused].Update(msg)
+			if updated != nil {
+				f.fields[f.focused] = updated
+			}
+			f.dirty = true
+			return f, cmd
+		}
 		switch {
 		case key.Matches(typed, f.keys.NextField):
 			f.FocusNext()
@@ -76,6 +116,8 @@ func (f *Form) Update(msg tea.Msg) (*Form, tea.Cmd) {
 		case key.Matches(typed, f.keys.PrevField):
 			f.FocusPrev()
 			return f, nil
+		case key.Matches(typed, f.keys.Edit), key.Matches(typed, f.keys.Accept):
+			return f, f.beginEdit()
 		case key.Matches(typed, f.keys.Submit):
 			f.submitted = true
 			f.err = f.Validate()
@@ -83,18 +125,41 @@ func (f *Form) Update(msg tea.Msg) (*Form, tea.Cmd) {
 		case key.Matches(typed, f.keys.Cancel):
 			return f, nil
 		}
+		// Typing into a selected text-like field remains a convenient shortcut
+		// for beginning an edit; e is the discoverable, uniform path.
+		if typed.Type == tea.KeyRunes && len(typed.Runes) > 0 {
+			cmd := f.beginEdit()
+			updated, updateCmd := f.fields[f.focused].Update(msg)
+			if updated != nil {
+				f.fields[f.focused] = updated
+			}
+			f.dirty = true
+			return f, tea.Batch(cmd, updateCmd)
+		}
+		if typed.String() == "ctrl+n" || typed.String() == "ctrl+p" {
+			cmd := f.beginEdit()
+			updated, updateCmd := f.fields[f.focused].Update(msg)
+			if updated != nil {
+				f.fields[f.focused] = updated
+			}
+			return f, tea.Batch(cmd, updateCmd)
+		}
+		// Editing commands such as clear, delete, home, and end also begin an
+		// edit. Navigation and application commands were handled above.
+		if typed.Type != tea.KeyUp && typed.Type != tea.KeyDown {
+			cmd := f.beginEdit()
+			updated, updateCmd := f.fields[f.focused].Update(msg)
+			if updated != nil {
+				f.fields[f.focused] = updated
+			}
+			f.dirty = true
+			return f, tea.Batch(cmd, updateCmd)
+		}
 	}
 	if f.focused < 0 || f.focused >= len(f.fields) {
 		return f, nil
 	}
-	updated, cmd := f.fields[f.focused].Update(msg)
-	if updated != nil {
-		f.fields[f.focused] = updated
-	}
-	if _, ok := msg.(tea.KeyMsg); ok {
-		f.dirty = true
-	}
-	return f, cmd
+	return f, nil
 }
 
 // View renders the form.
@@ -108,6 +173,36 @@ func (f *Form) View() string {
 	}
 	view := strings.Join(parts, "\n\n")
 	return f.styles.Form.Render(view)
+}
+
+// IsEditing reports whether the selected field currently owns input.
+func (f *Form) IsEditing() bool { return f.editing }
+
+func (f *Form) beginEdit() tea.Cmd {
+	if f.editing || f.focused < 0 || f.focused >= len(f.fields) {
+		return nil
+	}
+	f.editing = true
+	f.original = f.fields[f.focused].Value()
+	if lifecycle, ok := f.fields[f.focused].(editLifecycle); ok {
+		return lifecycle.BeginEdit()
+	}
+	return nil
+}
+
+func (f *Form) finishEdit(restore bool) {
+	if !f.editing || f.focused < 0 || f.focused >= len(f.fields) {
+		return
+	}
+	field := f.fields[f.focused]
+	if restore {
+		_ = field.SetValue(f.original)
+	}
+	if lifecycle, ok := field.(editLifecycle); ok {
+		lifecycle.EndEdit()
+	}
+	f.editing = false
+	f.original = nil
 }
 
 // Validate validates all fields and returns the first error.

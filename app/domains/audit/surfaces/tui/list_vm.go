@@ -54,7 +54,7 @@ func (m *ListViewModel) Update(message tea.Msg) (views.ViewModel, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		if m.filter != nil {
-			if key.Matches(msg, m.keys.Back) {
+			if key.Matches(msg, m.keys.Back) && !m.filter.form.IsEditing() {
 				m.filter = nil
 				return m, nil
 			}

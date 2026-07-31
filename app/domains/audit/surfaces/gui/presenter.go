@@ -27,6 +27,14 @@ const (
 	ActorActivity
 )
 
+func (s Scope) valid() bool {
+	switch s {
+	case AllActivity, EntityHistory, ActorActivity:
+		return true
+	}
+	return false
+}
+
 type Filter struct {
 	Scope                               Scope
 	Entity, Principal, Action, From, To string
@@ -178,6 +186,9 @@ func requestFromFilter(filter Filter, cursor paging.Cursor) (audit.ListRequest, 
 		return audit.ListRequest{}, apperrors.Invalidf("page size must be greater than zero")
 	}
 	req := audit.ListRequest{Cursor: cursor, Limit: filter.Limit, Filter: filter.Expression}
+	if !filter.Scope.valid() {
+		return req, apperrors.Invalidf("invalid audit scope")
+	}
 	switch filter.Scope {
 	case AllActivity:
 	case EntityHistory:
@@ -190,8 +201,6 @@ func requestFromFilter(filter Filter, cursor paging.Cursor) (audit.ListRequest, 
 			return req, apperrors.Invalidf("principal is required for actor activity")
 		}
 		filter.Entity, filter.Action = "", ""
-	default:
-		return req, apperrors.Invalidf("invalid audit scope")
 	}
 	var err error
 	if req.Entity, err = parseEntityUID(filter.Entity); err != nil {

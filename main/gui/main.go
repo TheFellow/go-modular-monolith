@@ -13,6 +13,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 )
 
+const defaultDatabasePath = "data/mixology.db"
+
 func main() {
 	config, err := startupConfig(os.Args[1:], os.Stderr)
 	if err != nil {
@@ -37,7 +39,11 @@ func startupConfig(args []string, output io.Writer) (*desktopConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	config := desktopConfig{dataDirectory: dataDirectory, actor: "owner"}
+	config := desktopConfig{
+		dataDirectory: dataDirectory,
+		databasePath:  defaultDatabasePath,
+		actor:         "owner",
+	}
 	flags := flag.NewFlagSet("mixology-fyne", flag.ContinueOnError)
 	flags.SetOutput(output)
 	flags.StringVar(&config.actor, "actor", config.actor, "actor to run as (owner|manager|sommelier|bartender|anonymous)")

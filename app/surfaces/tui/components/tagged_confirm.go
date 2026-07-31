@@ -29,6 +29,9 @@ func NewTaggedConfirm(current tag.Tags, confirm *dialog.ConfirmDialog) *TaggedCo
 }
 
 func (m *TaggedConfirm) Init() tea.Cmd { return m.form.Init() }
+func (m *TaggedConfirm) FormEditing() bool {
+	return !m.confirming && m.form.IsEditing()
+}
 func (m *TaggedConfirm) Update(msg tea.Msg) (*TaggedConfirm, tea.Cmd) {
 	if size, ok := msg.(tea.WindowSizeMsg); ok {
 		m.SetWidth(size.Width)

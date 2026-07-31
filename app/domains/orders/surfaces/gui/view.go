@@ -14,6 +14,32 @@ import (
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
+const (
+	ControlFilter           = "orders-filter"
+	ControlApplyFilter      = "orders-apply-filter"
+	ControlRefresh          = "orders-refresh"
+	ControlPlace            = "orders-place"
+	ControlComplete         = "orders-complete"
+	ControlCancelOrder      = "orders-cancel-order"
+	ControlTags             = "orders-tags"
+	ControlPrevious         = "orders-previous"
+	ControlNext             = "orders-next"
+	ControlSelectPrefix     = "orders-select-"
+	ControlMenuSearch       = "orders-place-menu-search"
+	ControlMenuSearchApply  = "orders-place-menu-search-apply"
+	ControlDrinkSearch      = "orders-place-drink-search"
+	ControlDrinkSearchApply = "orders-place-drink-search-apply"
+	ControlQuantity         = "orders-place-quantity"
+	ControlItemNotes        = "orders-place-item-notes"
+	ControlAddItem          = "orders-place-add-item"
+	ControlOrderNotes       = "orders-place-notes"
+	ControlPlaceTags        = "orders-place-tags"
+	ControlPlaceSave        = "orders-place-save"
+	ControlFormCancel       = "orders-form-cancel"
+	ControlTagValues        = "orders-tags-value"
+	ControlTagSave          = "orders-tags-save"
+)
+
 type View struct {
 	presenter                                                                *Presenter
 	root                                                                     *framework.Container
@@ -46,9 +72,8 @@ func (v *View) ExecuteCommand(command ui.Command) bool {
 		return state.Mode != Browsing && ui.Trigger(v.save)
 	case ui.CommandCancel:
 		return state.Mode != Browsing && ui.Trigger(v.cancel)
-	default:
-		return false
 	}
+	return false
 }
 
 func (v *View) render(state State) {
@@ -62,7 +87,7 @@ func (v *View) render(state State) {
 	v.root.Refresh()
 }
 func (v *View) browser(state State) framework.CanvasObject {
-	v.expression = ui.NewEntry("orders-filter")
+	v.expression = ui.NewEntry(ControlFilter)
 	v.expression.SetPlaceHolder(`status == "pending" && tags contains "featured"`)
 	v.expression.SetText(state.Filter.Expression)
 	v.status = widget.NewSelect([]string{"all", "pending", "completed", "cancelled"}, nil)
@@ -76,7 +101,7 @@ func (v *View) browser(state State) framework.CanvasObject {
 	if v.limit.Selected == "" {
 		v.limit.SetSelected("100")
 	}
-	apply := ui.NewButton("orders-apply-filter", "Apply", func() {
+	apply := ui.NewButton(ControlApplyFilter, "Apply", func() {
 		limit, _ := strconv.Atoi(v.limit.Selected)
 		status := models.OrderStatus(v.status.Selected)
 		if status == "all" {
@@ -85,17 +110,17 @@ func (v *View) browser(state State) framework.CanvasObject {
 		v.presenter.ApplyFilter(Filter{Status: status, Expression: v.expression.Text, Limit: limit})
 	})
 	filters := container.NewBorder(nil, nil, container.NewHBox(v.status, v.limit), apply, v.expression)
-	refresh := ui.NewButton("orders-refresh", "Refresh", v.presenter.Refresh)
-	place := ui.NewButton("orders-place", "Place order", v.presenter.StartPlace)
+	refresh := ui.NewButton(ControlRefresh, "Refresh", v.presenter.Refresh)
+	place := ui.Primary(ui.NewButton(ControlPlace, "Place order", v.presenter.StartPlace))
 	v.refresh, v.create = refresh, place
-	complete := ui.NewButton("orders-complete", "Complete", v.presenter.ConfirmComplete)
-	cancel := ui.NewButton("orders-cancel-order", "Cancel order", v.presenter.ConfirmCancel)
-	tags := ui.NewButton("orders-tags", "Tags", v.presenter.StartTags)
-	previous := ui.NewButton("orders-previous", "Previous", v.presenter.PreviousPage)
+	complete := ui.NewButton(ControlComplete, "Complete", v.presenter.ConfirmComplete)
+	cancel := ui.Destructive(ui.NewButton(ControlCancelOrder, "Cancel order", v.presenter.ConfirmCancel))
+	tags := ui.NewButton(ControlTags, "Tags", v.presenter.StartTags)
+	previous := ui.NewButton(ControlPrevious, "Previous", v.presenter.PreviousPage)
 	if len(state.History) == 0 {
 		previous.Disable()
 	}
-	next := ui.NewButton("orders-next", "Next", v.presenter.NextPage)
+	next := ui.NewButton(ControlNext, "Next", v.presenter.NextPage)
 	if state.Next == "" {
 		next.Disable()
 	}
@@ -120,7 +145,7 @@ func (v *View) browser(state State) framework.CanvasObject {
 	for i := range state.Rows {
 		index := i
 		row := state.Rows[i]
-		button := ui.NewButton("orders-select-"+row.Order.ID.String(), fmt.Sprintf("%s  ·  %s  ·  %s", row.MenuName, row.Order.Status, formatTime(row.Order.CreatedAt)), func() { v.presenter.Select(index) })
+		button := ui.NewButton(ControlSelectPrefix+row.Order.ID.String(), fmt.Sprintf("%s  ·  %s  ·  %s", row.MenuName, row.Order.Status, formatTime(row.Order.CreatedAt)), func() { v.presenter.Select(index) })
 		if state.Loading || state.Submitting || state.Confirming {
 			button.Disable()
 		}
@@ -137,12 +162,17 @@ func (v *View) browser(state State) framework.CanvasObject {
 	if state.Err != nil {
 		statusText = "Error: " + state.Err.Error()
 	}
-	content := ui.ListDetail(container.NewScroll(list), v.detail(state), .42)
-	return container.NewBorder(container.NewVBox(container.NewHBox(refresh, place, complete, cancel, tags, previous, next), filters, widget.NewLabel(statusText)), nil, nil, nil, content)
+	return ui.StandardListPage(ui.ListPage{
+		Title: "Orders", Subtitle: "Browse orders and select one to review its items and lifecycle actions.", Filters: filters,
+		PrimaryActions: []framework.CanvasObject{place, refresh},
+		OtherActions:   []framework.CanvasObject{complete, tags, cancel},
+		List:           container.NewScroll(list), Detail: v.detail(state), Status: widget.NewLabel(statusText),
+		Paging: container.NewHBox(previous, next), ListRatio: .42,
+	})
 }
 func (v *View) detail(state State) framework.CanvasObject {
 	if state.Selected == nil {
-		return container.NewPadded(widget.NewLabel("Select an order to view details"))
+		return ui.EmptyDetail("an order")
 	}
 	r := state.Selected
 	tagText := r.Order.Tags.Canonical().String()
@@ -171,10 +201,10 @@ func (v *View) form(state State) framework.CanvasObject {
 	if state.Mode == Tagging {
 		return v.tagForm(state)
 	}
-	v.menuQuery = ui.NewEntry("orders-place-menu-search")
+	v.menuQuery = ui.NewEntry(ControlMenuSearch)
 	v.menuQuery.SetPlaceHolder("Search published menus")
 	v.menuQuery.SetText(state.Form.MenuQuery)
-	searchMenus := ui.NewButton("orders-place-menu-search-apply", "Search", func() { v.presenter.SearchMenus(v.menuQuery.Text) })
+	searchMenus := ui.NewButton(ControlMenuSearchApply, "Search", func() { v.presenter.SearchMenus(v.menuQuery.Text) })
 	menuLabels := make([]string, len(state.Menus))
 	menuIDs := make(map[string]entity.MenuID, len(state.Menus))
 	for i, m := range state.Menus {
@@ -194,10 +224,10 @@ func (v *View) form(state State) framework.CanvasObject {
 			v.presenter.ChooseMenu(id)
 		}
 	}
-	v.drinkQuery = ui.NewEntry("orders-place-drink-search")
+	v.drinkQuery = ui.NewEntry(ControlDrinkSearch)
 	v.drinkQuery.SetPlaceHolder("Search available drinks")
 	v.drinkQuery.SetText(state.Form.DrinkQuery)
-	searchDrinks := ui.NewButton("orders-place-drink-search-apply", "Search", func() { v.presenter.SearchDrinks(v.drinkQuery.Text) })
+	searchDrinks := ui.NewButton(ControlDrinkSearchApply, "Search", func() { v.presenter.SearchDrinks(v.drinkQuery.Text) })
 	drinkLabels := make([]string, len(state.Drinks))
 	drinkIDs := make(map[string]entity.DrinkID, len(state.Drinks))
 	for i, d := range state.Drinks {
@@ -206,12 +236,12 @@ func (v *View) form(state State) framework.CanvasObject {
 		drinkIDs[label] = d.ID
 	}
 	v.drinks = widget.NewSelect(drinkLabels, nil)
-	v.quantity = ui.NewEntry("orders-place-quantity")
+	v.quantity = ui.NewEntry(ControlQuantity)
 	v.quantity.SetPlaceHolder("Quantity")
-	v.itemNotes = ui.NewEntry("orders-place-item-notes")
+	v.itemNotes = ui.NewEntry(ControlItemNotes)
 	v.itemNotes.MultiLine = true
 	v.itemNotes.SetPlaceHolder("Item notes (optional)")
-	add := ui.NewButton("orders-place-add-item", "Add item", func() {
+	add := ui.NewButton(ControlAddItem, "Add item", func() {
 		qty, err := strconv.Atoi(strings.TrimSpace(v.quantity.Text))
 		if err != nil {
 			qty = 0
@@ -229,18 +259,18 @@ func (v *View) form(state State) framework.CanvasObject {
 		v.removeItems[i] = remove
 		items.Add(container.NewBorder(nil, nil, nil, remove, widget.NewLabel(fmt.Sprintf("%s × %d%s", item.Name, item.Quantity, noteSuffix(item.Notes)))))
 	}
-	v.orderNotes = ui.NewEntry("orders-place-notes")
+	v.orderNotes = ui.NewEntry(ControlOrderNotes)
 	v.orderNotes.MultiLine = true
 	v.orderNotes.SetPlaceHolder("Order notes (optional)")
 	v.orderNotes.SetText(state.Form.Notes)
-	v.tags = ui.NewEntry("orders-place-tags")
+	v.tags = ui.NewEntry(ControlPlaceTags)
 	v.tags.SetText(state.Form.Tags)
-	save := ui.NewButton("orders-place-save", "Place", func() {
+	save := ui.NewButton(ControlPlaceSave, "Place", func() {
 		v.presenter.SetPlaceNotes(v.orderNotes.Text)
 		v.presenter.SetPlaceTags(v.tags.Text)
 		v.presenter.SavePlace()
 	})
-	back := ui.NewButton("orders-form-cancel", "Cancel", v.presenter.CancelForm)
+	back := ui.NewButton(ControlFormCancel, "Cancel", v.presenter.CancelForm)
 	v.save, v.cancel = save, back
 	if state.Submitting || state.CatalogLoading {
 		for _, b := range []*ui.SemanticButton{searchMenus, searchDrinks, add, save, back} {
@@ -259,14 +289,15 @@ func (v *View) form(state State) framework.CanvasObject {
 	if state.Err != nil {
 		errorText = "Error: " + state.Err.Error()
 	}
-	return container.NewPadded(container.NewVBox(widget.NewLabelWithStyle("Place Order", framework.TextAlignLeading, framework.TextStyle{Bold: true}), widget.NewLabel(errorText), container.NewBorder(nil, nil, nil, searchMenus, v.menuQuery), widget.NewLabel("Published menu"), v.menus, container.NewBorder(nil, nil, nil, searchDrinks, v.drinkQuery), widget.NewLabel("Available drink"), v.drinks, widget.NewLabel("Quantity"), v.quantity, widget.NewLabel("Item notes"), v.itemNotes, add, widget.NewLabelWithStyle("Order items", framework.TextAlignLeading, framework.TextStyle{Bold: true}), items, widget.NewLabel("Order notes"), v.orderNotes, widget.NewLabel("Tags (complete set)"), v.tags, container.NewHBox(save, back)))
+	fields := container.NewVBox(container.NewBorder(nil, nil, nil, searchMenus, v.menuQuery), widget.NewLabel("Published menu"), v.menus, container.NewBorder(nil, nil, nil, searchDrinks, v.drinkQuery), widget.NewLabel("Available drink"), v.drinks, widget.NewLabel("Quantity"), v.quantity, widget.NewLabel("Item notes"), v.itemNotes, add, widget.NewLabelWithStyle("Order items", framework.TextAlignLeading, framework.TextStyle{Bold: true}), items, widget.NewLabel("Order notes"), v.orderNotes, widget.NewLabel("Tags (complete set)"), v.tags)
+	return ui.StandardFormPage(ui.FormPage{Title: "Place Order", Subtitle: "Choose a published menu, add drinks, then place the order.", Fields: fields, Status: widget.NewLabel(errorText), Save: save, Cancel: back})
 }
 func (v *View) tagForm(state State) framework.CanvasObject {
-	v.tags = ui.NewEntry("orders-tags-value")
+	v.tags = ui.NewEntry(ControlTagValues)
 	v.tags.SetPlaceHolder("featured, region=west")
 	v.tags.SetText(state.Form.Tags)
-	save := ui.NewButton("orders-tags-save", "Save", func() { v.presenter.SaveTags(v.tags.Text) })
-	cancel := ui.NewButton("orders-form-cancel", "Cancel", v.presenter.CancelForm)
+	save := ui.NewButton(ControlTagSave, "Save", func() { v.presenter.SaveTags(v.tags.Text) })
+	cancel := ui.NewButton(ControlFormCancel, "Cancel", v.presenter.CancelForm)
 	v.save, v.cancel = save, cancel
 	if state.Submitting {
 		save.Disable()
@@ -277,7 +308,7 @@ func (v *View) tagForm(state State) framework.CanvasObject {
 	if state.Err != nil {
 		errorText = "Error: " + state.Err.Error()
 	}
-	return container.NewPadded(container.NewVBox(widget.NewLabelWithStyle("Edit Order Tags", framework.TextAlignLeading, framework.TextStyle{Bold: true}), widget.NewLabel("Complete tag set (CSV); clear to remove all tags"), v.tags, widget.NewLabel(errorText), container.NewHBox(save, cancel)))
+	return ui.StandardFormPage(ui.FormPage{Title: "Edit Order Tags", Subtitle: "Complete tag set (CSV); clear to remove all tags.", Fields: v.tags, Status: widget.NewLabel(errorText), Save: save, Cancel: cancel})
 }
 func noteSuffix(note string) string {
 	if strings.TrimSpace(note) == "" {

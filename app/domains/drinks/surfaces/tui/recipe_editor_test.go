@@ -283,13 +283,13 @@ func TestEditRecipeViewportKeepsLastAndFirstControlsVisibleAt80x24(t *testing.T)
 		driver.Send(tea.KeyMsg{Type: tea.KeyCtrlN})
 	}
 	driver.RequireViewport(80, 24)
-	driver.RequireText("Garnish", "LAST GARNISH", "ctrl+n/p: recipe control", "enter: choose/toggle")
+	driver.RequireText("Garnish", "LAST GARNISH", "↑/↓: recipe field", "enter: choose/toggle")
 	driver.RequireNoText("Name *", "Ingredient 1")
 	for range len(program.vm.recipe.controls()) - 1 {
 		driver.Send(tea.KeyMsg{Type: tea.KeyCtrlP})
 	}
 	driver.RequireViewport(80, 24)
-	driver.RequireText("Ingredient 1", "Viewport Gin", "ctrl+n/p: recipe control")
+	driver.RequireText("Ingredient 1", "Viewport Gin", "↑/↓: recipe field")
 	driver.RequireNoText("LAST GARNISH")
 }
 
@@ -312,10 +312,10 @@ func TestCreateRecipeViewportTracksDynamicControlsAndResize(t *testing.T) {
 		driver.Send(tea.KeyMsg{Type: tea.KeyCtrlN})
 	}
 	driver.RequireViewport(80, 24)
-	driver.RequireText("Garnish", "DYNAMIC LAST", "ctrl+n/p: recipe control")
+	driver.RequireText("Garnish", "DYNAMIC LAST", "↑/↓: recipe field")
 	driver.Resize(100, 32)
 	driver.RequireViewport(100, 32)
-	driver.RequireText("Garnish", "DYNAMIC LAST", "ctrl+n/p: recipe control")
+	driver.RequireText("Garnish", "DYNAMIC LAST", "↑/↓: recipe field")
 }
 
 func TestRecipeViewportTracksHighlightedIngredientAndSubstituteCandidatesAt80x24(t *testing.T) {
@@ -334,16 +334,17 @@ func TestRecipeViewportTracksHighlightedIngredientAndSubstituteCandidatesAt80x24
 	for range 4 {
 		driver.Send(tea.KeyMsg{Type: tea.KeyTab})
 	}
+	driver.Press("e")
 	startOffset := program.vm.viewport.model.YOffset
 	for range 4 {
-		driver.Press("down")
+		driver.Press("right")
 	}
-	driver.RequireText("Picker > Candidate 04", "ctrl+n/p: recipe control")
+	driver.RequireText("Picker > Candidate 04", "↑/↓: recipe field")
 	if program.vm.viewport.model.YOffset <= startOffset {
 		t.Fatalf("ingredient candidate did not scroll viewport forward: start=%d current=%d focus=%d", startOffset, program.vm.viewport.model.YOffset, program.vm.recipe.focusLine())
 	}
 	for range 4 {
-		driver.Press("up")
+		driver.Press("left")
 	}
 	driver.RequireText("Picker > Candidate 00", "Ingredient 1")
 	if program.vm.viewport.model.YOffset >= startOffset+1 {
@@ -356,14 +357,14 @@ func TestRecipeViewportTracksHighlightedIngredientAndSubstituteCandidatesAt80x24
 	program.vm.recipe.rows[0].candidate = 0
 	substituteStart := program.vm.viewport.model.YOffset
 	for range 4 {
-		driver.Press("down")
+		driver.Press("right")
 	}
-	driver.RequireText("Picker > Candidate 04", "Substitutes", "ctrl+n/p: recipe control")
+	driver.RequireText("Picker > Candidate 04", "Substitutes", "↑/↓: recipe field")
 	if program.vm.viewport.model.YOffset <= substituteStart {
 		t.Fatal("substitute candidate did not scroll viewport forward")
 	}
 	for range 4 {
-		driver.Press("up")
+		driver.Press("left")
 	}
 	driver.RequireText("Picker > Candidate 00", "Substitutes")
 	if program.vm.viewport.model.YOffset >= substituteStart+1 {

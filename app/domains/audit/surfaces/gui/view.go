@@ -112,8 +112,12 @@ func NewView(presenter *Presenter) *View {
 	v.previous = ui.NewButton(ControlPrevious, "Previous", presenter.PreviousPage)
 	v.next = ui.NewButton(ControlNext, "Next", presenter.NextPage)
 	paging := container.NewHBox(v.previous, v.next, layout.NewSpacer())
-	browse := ui.ListDetail(container.NewVScroll(v.rows), container.NewVScroll(v.detail), .42)
-	v.root = container.NewBorder(filterPanel, container.NewVBox(v.status, paging), nil, nil, browse)
+	v.root = ui.StandardListPage(ui.ListPage{
+		Title: "Audit", Subtitle: "Review application activity and inspect a selected event.", Filters: filterPanel,
+		PrimaryActions: []framework.CanvasObject{v.refresh},
+		List:           container.NewVScroll(v.rows), Detail: container.NewVScroll(v.detail), Status: v.status,
+		Paging: paging, ListRatio: .42,
+	}).(*framework.Container)
 	presenter.Observe(v.render)
 	return v
 }

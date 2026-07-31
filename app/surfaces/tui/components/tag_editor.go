@@ -60,6 +60,10 @@ func (m *TagEditor) Owns(target cedar.EntityUID) bool { return m.target == targe
 // Saving reports whether a replacement command is in flight.
 func (m *TagEditor) Saving() bool { return m.saving }
 
+// FormEditing reports whether Escape belongs to the active tag field rather
+// than the enclosing workflow.
+func (m *TagEditor) FormEditing() bool { return m.form.IsEditing() }
+
 func (m *TagEditor) Update(msg tea.Msg) (*TagEditor, tea.Cmd) {
 	switch typed := msg.(type) {
 	case tea.WindowSizeMsg:

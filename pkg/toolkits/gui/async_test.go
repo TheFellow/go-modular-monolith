@@ -7,14 +7,14 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func TestLatestRequestRejectsOutOfOrderCompletion(t *testing.T) {
 	executor := &fynetest.ManualExecutor{}
-	request := fyneui.NewLatestRequest[string](executor, fyneui.InlineDispatcher{})
-	var states []fyneui.LoadState[string]
-	publish := func(state fyneui.LoadState[string]) { states = append(states, state) }
+	request := gui.NewLatestRequest[string](executor, gui.InlineDispatcher{})
+	var states []gui.LoadState[string]
+	publish := func(state gui.LoadState[string]) { states = append(states, state) }
 
 	request.Load(func() (string, error) { return "old", nil }, publish)
 	request.Load(func() (string, error) { return "new", nil }, publish)
@@ -22,8 +22,8 @@ func TestLatestRequestRejectsOutOfOrderCompletion(t *testing.T) {
 		t.Fatal("expected two queued operations")
 	}
 
-	if len(states) != 3 || states[0].Status != fyneui.Loading || states[1].Status != fyneui.Loading ||
-		states[2].Status != fyneui.Loaded || states[2].Value != "new" {
+	if len(states) != 3 || states[0].Status != gui.Loading || states[1].Status != gui.Loading ||
+		states[2].Status != gui.Loaded || states[2].Value != "new" {
 		t.Fatalf("unexpected publications: %#v", states)
 	}
 }
@@ -31,10 +31,10 @@ func TestLatestRequestRejectsOutOfOrderCompletion(t *testing.T) {
 func TestLatestRequestChecksStalenessWhenUIPublicationRuns(t *testing.T) {
 	executor := &fynetest.ManualExecutor{}
 	dispatcher := &fynetest.ManualDispatcher{}
-	request := fyneui.NewLatestRequest[int](executor, dispatcher)
+	request := gui.NewLatestRequest[int](executor, dispatcher)
 	var values []int
-	publish := func(state fyneui.LoadState[int]) {
-		if state.Status == fyneui.Loaded {
+	publish := func(state gui.LoadState[int]) {
+		if state.Status == gui.Loaded {
 			values = append(values, state.Value)
 		}
 	}
@@ -52,10 +52,10 @@ func TestLatestRequestChecksStalenessWhenUIPublicationRuns(t *testing.T) {
 
 func TestLatestRequestPublishesTypedFailure(t *testing.T) {
 	want := errors.New("load failed")
-	request := fyneui.NewLatestRequest[int](fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
-	var got fyneui.LoadState[int]
-	request.Load(func() (int, error) { return 0, want }, func(state fyneui.LoadState[int]) { got = state })
-	if got.Status != fyneui.Failed || !errors.Is(got.Err, want) {
+	request := gui.NewLatestRequest[int](gui.InlineExecutor{}, gui.InlineDispatcher{})
+	var got gui.LoadState[int]
+	request.Load(func() (int, error) { return 0, want }, func(state gui.LoadState[int]) { got = state })
+	if got.Status != gui.Failed || !errors.Is(got.Err, want) {
 		t.Fatalf("state = %#v", got)
 	}
 }
@@ -63,7 +63,7 @@ func TestLatestRequestPublishesTypedFailure(t *testing.T) {
 func TestSubmissionRejectsDuplicateUntilPublication(t *testing.T) {
 	executor := &fynetest.ManualExecutor{}
 	dispatcher := &fynetest.ManualDispatcher{}
-	submission := fyneui.NewSubmission(executor, dispatcher)
+	submission := gui.NewSubmission(executor, dispatcher)
 	runs := 0
 	if !submission.Submit(func() error { runs++; return nil }, func(error) {}) {
 		t.Fatal("first submission rejected")
@@ -83,7 +83,7 @@ func TestSubmissionRejectsDuplicateUntilPublication(t *testing.T) {
 
 func TestSubmissionPublishesFailureAndBecomesReusable(t *testing.T) {
 	want := errors.New("save failed")
-	submission := fyneui.NewSubmission(fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
+	submission := gui.NewSubmission(gui.InlineExecutor{}, gui.InlineDispatcher{})
 	var got error
 	if !submission.Submit(func() error { return want }, func(err error) { got = err }) {
 		t.Fatal("submission rejected")
@@ -99,7 +99,7 @@ func TestSubmissionPublishesFailureAndBecomesReusable(t *testing.T) {
 func TestSubmissionReleasesAfterPanickingWorkIsPublished(t *testing.T) {
 	executor := &fynetest.ManualExecutor{}
 	dispatcher := &fynetest.ManualDispatcher{}
-	submission := fyneui.NewSubmission(executor, dispatcher)
+	submission := gui.NewSubmission(executor, dispatcher)
 	if !submission.Submit(func() error { panic("boom") }, func(error) {
 		t.Fatal("panic must not be published as an ordinary error")
 	}) {
@@ -126,13 +126,13 @@ func TestSubmissionReleasesAfterPanickingWorkIsPublished(t *testing.T) {
 func TestLatestRequestIsRaceSafe(t *testing.T) {
 	t.Parallel()
 
-	request := fyneui.NewLatestRequest[int](fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
+	request := gui.NewLatestRequest[int](gui.InlineExecutor{}, gui.InlineDispatcher{})
 	var publications sync.WaitGroup
 	for i := range 100 {
 		publications.Add(1)
 		go func(value int) {
 			defer publications.Done()
-			request.Load(func() (int, error) { return value, nil }, func(fyneui.LoadState[int]) {})
+			request.Load(func() (int, error) { return value, nil }, func(gui.LoadState[int]) {})
 		}(i)
 	}
 	publications.Wait()

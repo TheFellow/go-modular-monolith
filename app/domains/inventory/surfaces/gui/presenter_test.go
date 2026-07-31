@@ -19,12 +19,12 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func TestInventoryDetailLabelsIncludeExactLastUpdated(t *testing.T) {
 	fix, _ := inventoryFixture(t)
-	p := NewPresenter(fix.App, fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
 	p.Load()
 	row := p.Snapshot().Rows[0]
 	labels := strings.Join(inventoryDetailLabels(&row, "None"), "\n")
@@ -65,7 +65,7 @@ func inventoryFixture(t *testing.T) (*testutil.Fixture, *models.Ingredient) {
 
 func TestPresenterLoadsJoinedDetailsFiltersAndRefreshes(t *testing.T) {
 	fix, ingredient := inventoryFixture(t)
-	p := NewPresenter(fix.App, fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
 	p.Load()
 	state := p.Snapshot()
 	if len(state.Rows) != 1 || state.Selected == nil || state.Selected.Ingredient.ID != ingredient.ID || state.Selected.Quantity != "12.50 oz" || state.Selected.Cost != "$3.25" || state.Selected.Status != "OK" {
@@ -80,14 +80,14 @@ func TestPresenterLoadsJoinedDetailsFiltersAndRefreshes(t *testing.T) {
 		t.Fatalf("expression state = %#v", got)
 	}
 	p.Filter(AllStock, "(", 10, 25)
-	if got := p.Snapshot(); got.Status != fyneui.Failed || got.Err == nil {
+	if got := p.Snapshot(); got.Status != toolkit.Failed || got.Err == nil {
 		t.Fatalf("invalid filter state = %#v", got)
 	}
 }
 
 func TestPresenterAdjustSetAndTagClearPersist(t *testing.T) {
 	fix, ingredient := inventoryFixture(t)
-	p := NewPresenter(fix.App, fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
 	p.Load()
 	p.StartAdjust()
 	if !p.Submit(Form{Amount: "-2.25", Reason: inventorymodels.ReasonUsed}) {
@@ -136,7 +136,7 @@ func TestPresenterAdjustSetAndTagClearPersist(t *testing.T) {
 func TestPresenterPermissionFailureRetainsFormWithoutMutation(t *testing.T) {
 	fix, ingredient := inventoryFixture(t)
 	denied := application.NewSession(fix.ActorContext("bartender"), fix.App.App)
-	p := NewPresenter(denied, fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
+	p := NewPresenter(denied, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
 	p.Load()
 	p.StartAdjust()
 	form := Form{Amount: "2.00", Reason: inventorymodels.ReasonReceived}
@@ -158,7 +158,7 @@ func TestPresenterPermissionFailureRetainsFormWithoutMutation(t *testing.T) {
 func TestPresenterValidationRetainsFormAndRejectsDuplicate(t *testing.T) {
 	fix, _ := inventoryFixture(t)
 	executor := &fynetest.ManualExecutor{}
-	p := NewPresenter(fix.App, executor, fyneui.InlineDispatcher{})
+	p := NewPresenter(fix.App, executor, toolkit.InlineDispatcher{})
 	p.Load()
 	executor.RunNext()
 	p.StartAdjust()
@@ -176,7 +176,7 @@ func TestPresenterValidationRetainsFormAndRejectsDuplicate(t *testing.T) {
 func TestPresenterRejectsStaleOutOfOrderLoads(t *testing.T) {
 	fix, _ := inventoryFixture(t)
 	executor := &fynetest.ManualExecutor{}
-	p := NewPresenter(fix.App, executor, fyneui.InlineDispatcher{})
+	p := NewPresenter(fix.App, executor, toolkit.InlineDispatcher{})
 	p.Filter(AllStock, "", 10, 100)
 	p.Filter(LowStock, "", 10, 100)
 	if !executor.Run(1) || !executor.RunNext() {
@@ -189,7 +189,7 @@ func TestPresenterRejectsStaleOutOfOrderLoads(t *testing.T) {
 
 func TestViewDrivesRealRetainedWidgets(t *testing.T) {
 	fix, _ := inventoryFixture(t)
-	p := NewPresenter(fix.App, fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
 	view := NewView(p)
 	view.Activate()
 	if len(view.rows) != 1 {
@@ -228,7 +228,7 @@ func TestStockStatusThresholds(t *testing.T) {
 
 func TestPresenterUsesConfigurableLowStockThreshold(t *testing.T) {
 	fix, _ := inventoryFixture(t)
-	p := NewPresenter(fix.App, fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
 	if !p.Filter(LowStock, "", 13, 25) {
 		t.Fatal("filter rejected")
 	}
@@ -243,7 +243,7 @@ func TestPresenterUsesConfigurableLowStockThreshold(t *testing.T) {
 
 func TestPresenterSetBlankCostPreservesExistingPrice(t *testing.T) {
 	fix, ingredient := inventoryFixture(t)
-	p := NewPresenter(fix.App, fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
 	p.Load()
 	p.StartSet()
 	if !p.Submit(Form{Amount: "9.00"}) {
@@ -264,7 +264,7 @@ func TestPresenterSetBlankCostPreservesExistingPrice(t *testing.T) {
 
 func TestPresenterAdjustsCostWithoutQuantityMutation(t *testing.T) {
 	fix, ingredient := inventoryFixture(t)
-	p := NewPresenter(fix.App, fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
 	p.Load()
 	p.StartAdjust()
 	if !p.Submit(Form{Cost: "4.10", Reason: inventorymodels.ReasonCorrected}) {

@@ -41,6 +41,7 @@ type Shell struct {
 	title            *widget.Label
 	body             *framework.Container
 	content          framework.CanvasObject
+	navigation       map[string]*widget.Button
 	initialActivated bool
 }
 
@@ -51,10 +52,11 @@ func NewShell(routes []Route, initialRoute string) (*Shell, error) {
 	}
 
 	s := &Shell{
-		routes: make(map[string]Route, len(routes)),
-		views:  make(map[string]View, len(routes)),
-		title:  widget.NewLabel(""),
-		body:   container.NewStack(),
+		routes:     make(map[string]Route, len(routes)),
+		views:      make(map[string]View, len(routes)),
+		navigation: make(map[string]*widget.Button, len(routes)),
+		title:      widget.NewLabel(""),
+		body:       container.NewStack(),
 	}
 	s.title.TextStyle = framework.TextStyle{Bold: true}
 
@@ -70,12 +72,16 @@ func NewShell(routes []Route, initialRoute string) (*Shell, error) {
 		s.routes[route.ID] = route
 		s.order = append(s.order, route.ID)
 		id := route.ID
-		buttons = append(buttons, widget.NewButton(route.Label, func() { _ = s.Navigate(id) }))
+		button := widget.NewButton(route.Label, func() { _ = s.Navigate(id) })
+		button.Alignment = widget.ButtonAlignLeading
+		button.Importance = widget.LowImportance
+		s.navigation[id] = button
+		buttons = append(buttons, button)
 	}
 
-	navigation := container.NewVBox(buttons...)
+	navigation := container.NewGridWrap(framework.NewSize(184, 42), buttons...)
 	s.content = container.NewBorder(
-		container.NewPadded(s.title), nil,
+		nil, nil,
 		container.NewPadded(container.NewVBox(navigation, layout.NewSpacer())), nil,
 		container.NewPadded(s.body),
 	)
@@ -141,6 +147,13 @@ func (s *Shell) navigate(id string, activate bool) error {
 		s.views[id] = view
 	}
 	s.current = id
+	for routeID, button := range s.navigation {
+		button.Importance = widget.LowImportance
+		if routeID == id {
+			button.Importance = widget.HighImportance
+		}
+		button.Refresh()
+	}
 	s.title.SetText(view.Title())
 	s.body.Objects = []framework.CanvasObject{view.Content()}
 	s.body.Refresh()
