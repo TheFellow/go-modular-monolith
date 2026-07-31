@@ -11,27 +11,46 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+)
+
+const (
+	ControlFilter       = "ingredients-filter"
+	ControlApplyFilter  = "ingredients-apply-filter"
+	ControlRefresh      = "ingredients-refresh"
+	ControlCreate       = "ingredients-create"
+	ControlEdit         = "ingredients-edit"
+	ControlDelete       = "ingredients-delete"
+	ControlTags         = "ingredients-tags"
+	ControlPrevious     = "ingredients-previous"
+	ControlNext         = "ingredients-next"
+	ControlSelectPrefix = "ingredient-select-"
+	ControlFormTags     = "ingredient-form-tags"
+	ControlName         = "ingredient-form-name"
+	ControlDescription  = "ingredient-form-description"
+	ControlMutationTags = "ingredient-form-mutation-tags"
+	ControlSave         = "ingredient-form-save"
+	ControlCancel       = "ingredient-form-cancel"
 )
 
 type View struct {
 	presenter *Presenter
 	root      *framework.Container
 
-	expression                                                       *fyneui.SemanticEntry
+	expression                                                       *toolkit.SemanticEntry
 	category, limit                                                  *widget.Select
-	name                                                             *fyneui.SemanticEntry
-	description                                                      *fyneui.SemanticEntry
-	tags                                                             *fyneui.SemanticEntry
+	name                                                             *toolkit.SemanticEntry
+	description                                                      *toolkit.SemanticEntry
+	tags                                                             *toolkit.SemanticEntry
 	formCategory                                                     *widget.Select
 	formUnit                                                         *widget.Select
-	save                                                             *fyneui.SemanticButton
-	refresh, create, edit, delete, tagAction, cancel, previous, next *fyneui.SemanticButton
-	rows                                                             map[string]*fyneui.SemanticButton
+	save                                                             *toolkit.SemanticButton
+	refresh, create, edit, delete, tagAction, cancel, previous, next *toolkit.SemanticButton
+	rows                                                             map[string]*toolkit.SemanticButton
 }
 
-var _ fyneui.View = (*View)(nil)
-var _ fyneui.Activated = (*View)(nil)
+var _ toolkit.View = (*View)(nil)
+var _ toolkit.Activated = (*View)(nil)
 
 func NewView(presenter *Presenter) *View {
 	v := &View{presenter: presenter, root: container.NewStack()}
@@ -46,24 +65,23 @@ func (v *View) Content() framework.CanvasObject { return v.root }
 
 func (v *View) Activate() { v.presenter.Load() }
 
-func (v *View) ExecuteCommand(command fyneui.Command) bool {
+func (v *View) ExecuteCommand(command toolkit.Command) bool {
 	state := v.presenter.Snapshot()
 	switch command {
-	case fyneui.CommandRefresh:
-		return state.Mode == Browse && fyneui.Trigger(v.refresh)
-	case fyneui.CommandNew:
-		return state.Mode == Browse && fyneui.Trigger(v.create)
-	case fyneui.CommandSave:
-		return state.Mode != Browse && fyneui.Trigger(v.save)
-	case fyneui.CommandCancel:
-		return state.Mode != Browse && fyneui.Trigger(v.cancel)
-	default:
-		return false
+	case toolkit.CommandRefresh:
+		return state.Mode == Browse && toolkit.Trigger(v.refresh)
+	case toolkit.CommandNew:
+		return state.Mode == Browse && toolkit.Trigger(v.create)
+	case toolkit.CommandSave:
+		return state.Mode != Browse && toolkit.Trigger(v.save)
+	case toolkit.CommandCancel:
+		return state.Mode != Browse && toolkit.Trigger(v.cancel)
 	}
+	return false
 }
 
 func (v *View) render(state State) {
-	v.expression = fyneui.NewEntry("ingredients-filter")
+	v.expression = toolkit.NewEntry(ControlFilter)
 	v.expression.SetPlaceHolder(`category == "spirit"`)
 	v.expression.SetText(state.Expression)
 	categoryOptions := []string{"all"}
@@ -78,7 +96,7 @@ func (v *View) render(state State) {
 	v.category.SetSelected(selectedCategory)
 	v.limit = widget.NewSelect([]string{"25", "50", "100"}, nil)
 	v.limit.SetSelected(strconv.Itoa(state.Limit))
-	apply := fyneui.NewButton("ingredients-apply-filter", "Apply", func() {
+	apply := toolkit.NewButton(ControlApplyFilter, "Apply", func() {
 		category := models.Category(v.category.Selected)
 		if v.category.Selected == "all" {
 			category = ""
@@ -88,16 +106,16 @@ func (v *View) render(state State) {
 	})
 	filters := container.NewBorder(nil, nil, container.NewHBox(v.category, v.limit), apply, v.expression)
 
-	v.refresh = fyneui.NewButton("ingredients-refresh", "Refresh", v.presenter.Load)
-	v.create = fyneui.NewButton("ingredients-create", "Create", v.presenter.StartCreate)
-	v.edit = fyneui.NewButton("ingredients-edit", "Edit", v.presenter.StartEdit)
-	v.delete = fyneui.NewButton("ingredients-delete", "Delete", v.presenter.RequestDelete)
-	v.tagAction = fyneui.NewButton("ingredients-tags", "Tags", v.presenter.StartTags)
-	v.previous = fyneui.NewButton("ingredients-previous", "Previous", v.presenter.PreviousPage)
-	v.next = fyneui.NewButton("ingredients-next", "Next", v.presenter.NextPage)
-	busy := state.Mode != Browse || state.Submitting || state.Status == fyneui.Loading
+	v.refresh = toolkit.NewButton(ControlRefresh, "Refresh", v.presenter.Load)
+	v.create = toolkit.Primary(toolkit.NewButton(ControlCreate, "New ingredient", v.presenter.StartCreate))
+	v.edit = toolkit.NewButton(ControlEdit, "Edit", v.presenter.StartEdit)
+	v.delete = toolkit.Destructive(toolkit.NewButton(ControlDelete, "Delete", v.presenter.RequestDelete))
+	v.tagAction = toolkit.NewButton(ControlTags, "Tags", v.presenter.StartTags)
+	v.previous = toolkit.NewButton(ControlPrevious, "Previous", v.presenter.PreviousPage)
+	v.next = toolkit.NewButton(ControlNext, "Next", v.presenter.NextPage)
+	busy := state.Mode != Browse || state.Submitting || state.Status == toolkit.Loading
 	if busy {
-		for _, button := range []*fyneui.SemanticButton{v.refresh, v.create, v.edit, v.delete, v.tagAction, apply, v.previous, v.next} {
+		for _, button := range []*toolkit.SemanticButton{v.refresh, v.create, v.edit, v.delete, v.tagAction, apply, v.previous, v.next} {
 			button.Disable()
 		}
 		v.expression.Disable()
@@ -115,43 +133,44 @@ func (v *View) render(state State) {
 		v.delete.Disable()
 		v.tagAction.Disable()
 	}
-	toolbar := container.NewHBox(
-		v.refresh, v.create,
-		v.edit, v.delete, v.tagAction, v.previous, v.next,
-	)
-
 	rows := container.NewVBox()
-	v.rows = make(map[string]*fyneui.SemanticButton, len(state.Items))
+	v.rows = make(map[string]*toolkit.SemanticButton, len(state.Items))
 	for i := range state.Items {
 		ingredient := state.Items[i]
 		id := ingredient.ID
 		label := fmt.Sprintf("%s  ·  %s", ingredient.Name, ingredient.Category)
-		button := fyneui.NewButton("ingredient-select-"+id.String(), label, func() { v.presenter.Select(id) })
+		button := toolkit.NewButton(ControlSelectPrefix+id.String(), label, func() { v.presenter.Select(id) })
 		if busy {
 			button.Disable()
 		}
 		v.rows[id.String()] = button
 		rows.Add(button)
 	}
-	if len(state.Items) == 0 && state.Status == fyneui.Loaded {
+	if len(state.Items) == 0 && state.Status == toolkit.Loaded {
 		rows.Add(widget.NewLabel("No ingredients found"))
 	}
 	list := container.NewScroll(rows)
 
 	detail := v.detail(state)
-	content := fyneui.ListDetail(list, detail, .38)
 	status := ""
 	switch state.Status {
-	case fyneui.Loading:
+	case toolkit.Loading:
 		status = "Loading ingredients…"
-	case fyneui.Failed:
+	case toolkit.Failed:
 		status = "Unable to load ingredients"
-	case fyneui.Idle, fyneui.Loaded:
+	case toolkit.Idle, toolkit.Loaded:
 	}
 	if state.Err != nil {
 		status = "Error: " + state.Err.Error()
 	}
-	objects := []framework.CanvasObject{container.NewBorder(container.NewVBox(toolbar, filters, widget.NewLabel(status)), nil, nil, nil, content)}
+	statusLabel := widget.NewLabel(status)
+	objects := []framework.CanvasObject{toolkit.StandardListPage(toolkit.ListPage{
+		Title: "Ingredients", Subtitle: "Browse the ingredient catalog and select an item to inspect or edit it.", Filters: filters,
+		PrimaryActions: []framework.CanvasObject{v.create, v.refresh},
+		OtherActions:   []framework.CanvasObject{v.edit, v.tagAction, v.delete},
+		List:           list, Detail: detail, Status: statusLabel,
+		Paging: container.NewHBox(v.previous, v.next), ListRatio: .38,
+	})}
 	v.root.Objects = objects
 	v.root.Refresh()
 }
@@ -161,7 +180,7 @@ func (v *View) detail(state State) framework.CanvasObject {
 		return v.form(state)
 	}
 	if state.Selected == nil {
-		return container.NewPadded(widget.NewLabel("Select an ingredient to view details"))
+		return toolkit.EmptyDetail("an ingredient")
 	}
 	ingredient := state.Selected
 	tags := ingredient.Tags.Canonical().String()
@@ -187,19 +206,19 @@ func (v *View) detail(state State) framework.CanvasObject {
 
 func (v *View) form(state State) framework.CanvasObject {
 	if state.Mode == Tags {
-		v.tags = fyneui.NewEntry("ingredient-form-tags")
+		v.tags = toolkit.NewEntry(ControlFormTags)
 		v.tags.SetPlaceHolder("featured, region=west")
 		v.tags.SetText(state.Form.Tags)
 		return v.formFrame("Edit Tags", container.NewVBox(widget.NewLabel("Complete tag set (CSV)"), v.tags), state, func() Form {
 			return Form{Tags: v.tags.Text}
 		})
 	}
-	v.name = fyneui.NewEntry("ingredient-form-name")
+	v.name = toolkit.NewEntry(ControlName)
 	v.name.SetText(state.Form.Name)
-	v.description = fyneui.NewEntry("ingredient-form-description")
+	v.description = toolkit.NewEntry(ControlDescription)
 	v.description.MultiLine = true
 	v.description.SetText(state.Form.Description)
-	v.tags = fyneui.NewEntry("ingredient-form-mutation-tags")
+	v.tags = toolkit.NewEntry(ControlMutationTags)
 	v.tags.SetPlaceHolder("featured, region=west")
 	v.tags.SetText(state.Form.Tags)
 	categories := make([]string, 0, len(models.AllCategories()))
@@ -235,18 +254,14 @@ func (v *View) formFrame(title string, fields framework.CanvasObject, state Stat
 	if state.Err != nil {
 		errorText = "Error: " + state.Err.Error()
 	}
-	save := fyneui.NewButton("ingredient-form-save", "Save", func() { v.presenter.Submit(value()) })
+	save := toolkit.NewButton(ControlSave, "Save", func() { v.presenter.Submit(value()) })
 	v.save = save
 	if state.Submitting {
 		save.Disable()
 	}
-	v.cancel = fyneui.NewButton("ingredient-form-cancel", "Cancel", v.presenter.Cancel)
+	v.cancel = toolkit.NewButton(ControlCancel, "Cancel", v.presenter.Cancel)
 	if state.Submitting {
 		v.cancel.Disable()
 	}
-	return container.NewPadded(container.NewVBox(
-		widget.NewLabelWithStyle(title, framework.TextAlignLeading, framework.TextStyle{Bold: true}),
-		widget.NewLabel(errorText), fields,
-		container.NewHBox(save, v.cancel),
-	))
+	return toolkit.StandardFormPage(toolkit.FormPage{Title: title, Fields: fields, Status: widget.NewLabel(errorText), Save: save, Cancel: v.cancel})
 }

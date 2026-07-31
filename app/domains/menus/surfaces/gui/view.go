@@ -20,28 +20,30 @@ import (
 )
 
 const (
-	ControlRefresh          = "menus.refresh"
-	ControlCreate           = "menus.create"
-	ControlRename           = "menus.rename"
-	ControlDelete           = "menus.delete"
-	ControlPublish          = "menus.publish"
-	ControlDraft            = "menus.draft"
-	ControlTags             = "menus.tags"
-	ControlAddDrink         = "menus.drink.add"
-	ControlAnalyze          = "menus.analyze"
-	ControlTargetMargin     = "menus.analysis.target-margin"
-	ControlRunAnalysis      = "menus.analysis.run"
-	ControlApplyFilter      = "menus.filter.apply"
-	ControlFilterStatus     = "menus.filter.status"
-	ControlFilterExpression = "menus.filter.expression"
-	ControlPrevious         = "menus.previous"
-	ControlNext             = "menus.next"
-	ControlName             = "menus.form.name"
-	ControlDescription      = "menus.form.description"
-	ControlTagValues        = "menus.form.tags"
-	ControlDrinkSearch      = "menus.drink.search"
-	ControlSave             = "menus.form.save"
-	ControlCancel           = "menus.form.cancel"
+	ControlRefresh           = "menus.refresh"
+	ControlCreate            = "menus.create"
+	ControlRename            = "menus.rename"
+	ControlDelete            = "menus.delete"
+	ControlPublish           = "menus.publish"
+	ControlDraft             = "menus.draft"
+	ControlTags              = "menus.tags"
+	ControlAddDrink          = "menus.drink.add"
+	ControlAnalyze           = "menus.analyze"
+	ControlTargetMargin      = "menus.analysis.target-margin"
+	ControlRunAnalysis       = "menus.analysis.run"
+	ControlApplyFilter       = "menus.filter.apply"
+	ControlFilterStatus      = "menus.filter.status"
+	ControlFilterExpression  = "menus.filter.expression"
+	ControlPrevious          = "menus.previous"
+	ControlNext              = "menus.next"
+	ControlName              = "menus.form.name"
+	ControlDescription       = "menus.form.description"
+	ControlTagValues         = "menus.form.tags"
+	ControlDrinkSearch       = "menus.drink.search"
+	ControlSave              = "menus.form.save"
+	ControlCancel            = "menus.form.cancel"
+	controlRemoveDrinkPrefix = "menus.drink.remove."
+	controlDrinkChoicePrefix = "menus.drink.choice."
 )
 
 type semanticSelect struct {
@@ -103,23 +105,28 @@ func NewView(p *Presenter) *View {
 		button.OnTapped = func() { p.Select(i) }
 	})
 	v.refresh = ui.NewButton(ControlRefresh, "Refresh", p.Refresh)
-	v.create = ui.NewButton(ControlCreate, "New", p.StartCreate)
+	v.create = ui.Primary(ui.NewButton(ControlCreate, "New menu", p.StartCreate))
 	v.rename = ui.NewButton(ControlRename, "Rename", p.StartRename)
 	v.tagAction = ui.NewButton(ControlTags, "Tags", p.StartTags)
 	v.addDrink = ui.NewButton(ControlAddDrink, "Add drink", p.StartAddDrink)
 	v.publish = ui.NewButton(ControlPublish, "Publish", p.Publish)
 	v.draft = ui.NewButton(ControlDraft, "Draft", p.ReturnToDraft)
-	v.delete = ui.NewButton(ControlDelete, "Delete", p.Delete)
+	v.delete = ui.Destructive(ui.NewButton(ControlDelete, "Delete", p.Delete))
 	v.analyze = ui.NewButton(ControlAnalyze, "Analyze", p.StartAnalysis)
 	v.previous = ui.NewButton(ControlPrevious, "Previous", p.PreviousPage)
 	v.next = ui.NewButton(ControlNext, "Next", p.NextPage)
-	commands := container.NewGridWithColumns(11, v.refresh, v.create, v.rename, v.tagAction, v.addDrink, v.analyze, v.publish, v.draft, v.delete, v.previous, v.next)
 	v.detail = widget.NewLabel("")
 	v.detail.Wrapping = framework.TextWrapWord
 	v.detailBox = container.NewVBox(v.detail)
 	v.removeActions = container.NewHBox()
 	v.status = widget.NewLabel("")
-	v.browse = container.NewBorder(container.NewVBox(filters, commands), container.NewVBox(v.status, v.removeActions), nil, nil, ui.ListDetail(v.list, container.NewVScroll(v.detailBox), .35))
+	v.browse = ui.StandardListPage(ui.ListPage{
+		Title: "Menus", Subtitle: "Browse menus and select one to manage drinks, publishing, and pricing.", Filters: filters,
+		PrimaryActions: []framework.CanvasObject{v.create, v.refresh},
+		OtherActions:   []framework.CanvasObject{v.rename, v.addDrink, v.analyze, v.publish, v.draft, v.tagAction, v.delete},
+		List:           v.list, Detail: container.NewVScroll(v.detailBox), Status: container.NewVBox(v.status, v.removeActions),
+		Paging: container.NewHBox(v.previous, v.next), ListRatio: .35,
+	}).(*framework.Container)
 	v.name = ui.NewEntry(ControlName)
 	v.description = ui.NewEntry(ControlDescription)
 	v.description.MultiLine = true
@@ -128,7 +135,7 @@ func NewView(p *Presenter) *View {
 	v.save = ui.NewButton(ControlSave, "Save", func() { v.readForm(); p.Save() })
 	v.cancel = ui.NewButton(ControlCancel, "Cancel", p.Cancel)
 	v.descriptionHelp = widget.NewLabel("Leave description blank to keep the existing description.")
-	v.formPanel = container.NewBorder(widget.NewLabelWithStyle("Menu", framework.TextAlignLeading, framework.TextStyle{Bold: true}), container.NewVBox(v.formStatus, container.NewHBox(layout.NewSpacer(), v.cancel, v.save)), nil, nil, container.NewVScroll(container.NewVBox(field("Name", v.name), field("Description", v.description), v.descriptionHelp, field("Complete tag set (CSV)", v.tags))))
+	v.formPanel = ui.StandardFormPage(ui.FormPage{Title: "Menu", Subtitle: "Edit menu identity and tags.", Fields: container.NewVBox(field("Name", v.name), field("Description", v.description), v.descriptionHelp, field("Complete tag set (CSV)", v.tags)), Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
 	v.drinkSearch = ui.NewEntry(ControlDrinkSearch)
 	v.drinkTags = ui.NewEntry(ControlTagValues + ".add-drink")
 	v.drinkSearch.SetPlaceHolder("Search active drinks")
@@ -171,9 +178,8 @@ func (v *View) ExecuteCommand(command ui.Command) bool {
 		case Browsing, Creating, Renaming, Tagging:
 		}
 		return state.Mode != Browsing && ui.Trigger(v.cancel)
-	default:
-		return false
 	}
+	return false
 }
 func (v *View) readForm() {
 	mode := v.p.State().Mode
@@ -277,7 +283,7 @@ func (v *View) render(state State) {
 			items := append([]models.MenuItem(nil), state.Selected.Items...)
 			sort.SliceStable(items, func(i, j int) bool { return items[i].SortOrder < items[j].SortOrder })
 			for _, item := range items {
-				button := ui.NewButton("menus.drink.remove."+item.DrinkID.String(), "Remove "+v.p.DrinkName(item.DrinkID), func() { v.p.RemoveDrink(item.DrinkID) })
+				button := ui.NewButton(controlRemoveDrinkPrefix+item.DrinkID.String(), "Remove "+v.p.DrinkName(item.DrinkID), func() { v.p.RemoveDrink(item.DrinkID) })
 				if busy {
 					button.Disable()
 				}
@@ -296,7 +302,7 @@ func (v *View) render(state State) {
 	}
 	v.drinkChoices.RemoveAll()
 	for _, option := range state.Drinks {
-		button := ui.NewButton("menus.drink.choice."+option.ID.String(), fmt.Sprintf("%s  ·  %s", option.Name, option.ID.String()), func() {
+		button := ui.NewButton(controlDrinkChoicePrefix+option.ID.String(), fmt.Sprintf("%s  ·  %s", option.Name, option.ID.String()), func() {
 			form := v.p.State().Form
 			form.Tags, form.ReplaceTags = v.drinkTags.Text, true
 			v.p.SetForm(form)

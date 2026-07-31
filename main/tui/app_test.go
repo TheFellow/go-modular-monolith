@@ -296,6 +296,8 @@ func TestE2E_TagEditorSupportsReplaceClearCancelAndValidationAcrossEveryEntityVi
 			driver.Press("t")
 			pressText(driver, "transient")
 			driver.Press("esc")
+			driver.RequireText("Manage tags")
+			driver.Press("esc")
 			driver.RequireText("Mixology > "+scenario.title, "Tags: (none)")
 			requirePersistedTags(t, f, target, "")
 

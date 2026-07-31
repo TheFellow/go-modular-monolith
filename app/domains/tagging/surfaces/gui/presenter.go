@@ -36,6 +36,14 @@ const (
 	Summary
 )
 
+func (o Operation) valid() bool {
+	switch o {
+	case Inspect, Add, Remove, ShowExact, ShowKey, Summary:
+		return true
+	}
+	return false
+}
+
 type Mode uint8
 
 const (
@@ -105,6 +113,11 @@ func (p *Presenter) Start(operation Operation) {
 	}
 	p.load.Invalidate()
 	p.state = State{Operation: operation}
+	if !operation.valid() {
+		p.fail(apperrors.Invalidf("invalid tag operation"))
+		p.publish()
+		return
+	}
 	switch operation {
 	case Inspect, Add, Remove:
 		p.state.Mode = PickingType
@@ -112,8 +125,6 @@ func (p *Presenter) Start(operation Operation) {
 		p.state.Mode = EnteringValue
 	case Summary:
 		p.runQuery(func() (any, error) { return p.app.Tags.Summary(p.app.Context()) })
-	default:
-		p.fail(apperrors.Invalidf("invalid tag operation"))
 	}
 	p.publish()
 }

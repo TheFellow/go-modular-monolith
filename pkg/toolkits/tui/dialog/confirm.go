@@ -3,6 +3,7 @@ package dialog
 import (
 	"strings"
 
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keyname"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -233,8 +234,8 @@ func defaultDialogStyles() DialogStyles {
 
 func defaultDialogKeys() DialogKeys {
 	return DialogKeys{
-		Confirm: key.NewBinding(key.WithKeys("enter")),
-		Cancel:  key.NewBinding(key.WithKeys("esc")),
-		Switch:  key.NewBinding(key.WithKeys("tab", "left", "right")),
+		Confirm: key.NewBinding(key.WithKeys(keyname.Enter)),
+		Cancel:  key.NewBinding(key.WithKeys(keyname.Escape)),
+		Switch:  key.NewBinding(key.WithKeys(keyname.Tab, keyname.Left, keyname.Right)),
 	}
 }

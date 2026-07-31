@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/views"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keyname"
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -66,19 +67,23 @@ func (d *Driver) Press(name string) {
 	d.t.Helper()
 	var msg tea.KeyMsg
 	switch name {
-	case "esc":
+	case keyname.Escape:
 		msg = tea.KeyMsg{Type: tea.KeyEsc}
-	case "enter":
+	case keyname.Enter:
 		msg = tea.KeyMsg{Type: tea.KeyEnter}
-	case "ctrl+s":
+	case keyname.Submit:
 		msg = tea.KeyMsg{Type: tea.KeyCtrlS}
-	case "ctrl+u":
+	case keyname.Clear:
 		msg = tea.KeyMsg{Type: tea.KeyCtrlU}
-	case "up":
+	case keyname.Up:
 		msg = tea.KeyMsg{Type: tea.KeyUp}
-	case "down":
+	case keyname.Down:
 		msg = tea.KeyMsg{Type: tea.KeyDown}
-	case "end":
+	case keyname.Left:
+		msg = tea.KeyMsg{Type: tea.KeyLeft}
+	case keyname.Right:
+		msg = tea.KeyMsg{Type: tea.KeyRight}
+	case keyname.End:
 		msg = tea.KeyMsg{Type: tea.KeyEnd}
 	default:
 		msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(name)}
@@ -255,11 +260,11 @@ func DefaultListViewStyles[T listViewStyles]() T {
 // DefaultListViewKeys returns key bindings for view model tests.
 func DefaultListViewKeys[T listViewKeys]() T {
 	return T{
-		Up:          key.NewBinding(key.WithKeys("up")),
-		Down:        key.NewBinding(key.WithKeys("down")),
-		Enter:       key.NewBinding(key.WithKeys("enter")),
+		Up:          key.NewBinding(key.WithKeys(keyname.Up)),
+		Down:        key.NewBinding(key.WithKeys(keyname.Down)),
+		Enter:       key.NewBinding(key.WithKeys(keyname.Enter)),
 		Refresh:     key.NewBinding(key.WithKeys("r")),
-		Back:        key.NewBinding(key.WithKeys("esc")),
+		Back:        key.NewBinding(key.WithKeys(keyname.Escape)),
 		Create:      key.NewBinding(key.WithKeys("c")),
 		Edit:        key.NewBinding(key.WithKeys("e")),
 		Delete:      key.NewBinding(key.WithKeys("d")),

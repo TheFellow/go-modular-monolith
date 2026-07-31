@@ -17,7 +17,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 type queuedDashboardLoader struct {
@@ -39,19 +39,19 @@ func TestDashboardPresenterPublishesLoadingLoadedPartialErrorAndRefresh(t *testi
 		errors:  []error{wantErr, nil},
 	}
 	executor := &fynetest.ManualExecutor{}
-	model := newDashboardViewModel(loader, executor, fyneui.InlineDispatcher{})
+	model := newDashboardViewModel(loader, executor, toolkit.InlineDispatcher{})
 	var states []dashboardState
 	model.Observe(func(state dashboardState) { states = append(states, state) })
 
 	model.Refresh()
-	if got := model.Snapshot(); got.Status != fyneui.Loading {
+	if got := model.Snapshot(); got.Status != toolkit.Loading {
 		t.Fatalf("status = %v, want loading", got.Status)
 	}
 	if !executor.RunNext() {
 		t.Fatal("dashboard load was not scheduled")
 	}
 	got := model.Snapshot()
-	if got.Status != fyneui.Loaded || got.Data.DrinkCount != 1 || !errors.Is(got.Err, wantErr) {
+	if got.Status != toolkit.Loaded || got.Data.DrinkCount != 1 || !errors.Is(got.Err, wantErr) {
 		t.Fatalf("partial state = %#v", got)
 	}
 
@@ -69,7 +69,7 @@ func TestDashboardPresenterRejectsStaleOutOfOrderResults(t *testing.T) {
 		errors:  make([]error, 2),
 	}
 	executor := &fynetest.ManualExecutor{}
-	model := newDashboardViewModel(loader, executor, fyneui.InlineDispatcher{})
+	model := newDashboardViewModel(loader, executor, toolkit.InlineDispatcher{})
 	model.Refresh()
 	model.Refresh()
 	// The loader itself is invoked when work runs, so the newest request runs
@@ -91,7 +91,7 @@ func TestDashboardPresenterCloseInvalidatesQueuedPublication(t *testing.T) {
 	executor.RunNext()
 	model.Close()
 	dispatcher.Drain()
-	if got := model.Snapshot(); got.Status != fyneui.Loading {
+	if got := model.Snapshot(); got.Status != toolkit.Loading {
 		t.Fatalf("closed presenter accepted publication: %#v", got)
 	}
 	model.Refresh()
@@ -107,7 +107,7 @@ func TestDashboardViewUsesSemanticRefreshAndWorkspaceControls(t *testing.T) {
 		results: []application.Dashboard{{DrinkCount: 3}, {DrinkCount: 4}},
 		errors:  make([]error, 2),
 	}
-	model := newDashboardViewModel(loader, fyneui.InlineExecutor{}, fyneui.InlineDispatcher{})
+	model := newDashboardViewModel(loader, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
 	var route string
 	view := newDashboardView(model, func(next string) error { route = next; return nil })
 	driver := fynetest.NewDriver(t, view.Content())

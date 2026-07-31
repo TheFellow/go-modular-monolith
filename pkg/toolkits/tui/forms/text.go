@@ -87,6 +87,12 @@ func (t *TextField) Blur() {
 	t.input.Blur()
 }
 
+func (t *TextField) BeginEdit() tea.Cmd {
+	t.input.CursorEnd()
+	return t.input.Focus()
+}
+func (t *TextField) EndEdit() { t.input.Blur() }
+
 // IsFocused returns true if the field is focused.
 func (t *TextField) IsFocused() bool {
 	return t.focused

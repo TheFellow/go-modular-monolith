@@ -17,6 +17,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keyname"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -180,10 +181,10 @@ func (e *RecipeEditor) Update(msg tea.Msg) (forms.Field, tea.Cmd) {
 	}
 	focus := controls[e.position]
 	switch keyMsg.String() {
-	case "ctrl+n":
+	case "ctrl+n", "down":
 		e.moveFocus(1)
 		return e, nil
-	case "ctrl+p":
+	case "ctrl+p", "up":
 		e.moveFocus(-1)
 		return e, nil
 	}
@@ -244,11 +245,11 @@ func (e *RecipeEditor) updatePicker(msg tea.KeyMsg, rowIndex int, substitutes bo
 	}
 	candidates := e.matches(query.Value())
 	switch msg.String() {
-	case "up":
+	case keyname.Up, keyname.Left:
 		row.candidate--
-	case "down":
+	case keyname.Down, keyname.Right:
 		row.candidate++
-	case "enter":
+	case keyname.Enter:
 		if len(candidates) == 0 {
 			return e, nil
 		}
@@ -403,11 +404,15 @@ func (e *RecipeEditor) renderMatches(query string, selected int, checked []entit
 	return out, selected - start
 }
 
-func (e *RecipeEditor) Focus()          { e.focused = true; e.syncFocus() }
-func (e *RecipeEditor) Blur()           { e.focused = false; e.blurInputs() }
-func (e *RecipeEditor) IsFocused() bool { return e.focused }
-func (e *RecipeEditor) Label() string   { return "Recipe" }
-func (e *RecipeEditor) Error() error    { return e.err }
+func (e *RecipeEditor) Focus()           { e.focused = true; e.syncFocus() }
+func (e *RecipeEditor) Blur()            { e.focused = false; e.blurInputs() }
+func (e *RecipeEditor) IsFocused() bool  { return e.focused }
+func (e *RecipeEditor) OwnsAccept() bool { return true }
+func (e *RecipeEditor) OwnsNavigation(msg tea.KeyMsg) bool {
+	return msg.String() == "up" || msg.String() == "down"
+}
+func (e *RecipeEditor) Label() string { return "Recipe" }
+func (e *RecipeEditor) Error() error  { return e.err }
 func (e *RecipeEditor) SetWidth(width int) {
 	e.width = width
 	for i := range e.rows {

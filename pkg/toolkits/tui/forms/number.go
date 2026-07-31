@@ -134,6 +134,12 @@ func (n *NumberField) Blur() {
 	n.input.Blur()
 }
 
+func (n *NumberField) BeginEdit() tea.Cmd {
+	n.input.CursorEnd()
+	return n.input.Focus()
+}
+func (n *NumberField) EndEdit() { n.input.Blur() }
+
 // IsFocused returns true if the field is focused.
 func (n *NumberField) IsFocused() bool {
 	return n.focused

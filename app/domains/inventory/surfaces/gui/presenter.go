@@ -20,7 +20,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 const LowStockThreshold = inventory.DefaultLowStockThreshold
@@ -56,7 +56,7 @@ type Form struct {
 }
 
 type State struct {
-	Status       fyneui.LoadStatus
+	Status       toolkit.LoadStatus
 	Rows         []Row
 	Selected     *Row
 	Expression   string
@@ -78,21 +78,21 @@ type loadResult struct {
 
 type Presenter struct {
 	app     *app.Session
-	dialogs fyneui.Dialogs
-	load    *fyneui.LatestRequest[loadResult]
-	submit  *fyneui.Submission
+	dialogs toolkit.Dialogs
+	load    *toolkit.LatestRequest[loadResult]
+	submit  *toolkit.Submission
 	mu      sync.Mutex
 	state   State
 	changed func(State)
 }
 
-func NewPresenter(session *app.Session, executor fyneui.Executor, dispatcher fyneui.Dispatcher, dialogs ...fyneui.Dialogs) *Presenter {
+func NewPresenter(session *app.Session, executor toolkit.Executor, dispatcher toolkit.Dispatcher, dialogs ...toolkit.Dialogs) *Presenter {
 	p := &Presenter{app: session, state: State{Limit: paging.DefaultLimit, LowStock: LowStockThreshold}}
 	if len(dialogs) > 0 {
 		p.dialogs = dialogs[0]
 	}
-	p.load = fyneui.NewLatestRequest[loadResult](executor, dispatcher)
-	p.submit = fyneui.NewSubmission(executor, dispatcher)
+	p.load = toolkit.NewLatestRequest[loadResult](executor, dispatcher)
+	p.submit = toolkit.NewSubmission(executor, dispatcher)
 	return p
 }
 
@@ -127,10 +127,10 @@ func (p *Presenter) Load() {
 			rows = append(rows, makeRow(*item, *ingredient, threshold))
 		}
 		return loadResult{rows: rows, next: page.Next}, nil
-	}, func(result fyneui.LoadState[loadResult]) {
+	}, func(result toolkit.LoadState[loadResult]) {
 		p.mu.Lock()
-		p.state.Status, p.state.Err = result.Status, fyneui.PresentError(result.Err)
-		if result.Status == fyneui.Loaded {
+		p.state.Status, p.state.Err = result.Status, toolkit.PresentError(result.Err)
+		if result.Status == toolkit.Loaded {
 			selected := selectedID(p.state.Selected)
 			p.state.Rows, p.state.Next = result.Value.rows, result.Value.next
 			p.state.Selected = findRow(p.state.Rows, selected)
@@ -141,8 +141,8 @@ func (p *Presenter) Load() {
 		}
 		p.publishLocked()
 		p.mu.Unlock()
-		if result.Status == fyneui.Failed {
-			fyneui.ShowPresentation(p.dialogs, result.Err)
+		if result.Status == toolkit.Failed {
+			toolkit.ShowPresentation(p.dialogs, result.Err)
 		}
 	})
 }
@@ -153,7 +153,7 @@ func (p *Presenter) Filter(stock StockMode, expression string, lowStock float64,
 	}
 	p.mu.Lock()
 	if lowStock < 0 {
-		p.state.Err = fyneui.PresentError(apperrors.Invalidf("low-stock threshold must be >= 0"))
+		p.state.Err = toolkit.PresentError(apperrors.Invalidf("low-stock threshold must be >= 0"))
 		p.publishLocked()
 		p.mu.Unlock()
 		return false
@@ -236,14 +236,14 @@ func (p *Presenter) Submit(form Form) bool {
 	mode, selected := p.state.Mode, p.state.Selected
 	p.state.Form = form
 	if selected == nil {
-		p.state.Err = fyneui.PresentError(apperrors.Invalidf("inventory item is required"))
+		p.state.Err = toolkit.PresentError(apperrors.Invalidf("inventory item is required"))
 		p.publishLocked()
 		p.mu.Unlock()
 		return false
 	}
 	validated, err := validate(mode, form, selected.Ingredient.Unit, selected.Inventory.CostPerUnit)
 	if err != nil {
-		p.state.Err = fyneui.PresentError(err)
+		p.state.Err = toolkit.PresentError(err)
 		p.publishLocked()
 		p.mu.Unlock()
 		return false
@@ -277,13 +277,13 @@ func (p *Presenter) Submit(form Form) bool {
 	}, func(err error) {
 		p.mu.Lock()
 		p.state.Submitting = false
-		p.state.Err = fyneui.PresentError(err)
+		p.state.Err = toolkit.PresentError(err)
 		if err == nil {
 			p.state.Mode = Browse
 		}
 		p.publishLocked()
 		p.mu.Unlock()
-		fyneui.ShowPresentation(p.dialogs, err)
+		toolkit.ShowPresentation(p.dialogs, err)
 		if err == nil {
 			p.Load()
 		}

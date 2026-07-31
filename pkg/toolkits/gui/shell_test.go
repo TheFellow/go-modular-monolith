@@ -57,8 +57,14 @@ func TestShellNavigatesLazilyAndPreservesViews(t *testing.T) {
 	if shell.Current() != "home" || builds["home"] != 1 || builds["drinks"] != 0 {
 		t.Fatalf("unexpected initial state: current=%q builds=%v", shell.Current(), builds)
 	}
+	if shell.navigation["home"].Importance != widget.HighImportance || shell.navigation["drinks"].Importance != widget.LowImportance {
+		t.Fatal("initial route is not distinguished in the navigation rail")
+	}
 	if err := shell.Navigate("drinks"); err != nil {
 		t.Fatal(err)
+	}
+	if shell.navigation["drinks"].Importance != widget.HighImportance || shell.navigation["home"].Importance != widget.LowImportance {
+		t.Fatal("navigation rail did not track the selected route")
 	}
 	if err := shell.Navigate("home"); err != nil {
 		t.Fatal(err)

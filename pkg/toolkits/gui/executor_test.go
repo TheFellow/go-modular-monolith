@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func TestAsyncExecutorCompletesBackgroundWork(t *testing.T) {
 	done := make(chan struct{})
-	fyneui.AsyncExecutor{}.Execute(func() { close(done) })
+	gui.AsyncExecutor{}.Execute(func() { close(done) })
 	select {
 	case <-done:
 	case <-time.After(time.Second):
@@ -21,7 +21,7 @@ func TestAsyncExecutorCompletesBackgroundWork(t *testing.T) {
 }
 
 func TestManagedExecutorCloseDrainsAcceptedWorkAndRejectsLaterWork(t *testing.T) {
-	executor := fyneui.NewManagedExecutor()
+	executor := gui.NewManagedExecutor()
 	started := make(chan struct{})
 	release := make(chan struct{})
 	finished := make(chan struct{})
@@ -57,7 +57,7 @@ func TestManagedExecutorCloseDrainsAcceptedWorkAndRejectsLaterWork(t *testing.T)
 }
 
 func TestManagedExecutorConcurrentExecuteAndCloseDrainsEveryAcceptedOperation(t *testing.T) {
-	executor := fyneui.NewManagedExecutor()
+	executor := gui.NewManagedExecutor()
 	const callers = 64
 	start := make(chan struct{})
 	var callersDone sync.WaitGroup

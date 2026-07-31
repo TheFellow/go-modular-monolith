@@ -8,13 +8,23 @@ import (
 
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+)
+
+type ingredientField string
+
+const (
+	ingredientFieldIngredient ingredientField = "ingredient"
+	ingredientFieldAmount     ingredientField = "amount"
+	ingredientFieldUnit       ingredientField = "unit"
+	ingredientFieldOptional   ingredientField = "optional"
+	ingredientFieldRemove     ingredientField = "remove"
+	ingredientFieldSubstitute ingredientField = "substitute"
 )
 
 const (
@@ -42,8 +52,12 @@ const (
 	ControlCancel           = "drinks.form.cancel"
 )
 
-func ingredientControl(i int, field string) string {
+func ingredientControl(i int, field ingredientField) string {
 	return fmt.Sprintf("drinks.form.ingredient.%d.%s", i, field)
+}
+
+func ingredientSubstituteControl(i int, id entity.IngredientID) string {
+	return ingredientControl(i, ingredientFieldSubstitute) + "." + id.String()
 }
 
 type semanticSelect struct {
@@ -139,14 +153,22 @@ func NewView(p *Presenter) *View {
 		button.OnTapped = func() { p.Select(i) }
 	})
 	v.refresh = ui.NewButton(ControlRefresh, "Refresh", p.Refresh)
-	v.create = ui.NewButton(ControlCreate, "New", p.StartCreate)
+	v.create = ui.Primary(ui.NewButton(ControlCreate, "New drink", p.StartCreate))
 	v.previous = ui.NewButton(ControlPrevious, "Previous", p.PreviousPage)
 	v.next = ui.NewButton(ControlNext, "Next", p.NextPage)
-	commands := container.NewGridWithColumns(7, v.refresh, v.create, ui.NewButton(ControlEdit, "Edit", p.StartEdit), ui.NewButton(ControlTags, "Tags", p.StartTags), ui.NewButton(ControlDelete, "Delete", p.Delete), v.previous, v.next)
+	edit := ui.NewButton(ControlEdit, "Edit", p.StartEdit)
+	tagsAction := ui.NewButton(ControlTags, "Tags", p.StartTags)
+	deleteAction := ui.Destructive(ui.NewButton(ControlDelete, "Delete", p.Delete))
 	v.detail = widget.NewLabel("")
 	v.detail.Wrapping = framework.TextWrapWord
 	v.status = widget.NewLabel("")
-	v.browse = container.NewBorder(container.NewVBox(filters, commands), v.status, nil, nil, ui.ListDetail(v.list, container.NewVScroll(v.detail), .35))
+	v.browse = ui.StandardListPage(ui.ListPage{
+		Title: "Drinks", Subtitle: "Browse recipes and select a drink to inspect or edit it.", Filters: filters,
+		PrimaryActions: []framework.CanvasObject{v.create, v.refresh},
+		OtherActions:   []framework.CanvasObject{edit, tagsAction, deleteAction},
+		List:           v.list, Detail: container.NewVScroll(v.detail), Status: v.status,
+		Paging: container.NewHBox(v.previous, v.next), ListRatio: .35,
+	}).(*framework.Container)
 	v.name = ui.NewEntry(ControlName)
 	v.category = newSelect(ControlCategory, categoryOptions())
 	v.glass = newSelect(ControlGlass, glassOptions())
@@ -167,12 +189,12 @@ func NewView(p *Presenter) *View {
 		p.SetForm(f)
 	})
 	fields := container.NewVBox(field("Name", v.name), field("Category", v.category), field("Glass", v.glass), field("Description", v.description), widget.NewLabelWithStyle("Recipe", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.recipeBox, v.addIngredient, field("Steps (one per line)", v.steps), field("Garnish", v.garnish), field("Tags (complete set)", v.mutationTags))
-	v.formPanel = container.NewBorder(widget.NewLabelWithStyle("Drink", framework.TextAlignLeading, framework.TextStyle{Bold: true}), container.NewVBox(v.formStatus, container.NewHBox(layout.NewSpacer(), v.cancel, v.save)), nil, nil, container.NewVScroll(fields))
+	v.formPanel = ui.StandardFormPage(ui.FormPage{Title: "Drink", Subtitle: "Edit the drink details and structured recipe.", Fields: fields, Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
 	v.tags = ui.NewEntry(ControlTagValues)
 	v.tagStatus = widget.NewLabel("")
 	v.tagSave = ui.NewButton(ControlSave+".tags", "Save", func() { v.readForm(); p.Save() })
 	v.tagCancel = ui.NewButton(ControlCancel+".tags", "Cancel", p.Cancel)
-	v.tagsPanel = container.NewBorder(widget.NewLabelWithStyle("Edit tags", framework.TextAlignLeading, framework.TextStyle{Bold: true}), container.NewVBox(v.tagStatus, container.NewHBox(layout.NewSpacer(), v.tagCancel, v.tagSave)), nil, nil, container.NewVScroll(container.NewVBox(widget.NewLabel("Comma-separated key or key=value tags"), v.tags)))
+	v.tagsPanel = ui.StandardFormPage(ui.FormPage{Title: "Edit tags", Subtitle: "Replace the complete tag set.", Fields: container.NewVBox(widget.NewLabel("Comma-separated key or key=value tags"), v.tags), Status: v.tagStatus, Save: v.tagSave, Cancel: v.tagCancel}).(*framework.Container)
 	v.root = container.NewStack(v.browse, v.formPanel, v.tagsPanel)
 	p.Observe(v.render)
 	return v
@@ -196,9 +218,8 @@ func (v *View) ExecuteCommand(command ui.Command) bool {
 			return ui.Trigger(v.tagCancel)
 		}
 		return v.presenter.State().Mode != Browsing && ui.Trigger(v.cancel)
-	default:
-		return false
 	}
+	return false
 }
 func (v *View) readForm() {
 	if v.presenter.State().Mode == Tagging {
@@ -305,13 +326,13 @@ func (v *View) rebuildRecipe(state State) {
 	v.recipe = nil
 	v.recipeBox.RemoveAll()
 	for i, row := range state.Form.Recipe {
-		ingredient := newSelectEntry(ingredientControl(i, "ingredient"), labels)
+		ingredient := newSelectEntry(ingredientControl(i, ingredientFieldIngredient), labels)
 		ingredient.SetText(v.optionLabel(row.Ingredient))
-		amount := ui.NewEntry(ingredientControl(i, "amount"))
+		amount := ui.NewEntry(ingredientControl(i, ingredientFieldAmount))
 		amount.SetText(row.Amount)
-		unit := newSelect(ingredientControl(i, "unit"), unitOptions())
+		unit := newSelect(ingredientControl(i, ingredientFieldUnit), unitOptions())
 		unit.SetSelected(string(row.Unit))
-		optional := newCheck(ingredientControl(i, "optional"), "Optional")
+		optional := newCheck(ingredientControl(i, ingredientFieldOptional), "Optional")
 		optional.SetChecked(row.Optional)
 		substituteBox := container.NewVBox()
 		substitutes := make(map[entity.IngredientID]*semanticCheck)
@@ -320,13 +341,13 @@ func (v *View) rebuildRecipe(state State) {
 			selected[id] = true
 		}
 		for _, option := range state.Ingredients {
-			check := newCheck(ingredientControl(i, "substitute."+option.ID.String()), option.Name)
+			check := newCheck(ingredientSubstituteControl(i, option.ID), option.Name)
 			check.SetChecked(selected[option.ID])
 			substitutes[option.ID] = check
 			substituteBox.Add(check)
 		}
 		index := i
-		remove := ui.NewButton(ingredientControl(i, "remove"), "Remove", func() {
+		remove := ui.NewButton(ingredientControl(i, ingredientFieldRemove), "Remove", func() {
 			v.readForm()
 			f := v.presenter.State().Form
 			f.Recipe = append(f.Recipe[:index], f.Recipe[index+1:]...)
@@ -363,7 +384,7 @@ func (v *View) updateRecipeOptions(state State) {
 		w.substituteBox.RemoveAll()
 		w.substitutes = make(map[entity.IngredientID]*semanticCheck)
 		for _, option := range state.Ingredients {
-			check := newCheck(ingredientControl(i, "substitute."+option.ID.String()), option.Name)
+			check := newCheck(ingredientSubstituteControl(i, option.ID), option.Name)
 			check.SetChecked(selected[option.ID])
 			w.substitutes[option.ID] = check
 			w.substituteBox.Add(check)

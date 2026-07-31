@@ -4,14 +4,14 @@ import (
 	"errors"
 	"testing"
 
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func TestValidateReturnsFirstFailure(t *testing.T) {
 	t.Parallel()
 	first := errors.New("first")
 	secondCalled := false
-	err := fyneui.Validate("", func(string) error { return first }, func(string) error {
+	err := gui.Validate("", func(string) error { return first }, func(string) error {
 		secondCalled = true
 		return nil
 	})
@@ -22,7 +22,7 @@ func TestValidateReturnsFirstFailure(t *testing.T) {
 
 func TestRequiredUsesSurfaceSpecificMessage(t *testing.T) {
 	t.Parallel()
-	if err := fyneui.Required("name is required")(``); err == nil || err.Error() != "name is required" {
+	if err := gui.Required("name is required")(``); err == nil || err.Error() != "name is required" {
 		t.Fatalf("error = %v", err)
 	}
 }

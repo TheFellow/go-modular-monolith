@@ -34,7 +34,7 @@ import (
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -46,6 +46,7 @@ const (
 
 type desktopConfig struct {
 	dataDirectory string
+	databasePath  string
 	actor         string
 }
 
@@ -54,12 +55,12 @@ type desktop struct {
 	window          framework.Window
 	application     *application.App
 	session         *application.Session
-	shell           *fyneui.Shell
+	shell           *gui.Shell
 	logFile         *os.File
 	closeOnce       sync.Once
 	closeErr        error
 	dashboard       *dashboardViewModel
-	views           map[string]fyneui.View
+	views           map[string]gui.View
 	presenters      map[string]any
 	executor        interface{ Close() }
 	dispatcher      interface{ Close() }
@@ -79,13 +80,13 @@ func (d *desktop) mainMenu() *framework.MainMenu {
 			_ = d.openURL(guideURL)
 		}
 	})
-	refresh := framework.NewMenuItem("Refresh", func() { d.shell.ExecuteCommand(fyneui.CommandRefresh) })
+	refresh := framework.NewMenuItem("Refresh", func() { d.shell.ExecuteCommand(gui.CommandRefresh) })
 	refresh.Shortcut = commandShortcut(framework.KeyR)
-	create := framework.NewMenuItem("New", func() { d.shell.ExecuteCommand(fyneui.CommandNew) })
+	create := framework.NewMenuItem("New", func() { d.shell.ExecuteCommand(gui.CommandNew) })
 	create.Shortcut = commandShortcut(framework.KeyN)
-	save := framework.NewMenuItem("Save", func() { d.shell.ExecuteCommand(fyneui.CommandSave) })
+	save := framework.NewMenuItem("Save", func() { d.shell.ExecuteCommand(gui.CommandSave) })
 	save.Shortcut = commandShortcut(framework.KeyS)
-	cancel := framework.NewMenuItem("Cancel or Back", func() { d.shell.ExecuteCommand(fyneui.CommandCancel) })
+	cancel := framework.NewMenuItem("Cancel or Back", func() { d.shell.ExecuteCommand(gui.CommandCancel) })
 	cancel.Shortcut = &fynedesktop.CustomShortcut{KeyName: framework.KeyEscape}
 	viewItems := make([]*framework.MenuItem, 0, len(d.shell.RouteIDs()))
 	for i, route := range d.shell.RouteIDs() {
@@ -113,12 +114,12 @@ func (d *desktop) registerShortcuts() {
 	canvas := d.window.Canvas()
 	for _, binding := range []struct {
 		shortcut *fynedesktop.CustomShortcut
-		command  fyneui.Command
+		command  gui.Command
 	}{
-		{commandShortcut(framework.KeyR), fyneui.CommandRefresh},
-		{commandShortcut(framework.KeyN), fyneui.CommandNew},
-		{commandShortcut(framework.KeyS), fyneui.CommandSave},
-		{&fynedesktop.CustomShortcut{KeyName: framework.KeyEscape}, fyneui.CommandCancel},
+		{commandShortcut(framework.KeyR), gui.CommandRefresh},
+		{commandShortcut(framework.KeyN), gui.CommandNew},
+		{commandShortcut(framework.KeyS), gui.CommandSave},
+		{&fynedesktop.CustomShortcut{KeyName: framework.KeyEscape}, gui.CommandCancel},
 	} {
 		command := binding.command
 		canvas.AddShortcut(binding.shortcut, func(framework.Shortcut) { d.shell.ExecuteCommand(command) })
@@ -133,9 +134,9 @@ func (d *desktop) registerShortcuts() {
 }
 
 type desktopDependencies struct {
-	executor        fyneui.Executor
-	dispatcher      fyneui.Dispatcher
-	dialogs         func(framework.Window) fyneui.Dialogs
+	executor        gui.Executor
+	dispatcher      gui.Dispatcher
+	dialogs         func(framework.Window) gui.Dialogs
 	showInformation func(title, message string, window framework.Window)
 	openURL         func(*url.URL) error
 	dashboardLoader func(*application.Session) dashboardLoader
@@ -144,34 +145,34 @@ type desktopDependencies struct {
 // visibleWorkspaces probes the same authorized read paths used by each
 // workspace. Permission denials remove a workspace; operational failures leave
 // it visible so its surface can report the underlying problem.
-func visibleWorkspaces(session *application.Session) map[string]bool {
-	visible := map[string]bool{"dashboard": true}
+func visibleWorkspaces(session *application.Session) map[workspace]bool {
+	visible := map[workspace]bool{workspaceDashboard: true}
 	checks := []struct {
-		id   string
+		id   workspace
 		read func() error
 	}{
-		{"drinks", func() error {
+		{workspaceDrinks, func() error {
 			_, err := session.Drinks.Count(session.Context(), drinksdomain.ListRequest{})
 			return err
 		}},
-		{"ingredients", func() error {
+		{workspaceIngredients, func() error {
 			_, err := session.Ingredients.Count(session.Context(), ingredientsdomain.ListRequest{})
 			return err
 		}},
-		{"inventory", func() error {
+		{workspaceInventory, func() error {
 			_, err := session.Inventory.Count(session.Context(), inventorydomain.ListRequest{})
 			return err
 		}},
-		{"menus", func() error { _, err := session.Menus.Count(session.Context(), menusdomain.ListRequest{}); return err }},
-		{"orders", func() error {
+		{workspaceMenus, func() error { _, err := session.Menus.Count(session.Context(), menusdomain.ListRequest{}); return err }},
+		{workspaceOrders, func() error {
 			_, err := session.Orders.Count(session.Context(), ordersdomain.ListRequest{})
 			return err
 		}},
-		{"audit", func() error {
+		{workspaceAudit, func() error {
 			resource := auditauthz.AuditEntry{UID: cedar.NewEntityUID(auditauthz.AuditEntryType, "workspace")}
 			return pkg_authz.AuthorizeWithEntity(session.Context().Principal(), auditauthz.ActionList, resource.CedarEntity())
 		}},
-		{"tags", func() error {
+		{workspaceTags, func() error {
 			resource := taggingauthz.TagDiscovery{UID: cedar.NewEntityUID(taggingauthz.TagDiscoveryType, "workspace")}
 			return pkg_authz.AuthorizeWithEntity(session.Context().Principal(), taggingauthz.ActionSummary, resource.CedarEntity())
 		}},
@@ -184,22 +185,22 @@ func visibleWorkspaces(session *application.Session) map[string]bool {
 	return visible
 }
 
-func openDesktop(ctx context.Context, gui framework.App, config desktopConfig) (*desktop, error) {
-	executor := fyneui.NewManagedExecutor()
-	dispatcher := fyneui.NewGatedDispatcher(fyneui.MainDispatcher{})
-	return openDesktopWithDependencies(ctx, gui, config, desktopDependencies{
+func openDesktop(ctx context.Context, fyneApp framework.App, config desktopConfig) (*desktop, error) {
+	executor := gui.NewManagedExecutor()
+	dispatcher := gui.NewGatedDispatcher(gui.MainDispatcher{})
+	return openDesktopWithDependencies(ctx, fyneApp, config, desktopDependencies{
 		executor: executor, dispatcher: dispatcher,
-		dialogs:         func(window framework.Window) fyneui.Dialogs { return fyneui.WindowDialogs{Window: window} },
+		dialogs:         func(window framework.Window) gui.Dialogs { return gui.WindowDialogs{Window: window} },
 		showInformation: dialog.ShowInformation,
-		openURL:         gui.OpenURL,
+		openURL:         fyneApp.OpenURL,
 		dashboardLoader: func(session *application.Session) dashboardLoader {
 			return sessionDashboardLoader{session: session}
 		},
 	})
 }
 
-func openDesktopWithDependencies(ctx context.Context, gui framework.App, config desktopConfig, deps desktopDependencies) (*desktop, error) {
-	if gui == nil {
+func openDesktopWithDependencies(ctx context.Context, fyneApp framework.App, config desktopConfig, deps desktopDependencies) (*desktop, error) {
+	if fyneApp == nil {
 		return nil, fmt.Errorf("fyne application is required")
 	}
 	if err := prepareDataDirectory(config.dataDirectory); err != nil {
@@ -218,15 +219,21 @@ func openDesktopWithDependencies(ctx context.Context, gui framework.App, config 
 	ctx = pkglog.ToContext(ctx, pkglog.Setup("info", "text", logFile))
 	ctx = telemetry.WithMetrics(ctx, telemetry.Nop())
 
-	s, err := store.Open(ctx, filepath.Join(config.dataDirectory, databaseFilename))
+	databasePath := config.databasePath
+	if databasePath == "" {
+		// Tests and embedders may supply only a data directory. The executable
+		// supplies the shared CLI/TUI default explicitly.
+		databasePath = filepath.Join(config.dataDirectory, databaseFilename)
+	}
+	s, err := store.Open(ctx, databasePath)
 	if err != nil {
 		_ = logFile.Close()
 		return nil, err
 	}
 	app := application.New(ctx, application.Config{Store: s})
 	d := &desktop{
-		gui: gui, application: app, session: application.NewSession(ctx, app), logFile: logFile,
-		views: make(map[string]fyneui.View), presenters: make(map[string]any),
+		gui: fyneApp, application: app, session: application.NewSession(ctx, app), logFile: logFile,
+		views: make(map[string]gui.View), presenters: make(map[string]any),
 	}
 	if closer, ok := deps.executor.(interface{ Close() }); ok {
 		d.executor = closer
@@ -240,70 +247,70 @@ func openDesktopWithDependencies(ctx context.Context, gui framework.App, config 
 		return nil, fmt.Errorf("desktop presentation dependencies are required")
 	}
 
-	owned := func(id string, build func() fyneui.View) func() fyneui.View {
-		return func() fyneui.View {
+	owned := func(id workspace, build func() gui.View) func() gui.View {
+		return func() gui.View {
 			view := build()
-			d.views[id] = view
+			d.views[id.routeID()] = view
 			return view
 		}
 	}
-	dialogs := func() fyneui.Dialogs { return deps.dialogs(d.window) }
+	dialogs := func() gui.Dialogs { return deps.dialogs(d.window) }
 	visible := visibleWorkspaces(d.session)
-	routes := []fyneui.Route{
-		{ID: "dashboard", Label: "Dashboard", Build: owned("dashboard", func() fyneui.View {
+	routes := []gui.Route{
+		{ID: workspaceDashboard.routeID(), Label: "Dashboard", Build: owned(workspaceDashboard, func() gui.View {
 			d.dashboard = newDashboardViewModel(deps.dashboardLoader(d.session), deps.executor, deps.dispatcher)
-			d.presenters["dashboard"] = d.dashboard
+			d.presenters[workspaceDashboard.routeID()] = d.dashboard
 			return newDashboardView(d.dashboard, func(route string) error { return d.shell.Navigate(route) }, visible)
 		})},
-		{ID: "drinks", Label: "Drinks", Build: owned("drinks", func() fyneui.View {
+		{ID: workspaceDrinks.routeID(), Label: "Drinks", Build: owned(workspaceDrinks, func() gui.View {
 			presenter := drinksgui.NewPresenter(d.session, drinksgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
-			d.presenters["drinks"] = presenter
+			d.presenters[workspaceDrinks.routeID()] = presenter
 			return drinksgui.NewView(presenter)
 		})},
-		{ID: "ingredients", Label: "Ingredients", Build: owned("ingredients", func() fyneui.View {
+		{ID: workspaceIngredients.routeID(), Label: "Ingredients", Build: owned(workspaceIngredients, func() gui.View {
 			presenter := ingredientsgui.NewPresenter(d.session, deps.executor, deps.dispatcher, dialogs())
-			d.presenters["ingredients"] = presenter
+			d.presenters[workspaceIngredients.routeID()] = presenter
 			return ingredientsgui.NewView(presenter)
 		})},
-		{ID: "inventory", Label: "Inventory", Build: owned("inventory", func() fyneui.View {
+		{ID: workspaceInventory.routeID(), Label: "Inventory", Build: owned(workspaceInventory, func() gui.View {
 			presenter := inventorygui.NewPresenter(d.session, deps.executor, deps.dispatcher, dialogs())
-			d.presenters["inventory"] = presenter
+			d.presenters[workspaceInventory.routeID()] = presenter
 			return inventorygui.NewView(presenter)
 		})},
-		{ID: "menus", Label: "Menus", Build: owned("menus", func() fyneui.View {
+		{ID: workspaceMenus.routeID(), Label: "Menus", Build: owned(workspaceMenus, func() gui.View {
 			presenter := menusgui.NewPresenter(d.session, menusgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
-			d.presenters["menus"] = presenter
+			d.presenters[workspaceMenus.routeID()] = presenter
 			return menusgui.NewView(presenter)
 		})},
-		{ID: "orders", Label: "Orders", Build: owned("orders", func() fyneui.View {
+		{ID: workspaceOrders.routeID(), Label: "Orders", Build: owned(workspaceOrders, func() gui.View {
 			presenter := ordersgui.NewPresenter(d.session, ordersgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
-			d.presenters["orders"] = presenter
+			d.presenters[workspaceOrders.routeID()] = presenter
 			return ordersgui.NewView(presenter)
 		})},
-		{ID: "audit", Label: "Audit", Build: owned("audit", func() fyneui.View {
+		{ID: workspaceAudit.routeID(), Label: "Audit", Build: owned(workspaceAudit, func() gui.View {
 			presenter := auditgui.NewPresenter(d.session, auditgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
-			d.presenters["audit"] = presenter
+			d.presenters[workspaceAudit.routeID()] = presenter
 			return auditgui.NewView(presenter)
 		})},
-		{ID: "tags", Label: "Tags", Build: owned("tags", func() fyneui.View {
+		{ID: workspaceTags.routeID(), Label: "Tags", Build: owned(workspaceTags, func() gui.View {
 			presenter := tagginggui.NewPresenter(d.session, tagginggui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
-			d.presenters["tags"] = presenter
+			d.presenters[workspaceTags.routeID()] = presenter
 			return tagginggui.NewView(presenter)
 		})},
 	}
 	filtered := routes[:0]
 	for _, route := range routes {
-		if visible[route.ID] {
+		if visible[workspace(route.ID)] {
 			filtered = append(filtered, route)
 		}
 	}
 	routes = filtered
-	d.shell, err = fyneui.NewShell(routes, "dashboard")
+	d.shell, err = gui.NewShell(routes, workspaceDashboard.routeID())
 	if err != nil {
 		_ = d.Close()
 		return nil, err
 	}
-	d.window = gui.NewWindow("Mixology — " + config.actor)
+	d.window = fyneApp.NewWindow("Mixology — " + config.actor)
 	d.window.SetContent(d.shell.Content())
 	d.window.Resize(framework.NewSize(1100, 720))
 	d.window.SetCloseIntercept(d.closeWindow)

@@ -18,6 +18,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/dialog"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keyname"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/paginator"
@@ -227,7 +228,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			break
 		}
 		if m.mode == listModeTagging {
-			if key.Matches(msg, m.keys.Back) {
+			if key.Matches(msg, m.keys.Back) && !m.tags.FormEditing() {
 				if m.tags.Saving() {
 					return m, nil
 				}
@@ -237,11 +238,11 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			break
 		}
 		if m.mode == listModeFiltering {
-			if key.Matches(msg, m.keys.Back) {
+			if key.Matches(msg, m.keys.Back) && !m.filter.form.IsEditing() {
 				m.mode, m.filter = listModeBrowsing, nil
 				return m, nil
 			}
-			if msg.String() == "ctrl+s" {
+			if msg.String() == keyname.Submit {
 				req, err := m.filter.Request()
 				if err != nil {
 					return m, nil
@@ -253,7 +254,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			break
 		}
 		if m.mode == listModePlacing {
-			if key.Matches(msg, m.keys.Back) {
+			if key.Matches(msg, m.keys.Back) && !m.place.editing {
 				if m.place.saving || !m.place.mayClose() {
 					return m, nil
 				}
@@ -261,7 +262,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 				m.mode, m.place = listModeBrowsing, nil
 				return m, nil
 			}
-			if msg.String() == "ctrl+s" {
+			if msg.String() == keyname.Submit {
+				m.place.finishEdit(false)
 				return m, m.place.submit()
 			}
 			break

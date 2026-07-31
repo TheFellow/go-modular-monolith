@@ -162,19 +162,19 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		case listModeBrowsing:
 		case listModeConfirmingDelete:
 		case listModeCreating:
-			if key.Matches(msg, m.keys.Back) {
+			if key.Matches(msg, m.keys.Back) && !m.create.form.IsEditing() {
 				m.mode = listModeBrowsing
 				m.create = nil
 				return m, nil
 			}
 		case listModeEditing:
-			if key.Matches(msg, m.keys.Back) {
+			if key.Matches(msg, m.keys.Back) && !m.edit.form.IsEditing() {
 				m.mode = listModeBrowsing
 				m.edit = nil
 				return m, nil
 			}
 		case listModeTagging:
-			if key.Matches(msg, m.keys.Back) {
+			if key.Matches(msg, m.keys.Back) && !m.tags.FormEditing() {
 				if m.tags.Saving() {
 					return m, nil
 				}
@@ -182,7 +182,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 				return m, nil
 			}
 		case listModeFiltering:
-			if key.Matches(msg, m.keys.Back) {
+			if key.Matches(msg, m.keys.Back) && !m.filter.form.IsEditing() {
 				m.mode, m.filter = listModeBrowsing, nil
 				return m, nil
 			}
@@ -308,7 +308,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	case listModeTagging:
 		return []key.Binding{m.formKeys.Submit, m.keys.Back}
 	case listModeCreating, listModeEditing:
-		return []key.Binding{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit, m.keys.Back}
+		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
 		return []key.Binding{
 			m.keys.Up, m.keys.Down,
@@ -332,7 +332,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 		return [][]key.Binding{{m.formKeys.Submit, m.keys.Back}}
 	case listModeCreating, listModeEditing:
 		return [][]key.Binding{
-			{m.formKeys.NextField, m.formKeys.PrevField, m.formKeys.Submit},
+			{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit},
 			{m.keys.Back},
 		}
 	case listModeBrowsing:

@@ -15,6 +15,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keyname"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -45,12 +46,82 @@ type orderPlacedMsg struct {
 	err      error
 }
 
+type placeField uint8
+
+const (
+	placeFieldMenu placeField = iota
+	placeFieldDrink
+	placeFieldQuantity
+	placeFieldItemNotes
+	placeFieldOrderNotes
+	placeFieldTags
+)
+
+func (f placeField) next() placeField {
+	switch f {
+	case placeFieldMenu:
+		return placeFieldDrink
+	case placeFieldDrink:
+		return placeFieldQuantity
+	case placeFieldQuantity:
+		return placeFieldItemNotes
+	case placeFieldItemNotes:
+		return placeFieldOrderNotes
+	case placeFieldOrderNotes:
+		return placeFieldTags
+	case placeFieldTags:
+		return placeFieldMenu
+	}
+	return placeFieldMenu
+}
+
+func (f placeField) previous() placeField {
+	switch f {
+	case placeFieldMenu:
+		return placeFieldTags
+	case placeFieldDrink:
+		return placeFieldMenu
+	case placeFieldQuantity:
+		return placeFieldDrink
+	case placeFieldItemNotes:
+		return placeFieldQuantity
+	case placeFieldOrderNotes:
+		return placeFieldItemNotes
+	case placeFieldTags:
+		return placeFieldOrderNotes
+	}
+	return placeFieldMenu
+}
+
+func (f placeField) isPicker() bool {
+	switch f {
+	case placeFieldMenu, placeFieldDrink:
+		return true
+	case placeFieldQuantity, placeFieldItemNotes, placeFieldOrderNotes, placeFieldTags:
+		return false
+	}
+	return false
+}
+
+func (f placeField) isMultiline() bool {
+	switch f {
+	case placeFieldItemNotes, placeFieldOrderNotes:
+		return true
+	case placeFieldMenu, placeFieldDrink, placeFieldQuantity, placeFieldTags:
+		return false
+	}
+	return false
+}
+
 type placeVM struct {
 	session                               *app.Session
 	workflow                              uint64
 	menus, visibleMenus                   []placeMenu
 	drinks, visibleDrinks                 []placeDrink
-	menuIndex, drinkIndex, focus          int
+	menuIndex, drinkIndex                 int
+	field                                 placeField
+	editing                               bool
+	original                              string
 	menuQuery, drinkQuery, quantity, tags textinput.Model
 	tagsDirty                             bool
 	itemNotes, orderNotes                 textarea.Model
@@ -75,7 +146,7 @@ func newPlaceVM(session *app.Session, workflow uint64) *placeVM {
 		tags:      input("Complete tags (optional): "),
 		itemNotes: notes("Item notes"), orderNotes: notes("Order notes")}
 	v.quantity.SetValue("1")
-	v.menuQuery.Focus()
+	v.refocus()
 	return v
 }
 func (v *placeVM) Init() tea.Cmd { return v.loadCatalog() }
@@ -166,7 +237,7 @@ func (v *placeVM) chooseMenu() {
 	v.drinks = append([]placeDrink(nil), picked.drinks...)
 	v.lines = nil
 	v.filterDrinks()
-	v.focus = 1
+	v.field = placeFieldDrink
 	v.refocus()
 }
 func (v *placeVM) add() {
@@ -247,18 +318,21 @@ func (v *placeVM) refocus() {
 	v.itemNotes.Blur()
 	v.orderNotes.Blur()
 	v.tags.Blur()
-	switch v.focus {
-	case 0:
+	if !v.editing {
+		return
+	}
+	switch v.field {
+	case placeFieldMenu:
 		v.menuQuery.Focus()
-	case 1:
+	case placeFieldDrink:
 		v.drinkQuery.Focus()
-	case 2:
+	case placeFieldQuantity:
 		v.quantity.Focus()
-	case 3:
+	case placeFieldItemNotes:
 		v.itemNotes.Focus()
-	case 4:
+	case placeFieldOrderNotes:
 		v.orderNotes.Focus()
-	case 5:
+	case placeFieldTags:
 		v.tags.Focus()
 	}
 }
@@ -266,62 +340,158 @@ func (v *placeVM) Update(msg tea.Msg) tea.Cmd {
 	key, ok := msg.(tea.KeyMsg)
 	if ok {
 		v.backArmed = false
-		switch key.String() {
-		case "tab":
-			v.focus = (v.focus + 1) % 6
-			v.refocus()
-			return nil
-		case "shift+tab":
-			v.focus = (v.focus + 5) % 6
-			v.refocus()
-			return nil
-		case "up":
-			if v.focus == 0 && v.menuIndex > 0 {
-				v.menuIndex--
-			}
-			if v.focus == 1 && v.drinkIndex > 0 {
-				v.drinkIndex--
-			}
-			return nil
-		case "down":
-			if v.focus == 0 && v.menuIndex+1 < len(v.visibleMenus) {
-				v.menuIndex++
-			}
-			if v.focus == 1 && v.drinkIndex+1 < len(v.visibleDrinks) {
-				v.drinkIndex++
-			}
-			return nil
-		case "enter":
-			if v.focus == 0 {
-				v.chooseMenu()
+		if !v.editing {
+			switch key.String() {
+			case keyname.Up, keyname.VimUp, keyname.ShiftTab:
+				v.field = v.field.previous()
+				v.refocus()
 				return nil
+			case keyname.Down, keyname.VimDown, keyname.Tab:
+				v.field = v.field.next()
+				v.refocus()
+				return nil
+			case keyname.Edit, keyname.Enter:
+				v.beginEdit()
+				return nil
+			default:
+				if key.Type == tea.KeyRunes || key.Type == tea.KeyCtrlU || key.Type == tea.KeyBackspace || key.Type == tea.KeyDelete {
+					v.beginEdit()
+				}
 			}
-			if v.focus == 1 {
-				v.add()
+		} else {
+			switch key.String() {
+			case keyname.Escape:
+				v.finishEdit(true)
+				return nil
+			case keyname.InsertLine:
+				if v.field == placeFieldItemNotes {
+					v.itemNotes.SetValue(v.itemNotes.Value() + "\n")
+					return nil
+				}
+				if v.field == placeFieldOrderNotes {
+					v.orderNotes.SetValue(v.orderNotes.Value() + "\n")
+					return nil
+				}
+			case keyname.Enter:
+				if v.field == placeFieldMenu {
+					v.chooseMenu()
+				} else if v.field == placeFieldDrink {
+					v.add()
+				}
+				v.finishEdit(false)
+				return nil
+			case keyname.Tab, keyname.ShiftTab:
+				v.finishEdit(false)
+				if key.String() == keyname.ShiftTab {
+					v.field = v.field.previous()
+				} else {
+					v.field = v.field.next()
+				}
+				v.refocus()
+				return nil
+			case keyname.Up, keyname.Down:
+				if !v.field.isPicker() {
+					v.finishEdit(false)
+					if key.String() == keyname.Up {
+						v.field = v.field.previous()
+					} else {
+						v.field = v.field.next()
+					}
+					v.refocus()
+					return nil
+				}
+				if v.field == placeFieldMenu && key.String() == keyname.Up && v.menuIndex > 0 {
+					v.menuIndex--
+				}
+				if v.field == placeFieldMenu && key.String() == keyname.Down && v.menuIndex+1 < len(v.visibleMenus) {
+					v.menuIndex++
+				}
+				if v.field == placeFieldDrink && key.String() == keyname.Up && v.drinkIndex > 0 {
+					v.drinkIndex--
+				}
+				if v.field == placeFieldDrink && key.String() == keyname.Down && v.drinkIndex+1 < len(v.visibleDrinks) {
+					v.drinkIndex++
+				}
 				return nil
 			}
 		}
 	}
 	var cmd tea.Cmd
-	switch v.focus {
-	case 0:
+	switch v.field {
+	case placeFieldMenu:
 		v.menuQuery, cmd = v.menuQuery.Update(msg)
 		v.filterMenus()
-	case 1:
+	case placeFieldDrink:
 		v.drinkQuery, cmd = v.drinkQuery.Update(msg)
 		v.filterDrinks()
-	case 2:
+	case placeFieldQuantity:
 		v.quantity, cmd = v.quantity.Update(msg)
-	case 3:
+	case placeFieldItemNotes:
 		v.itemNotes, cmd = v.itemNotes.Update(msg)
-	case 4:
+	case placeFieldOrderNotes:
 		v.orderNotes, cmd = v.orderNotes.Update(msg)
-	case 5:
+	case placeFieldTags:
 		before := v.tags.Value()
 		v.tags, cmd = v.tags.Update(msg)
 		v.tagsDirty = v.tagsDirty || v.tags.Value() != before
 	}
 	return cmd
+}
+
+func (v *placeVM) beginEdit() {
+	if v.editing {
+		return
+	}
+	v.editing, v.original = true, v.focusValue()
+	v.refocus()
+}
+
+func (v *placeVM) finishEdit(restore bool) {
+	if !v.editing {
+		return
+	}
+	if restore {
+		v.setFocusValue(v.original)
+	}
+	v.editing, v.original = false, ""
+	v.refocus()
+}
+
+func (v *placeVM) focusValue() string {
+	switch v.field {
+	case placeFieldMenu:
+		return v.menuQuery.Value()
+	case placeFieldDrink:
+		return v.drinkQuery.Value()
+	case placeFieldQuantity:
+		return v.quantity.Value()
+	case placeFieldItemNotes:
+		return v.itemNotes.Value()
+	case placeFieldOrderNotes:
+		return v.orderNotes.Value()
+	case placeFieldTags:
+		return v.tags.Value()
+	}
+	return ""
+}
+
+func (v *placeVM) setFocusValue(value string) {
+	switch v.field {
+	case placeFieldMenu:
+		v.menuQuery.SetValue(value)
+		v.filterMenus()
+	case placeFieldDrink:
+		v.drinkQuery.SetValue(value)
+		v.filterDrinks()
+	case placeFieldQuantity:
+		v.quantity.SetValue(value)
+	case placeFieldItemNotes:
+		v.itemNotes.SetValue(value)
+	case placeFieldOrderNotes:
+		v.orderNotes.SetValue(value)
+	case placeFieldTags:
+		v.tags.SetValue(value)
+	}
 }
 func (v *placeVM) View() string {
 	lines := []string{"Place Order", "", v.menuQuery.View()}
@@ -357,6 +527,13 @@ func (v *placeVM) View() string {
 	if v.err != nil {
 		lines = append(lines, "", "Error: "+v.err.Error())
 	}
-	lines = append(lines, "", "ctrl+s place • esc back")
+	help := "↑/↓ field • e edit • ctrl+s place • esc back"
+	if v.editing {
+		help = "enter accept • esc cancel value"
+		if v.field.isMultiline() {
+			help += " • ctrl+j newline"
+		}
+	}
+	lines = append(lines, "", help)
 	return strings.Join(lines, "\n")
 }

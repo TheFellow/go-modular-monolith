@@ -10,21 +10,42 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+)
+
+const (
+	ControlFilter       = "inventory-filter"
+	ControlThreshold    = "inventory-low-stock-threshold"
+	ControlApplyFilter  = "inventory-apply-filter"
+	ControlPrevious     = "inventory-previous"
+	ControlNext         = "inventory-next"
+	ControlRefresh      = "inventory-refresh"
+	ControlAdjust       = "inventory-adjust"
+	ControlSet          = "inventory-set"
+	ControlTags         = "inventory-tags"
+	ControlSelectPrefix = "inventory-select-"
+	ControlAmount       = "inventory-form-amount"
+	ControlQuantity     = "inventory-form-quantity"
+	ControlCost         = "inventory-form-cost"
+	ControlAdjustTags   = "inventory-adjust-tags"
+	ControlSetTags      = "inventory-set-tags"
+	ControlFormTags     = "inventory-form-tags"
+	ControlSave         = "inventory-form-save"
+	ControlCancel       = "inventory-form-cancel"
 )
 
 type View struct {
 	presenter                                 *Presenter
 	root                                      *framework.Container
-	expression, threshold, amount, cost, tags *fyneui.SemanticEntry
+	expression, threshold, amount, cost, tags *toolkit.SemanticEntry
 	stock, limit, reason                      *widget.Select
-	save                                      *fyneui.SemanticButton
-	refresh, cancel                           *fyneui.SemanticButton
-	rows                                      map[string]*fyneui.SemanticButton
+	save                                      *toolkit.SemanticButton
+	refresh, cancel                           *toolkit.SemanticButton
+	rows                                      map[string]*toolkit.SemanticButton
 }
 
-var _ fyneui.View = (*View)(nil)
-var _ fyneui.Activated = (*View)(nil)
+var _ toolkit.View = (*View)(nil)
+var _ toolkit.Activated = (*View)(nil)
 
 func NewView(presenter *Presenter) *View {
 	v := &View{presenter: presenter, root: container.NewStack()}
@@ -35,23 +56,23 @@ func NewView(presenter *Presenter) *View {
 func (v *View) Title() string                   { return "Inventory" }
 func (v *View) Content() framework.CanvasObject { return v.root }
 func (v *View) Activate()                       { v.presenter.Load() }
-func (v *View) ExecuteCommand(command fyneui.Command) bool {
+func (v *View) ExecuteCommand(command toolkit.Command) bool {
 	state := v.presenter.Snapshot()
 	switch command {
-	case fyneui.CommandRefresh:
-		return state.Mode == Browse && fyneui.Trigger(v.refresh)
-	case fyneui.CommandSave:
-		return state.Mode != Browse && fyneui.Trigger(v.save)
-	case fyneui.CommandCancel:
-		return state.Mode != Browse && fyneui.Trigger(v.cancel)
-	case fyneui.CommandNew:
+	case toolkit.CommandRefresh:
+		return state.Mode == Browse && toolkit.Trigger(v.refresh)
+	case toolkit.CommandSave:
+		return state.Mode != Browse && toolkit.Trigger(v.save)
+	case toolkit.CommandCancel:
+		return state.Mode != Browse && toolkit.Trigger(v.cancel)
+	case toolkit.CommandNew:
 		return false
 	}
 	return false
 }
 
 func (v *View) render(state State) {
-	v.expression = fyneui.NewEntry("inventory-filter")
+	v.expression = toolkit.NewEntry(ControlFilter)
 	v.expression.SetPlaceHolder(`quantity <= 5 && tags contains "featured"`)
 	v.expression.SetText(state.Expression)
 	v.stock = widget.NewSelect([]string{"all", "low stock"}, nil)
@@ -65,10 +86,10 @@ func (v *View) render(state State) {
 	if v.limit.Selected == "" {
 		v.limit.SetSelected("100")
 	}
-	v.threshold = fyneui.NewEntry("inventory-low-stock-threshold")
+	v.threshold = toolkit.NewEntry(ControlThreshold)
 	v.threshold.SetPlaceHolder("Low-stock threshold")
 	v.threshold.SetText(strconv.FormatFloat(state.LowStock, 'f', -1, 64))
-	apply := fyneui.NewButton("inventory-apply-filter", "Apply", func() {
+	apply := toolkit.NewButton(ControlApplyFilter, "Apply", func() {
 		limit, _ := strconv.Atoi(v.limit.Selected)
 		threshold, err := strconv.ParseFloat(v.threshold.Text, 64)
 		if err != nil {
@@ -81,19 +102,19 @@ func (v *View) render(state State) {
 		v.presenter.Filter(stock, v.expression.Text, threshold, limit)
 	})
 	filters := container.NewBorder(nil, nil, container.NewHBox(v.stock, v.threshold, v.limit), apply, v.expression)
-	prev := fyneui.NewButton("inventory-previous", "Previous", v.presenter.PreviousPage)
+	prev := toolkit.NewButton(ControlPrevious, "Previous", v.presenter.PreviousPage)
 	if len(state.History) == 0 {
 		prev.Disable()
 	}
-	next := fyneui.NewButton("inventory-next", "Next", v.presenter.NextPage)
+	next := toolkit.NewButton(ControlNext, "Next", v.presenter.NextPage)
 	if state.Next == "" {
 		next.Disable()
 	}
-	refresh := fyneui.NewButton("inventory-refresh", "Refresh", v.presenter.Load)
+	refresh := toolkit.NewButton(ControlRefresh, "Refresh", v.presenter.Load)
 	v.refresh = refresh
-	adjust := fyneui.NewButton("inventory-adjust", "Adjust", v.presenter.StartAdjust)
-	set := fyneui.NewButton("inventory-set", "Set", v.presenter.StartSet)
-	tags := fyneui.NewButton("inventory-tags", "Tags", v.presenter.StartTags)
+	adjust := toolkit.Primary(toolkit.NewButton(ControlAdjust, "Adjust stock", v.presenter.StartAdjust))
+	set := toolkit.NewButton(ControlSet, "Set", v.presenter.StartSet)
+	tags := toolkit.NewButton(ControlTags, "Tags", v.presenter.StartTags)
 	if state.Mode != Browse || state.Submitting {
 		refresh.Disable()
 		adjust.Disable()
@@ -107,35 +128,39 @@ func (v *View) render(state State) {
 		v.threshold.Disable()
 		v.limit.Disable()
 	}
-	toolbar := container.NewHBox(refresh, adjust, set, tags, prev, next)
 	rows := container.NewVBox()
-	v.rows = make(map[string]*fyneui.SemanticButton, len(state.Rows))
+	v.rows = make(map[string]*toolkit.SemanticButton, len(state.Rows))
 	for i := range state.Rows {
 		row := state.Rows[i]
 		id := row.Inventory.ID
-		button := fyneui.NewButton("inventory-select-"+id.String(), fmt.Sprintf("%s  ·  %s  ·  %s  ·  %s", row.Ingredient.Name, row.Ingredient.Category, row.Quantity, row.Status), func() { v.presenter.Select(id) })
+		button := toolkit.NewButton(ControlSelectPrefix+id.String(), fmt.Sprintf("%s  ·  %s  ·  %s  ·  %s", row.Ingredient.Name, row.Ingredient.Category, row.Quantity, row.Status), func() { v.presenter.Select(id) })
 		if state.Mode != Browse || state.Submitting {
 			button.Disable()
 		}
 		v.rows[id.String()] = button
 		rows.Add(button)
 	}
-	if len(state.Rows) == 0 && state.Status == fyneui.Loaded {
+	if len(state.Rows) == 0 && state.Status == toolkit.Loaded {
 		rows.Add(widget.NewLabel("No inventory found"))
 	}
 	status := ""
 	switch state.Status {
-	case fyneui.Loading:
+	case toolkit.Loading:
 		status = "Loading inventory…"
-	case fyneui.Failed:
+	case toolkit.Failed:
 		status = "Unable to load inventory"
-	case fyneui.Idle, fyneui.Loaded:
+	case toolkit.Idle, toolkit.Loaded:
 	}
 	if state.Err != nil {
 		status = "Error: " + state.Err.Error()
 	}
-	content := fyneui.ListDetail(container.NewScroll(rows), v.detail(state), .42)
-	v.root.Objects = []framework.CanvasObject{container.NewBorder(container.NewVBox(toolbar, filters, widget.NewLabel(status)), nil, nil, nil, content)}
+	v.root.Objects = []framework.CanvasObject{toolkit.StandardListPage(toolkit.ListPage{
+		Title: "Inventory", Subtitle: "Review stock levels and select an item to adjust or set its quantity.", Filters: filters,
+		PrimaryActions: []framework.CanvasObject{adjust, refresh},
+		OtherActions:   []framework.CanvasObject{set, tags},
+		List:           container.NewScroll(rows), Detail: v.detail(state), Status: widget.NewLabel(status),
+		Paging: container.NewHBox(prev, next), ListRatio: .42,
+	})}
 	v.root.Refresh()
 }
 
@@ -144,7 +169,7 @@ func (v *View) detail(state State) framework.CanvasObject {
 		return v.form(state)
 	}
 	if state.Selected == nil {
-		return container.NewPadded(widget.NewLabel("Select a stock item to view details"))
+		return toolkit.EmptyDetail("a stock item")
 	}
 	r := state.Selected
 	tags := r.Inventory.Tags.Canonical().String()
@@ -185,30 +210,30 @@ func (v *View) form(state State) framework.CanvasObject {
 	var fields framework.CanvasObject
 	switch state.Mode {
 	case Adjust:
-		v.amount = fyneui.NewEntry("inventory-form-amount")
+		v.amount = toolkit.NewEntry(ControlAmount)
 		v.amount.SetPlaceHolder("Optional, e.g. +5.00 or -2.50")
 		v.amount.SetText(state.Form.Amount)
-		v.cost = fyneui.NewEntry("inventory-form-cost")
+		v.cost = toolkit.NewEntry(ControlCost)
 		v.cost.SetPlaceHolder("Optional")
 		v.cost.SetText(state.Form.Cost)
 		v.reason = widget.NewSelect([]string{string(inventorymodels.ReasonReceived), string(inventorymodels.ReasonUsed), string(inventorymodels.ReasonSpilled), string(inventorymodels.ReasonExpired), string(inventorymodels.ReasonCorrected)}, nil)
 		v.reason.SetSelected(string(state.Form.Reason))
-		v.tags = fyneui.NewEntry("inventory-adjust-tags")
+		v.tags = toolkit.NewEntry(ControlAdjustTags)
 		v.tags.SetText(state.Form.Tags)
 		fields = widget.NewForm(widget.NewFormItem("Signed amount", v.amount), widget.NewFormItem("Cost per unit ("+currencyLabel+")", v.cost), widget.NewFormItem("Reason", v.reason), widget.NewFormItem("Tags (complete set)", v.tags))
 	case Set:
 		title = "Set Inventory"
-		v.amount = fyneui.NewEntry("inventory-form-quantity")
+		v.amount = toolkit.NewEntry(ControlQuantity)
 		v.amount.SetText(state.Form.Amount)
-		v.cost = fyneui.NewEntry("inventory-form-cost")
+		v.cost = toolkit.NewEntry(ControlCost)
 		v.cost.SetPlaceHolder("Optional")
 		v.cost.SetText(state.Form.Cost)
-		v.tags = fyneui.NewEntry("inventory-set-tags")
+		v.tags = toolkit.NewEntry(ControlSetTags)
 		v.tags.SetText(state.Form.Tags)
 		fields = widget.NewForm(widget.NewFormItem("Quantity", v.amount), widget.NewFormItem("Cost per unit ("+currencyLabel+")", v.cost), widget.NewFormItem("Tags (complete set)", v.tags))
 	case Tags:
 		title = "Edit Inventory Tags"
-		v.tags = fyneui.NewEntry("inventory-form-tags")
+		v.tags = toolkit.NewEntry(ControlFormTags)
 		v.tags.SetPlaceHolder("featured, region=west")
 		v.tags.SetText(state.Form.Tags)
 		fields = container.NewVBox(widget.NewLabel("Complete tag set (CSV); clear to remove all tags"), v.tags)
@@ -218,7 +243,7 @@ func (v *View) form(state State) framework.CanvasObject {
 	if state.Err != nil {
 		errorText = "Error: " + state.Err.Error()
 	}
-	v.save = fyneui.NewButton("inventory-form-save", "Save", func() {
+	v.save = toolkit.NewButton(ControlSave, "Save", func() {
 		form := Form{}
 		switch state.Mode {
 		case Adjust:
@@ -239,10 +264,10 @@ func (v *View) form(state State) framework.CanvasObject {
 	if state.Submitting {
 		v.save.Disable()
 	}
-	cancel := fyneui.NewButton("inventory-form-cancel", "Cancel", v.presenter.Cancel)
+	cancel := toolkit.NewButton(ControlCancel, "Cancel", v.presenter.Cancel)
 	v.cancel = cancel
 	if state.Submitting {
 		cancel.Disable()
 	}
-	return container.NewPadded(container.NewVBox(widget.NewLabelWithStyle(title, framework.TextAlignLeading, framework.TextStyle{Bold: true}), widget.NewLabel(errorText), fields, container.NewHBox(v.save, cancel)))
+	return toolkit.StandardFormPage(toolkit.FormPage{Title: title, Fields: fields, Status: widget.NewLabel(errorText), Save: v.save, Cancel: cancel})
 }

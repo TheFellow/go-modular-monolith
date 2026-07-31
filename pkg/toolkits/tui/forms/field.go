@@ -27,6 +27,24 @@ type Field interface {
 	SetWidth(w int)
 }
 
+// editLifecycle lets a field distinguish being selected for navigation from
+// actively accepting input. Forms still support fields that do not implement
+// it by snapshotting and restoring their Value.
+type editLifecycle interface {
+	BeginEdit() tea.Cmd
+	EndEdit()
+}
+
+// acceptOwner is implemented by composite fields whose Enter key operates an
+// internal control rather than accepting the whole field.
+type acceptOwner interface {
+	OwnsAccept() bool
+}
+
+type navigationOwner interface {
+	OwnsNavigation(tea.KeyMsg) bool
+}
+
 // FieldOption configures a field.
 type FieldOption func(Field)
 

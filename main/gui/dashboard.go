@@ -10,10 +10,14 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	application "github.com/TheFellow/go-modular-monolith/app"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
-const dashboardRecentMax = application.DashboardRecentLimit
+const (
+	dashboardRecentMax         = application.DashboardRecentLimit
+	controlDashboardRefresh    = "dashboard-refresh"
+	controlDashboardOpenPrefix = "dashboard-open-"
+)
 
 type dashboardLoader interface {
 	LoadDashboard() (application.Dashboard, error)
@@ -30,7 +34,7 @@ func unknownDashboardData() application.Dashboard {
 }
 
 type dashboardState struct {
-	Status fyneui.LoadStatus
+	Status gui.LoadStatus
 	Data   application.Dashboard
 	Err    error
 }
@@ -40,7 +44,7 @@ type dashboardState struct {
 // in tests while production work remains off Fyne's UI goroutine.
 type dashboardViewModel struct {
 	loader  dashboardLoader
-	request *fyneui.LatestRequest[dashboardLoadResult]
+	request *gui.LatestRequest[dashboardLoadResult]
 
 	mu      sync.RWMutex
 	work    sync.WaitGroup
@@ -57,10 +61,10 @@ type dashboardLoadResult struct {
 	err  error
 }
 
-func newDashboardViewModel(loader dashboardLoader, executor fyneui.Executor, dispatcher fyneui.Dispatcher) *dashboardViewModel {
+func newDashboardViewModel(loader dashboardLoader, executor gui.Executor, dispatcher gui.Dispatcher) *dashboardViewModel {
 	return &dashboardViewModel{
-		loader: loader, request: fyneui.NewLatestRequest[dashboardLoadResult](executor, dispatcher),
-		state: dashboardState{Status: fyneui.Idle, Data: unknownDashboardData()},
+		loader: loader, request: gui.NewLatestRequest[dashboardLoadResult](executor, dispatcher),
+		state: dashboardState{Status: gui.Idle, Data: unknownDashboardData()},
 	}
 }
 
@@ -89,7 +93,7 @@ func (m *dashboardViewModel) Refresh() {
 	}, m.publish)
 }
 
-func (m *dashboardViewModel) publish(result fyneui.LoadState[dashboardLoadResult]) {
+func (m *dashboardViewModel) publish(result gui.LoadState[dashboardLoadResult]) {
 	m.mu.Lock()
 	if m.closed {
 		m.mu.Unlock()
@@ -99,7 +103,7 @@ func (m *dashboardViewModel) publish(result fyneui.LoadState[dashboardLoadResult
 	if result.Err != nil {
 		state.Err = result.Err
 	}
-	if result.Status == fyneui.Loading {
+	if result.Status == gui.Loading {
 		state.Data = m.state.Data
 	}
 	m.state = state
@@ -136,22 +140,25 @@ type dashboardView struct {
 	cards    *framework.Container
 	activity *framework.Container
 	navigate func(string) error
-	visible  map[string]bool
+	visible  map[workspace]bool
 }
 
-type dashboardCard struct{ route, title, description string }
+type dashboardCard struct {
+	route              workspace
+	title, description string
+}
 
 var dashboardCards = []dashboardCard{
-	{"drinks", "Drinks", "Manage drink recipes"},
-	{"ingredients", "Ingredients", "Catalog ingredients"},
-	{"inventory", "Inventory", "Track stock levels"},
-	{"menus", "Menus", "Build drink menus"},
-	{"orders", "Orders", "Review orders"},
-	{"audit", "Audit", "Inspect audit logs"},
-	{"tags", "Tags", "Tag any entity"},
+	{workspaceDrinks, "Drinks", "Manage drink recipes"},
+	{workspaceIngredients, "Ingredients", "Catalog ingredients"},
+	{workspaceInventory, "Inventory", "Track stock levels"},
+	{workspaceMenus, "Menus", "Build drink menus"},
+	{workspaceOrders, "Orders", "Review orders"},
+	{workspaceAudit, "Audit", "Inspect audit logs"},
+	{workspaceTags, "Tags", "Tag any entity"},
 }
 
-func newDashboardView(model *dashboardViewModel, navigate func(string) error, visible ...map[string]bool) *dashboardView {
+func newDashboardView(model *dashboardViewModel, navigate func(string) error, visible ...map[workspace]bool) *dashboardView {
 	v := &dashboardView{
 		model: model, status: widget.NewLabel(""),
 		cards: container.NewAdaptiveGrid(3), activity: container.NewVBox(), navigate: navigate,
@@ -159,16 +166,13 @@ func newDashboardView(model *dashboardViewModel, navigate func(string) error, vi
 	if len(visible) != 0 {
 		v.visible = visible[0]
 	}
-	refresh := fyneui.NewButton("dashboard-refresh", "Refresh", model.Refresh)
-	header := container.NewBorder(nil, nil,
-		widget.NewLabel("Overview of the Mixology application"), refresh,
-	)
-	v.content = container.NewBorder(
-		container.NewVBox(header, v.status), nil, nil, nil,
+	refresh := gui.NewButton(controlDashboardRefresh, "Refresh", model.Refresh)
+	v.content = gui.StandardPage(
+		"Dashboard", "Overview of the Mixology application", []framework.CanvasObject{refresh},
 		container.NewVScroll(container.NewVBox(v.cards, widget.NewSeparator(),
 			widget.NewLabelWithStyle("Recent Activity", framework.TextAlignLeading, framework.TextStyle{Bold: true}),
-			v.activity)),
-	)
+			v.activity)), v.status,
+	).(*framework.Container)
 	model.Observe(v.render)
 	return v
 }
@@ -179,13 +183,13 @@ func (v *dashboardView) Activate()                       { v.model.Refresh() }
 
 func (v *dashboardView) render(state dashboardState) {
 	switch state.Status {
-	case fyneui.Idle:
+	case gui.Idle:
 		v.status.SetText("Dashboard has not been loaded")
-	case fyneui.Loading:
+	case gui.Loading:
 		v.status.SetText("Loading dashboard…")
-	case fyneui.Failed:
+	case gui.Failed:
 		v.status.SetText("Dashboard could not be loaded: " + state.Err.Error())
-	case fyneui.Loaded:
+	case gui.Loaded:
 		if state.Err != nil {
 			v.status.SetText("Some dashboard information is unavailable: " + state.Err.Error())
 		} else {
@@ -199,13 +203,13 @@ func (v *dashboardView) render(state dashboardState) {
 			continue
 		}
 		count, detail := dashboardCardText(definition.route, state.Data)
-		button := fyneui.NewButton("dashboard-open-"+definition.route, "Open", func() { _ = v.navigate(definition.route) })
+		button := gui.NewButton(controlDashboardOpenPrefix+definition.route.routeID(), "Open", func() { _ = v.navigate(definition.route.routeID()) })
 		v.cards.Add(widget.NewCard(definition.title+"  "+count, detail, button))
 	}
 	v.activity.RemoveAll()
 	if len(state.Data.RecentActivity) == 0 {
 		message := "No recent activity"
-		if state.Status == fyneui.Loading {
+		if state.Status == gui.Loading {
 			message = "Loading recent activity…"
 		}
 		v.activity.Add(widget.NewLabel(message))
@@ -219,23 +223,26 @@ func (v *dashboardView) render(state dashboardState) {
 	v.activity.Refresh()
 }
 
-func dashboardCardText(route string, data application.Dashboard) (string, string) {
+func dashboardCardText(route workspace, data application.Dashboard) (string, string) {
 	switch route {
-	case "drinks":
+	case workspaceDashboard:
+		return "", "Overview of the Mixology application"
+	case workspaceDrinks:
 		return formatDashboardCount(data.DrinkCount), "Manage drink recipes"
-	case "ingredients":
+	case workspaceIngredients:
 		return formatDashboardCount(data.IngredientCount), "Catalog ingredients"
-	case "inventory":
+	case workspaceInventory:
 		return formatDashboardCount(data.InventoryCount), "Low stock: " + formatDashboardCount(data.LowStockCount)
-	case "menus":
+	case workspaceMenus:
 		return formatDashboardCount(data.MenuCount), fmt.Sprintf("Draft %s • Published %s", formatDashboardCount(data.DraftMenus), formatDashboardCount(data.PublishedMenus))
-	case "orders":
+	case workspaceOrders:
 		return formatDashboardCount(data.OrderCount), "Pending: " + formatDashboardCount(data.PendingOrders)
-	case "audit":
+	case workspaceAudit:
 		return formatDashboardCount(data.AuditCount), "Inspect audit logs"
-	default:
+	case workspaceTags:
 		return "", "Tag any entity"
 	}
+	return "", ""
 }
 
 func formatDashboardCount(count int) string {

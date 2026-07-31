@@ -8,7 +8,7 @@ import (
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 // Driver locates semantic controls and interacts through Fyne's test driver.
@@ -35,7 +35,7 @@ func (d Driver) Tap(id string) {
 func (d Driver) Type(id, value string) {
 	d.t.Helper()
 	object := d.find(id)
-	entry, ok := object.(*fyneui.SemanticEntry)
+	entry, ok := object.(*gui.SemanticEntry)
 	if !ok {
 		d.t.Fatalf("semantic control %q is not an entry", id)
 	}
@@ -47,7 +47,7 @@ func (d Driver) find(id string) framework.CanvasObject {
 	d.t.Helper()
 	var found framework.CanvasObject
 	walk(d.root, func(object framework.CanvasObject) bool {
-		semantic, ok := object.(fyneui.Semantic)
+		semantic, ok := object.(gui.Semantic)
 		if ok && semantic.SemanticID() == id {
 			found = object
 			return false

@@ -19,17 +19,31 @@ slice rather than accumulating domain behavior here.
 
 These directions are enforced by `.arch-lint.yaml`.
 
+## Information architecture
+
+The desktop uses one toolkit-owned application shell and standard page
+layouts. The persistent left navigation rail selects Dashboard or a domain
+workspace and visibly marks the active route. List-backed workspaces open in a
+primary/secondary layout: filters and actions above, the list on the left, and
+the selected entity's detail on the right. Create and edit workflows use the
+standard scrolling edit-form layout with persistent status and Save/Cancel
+actions.
+
+Domain GUI packages supply state, content, and commands; `pkg/toolkits/gui`
+owns shell, list/detail, action hierarchy, empty-detail, and edit-form layout.
+This follows CODE Framework's standard-layout principle so visual and
+interaction conventions cannot drift independently between domains.
+
 ## Persistence and lifecycle
 
-The desktop executable stores `mixology.db` and `mixology.log` beneath the
-operating system's user configuration directory in a `Mixology` directory.
-This is intentional application-state semantics: both files belong to one
-portable per-user state root, rather than splitting the embedded database and
-diagnostic log across platform-specific cache, config, and data locations.
-The Fyne window owns the application session. Closing it releases the embedded
-database and log before the process exits.
+Like the CLI and TUI, the desktop executable uses `data/mixology.db` by
+default. Data created or seeded through any surface is therefore visible in
+the others. The desktop diagnostic log remains in the operating system's user
+configuration directory under `Mixology/mixology.log`. The Fyne window owns
+the application session. Closing it releases the embedded database and log
+before the process exits.
 
-The default state locations are:
+The default desktop log locations are:
 
 | Platform | Directory |
 | --- | --- |
@@ -37,11 +51,11 @@ The default state locations are:
 | Windows | `%AppData%\Mixology` |
 | Linux | `$XDG_CONFIG_HOME/Mixology`, or `~/.config/Mixology` when unset |
 
-The desktop database is deliberately separate from the CLI/TUI database at
-`data/mixology.db`. Seeded CLI data therefore does not appear in the desktop
-client, and deleting one database does not reset the other surface. For a
-fresh desktop environment, close Mixology and move or remove both
-`mixology.db` and `mixology.log` from the directory above.
+Close every Mixology surface before moving or removing `data/mixology.db`,
+because the embedded database permits only one process to own it at a time.
+The desktop log can be reset independently by moving or removing
+`mixology.log` from the directory above while the desktop application is
+closed.
 
 ## Keyboard and accessibility
 

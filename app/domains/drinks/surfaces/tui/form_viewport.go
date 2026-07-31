@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-const recipeNavigationHelp = "ctrl+n/p: recipe control\nenter: choose/toggle • arrows: choices"
+const recipeNavigationHelp = "↑/↓: recipe field • ←/→: choices\nenter: choose/toggle • tab: next form field"
 
 // formViewport keeps large, dynamic terminal forms usable without leaking
 // scrolling policy into the generic forms package. Navigation help is pinned

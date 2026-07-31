@@ -17,7 +17,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
-	fyneui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
 func ingredientFixture(t *testing.T) (*testutil.Fixture, *models.Ingredient, *models.Ingredient) {
@@ -28,14 +28,14 @@ func ingredientFixture(t *testing.T) (*testutil.Fixture, *models.Ingredient, *mo
 	return fix, gin, lime
 }
 
-func newTestPresenter(session *application.Session, executor fyneui.Executor) (*Presenter, *fynetest.Dialogs) {
+func newTestPresenter(session *application.Session, executor toolkit.Executor) (*Presenter, *fynetest.Dialogs) {
 	dialogs := &fynetest.Dialogs{}
-	return NewPresenter(session, executor, fyneui.InlineDispatcher{}, dialogs), dialogs
+	return NewPresenter(session, executor, toolkit.InlineDispatcher{}, dialogs), dialogs
 }
 
 func TestPresenterLoadsSelectsAndFiltersByExactCategoryAndExpression(t *testing.T) {
 	fix, gin, _ := ingredientFixture(t)
-	presenter, _ := newTestPresenter(fix.App, fyneui.InlineExecutor{})
+	presenter, _ := newTestPresenter(fix.App, toolkit.InlineExecutor{})
 	presenter.Load()
 	state := presenter.Snapshot()
 	if len(state.Items) != 2 || state.Selected == nil {
@@ -47,7 +47,7 @@ func TestPresenterLoadsSelectsAndFiltersByExactCategoryAndExpression(t *testing.
 		t.Fatalf("filtered state = %#v", state)
 	}
 	presenter.Filter("", `(`)
-	if state = presenter.Snapshot(); state.Status != fyneui.Failed || state.Err == nil {
+	if state = presenter.Snapshot(); state.Status != toolkit.Failed || state.Err == nil {
 		t.Fatalf("invalid expression state = %#v", state)
 	}
 }
@@ -76,7 +76,7 @@ func TestViewPagesMoreThanOneHundredIngredients(t *testing.T) {
 			Name: fmt.Sprintf("Ingredient %03d", i), Category: models.CategoryOther, Unit: measurement.UnitOz,
 		})
 	}
-	presenter, _ := newTestPresenter(fix.App, fyneui.InlineExecutor{})
+	presenter, _ := newTestPresenter(fix.App, toolkit.InlineExecutor{})
 	view := NewView(presenter)
 	view.limit.SetSelected("25")
 	fynetest.NewDriver(t, view.Content()).Tap("ingredients-apply-filter")
@@ -100,7 +100,7 @@ func TestViewPagesMoreThanOneHundredIngredients(t *testing.T) {
 
 func TestPresenterRefreshObservesWritesThroughAnotherSurfaceBoundary(t *testing.T) {
 	fix := testutil.NewFixture(t)
-	presenter, _ := newTestPresenter(fix.App, fyneui.InlineExecutor{})
+	presenter, _ := newTestPresenter(fix.App, toolkit.InlineExecutor{})
 	presenter.Load()
 	if len(presenter.Snapshot().Items) != 0 {
 		t.Fatal("expected empty initial view")
@@ -116,7 +116,7 @@ func TestPresenterRefreshObservesWritesThroughAnotherSurfaceBoundary(t *testing.
 
 func TestPresenterCreatesPersistsAndAuditsTouchedIngredient(t *testing.T) {
 	fix := testutil.NewFixture(t)
-	presenter, _ := newTestPresenter(fix.App, fyneui.InlineExecutor{})
+	presenter, _ := newTestPresenter(fix.App, toolkit.InlineExecutor{})
 	presenter.Load()
 	presenter.StartCreate()
 	if !presenter.Submit(Form{Name: "  Orgeat  ", Category: models.CategorySyrup, Unit: measurement.UnitMl, Description: "  Almond syrup  "}) {
@@ -133,7 +133,7 @@ func TestPresenterCreatesPersistsAndAuditsTouchedIngredient(t *testing.T) {
 func TestPresenterEditPermissionFailureRetainsFormWithoutMutation(t *testing.T) {
 	fix, gin, _ := ingredientFixture(t)
 	denied := application.NewSession(fix.ActorContext("bartender"), fix.App.App)
-	presenter, _ := newTestPresenter(denied, fyneui.InlineExecutor{})
+	presenter, _ := newTestPresenter(denied, toolkit.InlineExecutor{})
 	presenter.Load()
 	presenter.Select(gin.ID)
 	presenter.StartEdit()
@@ -199,7 +199,7 @@ func TestPresenterSuppressesDuplicateMutation(t *testing.T) {
 
 func TestPresenterReplacesCanonicalTagsAndClearsCompleteSet(t *testing.T) {
 	fix, gin, _ := ingredientFixture(t)
-	presenter, _ := newTestPresenter(fix.App, fyneui.InlineExecutor{})
+	presenter, _ := newTestPresenter(fix.App, toolkit.InlineExecutor{})
 	presenter.Load()
 	presenter.Select(gin.ID)
 	presenter.StartTags()
@@ -218,7 +218,7 @@ func TestPresenterReplacesCanonicalTagsAndClearsCompleteSet(t *testing.T) {
 
 func TestMutationFormUpdatesIngredientAndTagsAtomically(t *testing.T) {
 	fix, gin, _ := ingredientFixture(t)
-	presenter, _ := newTestPresenter(fix.App, fyneui.InlineExecutor{})
+	presenter, _ := newTestPresenter(fix.App, toolkit.InlineExecutor{})
 	presenter.Load()
 	presenter.Select(gin.ID)
 	presenter.StartEdit()
@@ -241,7 +241,7 @@ func TestMutationFormUpdatesIngredientAndTagsAtomically(t *testing.T) {
 
 func TestPresenterDeleteRequiresConfirmationAndPersists(t *testing.T) {
 	fix, gin, _ := ingredientFixture(t)
-	presenter, dialogs := newTestPresenter(fix.App, fyneui.InlineExecutor{})
+	presenter, dialogs := newTestPresenter(fix.App, toolkit.InlineExecutor{})
 	presenter.Load()
 	presenter.Select(gin.ID)
 	presenter.RequestDelete()
@@ -263,7 +263,7 @@ func TestPresenterDeleteRequiresConfirmationAndPersists(t *testing.T) {
 func TestPresenterDeletePermissionFailureIsShownAndDoesNotMutate(t *testing.T) {
 	fix, gin, _ := ingredientFixture(t)
 	denied := application.NewSession(fix.ActorContext("bartender"), fix.App.App)
-	presenter, dialogs := newTestPresenter(denied, fyneui.InlineExecutor{})
+	presenter, dialogs := newTestPresenter(denied, toolkit.InlineExecutor{})
 	presenter.Load()
 	presenter.Select(gin.ID)
 	presenter.RequestDelete()
@@ -291,7 +291,7 @@ func TestCountDrinksUsingTraversesEveryPage(t *testing.T) {
 			},
 		})
 	}
-	presenter, dialogs := newTestPresenter(fix.App, fyneui.InlineExecutor{})
+	presenter, dialogs := newTestPresenter(fix.App, toolkit.InlineExecutor{})
 	count, err := presenter.countDrinksUsing(gin.ID)
 	testutil.Ok(t, err)
 	if count != 101 {
@@ -310,7 +310,7 @@ func TestViewDrivesRealWidgetsAndShowsCompleteDetail(t *testing.T) {
 	gui := frameworktest.NewApp()
 	t.Cleanup(gui.Quit)
 	fix, gin, _ := ingredientFixture(t)
-	presenter, _ := newTestPresenter(fix.App, fyneui.InlineExecutor{})
+	presenter, _ := newTestPresenter(fix.App, toolkit.InlineExecutor{})
 	view := NewView(presenter)
 	view.Activate()
 	driver := fynetest.NewDriver(t, view.Content())
