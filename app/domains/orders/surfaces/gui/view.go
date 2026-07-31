@@ -11,6 +11,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -56,17 +57,18 @@ func newSemanticSelect(id string, options []string) *semanticSelect {
 func (s *semanticSelect) SemanticID() string { return s.id }
 
 type View struct {
-	presenter                                                                *Presenter
-	root                                                                     *framework.Container
-	expression, menuQuery, drinkQuery, quantity, itemNotes, orderNotes, tags *ui.SemanticEntry
-	limit                                                                    *semanticSelect
-	menus, drinks                                                            *widget.Select
-	list                                                                     *widget.Table
-	rows                                                                     map[string]*ui.SemanticButton
-	removeItems                                                              map[int]*ui.SemanticButton
-	refresh, create, save, cancel                                            *ui.SemanticButton
-	state                                                                    State
-	rendering                                                                bool
+	presenter                                                          *Presenter
+	root                                                               *framework.Container
+	expression, menuQuery, drinkQuery, quantity, itemNotes, orderNotes *ui.SemanticEntry
+	tags                                                               *ui.TagTokenEditor
+	limit                                                              *semanticSelect
+	menus, drinks                                                      *widget.Select
+	list                                                               *widget.Table
+	rows                                                               map[string]*ui.SemanticButton
+	removeItems                                                        map[int]*ui.SemanticButton
+	refresh, create, save, cancel                                      *ui.SemanticButton
+	state                                                              State
+	rendering                                                          bool
 }
 
 var _ ui.View = (*View)(nil)
@@ -336,13 +338,12 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	v.orderNotes.SetPlaceHolder("Order notes (optional)")
 	v.orderNotes.SetText(s.Form.Notes)
 	v.orderNotes.OnChanged = v.presenter.SetPlaceNotes
-	v.tags = ui.NewEntry(ControlPlaceTags)
-	v.tags.SetText(s.Form.Tags)
-	tagPreview := ui.NewTagPreview(s.Form.Tags)
-	v.tags.OnChanged = func(value string) { tagPreview.SetCSV(value); v.presenter.SetPlaceTags(value) }
+	v.tags = ui.NewTagTokenEditor(ControlPlaceTags, s.Form.Tags)
+	v.tags.Normalize = tag.UpsertCollection
+	v.tags.OnChanged = v.presenter.SetPlaceTags
 	v.save = ui.WithIcon(ui.NewButton(ControlPlaceSave, "Place", func() {
 		v.presenter.SetPlaceNotes(v.orderNotes.Text)
-		v.presenter.SetPlaceTags(v.tags.Text)
+		v.presenter.SetPlaceTags(v.tags.CSV())
 		v.presenter.SavePlace()
 	}), ui.IconSave)
 	v.cancel = ui.WithIcon(ui.NewButton(ControlFormCancel, "Cancel", v.presenter.CancelForm), ui.IconCancel)
@@ -351,9 +352,10 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 		for _, b := range []*ui.SemanticButton{searchMenus, searchDrinks, add, v.save, v.cancel} {
 			b.Disable()
 		}
-		for _, e := range []*ui.SemanticEntry{v.menuQuery, v.drinkQuery, v.quantity, v.itemNotes, v.orderNotes, v.tags} {
+		for _, e := range []*ui.SemanticEntry{v.menuQuery, v.drinkQuery, v.quantity, v.itemNotes, v.orderNotes} {
 			e.Disable()
 		}
+		v.tags.SetEnabled(false)
 		v.menus.Disable()
 		v.drinks.Disable()
 	}
@@ -364,33 +366,28 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	if s.Err != nil {
 		message = "Error: " + s.Err.Error()
 	}
-	fields := container.NewVBox(container.NewBorder(nil, nil, nil, searchMenus, v.menuQuery), widget.NewLabel("Published menu"), v.menus, container.NewBorder(nil, nil, nil, searchDrinks, v.drinkQuery), widget.NewLabel("Available drink"), v.drinks, widget.NewLabel("Quantity"), v.quantity, widget.NewLabel("Item notes"), v.itemNotes, add, widget.NewLabelWithStyle("Order items", framework.TextAlignLeading, framework.TextStyle{Bold: true}), items, widget.NewLabel("Order notes"), v.orderNotes, widget.NewLabel("Tags (complete set)"), ui.TagEditor(tagPreview, v.tags))
+	fields := container.NewVBox(container.NewBorder(nil, nil, nil, searchMenus, v.menuQuery), widget.NewLabel("Published menu"), v.menus, container.NewBorder(nil, nil, nil, searchDrinks, v.drinkQuery), widget.NewLabel("Available drink"), v.drinks, widget.NewLabel("Quantity"), v.quantity, widget.NewLabel("Item notes"), v.itemNotes, add, widget.NewLabelWithStyle("Order items", framework.TextAlignLeading, framework.TextStyle{Bold: true}), items, widget.NewLabel("Order notes"), v.orderNotes, widget.NewLabel("Tags"), v.tags.Content)
 	return ui.StandardFormPage(ui.FormPage{Title: "Place order", Breadcrumb: container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", v.presenter.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Orders", v.presenter.ResetList), widget.NewLabel(">"), widget.NewLabel("Place order")), Subtitle: "Choose a published menu, add drinks, then place the order.", Fields: fields, Status: widget.NewLabel(message), Save: v.save, Cancel: v.cancel})
 }
 func (v *View) tagForm(s State) framework.CanvasObject {
-	v.tags = ui.NewEntry(ControlTagValues)
-	v.tags.SetPlaceHolder("featured, region=west")
-	v.rendering = true
-	v.tags.SetText(s.Form.Tags)
-	v.rendering = false
-	tagPreview := ui.NewTagPreview(s.Form.Tags)
+	v.tags = ui.NewTagTokenEditor(ControlTagValues, s.Form.Tags)
+	v.tags.Normalize = tag.UpsertCollection
 	v.tags.OnChanged = func(value string) {
-		tagPreview.SetCSV(value)
 		if !v.rendering {
 			v.presenter.SetTagForm(value)
 		}
 	}
-	v.save = ui.WithIcon(ui.NewButton(ControlTagSave, "Save", func() { v.presenter.SaveTags(v.tags.Text) }), ui.IconSave)
+	v.save = ui.WithIcon(ui.NewButton(ControlTagSave, "Save", func() { v.presenter.SaveTags(v.tags.CSV()) }), ui.IconSave)
 	v.cancel = ui.WithIcon(ui.NewButton(ControlFormCancel, "Cancel", v.presenter.CancelForm), ui.IconCancel)
 	setEnabled(v.save, !s.Submitting && s.Dirty)
 	setEnabled(v.cancel, !s.Submitting && s.Dirty)
-	setEnabled(v.tags, !s.Submitting)
+	v.tags.SetEnabled(!s.Submitting)
 	message := ""
 	if s.Err != nil {
 		message = "Error: " + s.Err.Error()
 	}
 	title := orderTitle(s.Selected)
-	return ui.StandardFormPage(ui.FormPage{Title: "Edit order tags", Breadcrumb: v.breadcrumb(title), Subtitle: "Complete tag set (CSV); clear to remove all tags.", Fields: ui.TagEditor(tagPreview, v.tags), Status: widget.NewLabel(message), Save: v.save, Cancel: v.cancel})
+	return ui.StandardFormPage(ui.FormPage{Title: "Edit order tags", Breadcrumb: v.breadcrumb(title), Subtitle: "Type a key or key=value and press Enter.", Fields: v.tags.Content, Status: widget.NewLabel(message), Save: v.save, Cancel: v.cancel})
 }
 func noteSuffix(note string) string {
 	if strings.TrimSpace(note) == "" {

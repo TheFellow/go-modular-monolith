@@ -2,9 +2,12 @@
 package gui
 
 import (
+	"errors"
 	"testing"
 
 	framework "fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/driver/desktop"
+	frameworktest "fyne.io/fyne/v2/test"
 )
 
 func TestTagPillsWrapAndRepresentEmptyTags(t *testing.T) {
@@ -17,6 +20,44 @@ func TestTagPillsWrapAndRepresentEmptyTags(t *testing.T) {
 	}
 	if TagPills(nil).MinSize().IsZero() {
 		t.Fatal("empty tags need a visible state")
+	}
+}
+
+func TestTagTokenEditorSubmitsReplacesRejectsAndRemovesTokens(t *testing.T) {
+	startTestApp(t)
+	editor := NewTagTokenEditor("tags", "featured,region=west")
+	editor.Normalize = func(current, input string) (string, error) {
+		if input == "invalid" {
+			return "", errors.New("invalid tag")
+		}
+		if input == "region=east" {
+			return "featured,region=east", nil
+		}
+		return current + "," + input, nil
+	}
+	changes := 0
+	editor.OnChanged = func(string) { changes++ }
+	editor.Input.SetText("region=east")
+	editor.Input.OnSubmitted(editor.Input.Text)
+	if got := editor.CSV(); got != "featured,region=east" || editor.Input.Text != "" || changes != 1 {
+		t.Fatalf("submitted editor = %q, pending %q, changes %d", got, editor.Input.Text, changes)
+	}
+	editor.Input.SetText("invalid")
+	editor.Input.OnSubmitted(editor.Input.Text)
+	if editor.ValidationError() == nil || editor.Input.Text != "invalid" || editor.CSV() != "featured,region=east" {
+		t.Fatal("invalid token was not retained with its validation error")
+	}
+	pill := editor.Content.Objects[1].(*removableTagPill)
+	if !pill.remove.Hidden {
+		t.Fatal("remove control should be hidden until hover")
+	}
+	pill.MouseIn(&desktop.MouseEvent{})
+	if pill.remove.Hidden {
+		t.Fatal("remove control was not shown on hover")
+	}
+	frameworktest.Tap(pill.remove)
+	if got := editor.CSV(); got != "featured" {
+		t.Fatalf("removed editor = %q", got)
 	}
 }
 

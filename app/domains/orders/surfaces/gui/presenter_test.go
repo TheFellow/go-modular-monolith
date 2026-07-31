@@ -457,6 +457,7 @@ func TestHeadlessWidgetsTagAndCompleteSelectedOrder(t *testing.T) {
 	p.Select(0)
 	driver.Tap("orders-tags")
 	driver.Type("orders-tags-value", "featured")
+	driver.Submit("orders-tags-value")
 	driver.Tap("orders-tags-save")
 	stored, err := f.Orders.Get(f.OwnerContext(), order.ID)
 	testutil.Ok(t, err)

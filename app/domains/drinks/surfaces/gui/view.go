@@ -13,6 +13,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -108,30 +109,29 @@ type recipeWidgets struct {
 	remove        *ui.SemanticButton
 }
 type View struct {
-	presenter                                             *Presenter
-	root                                                  *framework.Container
-	list                                                  *widget.Table
-	status, formStatus, tagStatus                         *widget.Label
-	detailTitle, crumbName                                *widget.Label
-	browse, formPanel, tagsPanel                          *framework.Container
-	filterExpression                                      *ui.SemanticEntry
-	filterBar                                             *ui.FilterBar
-	filterLimit                                           *semanticSelect
-	name, description, steps, garnish, tags, mutationTags *ui.SemanticEntry
-	category, glass                                       *semanticSelect
-	recipeBox                                             *framework.Container
-	tagDisplay                                            *ui.TagPreview
-	tagEditPreview                                        *ui.TagPreview
-	recipe                                                []recipeWidgets
-	save, cancel, tagSave, tagCancel                      *ui.SemanticButton
-	addIngredient                                         *ui.SemanticButton
-	refresh, create, previous, next                       *ui.SemanticButton
-	detailActions                                         []*ui.SemanticButton
-	renderedMode                                          Mode
-	renderedFormInstance                                  uint64
-	renderedForm                                          Form
-	formRendered                                          bool
-	rendering                                             bool
+	presenter                         *Presenter
+	root                              *framework.Container
+	list                              *widget.Table
+	status, formStatus, tagStatus     *widget.Label
+	detailTitle, crumbName            *widget.Label
+	browse, formPanel, tagsPanel      *framework.Container
+	filterExpression                  *ui.SemanticEntry
+	filterBar                         *ui.FilterBar
+	filterLimit                       *semanticSelect
+	name, description, steps, garnish *ui.SemanticEntry
+	tags, mutationTags                *ui.TagTokenEditor
+	category, glass                   *semanticSelect
+	recipeBox                         *framework.Container
+	recipe                            []recipeWidgets
+	save, cancel, tagSave, tagCancel  *ui.SemanticButton
+	addIngredient                     *ui.SemanticButton
+	refresh, create, previous, next   *ui.SemanticButton
+	detailActions                     []*ui.SemanticButton
+	renderedMode                      Mode
+	renderedFormInstance              uint64
+	renderedForm                      Form
+	formRendered                      bool
+	rendering                         bool
 }
 
 var _ ui.View = (*View)(nil)
@@ -213,9 +213,8 @@ func NewView(p *Presenter) *View {
 	v.steps = ui.NewEntry(ControlSteps)
 	v.steps.MultiLine = true
 	v.garnish = ui.NewEntry(ControlGarnish)
-	v.mutationTags = ui.NewEntry(ControlTagValues + ".mutation")
-	v.tagDisplay = ui.NewTagPreview("")
-	v.tagEditPreview = ui.NewTagPreview("")
+	v.mutationTags = ui.NewTagTokenEditor(ControlTagValues+".mutation", "")
+	v.mutationTags.Normalize = tag.UpsertCollection
 	v.formStatus = widget.NewLabel("")
 	v.recipeBox = container.NewVBox()
 	v.save = ui.WithIcon(ui.NewButton(ControlSave, "Save", func() { v.readForm(); p.Save() }), ui.IconSave)
@@ -226,7 +225,7 @@ func NewView(p *Presenter) *View {
 		f.Recipe = append(f.Recipe, RecipeRow{Unit: measurement.UnitOz})
 		p.SetForm(f)
 	})
-	fields := container.NewVBox(field("Name", v.name), field("Category", v.category), field("Glass", v.glass), field("Description", v.description), widget.NewLabelWithStyle("Recipe", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.recipeBox, v.addIngredient, field("Steps (one per line)", v.steps), field("Garnish", v.garnish), field("Tags (complete set)", container.NewVBox(v.tagDisplay.Content, v.mutationTags)))
+	fields := container.NewVBox(field("Name", v.name), field("Category", v.category), field("Glass", v.glass), field("Description", v.description), widget.NewLabelWithStyle("Recipe", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.recipeBox, v.addIngredient, field("Steps (one per line)", v.steps), field("Garnish", v.garnish), field("Tags", v.mutationTags.Content))
 	v.detailTitle = widget.NewLabel("Drink")
 	v.crumbName = widget.NewLabel("")
 	back := ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack)
@@ -238,11 +237,12 @@ func NewView(p *Presenter) *View {
 	deleteAction.Hide()
 	breadcrumb := container.NewHBox(back, crumb, widget.NewLabel(">"), v.crumbName, edit, tagsAction, deleteAction)
 	v.formPanel = ui.StandardFormPage(ui.FormPage{TitleLabel: v.detailTitle, Breadcrumb: breadcrumb, Fields: fields, Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
-	v.tags = ui.NewEntry(ControlTagValues)
+	v.tags = ui.NewTagTokenEditor(ControlTagValues, "")
+	v.tags.Normalize = tag.UpsertCollection
 	v.tagStatus = widget.NewLabel("")
 	v.tagSave = ui.NewButton(ControlSave+".tags", "Save", func() { v.readForm(); p.Save() })
 	v.tagCancel = ui.NewButton(ControlCancel+".tags", "Cancel", p.Cancel)
-	v.tagsPanel = ui.StandardFormPage(ui.FormPage{Title: "Edit tags", Subtitle: "Replace the complete tag set.", Fields: container.NewVBox(widget.NewLabel("Comma-separated key or key=value tags"), ui.TagEditor(v.tagEditPreview, v.tags)), Status: v.tagStatus, Save: v.tagSave, Cancel: v.tagCancel}).(*framework.Container)
+	v.tagsPanel = ui.StandardFormPage(ui.FormPage{Title: "Edit tags", Subtitle: "Type a key or key=value and press Enter.", Fields: v.tags.Content, Status: v.tagStatus, Save: v.tagSave, Cancel: v.tagCancel}).(*framework.Container)
 	v.root = container.NewStack(v.browse, v.formPanel, v.tagsPanel)
 	v.name.OnChanged = func(string) { v.formChanged() }
 	v.category.OnChanged = func(string) { v.formChanged() }
@@ -250,8 +250,7 @@ func NewView(p *Presenter) *View {
 	v.description.OnChanged = func(string) { v.formChanged() }
 	v.steps.OnChanged = func(string) { v.formChanged() }
 	v.garnish.OnChanged = func(string) { v.formChanged() }
-	v.mutationTags.OnChanged = func(value string) { v.tagDisplay.SetCSV(value); v.formChanged() }
-	v.tags.OnChanged = func(value string) { v.tagEditPreview.SetCSV(value) }
+	v.mutationTags.OnChanged = func(string) { v.formChanged() }
 	p.Observe(v.render)
 	return v
 }
@@ -269,7 +268,7 @@ func (v *View) formChanged() {
 		v.description.SetText(state.Form.Description)
 		v.steps.SetText(state.Form.Steps)
 		v.garnish.SetText(state.Form.Garnish)
-		v.mutationTags.SetText(state.Form.Tags)
+		v.mutationTags.SetCSV(state.Form.Tags)
 		v.rebuildRecipe(state)
 		v.rendering = false
 		return
@@ -305,7 +304,7 @@ func (v *View) ExecuteCommand(command ui.Command) bool {
 }
 func (v *View) readForm() {
 	if v.presenter.State().Mode == Tagging {
-		v.presenter.SetForm(Form{Tags: v.tags.Text})
+		v.presenter.SetForm(Form{Tags: v.tags.CSV()})
 		return
 	}
 	rows := make([]RecipeRow, len(v.recipe))
@@ -318,7 +317,7 @@ func (v *View) readForm() {
 		}
 		rows[i] = RecipeRow{Ingredient: v.optionID(w.ingredient.Text), Amount: w.amount.Text, Unit: measurement.Unit(w.unit.Selected), Optional: w.optional.Checked, Substitutes: substitutes}
 	}
-	v.presenter.SetForm(Form{Name: v.name.Text, Category: v.category.Selected, Glass: v.glass.Selected, Description: v.description.Text, Recipe: rows, Steps: v.steps.Text, Garnish: v.garnish.Text, Tags: v.mutationTags.Text, ReplaceTags: true})
+	v.presenter.SetForm(Form{Name: v.name.Text, Category: v.category.Selected, Glass: v.glass.Selected, Description: v.description.Text, Recipe: rows, Steps: v.steps.Text, Garnish: v.garnish.Text, Tags: v.mutationTags.CSV(), ReplaceTags: true})
 }
 func (v *View) render(state State) {
 	v.rendering = true
@@ -352,7 +351,7 @@ func (v *View) render(state State) {
 		v.description.SetText(state.Form.Description)
 		v.steps.SetText(state.Form.Steps)
 		v.garnish.SetText(state.Form.Garnish)
-		v.mutationTags.SetText(state.Form.Tags)
+		v.mutationTags.SetCSV(state.Form.Tags)
 		v.rebuildRecipe(state)
 		v.renderedForm = cloneForm(state.Form)
 		v.renderedMode = state.Mode
@@ -361,7 +360,7 @@ func (v *View) render(state State) {
 	} else if state.Mode == Creating || state.Mode == Editing || state.Mode == Viewing {
 		v.updateRecipeOptions(state)
 	} else if state.Mode == Tagging {
-		v.tags.SetText(state.Form.Tags)
+		v.tags.SetCSV(state.Form.Tags)
 	}
 	if state.Submitting || state.Loading || (state.Mode == Editing && !state.Dirty) {
 		v.save.Disable()
@@ -388,18 +387,14 @@ func (v *View) render(state State) {
 		v.formStatus.SetText("")
 	}
 	v.tagStatus.SetText(v.formStatus.Text)
-	v.tagDisplay.SetCSV(state.Form.Tags)
-	v.tagEditPreview.SetCSV(state.Form.Tags)
 	v.setMutableEnabled(!state.Submitting)
 	if state.Mode == Viewing {
-		v.tagDisplay.Content.Show()
-		v.mutationTags.Hide()
+		v.mutationTags.SetEnabled(false)
 		v.save.Hide()
 		v.cancel.Hide()
 		v.addIngredient.Hide()
 	} else {
-		v.tagDisplay.Content.Show()
-		v.mutationTags.Show()
+		v.mutationTags.SetEnabled(!state.Submitting)
 		v.save.Show()
 		v.cancel.Show()
 		v.addIngredient.Show()
@@ -515,7 +510,7 @@ func (v *View) setMutableEnabled(enabled bool) {
 	objects := []interface {
 		Enable()
 		Disable()
-	}{v.name, v.category, v.glass, v.description, v.steps, v.garnish, v.tags, v.addIngredient}
+	}{v.name, v.category, v.glass, v.description, v.steps, v.garnish, v.addIngredient}
 	for _, object := range objects {
 		if enabled {
 			object.Enable()
@@ -523,6 +518,7 @@ func (v *View) setMutableEnabled(enabled bool) {
 			object.Disable()
 		}
 	}
+	v.tags.SetEnabled(enabled)
 	for _, row := range v.recipe {
 		objects = []interface {
 			Enable()

@@ -136,6 +136,21 @@ func ParseCollection(value string) (Tags, error) {
 	return tags.Sorted(), nil
 }
 
+// UpsertCollection parses and validates one user-entered tag, replaces any
+// existing tag with the same key, and returns the canonical collection text.
+// It is useful for token editors that commit one tag at a time.
+func UpsertCollection(current, input string) (string, error) {
+	tags, err := ParseCollection(current)
+	if err != nil {
+		return "", err
+	}
+	next, err := Parse(input)
+	if err != nil {
+		return "", err
+	}
+	return FormatCollection(tags.Upsert(next))
+}
+
 // FormatCollection validates tags and returns their deterministic,
 // key-sorted representation as one CSV record.
 func FormatCollection(tags Tags) (string, error) {

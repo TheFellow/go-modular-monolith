@@ -43,6 +43,19 @@ func (d Driver) Type(id, value string) {
 	test.Type(entry, value)
 }
 
+// Submit invokes the entry's Enter-key action.
+func (d Driver) Submit(id string) {
+	d.t.Helper()
+	object := d.find(id)
+	entry, ok := object.(*gui.SemanticEntry)
+	if !ok {
+		d.t.Fatalf("semantic control %q is not an entry", id)
+	}
+	if entry.OnSubmitted != nil {
+		entry.OnSubmitted(entry.Text)
+	}
+}
+
 func (d Driver) find(id string) framework.CanvasObject {
 	d.t.Helper()
 	var found framework.CanvasObject
@@ -65,6 +78,12 @@ func walk(object framework.CanvasObject, visit func(framework.CanvasObject) bool
 		return
 	}
 	switch object := object.(type) {
+	case interface {
+		SemanticChildren() []framework.CanvasObject
+	}:
+		for _, child := range object.SemanticChildren() {
+			walk(child, visit)
+		}
 	case *framework.Container:
 		for _, child := range object.Objects {
 			walk(child, visit)

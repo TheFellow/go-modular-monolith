@@ -11,6 +11,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -40,12 +41,11 @@ type View struct {
 	root, browse, formPanel, tagsPanel            *framework.Container
 	list                                          *widget.Table
 	listStack                                     *framework.Container
-	tagDisplay, tagEditPreview                    *ui.TagPreview
 	empty                                         *framework.Container
 	expression                                    *ui.SemanticEntry
 	limit, formCategory, formUnit                 *widget.Select
-	name, description, tags                       *ui.SemanticEntry
-	tagOnly                                       *ui.SemanticEntry
+	name, description                             *ui.SemanticEntry
+	tags, tagOnly                                 *ui.TagTokenEditor
 	save, cancel, refresh, create, previous, next *ui.SemanticButton
 	tagSave, tagCancel                            *ui.SemanticButton
 	tagAction, delete                             *ui.SemanticButton
@@ -119,9 +119,8 @@ func NewView(p *Presenter) *View {
 	v.name = ui.NewEntry(ControlName)
 	v.description = ui.NewEntry(ControlDescription)
 	v.description.MultiLine = true
-	v.tags = ui.NewEntry(ControlMutationTags)
-	v.tagDisplay = ui.NewTagPreview("")
-	v.tagEditPreview = ui.NewTagPreview("")
+	v.tags = ui.NewTagTokenEditor(ControlMutationTags, "")
+	v.tags.Normalize = tag.UpsertCollection
 	categories := make([]string, 0, len(models.AllCategories()))
 	for _, x := range models.AllCategories() {
 		categories = append(categories, string(x))
@@ -137,22 +136,21 @@ func NewView(p *Presenter) *View {
 	v.detailTitle = widget.NewLabel("Ingredient")
 	v.crumbName = widget.NewLabel("")
 	v.formStatus = widget.NewLabel("")
-	fields := ui.DetailForm(ui.DetailField("Name", v.name), ui.DetailField("Category", v.formCategory), ui.DetailField("Unit", v.formUnit), ui.DetailField("Description", v.description), ui.DetailField("Tags", container.NewVBox(v.tagDisplay.Content, v.tags)))
+	fields := ui.DetailForm(ui.DetailField("Name", v.name), ui.DetailField("Category", v.formCategory), ui.DetailField("Unit", v.formUnit), ui.DetailField("Description", v.description), ui.DetailField("Tags", v.tags.Content))
 	breadcrumb := container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Ingredients", p.ResetList), widget.NewLabel(">"), v.crumbName, v.tagAction, v.delete)
 	v.formPanel = ui.StandardFormPage(ui.FormPage{TitleLabel: v.detailTitle, Breadcrumb: breadcrumb, Fields: fields, Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
-	v.tagOnly = ui.NewEntry(ControlFormTags)
-	v.tagOnly.SetPlaceHolder("featured, region=west")
-	v.tagSave = ui.WithIcon(ui.NewButton(ControlSave+".tags", "Save", func() { p.Submit(Form{Tags: v.tagOnly.Text}) }), ui.IconSave)
+	v.tagOnly = ui.NewTagTokenEditor(ControlFormTags, "")
+	v.tagOnly.Normalize = tag.UpsertCollection
+	v.tagSave = ui.WithIcon(ui.NewButton(ControlSave+".tags", "Save", func() { p.Submit(Form{Tags: v.tagOnly.CSV()}) }), ui.IconSave)
 	v.tagCancel = ui.WithIcon(ui.NewButton(ControlCancel+".tags", "Cancel", p.Cancel), ui.IconCancel)
 	v.tagStatus = widget.NewLabel("")
-	v.tagsPanel = ui.StandardFormPage(ui.FormPage{Title: "Edit ingredient tags", Subtitle: "Replace the complete tag set.", Fields: container.NewVBox(widget.NewLabel("Comma-separated key or key=value tags"), ui.TagEditor(v.tagEditPreview, v.tagOnly)), Status: v.tagStatus, Save: v.tagSave, Cancel: v.tagCancel}).(*framework.Container)
+	v.tagsPanel = ui.StandardFormPage(ui.FormPage{Title: "Edit ingredient tags", Subtitle: "Type a key or key=value and press Enter.", Fields: v.tagOnly.Content, Status: v.tagStatus, Save: v.tagSave, Cancel: v.tagCancel}).(*framework.Container)
 	v.root = container.NewStack(v.browse, v.formPanel, v.tagsPanel)
 	v.name.OnChanged = func(string) { v.changed() }
 	v.formCategory.OnChanged = func(string) { v.changed() }
 	v.formUnit.OnChanged = func(string) { v.changed() }
 	v.description.OnChanged = func(string) { v.changed() }
-	v.tags.OnChanged = func(value string) { v.tagDisplay.SetCSV(value); v.changed() }
-	v.tagOnly.OnChanged = func(value string) { v.tagEditPreview.SetCSV(value) }
+	v.tags.OnChanged = func(string) { v.changed() }
 	p.OnChange(v.render)
 	v.render(p.Snapshot())
 	return v
@@ -201,7 +199,7 @@ func (v *View) changed() {
 	v.readForm()
 }
 func (v *View) readForm() {
-	v.presenter.SetForm(Form{Name: v.name.Text, Category: models.Category(v.formCategory.Selected), Unit: measurement.Unit(v.formUnit.Selected), Description: v.description.Text, Tags: v.tags.Text, ReplaceTags: true})
+	v.presenter.SetForm(Form{Name: v.name.Text, Category: models.Category(v.formCategory.Selected), Unit: measurement.Unit(v.formUnit.Selected), Description: v.description.Text, Tags: v.tags.CSV(), ReplaceTags: true})
 }
 func (v *View) populate(f Form) {
 	v.rendering = true
@@ -210,7 +208,7 @@ func (v *View) populate(f Form) {
 	v.formCategory.SetSelected(string(f.Category))
 	v.formUnit.SetSelected(string(f.Unit))
 	v.description.SetText(f.Description)
-	v.tags.SetText(f.Tags)
+	v.tags.SetCSV(f.Tags)
 }
 
 func (v *View) render(s State) {
@@ -227,7 +225,7 @@ func (v *View) render(s State) {
 		v.renderedForm = s.Form
 	}
 	if s.Mode == Tags {
-		v.tagOnly.SetText(s.Form.Tags)
+		v.tagOnly.SetCSV(s.Form.Tags)
 	}
 	if len(s.History) == 0 || s.Status == ui.Loading {
 		v.previous.Disable()
@@ -247,15 +245,12 @@ func (v *View) render(s State) {
 		v.cancel.Enable()
 	}
 	if s.Mode == Viewing {
-		v.tagDisplay.SetCSV(s.Form.Tags)
-		v.tagEditPreview.SetCSV(s.Form.Tags)
-		v.tagDisplay.Content.Show()
-		v.tags.Hide()
+		v.tags.SetCSV(s.Form.Tags)
+		v.tags.SetEnabled(false)
 		v.save.Hide()
 		v.cancel.Hide()
 	} else {
-		v.tagDisplay.Content.Show()
-		v.tags.Show()
+		v.tags.SetEnabled(!s.Submitting)
 		v.save.Show()
 		v.cancel.Show()
 	}

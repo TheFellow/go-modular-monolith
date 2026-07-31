@@ -436,7 +436,7 @@ func TestViewListDetailStatesPermissionsAndEmptyCollection(t *testing.T) {
 	}
 	presenter.Cancel()
 	presenter.StartTags()
-	if view.tagsPanel.Hidden || !view.formPanel.Hidden || view.tagOnly.Text != "" {
+	if view.tagsPanel.Hidden || !view.formPanel.Hidden || view.tagOnly.CSV() != "" {
 		t.Fatal("tags-only workflow is not isolated")
 	}
 	presenter.Cancel()
@@ -472,16 +472,16 @@ func TestTagsFormKeepsInvalidSyntaxVisibleAndRetainsInput(t *testing.T) {
 	view.Activate()
 	presenter.Select(gin.ID)
 	presenter.StartTags()
-	invalid := `"unterminated`
-	view.tagOnly.SetText(invalid)
-	frameworktest.Tap(view.tagSave)
+	invalid := "=missing-key"
+	view.tagOnly.Input.SetText(invalid)
+	view.tagOnly.Input.OnSubmitted(invalid)
 	state := presenter.Snapshot()
-	if state.Mode != Tags || state.Form.Tags != invalid || state.Err == nil {
+	if state.Mode != Tags || state.Form.Tags != "" || view.tagOnly.ValidationError() == nil {
 		t.Fatalf("invalid tags state = %#v", state)
 	}
-	testutil.ErrorIsInvalid(t, state.Err)
-	if view.tagStatus.Text == "" || view.tagOnly.Text != invalid {
-		t.Fatal("inline tag error or form input is not visible")
+	testutil.ErrorIsInvalid(t, view.tagOnly.ValidationError())
+	if view.tagOnly.Input.Text != invalid {
+		t.Fatal("invalid pending tag input is not visible")
 	}
 	if len(dialogs.Errors()) != 0 || len(dialogs.Warnings()) != 0 {
 		t.Fatal("inline validation unexpectedly opened a dialog")
