@@ -90,3 +90,37 @@ func TestTagPreviewRefreshesEditablePills(t *testing.T) {
 		t.Fatal("tag editor must retain preview and input")
 	}
 }
+
+func TestDisabledTagTokenEditorRejectsSubmitAndRemovalAcrossRebuild(t *testing.T) {
+	startTestApp(t)
+	editor := NewTagTokenEditor("tags", "featured")
+	changes := 0
+	editor.OnChanged = func(string) { changes++ }
+	editor.SetEnabled(false)
+
+	editor.Input.OnSubmitted("new")
+	pill := editor.Content.Objects[0].(*removableTagPill)
+	pill.remove.OnTapped()
+	editor.SetCSV("featured,region=west")
+	for _, object := range editor.Content.Objects[:2] {
+		if remove := object.(*removableTagPill).remove; !remove.Disabled() {
+			t.Fatal("SetCSV recreated an enabled remove control in a read-only editor")
+		}
+	}
+	if got := editor.CSV(); got != "featured,region=west" || changes != 0 {
+		t.Fatalf("disabled editor = %q changes=%d", got, changes)
+	}
+}
+
+func TestTagTokenRemovalInvokesChangeOnceAndCannotRepeat(t *testing.T) {
+	startTestApp(t)
+	editor := NewTagTokenEditor("tags", "featured")
+	changes := 0
+	editor.OnChanged = func(string) { changes++ }
+	pill := editor.Content.Objects[0].(*removableTagPill)
+	pill.remove.OnTapped()
+	pill.remove.OnTapped() // stale UI callback after the pill has been rebuilt.
+	if got := editor.CSV(); got != "" || changes != 1 {
+		t.Fatalf("editor=%q changes=%d", got, changes)
+	}
+}

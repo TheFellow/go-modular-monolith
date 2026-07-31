@@ -293,7 +293,7 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	v.menuQuery.SetPlaceHolder("Search published menus")
 	v.menuQuery.SetText(s.Form.MenuQuery)
 	searchMenus := ui.NewButton(ControlMenuSearchApply, "Search", func() { v.presenter.SearchMenus(v.menuQuery.Text) })
-	v.menuQuery.OnSubmitted = func(string) { searchMenus.OnTapped() }
+	ui.SubmitOnEnter(v.menuQuery, searchMenus)
 	menuLabels := make([]string, len(s.Menus))
 	menuIDs := make(map[string]entity.MenuID, len(s.Menus))
 	for i, m := range s.Menus {
@@ -316,7 +316,7 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	v.drinkQuery.SetPlaceHolder("Search available drinks")
 	v.drinkQuery.SetText(s.Form.DrinkQuery)
 	searchDrinks := ui.NewButton(ControlDrinkSearchApply, "Search", func() { v.presenter.SearchDrinks(v.drinkQuery.Text) })
-	v.drinkQuery.OnSubmitted = func(string) { searchDrinks.OnTapped() }
+	ui.SubmitOnEnter(v.drinkQuery, searchDrinks)
 	drinkLabels := make([]string, len(s.Drinks))
 	drinkIDs := make(map[string]entity.DrinkID, len(s.Drinks))
 	for i, d := range s.Drinks {

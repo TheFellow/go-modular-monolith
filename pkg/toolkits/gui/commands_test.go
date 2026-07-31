@@ -27,6 +27,33 @@ func TestTriggerRespectsVisibleEnabledState(t *testing.T) {
 	}
 }
 
+func TestTriggerRejectsButtonWithoutAction(t *testing.T) {
+	startTestApp(t)
+	if Trigger(NewButton("placeholder", "Placeholder", nil)) {
+		t.Fatal("button without a command reported a successful trigger")
+	}
+}
+
+func TestSubmitOnEnterUsesGuardedButtonActionExactlyOnce(t *testing.T) {
+	startTestApp(t)
+	entry := NewEntry("query")
+	calls := 0
+	button := NewButton("apply", "Apply", func() { calls++ })
+	SubmitOnEnter(entry, button)
+
+	entry.OnSubmitted("first")
+	button.Disable()
+	entry.OnSubmitted("disabled")
+	button.Enable()
+	button.Hide()
+	entry.OnSubmitted("hidden")
+	button.Show()
+	entry.OnSubmitted("second")
+	if calls != 2 {
+		t.Fatalf("submitted callback %d times, want 2 enabled visible submissions", calls)
+	}
+}
+
 func TestKeyboardFocusTraversesSemanticControlsInBothDirections(t *testing.T) {
 	app := test.NewApp()
 	t.Cleanup(app.Quit)

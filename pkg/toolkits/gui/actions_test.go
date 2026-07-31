@@ -75,6 +75,73 @@ func TestActionSelectIgnoresResetEventWithoutRecursing(t *testing.T) {
 	}
 }
 
+func TestActionSelectIgnoresEmptyUnknownAndReentrantSelections(t *testing.T) {
+	startTestApp(t)
+	calls := 0
+	var selector *ActionSelect
+	selector = NewActionSelect([]string{"Remove"}, func(string) {
+		calls++
+		// An action may synchronously cause a render or binding update. Even if
+		// that update selects again, one user gesture remains one invocation.
+		selector.SelectAction("Remove")
+	})
+
+	selector.SetSelected("")
+	selector.SelectAction("Unknown")
+	selector.SelectAction("Remove")
+	if calls != 1 || selector.Selected != "" {
+		t.Fatalf("calls=%d selected=%q", calls, selector.Selected)
+	}
+}
+
+func TestActionSelectRebindIsSilentAndUsesOnlyLatestCallback(t *testing.T) {
+	startTestApp(t)
+	first, second := 0, 0
+	selector := NewActionSelect([]string{"View"}, func(string) { first++ })
+	selector.SetSelected("View")
+	selector.SetActions([]string{"Remove"}, func(string) { second++ })
+	selector.SetSelected("View") // stale recycled-row choice is no longer valid.
+	selector.SelectAction("Remove")
+	if first != 1 || second != 1 {
+		t.Fatalf("first=%d second=%d", first, second)
+	}
+}
+
+func TestActionSelectCannotDispatchWhileDisabledOrHidden(t *testing.T) {
+	startTestApp(t)
+	calls := 0
+	selector := NewActionSelect([]string{"Remove"}, func(string) { calls++ })
+	selector.Disable()
+	selector.SetSelected("Remove")
+	selector.Enable()
+	selector.Hide()
+	selector.SetSelected("Remove")
+	selector.Show()
+	selector.SetSelected("Remove")
+	if calls != 1 {
+		t.Fatalf("action dispatched %d times, want only enabled visible selection", calls)
+	}
+}
+
+func TestActionSelectRecoversDispatchStateAfterCallbackPanic(t *testing.T) {
+	startTestApp(t)
+	selector := NewActionSelect([]string{"Run"}, func(string) { panic("boom") })
+	func() {
+		defer func() {
+			if recovered := recover(); recovered != "boom" {
+				t.Fatalf("recovered %v", recovered)
+			}
+		}()
+		selector.SetSelected("Run")
+	}()
+	calls := 0
+	selector.SetActions([]string{"Run"}, func(string) { calls++ })
+	selector.SetSelected("Run")
+	if calls != 1 {
+		t.Fatalf("selector remained dispatch-locked after panic: calls=%d", calls)
+	}
+}
+
 func TestActionCellRebindDoesNotRetainRecycledRowCallback(t *testing.T) {
 	startTestApp(t)
 	cell := NewActionCell()
