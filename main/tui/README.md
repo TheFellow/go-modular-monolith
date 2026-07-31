@@ -7,7 +7,7 @@ Bubble Tea-based terminal UI for Mixology.
 ```mermaid
 graph TD
     Entry[main/tui] -->|bootstrap| AppInit[app.New]
-    Entry --> TUI[app/surfaces/tui.App]
+    Entry --> TUI[main/tui.App]
     TUI --> App[app.Session]
     App --> Dash[views.Dashboard]
     App --> Drinks[drinks ListViewModel]
@@ -26,7 +26,7 @@ graph TD
 ## Key Concepts
 
 ### App
-- Root Bubble Tea model (`app/surfaces/tui/app.go`).
+- Root Bubble Tea model (`main/tui/app.go`).
 - Always starts on the dashboard.
 - Owns navigation, view caching, and global UI state (help, status, title bar).
 - Uses `app.App` as the single source of truth for authentication.
@@ -56,17 +56,17 @@ graph TD
 ## File Organization
 
 - `main/tui/main.go`: Executable bootstrap and Bubble Tea launch.
-- `app/surfaces/tui/app.go`: Root model, navigation, title/status bars, layout.
-- `app/surfaces/tui/views/dashboard.go`: Dashboard view model.
+- `main/tui/app.go`: Root model, navigation, title/status bars, layout.
+- `main/tui/views/dashboard.go`: Dashboard view model.
 - `app/domains/*/surfaces/tui/`: Domain list/detail/create/edit view models.
 - `app/surfaces/tui/`: Shared Mixology TUI contracts, components, styles, and key bindings.
-- `app/surfaces/tui/messages.go`: Public TUI message/view aliases.
+- `main/tui/messages.go`: Public TUI message/view aliases.
 
 ## Adding a New View
 
 1. Create a new view model in the target domain under `app/domains/<domain>/surfaces/tui/`.
-2. Add a new `View` constant in `app/surfaces/tui/views/messages.go` and expose it from `app/surfaces/tui/messages.go`.
-3. Wire the view into `app/surfaces/tui/app.go` `currentViewModel()` and navigation.
+2. Add a new `View` constant in `app/surfaces/tui/views/messages.go` and expose it from `main/tui/messages.go`.
+3. Wire the view into `main/tui/app.go` `currentViewModel()` and navigation.
 4. Use shared styles/keys from `app/surfaces/tui/styles` and `app/surfaces/tui/keys`.
 5. For data access, call `app.Context()` per operation.
 

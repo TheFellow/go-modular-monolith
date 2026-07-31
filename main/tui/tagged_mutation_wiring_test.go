@@ -1,4 +1,4 @@
-package tui
+package main
 
 import (
 	"go/ast"
@@ -31,7 +31,7 @@ func TestTUIMutationWorkflowsUseAtomicTagComposition(t *testing.T) {
 		{"orders", "list_vm.go", "performCancel", "cancel", "Cancel"},
 	}
 	for _, workflow := range workflows {
-		path := filepath.Join("..", "..", "domains", workflow.domain, "surfaces", "tui", workflow.file)
+		path := filepath.Join("..", "..", "app", "domains", workflow.domain, "surfaces", "tui", workflow.file)
 		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 		testutil.Ok(t, err)
 		calls := 0
