@@ -161,7 +161,7 @@ func NewView(p *Presenter) *View {
 	v.filterBar = bar
 	filters := bar.Content
 	columns := []string{"Name", "Category", "Glass", "Ingredients", "Tags", "Actions"}
-	v.list = widget.NewTable(func() (int, int) { return len(p.State().Items) + 1, len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewRowTable(func() (int, int) { return len(p.State().Items) + 1, len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, o framework.CanvasObject) {
 		cell := o

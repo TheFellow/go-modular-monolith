@@ -105,7 +105,7 @@ func NewView(p *Presenter) *View {
 	v.descriptionHelp = widget.NewLabel("")
 	v.descriptionHelp.Hide()
 	columns := []string{"Name", "Status", "Items", "Created", "Published", "Tags", "Actions"}
-	v.list = widget.NewTable(func() (int, int) { return len(v.state.Items) + 1, len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Items) + 1, len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, o framework.CanvasObject) {
 		cell := o
