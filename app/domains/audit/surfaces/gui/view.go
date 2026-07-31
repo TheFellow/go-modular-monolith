@@ -94,16 +94,16 @@ func NewView(p *Presenter) *View {
 
 	v.detailTitle, v.crumbName, v.detailStatus = widget.NewLabel("Audit activity"), widget.NewLabel(""), widget.NewLabel("")
 	labels := []string{"ID", "Action", "Entity", "Actor", "Started", "Completed", "Duration", "Success", "Error", "Touched entities"}
-	items := make([]*widget.FormItem, 0, len(labels))
+	items := make([]framework.CanvasObject, 0, len(labels))
 	for i, label := range labels {
 		entry := ui.NewEntry(fmt.Sprintf("audit.detail.field.%d", i))
 		entry.MultiLine = label == "Error" || label == "Touched entities"
 		entry.OnChanged = func(string) { v.restoreDetail() }
 		v.detailFields = append(v.detailFields, entry)
-		items = append(items, widget.NewFormItem(label, entry))
+		items = append(items, ui.DetailField(label, entry))
 	}
 	breadcrumb := container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Audit", p.ResetList), widget.NewLabel(">"), v.crumbName)
-	v.detailPanel = ui.StandardFormPage(ui.FormPage{TitleLabel: v.detailTitle, Breadcrumb: breadcrumb, Fields: widget.NewForm(items...), Status: v.detailStatus}).(*framework.Container)
+	v.detailPanel = ui.StandardFormPage(ui.FormPage{TitleLabel: v.detailTitle, Breadcrumb: breadcrumb, Fields: ui.DetailForm(items...), Status: v.detailStatus}).(*framework.Container)
 	v.root = container.NewStack(v.browse, v.detailPanel)
 	p.Observe(v.render)
 	return v

@@ -41,6 +41,18 @@ func TestEmptyCollectionIsIntentionalAndUsesExplicitIcon(t *testing.T) {
 	}
 }
 
+func TestDetailFormGivesEveryFieldTheSameWidth(t *testing.T) {
+	app := test.NewApp()
+	t.Cleanup(app.Quit)
+	first := gui.DetailField("Short", widget.NewEntry())
+	second := gui.DetailField("A much longer label", widget.NewEntry())
+	form := gui.DetailForm(first, second)
+	form.Resize(fyne.NewSize(640, 240))
+	if first.Size().Width != second.Size().Width || first.Size().Width != 640 {
+		t.Fatalf("field widths = %v and %v, want 640", first.Size().Width, second.Size().Width)
+	}
+}
+
 func containsText(object fyne.CanvasObject, want string) bool {
 	switch typed := object.(type) {
 	case *widget.Label:

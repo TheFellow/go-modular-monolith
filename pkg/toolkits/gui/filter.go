@@ -59,7 +59,9 @@ func newFilterBar(expressionID, applyID, placeholder, initial string, presets, u
 	bar.Expression = NewEntry(expressionID)
 	bar.Expression.SetPlaceHolder(placeholder)
 	bar.Expression.SetText(initial)
-	bar.Apply = Primary(NewButton(applyID, "Apply", func() { apply(strings.TrimSpace(bar.Expression.Text)) }))
+	applyExpression := func() { apply(strings.TrimSpace(bar.Expression.Text)) }
+	bar.Expression.OnSubmitted = func(string) { applyExpression() }
+	bar.Apply = Primary(NewButton(applyID, "Apply", applyExpression))
 
 	bar.clauses = make([]string, len(presets)+len(uncommon))
 	buildPreset := func(i int, preset FilterPreset) *FilterSelect {

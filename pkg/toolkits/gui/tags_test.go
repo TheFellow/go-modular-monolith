@@ -19,3 +19,24 @@ func TestTagPillsWrapAndRepresentEmptyTags(t *testing.T) {
 		t.Fatal("empty tags need a visible state")
 	}
 }
+
+func TestTagPillsCSVTrimsAndOmitsEmptyValues(t *testing.T) {
+	startTestApp(t)
+	pills := TagPillsCSV(" featured, region=west, ").(*framework.Container)
+	if len(pills.Objects) != 2 {
+		t.Fatalf("pill count = %d, want 2", len(pills.Objects))
+	}
+}
+
+func TestTagPreviewRefreshesEditablePills(t *testing.T) {
+	startTestApp(t)
+	preview := NewTagPreview("classic")
+	preview.SetCSV("featured, region=west")
+	pills := preview.Content.Objects[0].(*framework.Container)
+	if len(pills.Objects) != 2 {
+		t.Fatalf("refreshed pill count = %d, want 2", len(pills.Objects))
+	}
+	if editor := TagEditor(preview, NewEntry("tags")); len(editor.(*framework.Container).Objects) != 2 {
+		t.Fatal("tag editor must retain preview and input")
+	}
+}

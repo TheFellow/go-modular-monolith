@@ -42,6 +42,7 @@ type View struct {
 	root, browse, detail, mutation        *framework.Container
 	list                                  *widget.Table
 	listStack, empty                      *framework.Container
+	tagPreview                            *ui.TagPreview
 	expression, amount, cost, tags        *ui.SemanticEntry
 	limit, reason                         *widget.Select
 	save, cancel, refresh, previous, next *ui.SemanticButton
@@ -124,6 +125,7 @@ func NewView(p *Presenter) *View {
 	v.detail = ui.StandardFormPage(ui.FormPage{Title: "Inventory item", Breadcrumb: v.breadcrumb(""), Fields: container.NewStack(), Status: v.formStatus}).(*framework.Container)
 
 	v.amount, v.cost, v.tags = ui.NewEntry(ControlAmount), ui.NewEntry(ControlCost), ui.NewEntry(ControlFormTags)
+	v.tagPreview = ui.NewTagPreview("")
 	v.reason = widget.NewSelect([]string{string(inventorymodels.ReasonReceived), string(inventorymodels.ReasonUsed), string(inventorymodels.ReasonSpilled), string(inventorymodels.ReasonExpired), string(inventorymodels.ReasonCorrected)}, nil)
 	v.save = ui.WithIcon(ui.NewButton(ControlSave, "Save", func() { v.readForm(); p.Submit(p.Snapshot().Form) }), ui.IconSave)
 	v.cancel = ui.WithIcon(ui.NewButton(ControlCancel, "Cancel", p.Cancel), ui.IconCancel)
@@ -131,7 +133,7 @@ func NewView(p *Presenter) *View {
 	v.root = container.NewStack(v.browse)
 	v.amount.OnChanged = func(string) { v.changed() }
 	v.cost.OnChanged = func(string) { v.changed() }
-	v.tags.OnChanged = func(string) { v.changed() }
+	v.tags.OnChanged = func(value string) { v.tagPreview.SetCSV(value); v.changed() }
 	v.reason.OnChanged = func(string) { v.changed() }
 	p.OnChange(v.render)
 	v.render(v.state)
@@ -164,11 +166,11 @@ func (v *View) ExecuteCommand(c ui.Command) bool {
 func (v *View) mutationFields(mode Mode) framework.CanvasObject {
 	switch mode {
 	case Adjust:
-		return widget.NewForm(widget.NewFormItem("Signed amount", v.amount), widget.NewFormItem("Cost per unit", v.cost), widget.NewFormItem("Reason", v.reason), widget.NewFormItem("Tags (complete set)", v.tags))
+		return ui.DetailForm(ui.DetailField("Signed amount", v.amount), ui.DetailField("Cost per unit", v.cost), ui.DetailField("Reason", v.reason), ui.DetailField("Tags (complete set)", ui.TagEditor(v.tagPreview, v.tags)))
 	case Set:
-		return widget.NewForm(widget.NewFormItem("Quantity", v.amount), widget.NewFormItem("Cost per unit", v.cost), widget.NewFormItem("Tags (complete set)", v.tags))
+		return ui.DetailForm(ui.DetailField("Quantity", v.amount), ui.DetailField("Cost per unit", v.cost), ui.DetailField("Tags (complete set)", ui.TagEditor(v.tagPreview, v.tags)))
 	case Tags:
-		return widget.NewForm(widget.NewFormItem("Tags (complete set)", v.tags))
+		return ui.DetailForm(ui.DetailField("Tags (complete set)", ui.TagEditor(v.tagPreview, v.tags)))
 	default:
 		return container.NewVBox()
 	}
@@ -193,7 +195,7 @@ func (v *View) detailFields(s State) framework.CanvasObject {
 		e.SetText(value)
 		return e
 	}
-	form := widget.NewForm(widget.NewFormItem("Ingredient", entry(r.Ingredient.Name)), widget.NewFormItem("Category", entry(string(r.Ingredient.Category))), widget.NewFormItem("Quantity", entry(r.Quantity)), widget.NewFormItem("Cost per unit", entry(r.Cost)), widget.NewFormItem("Status", entry(r.Status)), widget.NewFormItem("Tags", entry(r.Inventory.Tags.Canonical().String())), widget.NewFormItem("Last updated", entry(formatInventoryTime(r.Inventory.LastUpdated))))
+	form := ui.DetailForm(ui.DetailField("Ingredient", entry(r.Ingredient.Name)), ui.DetailField("Category", entry(string(r.Ingredient.Category))), ui.DetailField("Quantity", entry(r.Quantity)), ui.DetailField("Cost per unit", entry(r.Cost)), ui.DetailField("Status", entry(r.Status)), ui.DetailField("Tags", ui.TagPillsCSV(r.Inventory.Tags.Canonical().String())), ui.DetailField("Last updated", entry(formatInventoryTime(r.Inventory.LastUpdated))))
 	return container.NewVBox(ui.ActionBar(nil, []framework.CanvasObject{v.adjust, v.set, v.tagAction}), form)
 }
 

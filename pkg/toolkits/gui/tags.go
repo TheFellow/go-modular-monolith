@@ -2,6 +2,7 @@ package gui
 
 import (
 	"image/color"
+	"strings"
 
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -11,6 +12,30 @@ import (
 )
 
 const tagPillGap float32 = 6
+
+// TagPreview is a replaceable pill collection for an editable tag field.
+type TagPreview struct {
+	Content *framework.Container
+}
+
+func NewTagPreview(value string) *TagPreview {
+	preview := &TagPreview{Content: container.NewStack()}
+	preview.SetCSV(value)
+	return preview
+}
+
+// SetCSV refreshes the pills without replacing the surrounding form field.
+func (p *TagPreview) SetCSV(value string) {
+	p.Content.RemoveAll()
+	p.Content.Add(TagPillsCSV(value))
+	p.Content.Refresh()
+}
+
+// TagEditor presents the visual tokens and retains the editable canonical
+// representation directly beneath them.
+func TagEditor(preview *TagPreview, entry framework.CanvasObject) framework.CanvasObject {
+	return container.NewVBox(preview.Content, entry)
+}
 
 // TagPills renders canonical tag strings as compact, wrapping visual tokens.
 func TagPills(values []string) framework.CanvasObject {
@@ -27,6 +52,19 @@ func TagPills(values []string) framework.CanvasObject {
 		objects = append(objects, container.NewStack(background, container.NewPadded(label)))
 	}
 	return container.New(&pillWrapLayout{}, objects...)
+}
+
+// TagPillsCSV renders the canonical comma-separated representation used by
+// domain forms without making the GUI toolkit depend on the tag domain.
+func TagPillsCSV(value string) framework.CanvasObject {
+	parts := strings.Split(value, ",")
+	values := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part = strings.TrimSpace(part); part != "" {
+			values = append(values, part)
+		}
+	}
+	return TagPills(values)
 }
 
 func withAlpha(value color.Color, alpha uint8) color.Color {

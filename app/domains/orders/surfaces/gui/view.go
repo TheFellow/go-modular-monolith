@@ -229,18 +229,18 @@ func (v *View) detail(s State) framework.CanvasObject {
 	}
 	notes := readonly(r.Order.Notes)
 	notes.MultiLine = true
-	fields := container.NewVBox(widget.NewForm(
-		widget.NewFormItem("Order ID", readonly(r.Order.ID.String())), widget.NewFormItem("Menu", readonly(r.MenuName)),
-		widget.NewFormItem("Status", readonly(string(r.Order.Status))), widget.NewFormItem("Created", readonly(formatTime(r.Order.CreatedAt))),
-		widget.NewFormItem("Completed", readonly(completed)), widget.NewFormItem("Tags", readonly(r.Order.Tags.Canonical().String())),
-		widget.NewFormItem("Notes", notes)), widget.NewLabelWithStyle("Items", framework.TextAlignLeading, framework.TextStyle{Bold: true}))
+	fields := container.NewVBox(ui.DetailForm(
+		ui.DetailField("Order ID", readonly(r.Order.ID.String())), ui.DetailField("Menu", readonly(r.MenuName)),
+		ui.DetailField("Status", readonly(string(r.Order.Status))), ui.DetailField("Created", readonly(formatTime(r.Order.CreatedAt))),
+		ui.DetailField("Completed", readonly(completed)), ui.DetailField("Tags", ui.TagPillsCSV(r.Order.Tags.Canonical().String())),
+		ui.DetailField("Notes", notes)), widget.NewLabelWithStyle("Items", framework.TextAlignLeading, framework.TextStyle{Bold: true}))
 	if len(r.Lines) == 0 {
 		fields.Add(ui.EmptyCollection(ui.IconEmpty, "No order items", "This order contains no line items."))
 	}
 	for _, line := range r.Lines {
-		fields.Add(widget.NewForm(widget.NewFormItem("Drink", readonly(line.Name)), widget.NewFormItem("Quantity", readonly(strconv.Itoa(line.Quantity))), widget.NewFormItem("Line total", readonly(line.Total)), widget.NewFormItem("Notes", readonly(line.Notes))))
+		fields.Add(ui.DetailForm(ui.DetailField("Drink", readonly(line.Name)), ui.DetailField("Quantity", readonly(strconv.Itoa(line.Quantity))), ui.DetailField("Line total", readonly(line.Total)), ui.DetailField("Notes", readonly(line.Notes))))
 	}
-	fields.Add(widget.NewForm(widget.NewFormItem("Order total", readonly(r.Total))))
+	fields.Add(ui.DetailForm(ui.DetailField("Order total", readonly(r.Total))))
 	actions := []framework.CanvasObject{}
 	cleanPending := !s.Submitting && !s.Confirming && !s.Dirty && r.Order.Status == models.OrderStatusPending
 	if cleanPending && s.CanComplete {
@@ -273,6 +273,7 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	v.menuQuery.SetPlaceHolder("Search published menus")
 	v.menuQuery.SetText(s.Form.MenuQuery)
 	searchMenus := ui.NewButton(ControlMenuSearchApply, "Search", func() { v.presenter.SearchMenus(v.menuQuery.Text) })
+	v.menuQuery.OnSubmitted = func(string) { searchMenus.OnTapped() }
 	menuLabels := make([]string, len(s.Menus))
 	menuIDs := make(map[string]entity.MenuID, len(s.Menus))
 	for i, m := range s.Menus {
@@ -295,6 +296,7 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	v.drinkQuery.SetPlaceHolder("Search available drinks")
 	v.drinkQuery.SetText(s.Form.DrinkQuery)
 	searchDrinks := ui.NewButton(ControlDrinkSearchApply, "Search", func() { v.presenter.SearchDrinks(v.drinkQuery.Text) })
+	v.drinkQuery.OnSubmitted = func(string) { searchDrinks.OnTapped() }
 	drinkLabels := make([]string, len(s.Drinks))
 	drinkIDs := make(map[string]entity.DrinkID, len(s.Drinks))
 	for i, d := range s.Drinks {
@@ -336,7 +338,8 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	v.orderNotes.OnChanged = v.presenter.SetPlaceNotes
 	v.tags = ui.NewEntry(ControlPlaceTags)
 	v.tags.SetText(s.Form.Tags)
-	v.tags.OnChanged = v.presenter.SetPlaceTags
+	tagPreview := ui.NewTagPreview(s.Form.Tags)
+	v.tags.OnChanged = func(value string) { tagPreview.SetCSV(value); v.presenter.SetPlaceTags(value) }
 	v.save = ui.WithIcon(ui.NewButton(ControlPlaceSave, "Place", func() {
 		v.presenter.SetPlaceNotes(v.orderNotes.Text)
 		v.presenter.SetPlaceTags(v.tags.Text)
@@ -361,7 +364,7 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	if s.Err != nil {
 		message = "Error: " + s.Err.Error()
 	}
-	fields := container.NewVBox(container.NewBorder(nil, nil, nil, searchMenus, v.menuQuery), widget.NewLabel("Published menu"), v.menus, container.NewBorder(nil, nil, nil, searchDrinks, v.drinkQuery), widget.NewLabel("Available drink"), v.drinks, widget.NewLabel("Quantity"), v.quantity, widget.NewLabel("Item notes"), v.itemNotes, add, widget.NewLabelWithStyle("Order items", framework.TextAlignLeading, framework.TextStyle{Bold: true}), items, widget.NewLabel("Order notes"), v.orderNotes, widget.NewLabel("Tags (complete set)"), v.tags)
+	fields := container.NewVBox(container.NewBorder(nil, nil, nil, searchMenus, v.menuQuery), widget.NewLabel("Published menu"), v.menus, container.NewBorder(nil, nil, nil, searchDrinks, v.drinkQuery), widget.NewLabel("Available drink"), v.drinks, widget.NewLabel("Quantity"), v.quantity, widget.NewLabel("Item notes"), v.itemNotes, add, widget.NewLabelWithStyle("Order items", framework.TextAlignLeading, framework.TextStyle{Bold: true}), items, widget.NewLabel("Order notes"), v.orderNotes, widget.NewLabel("Tags (complete set)"), ui.TagEditor(tagPreview, v.tags))
 	return ui.StandardFormPage(ui.FormPage{Title: "Place order", Breadcrumb: container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", v.presenter.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Orders", v.presenter.ResetList), widget.NewLabel(">"), widget.NewLabel("Place order")), Subtitle: "Choose a published menu, add drinks, then place the order.", Fields: fields, Status: widget.NewLabel(message), Save: v.save, Cancel: v.cancel})
 }
 func (v *View) tagForm(s State) framework.CanvasObject {
@@ -370,7 +373,9 @@ func (v *View) tagForm(s State) framework.CanvasObject {
 	v.rendering = true
 	v.tags.SetText(s.Form.Tags)
 	v.rendering = false
+	tagPreview := ui.NewTagPreview(s.Form.Tags)
 	v.tags.OnChanged = func(value string) {
+		tagPreview.SetCSV(value)
 		if !v.rendering {
 			v.presenter.SetTagForm(value)
 		}
@@ -385,7 +390,7 @@ func (v *View) tagForm(s State) framework.CanvasObject {
 		message = "Error: " + s.Err.Error()
 	}
 	title := orderTitle(s.Selected)
-	return ui.StandardFormPage(ui.FormPage{Title: "Edit order tags", Breadcrumb: v.breadcrumb(title), Subtitle: "Complete tag set (CSV); clear to remove all tags.", Fields: v.tags, Status: widget.NewLabel(message), Save: v.save, Cancel: v.cancel})
+	return ui.StandardFormPage(ui.FormPage{Title: "Edit order tags", Breadcrumb: v.breadcrumb(title), Subtitle: "Complete tag set (CSV); clear to remove all tags.", Fields: ui.TagEditor(tagPreview, v.tags), Status: widget.NewLabel(message), Save: v.save, Cancel: v.cancel})
 }
 func noteSuffix(note string) string {
 	if strings.TrimSpace(note) == "" {
