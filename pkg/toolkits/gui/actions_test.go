@@ -70,3 +70,31 @@ func TestActionCellRebindDoesNotRetainRecycledRowCallback(t *testing.T) {
 		t.Fatalf("recycled callback targeted wrong row: first=%d second=%d", first, second)
 	}
 }
+
+func TestConfiguredRowTableUsesResizableNativeHeadersAndTogglesSort(t *testing.T) {
+	startTestApp(t)
+	table := NewRowTable(func() (int, int) { return 1, 2 }, func() framework.CanvasObject { return NewActionCell() }, func(widget.TableCellID, framework.CanvasObject) {})
+	var directions []SortDirection
+	ConfigureRowTable(table, []TableColumn{{Title: "Name", Width: 180, Sortable: true}, {Title: "Actions", Width: 120}}, func(_ int, direction SortDirection) {
+		directions = append(directions, direction)
+	})
+	if !table.ShowHeaderRow || table.CreateHeader == nil || table.UpdateHeader == nil {
+		t.Fatal("table does not use the native resizable header row")
+	}
+	header := table.CreateHeader()
+	table.UpdateHeader(widget.TableCellID{Row: -1, Col: 0}, header)
+	button := header.(*widget.Button)
+	button.OnTapped()
+	button.OnTapped()
+	if len(directions) != 2 || directions[0] != SortAscending || directions[1] != SortDescending {
+		t.Fatalf("sort directions = %v", directions)
+	}
+	table.UpdateHeader(widget.TableCellID{Row: -1, Col: 0}, header)
+	if button.Text != "Name  ↓" {
+		t.Fatalf("sorted header = %q", button.Text)
+	}
+	table.UpdateHeader(widget.TableCellID{Row: -1, Col: 1}, header)
+	if !button.Disabled() {
+		t.Fatal("unsupported column should remain visibly non-sortable")
+	}
+}

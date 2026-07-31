@@ -69,6 +69,7 @@ type View struct {
 	refresh, create, save, cancel                                      *ui.SemanticButton
 	state                                                              State
 	rendering                                                          bool
+	tagNaturalWidth                                                    float32
 }
 
 var _ ui.View = (*View)(nil)
@@ -136,55 +137,62 @@ func (v *View) browser(s State) framework.CanvasObject {
 	setEnabled(v.limit, !busy)
 	setEnabled(bar.Apply, !busy)
 	columns := []string{"Menu", "Menu ID", "Status", "Items", "Total quantity", "Total", "Created", "Completed", "Tags", "Actions"}
-	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Rows) + 1, len(columns) }, func() framework.CanvasObject {
-		return ui.NewActionCell()
-	}, func(id widget.TableCellID, object framework.CanvasObject) {
-		cell := object
-		if id.Row == 0 {
-			ui.ShowCellText(cell, columns[id.Col], true)
-			return
-		}
-		row := v.state.Rows[id.Row-1]
-		completed := ""
-		if t, ok := row.Order.CompletedAt.Unwrap(); ok {
-			completed = formatTime(t)
-		}
-		qty := 0
-		for _, item := range row.Order.Items {
-			qty += item.Quantity
-		}
-		values := []string{row.MenuName, row.Order.MenuID.String(), string(row.Order.Status), strconv.Itoa(len(row.Order.Items)), strconv.Itoa(qty), row.Total, formatTime(row.Order.CreatedAt), completed, row.Order.Tags.Canonical().String()}
-		if id.Col == len(columns)-1 {
-			index := id.Row - 1
-			actions := []ui.RowAction{{Label: "View", Run: func() { v.presenter.Select(index) }}}
-			canComplete, canCancel, canTag := v.presenter.ListPermissions(index)
-			if canComplete {
-				actions = append(actions, ui.RowAction{Label: "Complete", Run: func() { v.presenter.Select(index); v.presenter.ConfirmComplete() }})
+	if v.list == nil {
+		v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Rows), len(columns) }, func() framework.CanvasObject {
+			return ui.NewActionCell()
+		}, func(id widget.TableCellID, object framework.CanvasObject) {
+			cell := object
+			row := v.state.Rows[id.Row]
+			completed := ""
+			if t, ok := row.Order.CompletedAt.Unwrap(); ok {
+				completed = formatTime(t)
 			}
-			if canCancel {
-				actions = append(actions, ui.RowAction{Label: "Cancel order", Run: func() { v.presenter.Select(index); v.presenter.ConfirmCancel() }})
+			qty := 0
+			for _, item := range row.Order.Items {
+				qty += item.Quantity
 			}
-			if canTag {
-				actions = append(actions, ui.RowAction{Label: "Tags", Run: func() { v.presenter.Select(index); v.presenter.StartTags() }})
+			values := []string{row.MenuName, row.Order.MenuID.String(), string(row.Order.Status), strconv.Itoa(len(row.Order.Items)), strconv.Itoa(qty), row.Total, formatTime(row.Order.CreatedAt), completed, row.Order.Tags.Canonical().String()}
+			if id.Col == len(columns)-1 {
+				index := id.Row
+				actions := []ui.RowAction{{Label: "View", Run: func() { v.presenter.Select(index) }}}
+				canComplete, canCancel, canTag := v.presenter.ListPermissions(index)
+				if canComplete {
+					actions = append(actions, ui.RowAction{Label: "Complete", Run: func() { v.presenter.Select(index); v.presenter.ConfirmComplete() }})
+				}
+				if canCancel {
+					actions = append(actions, ui.RowAction{Label: "Cancel order", Run: func() { v.presenter.Select(index); v.presenter.ConfirmCancel() }})
+				}
+				if canTag {
+					actions = append(actions, ui.RowAction{Label: "Tags", Run: func() { v.presenter.Select(index); v.presenter.StartTags() }})
+				}
+				ui.ShowCellActions(cell, actions)
+				return
 			}
-			ui.ShowCellActions(cell, actions)
-			return
+			if id.Col == 8 {
+				ui.ShowCellTags(cell, values[id.Col])
+				return
+			}
+			ui.ShowCellText(cell, values[id.Col], false)
+		})
+		v.list.OnSelected = func(id widget.TableCellID) {
+			if id.Row >= 0 && id.Col < len(columns)-1 {
+				v.list.UnselectAll()
+				v.presenter.Select(id.Row)
+			}
 		}
-		if id.Col == 8 {
-			ui.ShowCellTags(cell, values[id.Col])
-			return
+		ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Menu", Width: 190}, {Title: "Menu ID", Width: 240}, {Title: "Status", Width: 100}, {Title: "Items", Width: 65}, {Title: "Total quantity", Width: 100}, {Title: "Total", Width: 90}, {Title: "Created", Width: 175}, {Title: "Completed", Width: 175}, {Title: "Tags", Width: 180}, {Title: "Actions", Width: 140}}, nil)
+	}
+	if len(s.Rows) > 0 {
+		values := make([]string, len(s.Rows))
+		for i, row := range s.Rows {
+			values[i] = row.Order.Tags.Canonical().String()
 		}
-		ui.ShowCellText(cell, values[id.Col], false)
-	})
-	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 && id.Col < len(columns)-1 {
-			v.list.UnselectAll()
-			v.presenter.Select(id.Row - 1)
+		if width := ui.TagPillColumnWidth(values, 180); width > v.tagNaturalWidth {
+			v.list.SetColumnWidth(8, width)
+			v.tagNaturalWidth = width
 		}
 	}
-	for i, width := range []float32{190, 240, 100, 65, 100, 90, 175, 175, 180, 140} {
-		v.list.SetColumnWidth(i, width)
-	}
+	v.list.Refresh()
 	list := framework.CanvasObject(v.list)
 	if len(s.Rows) == 0 && !s.Loading {
 		list = ui.EmptyCollection(ui.IconEmpty, "No orders found", "Adjust the filter or place an order.")

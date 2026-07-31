@@ -56,6 +56,7 @@ type View struct {
 	renderedForm                                  Form
 	renderedInstance                              uint64
 	state                                         State
+	tagNaturalWidth                               float32
 }
 
 var _ ui.View = (*View)(nil)
@@ -78,15 +79,11 @@ func NewView(p *Presenter) *View {
 	v.expression = bar.Expression
 	v.state = p.Snapshot()
 	columns := []string{"Name", "Category", "Unit", "Description", "Tags", "Actions"}
-	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Items) + 1, len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Items), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
 		cell := object
-		if id.Row == 0 {
-			ui.ShowCellText(cell, columns[id.Col], true)
-			return
-		}
-		item := v.state.Items[id.Row-1]
+		item := v.state.Items[id.Row]
 		values := []string{item.Name, string(item.Category), string(item.Unit), item.Description, item.Tags.Canonical().String()}
 		if id.Col == len(columns)-1 {
 			itemID := item.ID
@@ -100,15 +97,12 @@ func NewView(p *Presenter) *View {
 		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 && id.Col < len(columns)-1 {
+		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
-			p.Select(v.state.Items[id.Row-1].ID)
+			p.Select(v.state.Items[id.Row].ID)
 		}
 	}
-	for i, width := range []float32{180, 110, 85, 260, 180} {
-		v.list.SetColumnWidth(i, width)
-	}
-	v.list.SetColumnWidth(5, 120)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 180}, {Title: "Category", Width: 110}, {Title: "Unit", Width: 85}, {Title: "Description", Width: 260}, {Title: "Tags", Width: 180}, {Title: "Actions", Width: 120}}, nil)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No ingredients found", "Adjust the filter or create a new ingredient.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)
@@ -216,6 +210,16 @@ func (v *View) populate(f Form) {
 }
 
 func (v *View) render(s State) {
+	if len(s.Items) > 0 {
+		values := make([]string, len(s.Items))
+		for i, item := range s.Items {
+			values[i] = item.Tags.Canonical().String()
+		}
+		if width := ui.TagPillColumnWidth(values, 180); width > v.tagNaturalWidth {
+			v.list.SetColumnWidth(4, width)
+			v.tagNaturalWidth = width
+		}
+	}
 	v.rendering = true
 	defer func() { v.rendering = false }()
 	v.state = s

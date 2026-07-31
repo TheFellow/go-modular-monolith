@@ -55,6 +55,7 @@ type View struct {
 	renderedMode                          Mode
 	renderedForm                          Form
 	renderedInstance                      uint64
+	tagNaturalWidth                       float32
 }
 
 var _ ui.View = (*View)(nil)
@@ -74,15 +75,11 @@ func NewView(p *Presenter) *View {
 	// Mirrors the CLI inventory list except for the inventory record ID; the
 	// joined ingredient name makes the otherwise opaque ingredient ID useful.
 	columns := []string{"Ingredient", "Ingredient ID", "Quantity", "Unit", "Cost per unit", "Last updated", "Tags", "Status", "Actions"}
-	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Rows) + 1, len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Rows), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
 		cell := object
-		if id.Row == 0 {
-			ui.ShowCellText(cell, columns[id.Col], true)
-			return
-		}
-		r := v.state.Rows[id.Row-1]
+		r := v.state.Rows[id.Row]
 		values := []string{r.Ingredient.Name, r.Inventory.IngredientID.String(), fmt.Sprintf("%.2f", r.Inventory.Amount.Value()), string(r.Inventory.Amount.Unit()), r.Cost, formatInventoryTime(r.Inventory.LastUpdated), r.Inventory.Tags.Canonical().String(), r.Status}
 		if id.Col == len(columns)-1 {
 			rowID := r.Inventory.ID
@@ -106,15 +103,12 @@ func NewView(p *Presenter) *View {
 		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 && id.Col < len(columns)-1 {
+		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
-			p.Select(v.state.Rows[id.Row-1].Inventory.ID)
+			p.Select(v.state.Rows[id.Row].Inventory.ID)
 		}
 	}
-	for i, width := range []float32{180, 230, 90, 70, 120, 210, 180, 70} {
-		v.list.SetColumnWidth(i, width)
-	}
-	v.list.SetColumnWidth(8, 120)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Ingredient", Width: 180}, {Title: "Ingredient ID", Width: 230}, {Title: "Quantity", Width: 90}, {Title: "Unit", Width: 70}, {Title: "Cost per unit", Width: 120}, {Title: "Last updated", Width: 210}, {Title: "Tags", Width: 180}, {Title: "Status", Width: 70}, {Title: "Actions", Width: 120}}, nil)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No inventory found", "Adjust the filter to find stock items.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)
@@ -230,6 +224,16 @@ func (v *View) populate(f Form) {
 }
 
 func (v *View) render(s State) {
+	if len(s.Rows) > 0 {
+		values := make([]string, len(s.Rows))
+		for i, row := range s.Rows {
+			values[i] = row.Inventory.Tags.Canonical().String()
+		}
+		if width := ui.TagPillColumnWidth(values, 180); width > v.tagNaturalWidth {
+			v.list.SetColumnWidth(6, width)
+			v.tagNaturalWidth = width
+		}
+	}
 	v.rendering = true
 	defer func() { v.rendering = false }()
 	v.state = s

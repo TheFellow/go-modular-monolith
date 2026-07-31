@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	framework "fyne.io/fyne/v2"
 	frameworktest "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
@@ -378,7 +377,7 @@ func TestViewDrivesRealWidgetsAndShowsCompleteDetail(t *testing.T) {
 	row := 0
 	for i := range presenter.Snapshot().Items {
 		if presenter.Snapshot().Items[i].ID == gin.ID {
-			row = i + 1
+			row = i
 		}
 	}
 	view.list.Select(widget.TableCellID{Row: row, Col: 0})
@@ -411,9 +410,9 @@ func TestViewListDetailStatesPermissionsAndEmptyCollection(t *testing.T) {
 	view := NewView(presenter)
 	view.Activate()
 	for column, want := range []string{"Name", "Category", "Unit", "Description", "Tags", "Actions"} {
-		cell := view.list.CreateCell().(*framework.Container)
-		view.list.UpdateCell(widget.TableCellID{Row: 0, Col: column}, cell)
-		text := cell.Objects[0].(*widget.Label).Text
+		header := view.list.CreateHeader()
+		view.list.UpdateHeader(widget.TableCellID{Row: -1, Col: column}, header)
+		text := header.(*widget.Button).Text
 		if text != want {
 			t.Fatalf("header %d = %q, want %q", column, text, want)
 		}

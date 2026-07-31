@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
@@ -396,17 +395,17 @@ func TestDrinksViewCatalogAndDetailContract(t *testing.T) {
 		t.Fatal("drinks filter unexpectedly uses a disclosure row")
 	}
 	rows, columns := v.list.Length()
-	testutil.Equals(t, rows, 2)
+	testutil.Equals(t, rows, 1)
 	testutil.Equals(t, columns, 6)
 	for column, want := range []string{"Name", "Category", "Glass", "Ingredients", "Tags", "Actions"} {
-		cell := v.list.CreateCell()
-		v.list.UpdateCell(widget.TableCellID{Row: 0, Col: column}, cell)
-		testutil.Equals(t, cell.(*framework.Container).Objects[0].(*widget.Label).Text, want)
+		header := v.list.CreateHeader()
+		v.list.UpdateHeader(widget.TableCellID{Row: -1, Col: column}, header)
+		testutil.Equals(t, header.(*widget.Button).Text, want)
 	}
 	if v.browse.Hidden || !v.formPanel.Hidden {
 		t.Fatal("catalog and detail were shown together")
 	}
-	v.list.Select(widget.TableCellID{Row: 1, Col: 0})
+	v.list.Select(widget.TableCellID{Row: 0, Col: 0})
 	if !v.browse.Hidden || v.formPanel.Hidden {
 		t.Fatal("row selection did not replace catalog with detail")
 	}

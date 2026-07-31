@@ -41,6 +41,7 @@ type View struct {
 	apply, submit, back                                               *ui.SemanticButton
 	status, workflowTitle, detailTitle, crumbName                     *widget.Label
 	state                                                             State
+	tagNaturalWidth                                                   float32
 }
 
 var _ ui.View = (*View)(nil)
@@ -51,18 +52,14 @@ func NewView(p *Presenter) *View {
 	bar := ui.NewSingleRowFilterBar(ControlSearch+".summary", ControlSearch+".summary.apply", "Filter tags by key or value", "", nil, nil, func(expression string) { p.Search(expression) })
 	v.search, v.apply = bar.Expression, bar.Apply
 	columns := []string{"Tag", "Total", "Drinks", "Ingredients", "Inventory", "Menus", "Orders", "Actions"}
-	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.VisibleSummaries) + 1, len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.VisibleSummaries), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
 		cell := object
-		if id.Row == 0 {
-			ui.ShowCellText(cell, columns[id.Col], true)
-			return
-		}
-		r := v.state.VisibleSummaries[id.Row-1]
+		r := v.state.VisibleSummaries[id.Row]
 		values := []string{r.Tag, fmt.Sprint(r.Total), fmt.Sprint(r.Drinks), fmt.Sprint(r.Ingredients), fmt.Sprint(r.Inventory), fmt.Sprint(r.Menus), fmt.Sprint(r.Orders)}
 		if id.Col == len(columns)-1 {
-			index := id.Row - 1
+			index := id.Row
 			ui.ShowCellActions(cell, []ui.RowAction{{Label: "View", Run: func() { p.SelectSummary(index) }}})
 			return
 		}
@@ -73,15 +70,12 @@ func NewView(p *Presenter) *View {
 		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 && id.Col < len(columns)-1 {
+		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
-			p.SelectSummary(id.Row - 1)
+			p.SelectSummary(id.Row)
 		}
 	}
-	for i, width := range []float32{260, 70, 80, 100, 90, 70, 70} {
-		v.list.SetColumnWidth(i, width)
-	}
-	v.list.SetColumnWidth(7, 120)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Tag", Width: 260, Sortable: true}, {Title: "Total", Width: 70, Sortable: true}, {Title: "Drinks", Width: 80, Sortable: true}, {Title: "Ingredients", Width: 100, Sortable: true}, {Title: "Inventory", Width: 90, Sortable: true}, {Title: "Menus", Width: 70, Sortable: true}, {Title: "Orders", Width: 70, Sortable: true}, {Title: "Actions", Width: 120}}, p.SortSummaries)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No active tag usage", "Adjust the filter or tag an active entity to begin discovery.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	add := ui.WithIcon(ui.NewButton(ControlAdd+".list", "Tag entity", func() { p.Start(Add) }), ui.IconTag)
@@ -149,6 +143,16 @@ func (v *View) ExecuteCommand(c ui.Command) bool {
 }
 
 func (v *View) render(s State) {
+	if len(s.VisibleSummaries) > 0 {
+		values := make([]string, len(s.VisibleSummaries))
+		for i, summary := range s.VisibleSummaries {
+			values[i] = summary.Tag
+		}
+		if width := ui.TagPillColumnWidth(values, 260); width > v.tagNaturalWidth {
+			v.list.SetColumnWidth(0, width)
+			v.tagNaturalWidth = width
+		}
+	}
 	v.state = s
 	list := s.Mode == Results && s.Operation == Summary
 	detail := s.Mode == Results && s.Operation != Summary

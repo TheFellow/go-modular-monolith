@@ -132,6 +132,7 @@ type View struct {
 	renderedForm                      Form
 	formRendered                      bool
 	rendering                         bool
+	tagNaturalWidth                   float32
 }
 
 var _ ui.View = (*View)(nil)
@@ -161,18 +162,14 @@ func NewView(p *Presenter) *View {
 	v.filterBar = bar
 	filters := bar.Content
 	columns := []string{"Name", "Category", "Glass", "Ingredients", "Tags", "Actions"}
-	v.list = ui.NewRowTable(func() (int, int) { return len(p.State().Items) + 1, len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewRowTable(func() (int, int) { return len(p.State().Items), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, o framework.CanvasObject) {
 		cell := o
-		if id.Row == 0 {
-			ui.ShowCellText(cell, columns[id.Col], true)
-			return
-		}
-		item := p.State().Items[id.Row-1]
+		item := p.State().Items[id.Row]
 		values := []string{item.Name, string(item.Category), string(item.Glass), strconv.Itoa(len(item.Recipe.Ingredients)), item.Tags.Canonical().String()}
 		if id.Col == len(columns)-1 {
-			index := id.Row - 1
+			index := id.Row
 			ui.ShowCellActions(cell, []ui.RowAction{{Label: "View", Run: func() { p.Select(index) }}})
 			return
 		}
@@ -183,17 +180,12 @@ func NewView(p *Presenter) *View {
 		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 && id.Col < len(columns)-1 {
+		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
-			p.Select(id.Row - 1)
+			p.Select(id.Row)
 		}
 	}
-	v.list.SetColumnWidth(0, 190)
-	v.list.SetColumnWidth(1, 110)
-	v.list.SetColumnWidth(2, 110)
-	v.list.SetColumnWidth(3, 125)
-	v.list.SetColumnWidth(4, 190)
-	v.list.SetColumnWidth(5, 120)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 190}, {Title: "Category", Width: 110}, {Title: "Glass", Width: 110}, {Title: "Ingredients", Width: 125}, {Title: "Tags", Width: 190}, {Title: "Actions", Width: 120}}, nil)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New drink", p.StartCreate), ui.IconAdd))
 	v.previous = ui.WithIcon(ui.NewButton(ControlPrevious, "Previous", p.PreviousPage), ui.IconPrevious)
@@ -324,6 +316,16 @@ func (v *View) readForm() {
 	v.presenter.SetForm(Form{Name: v.name.Text, Category: v.category.Selected, Glass: v.glass.Selected, Description: v.description.Text, Recipe: rows, Steps: v.steps.Text, Garnish: v.garnish.Text, Tags: v.mutationTags.CSV(), ReplaceTags: true})
 }
 func (v *View) render(state State) {
+	if len(state.Items) > 0 {
+		values := make([]string, len(state.Items))
+		for i, item := range state.Items {
+			values[i] = item.Tags.Canonical().String()
+		}
+		if width := ui.TagPillColumnWidth(values, 190); width > v.tagNaturalWidth {
+			v.list.SetColumnWidth(4, width)
+			v.tagNaturalWidth = width
+		}
+	}
 	v.rendering = true
 	defer func() { v.rendering = false }()
 	if len(state.History) == 0 || state.Loading {
