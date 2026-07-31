@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -42,9 +43,9 @@ func TestDashboardLayoutConfig(t *testing.T) {
 func TestDashboardRecentActivityFitsAssignedHeight(t *testing.T) {
 	t.Parallel()
 
-	recent := make([]AuditSummary, 10)
+	recent := make([]app.DashboardActivity, 10)
 	for i := range recent {
-		recent[i] = AuditSummary{
+		recent[i] = app.DashboardActivity{
 			Timestamp: time.Date(2026, 1, 1, 12, i, 0, 0, time.UTC),
 			Actor:     "owner",
 			Action:    fmt.Sprintf("activity-%02d", i),
@@ -53,7 +54,7 @@ func TestDashboardRecentActivityFitsAssignedHeight(t *testing.T) {
 	d := &Dashboard{
 		width:  100,
 		height: 21, // Minimum application height after title and status bars.
-		data:   &DashboardData{RecentActivity: recent},
+		data:   &app.DashboardAggregate{RecentActivity: recent},
 	}
 
 	view := d.View()

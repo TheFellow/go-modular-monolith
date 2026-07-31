@@ -12,6 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/keys"
 	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/styles"
+	contracts "github.com/TheFellow/go-modular-monolith/app/surfaces/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 )
 
@@ -25,7 +26,7 @@ type Dashboard struct {
 
 	loading bool
 	spinner tui.Spinner
-	data    *DashboardData
+	data    *app.DashboardAggregate
 	err     error
 }
 
@@ -34,11 +35,8 @@ const (
 	dashboardRecentMax  = app.DashboardRecentLimit
 )
 
-type DashboardData = app.DashboardAggregate
-type AuditSummary = app.DashboardActivity
-
 type DashboardLoadedMsg struct {
-	Data *DashboardData
+	Data *app.DashboardAggregate
 	Err  error
 }
 
@@ -60,10 +58,10 @@ func (d *Dashboard) Init() tea.Cmd {
 	return tea.Batch(d.spinner.Init(), d.loadData())
 }
 
-func (d *Dashboard) Interaction() Interaction { return Interaction{} }
+func (d *Dashboard) Interaction() contracts.Interaction { return contracts.Interaction{} }
 
 // Update implements ViewModel.
-func (d *Dashboard) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
+func (d *Dashboard) Update(msg tea.Msg) (contracts.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		d.width = msg.Width
@@ -71,19 +69,19 @@ func (d *Dashboard) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, d.keys.Nav1):
-			return d, navigateTo(ViewDrinks)
+			return d, navigateTo(contracts.ViewDrinks)
 		case key.Matches(msg, d.keys.Nav2):
-			return d, navigateTo(ViewIngredients)
+			return d, navigateTo(contracts.ViewIngredients)
 		case key.Matches(msg, d.keys.Nav3):
-			return d, navigateTo(ViewInventory)
+			return d, navigateTo(contracts.ViewInventory)
 		case key.Matches(msg, d.keys.Nav4):
-			return d, navigateTo(ViewMenus)
+			return d, navigateTo(contracts.ViewMenus)
 		case key.Matches(msg, d.keys.Nav5):
-			return d, navigateTo(ViewOrders)
+			return d, navigateTo(contracts.ViewOrders)
 		case key.Matches(msg, d.keys.Nav6):
-			return d, navigateTo(ViewAudit)
+			return d, navigateTo(contracts.ViewAudit)
 		case key.Matches(msg, d.keys.Nav7):
-			return d, navigateTo(ViewTags)
+			return d, navigateTo(contracts.ViewTags)
 		case key.Matches(msg, d.keys.Refresh):
 			d.loading = true
 			d.err = nil
@@ -205,28 +203,28 @@ func (d *Dashboard) renderCountCards() []dashboardCard {
 	}
 }
 
-func (d *Dashboard) inventorySubtitle(data *DashboardData) string {
+func (d *Dashboard) inventorySubtitle(data *app.DashboardAggregate) string {
 	if data.LowStockCount >= 0 {
 		return "Low stock: " + formatCount(data.LowStockCount)
 	}
 	return "Track stock levels"
 }
 
-func (d *Dashboard) menuSubtitle(data *DashboardData) string {
+func (d *Dashboard) menuSubtitle(data *app.DashboardAggregate) string {
 	if data.DraftMenus >= 0 && data.PublishedMenus >= 0 {
 		return fmt.Sprintf("Draft %s • Published %s", formatCount(data.DraftMenus), formatCount(data.PublishedMenus))
 	}
 	return "Build drink menus"
 }
 
-func (d *Dashboard) ordersSubtitle(data *DashboardData) string {
+func (d *Dashboard) ordersSubtitle(data *app.DashboardAggregate) string {
 	if data.PendingOrders >= 0 {
 		return "Pending: " + formatCount(data.PendingOrders)
 	}
 	return "Review orders"
 }
 
-func (d *Dashboard) auditCountLabel(data *DashboardData) string {
+func (d *Dashboard) auditCountLabel(data *app.DashboardAggregate) string {
 	if data.AuditCount < 0 {
 		return "?"
 	}
@@ -350,8 +348,8 @@ func formatCount(count int) string {
 	return strconv.Itoa(count)
 }
 
-func navigateTo(view View) tea.Cmd {
+func navigateTo(view contracts.View) tea.Cmd {
 	return func() tea.Msg {
-		return NavigateMsg{To: view}
+		return contracts.NavigateMsg{To: view}
 	}
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/keys"
 	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/presentation"
 	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/styles"
+	contracts "github.com/TheFellow/go-modular-monolith/app/surfaces/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
@@ -168,15 +169,15 @@ func tagOperationItems() []list.Item {
 
 func (m *Tags) Init() tea.Cmd { return nil }
 
-func (m *Tags) Interaction() Interaction {
-	return Interaction{
+func (m *Tags) Interaction() contracts.Interaction {
+	return contracts.Interaction{
 		HandlesBack: m.mode != tagsModeBrowsing,
 		CapturesText: m.mode == tagsModeEnteringValue ||
 			(m.mode == tagsModePickingType || m.mode == tagsModePickingEntity) && m.picker.SettingFilter(),
 	}
 }
 
-func (m *Tags) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
+func (m *Tags) Update(msg tea.Msg) (contracts.ViewModel, tea.Cmd) {
 	switch typed := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(typed.Width, typed.Height)

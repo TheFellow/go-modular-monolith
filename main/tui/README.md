@@ -60,12 +60,12 @@ graph TD
 - `main/tui/views/dashboard.go`: Dashboard view model.
 - `app/domains/*/surfaces/tui/`: Domain list/detail/create/edit view models.
 - `app/surfaces/tui/`: Shared Mixology TUI contracts, components, styles, and key bindings.
-- `main/tui/messages.go`: Public TUI message/view aliases.
+- `app/surfaces/tui/views/messages.go`: Shared TUI navigation and view contracts.
 
 ## Adding a New View
 
 1. Create a new view model in the target domain under `app/domains/<domain>/surfaces/tui/`.
-2. Add a new `View` constant in `app/surfaces/tui/views/messages.go` and expose it from `main/tui/messages.go`.
+2. Add a new `View` constant in `app/surfaces/tui/views/messages.go` and use it directly from the shell and view.
 3. Wire the view into `main/tui/app.go` `currentViewModel()` and navigation.
 4. Use shared styles/keys from `app/surfaces/tui/styles` and `app/surfaces/tui/keys`.
 5. For data access, call `app.Context()` per operation.
