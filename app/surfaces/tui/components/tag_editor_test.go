@@ -75,7 +75,7 @@ func TestTagEditorCanClearAnExistingSetThroughKeyboardEditing(t *testing.T) {
 	editor.Init()
 	editor, _ = editor.Update(tea.KeyMsg{Type: tea.KeyCtrlU})
 	testutil.Equals(t, editor.field.Value(), any(""))
-	editor, cmd := editor.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	_, cmd := editor.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
 	testutil.ErrorIf(t, cmd == nil, "clear did not start a save")
 	msg := cmd()
 	saved, ok := msg.(TagsSavedMsg)
