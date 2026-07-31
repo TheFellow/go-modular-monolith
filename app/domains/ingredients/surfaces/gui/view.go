@@ -78,7 +78,7 @@ func NewView(p *Presenter) *View {
 	v.expression = bar.Expression
 	v.state = p.Snapshot()
 	columns := []string{"Name", "Category", "Unit", "Description", "Tags", "Actions"}
-	v.list = widget.NewTable(func() (int, int) { return len(v.state.Items) + 1, len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Items) + 1, len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
 		cell := object

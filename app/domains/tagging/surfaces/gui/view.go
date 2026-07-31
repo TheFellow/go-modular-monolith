@@ -51,7 +51,7 @@ func NewView(p *Presenter) *View {
 	bar := ui.NewSingleRowFilterBar(ControlSearch+".summary", ControlSearch+".summary.apply", "Filter tags by key or value", "", nil, nil, func(expression string) { p.Search(expression) })
 	v.search, v.apply = bar.Expression, bar.Apply
 	columns := []string{"Tag", "Total", "Drinks", "Ingredients", "Inventory", "Menus", "Orders", "Actions"}
-	v.list = widget.NewTable(func() (int, int) { return len(v.state.VisibleSummaries) + 1, len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.VisibleSummaries) + 1, len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
 		cell := object
