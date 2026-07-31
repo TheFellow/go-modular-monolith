@@ -35,13 +35,13 @@ const (
 )
 
 type View struct {
-	presenter                                 *Presenter
-	root                                      *framework.Container
-	expression, threshold, amount, cost, tags *toolkit.SemanticEntry
-	stock, limit, reason                      *widget.Select
-	save                                      *toolkit.SemanticButton
-	refresh, cancel                           *toolkit.SemanticButton
-	rows                                      map[string]*toolkit.SemanticButton
+	presenter                      *Presenter
+	root                           *framework.Container
+	expression, amount, cost, tags *toolkit.SemanticEntry
+	limit, reason                  *widget.Select
+	save                           *toolkit.SemanticButton
+	refresh, cancel                *toolkit.SemanticButton
+	rows                           map[string]*toolkit.SemanticButton
 }
 
 var _ toolkit.View = (*View)(nil)
