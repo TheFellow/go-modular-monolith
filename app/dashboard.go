@@ -26,7 +26,7 @@ type DashboardActivity struct {
 	Action    string    `json:"action"`
 }
 
-type DashboardAggregate struct {
+type Dashboard struct {
 	DrinkCount      int                 `json:"drink_count"`
 	IngredientCount int                 `json:"ingredient_count"`
 	InventoryCount  int                 `json:"inventory_count"`
@@ -40,18 +40,18 @@ type DashboardAggregate struct {
 	RecentActivity  []DashboardActivity `json:"recent_activity"`
 }
 
-func UnknownDashboardAggregate() DashboardAggregate {
-	return DashboardAggregate{DrinkCount: -1, IngredientCount: -1, InventoryCount: -1, MenuCount: -1, DraftMenus: -1, PublishedMenus: -1, LowStockCount: -1, OrderCount: -1, PendingOrders: -1, AuditCount: -1}
+func UnknownDashboard() Dashboard {
+	return Dashboard{DrinkCount: -1, IngredientCount: -1, InventoryCount: -1, MenuCount: -1, DraftMenus: -1, PublishedMenus: -1, LowStockCount: -1, OrderCount: -1, PendingOrders: -1, AuditCount: -1}
 }
 
-// Dashboard returns the read-only application aggregate shared by every
+// Dashboard returns the read-only application dashboard shared by every
 // presentation surface. Counts remain -1 when authorization or another query
 // error makes that individual value unavailable; the first error is returned.
-func (a *App) Dashboard(ctx *middleware.Context) (DashboardAggregate, error) {
+func (a *App) Dashboard(ctx *middleware.Context) (Dashboard, error) {
 	if a == nil {
-		return DashboardAggregate{}, errors.New("dashboard requires an application")
+		return Dashboard{}, errors.New("dashboard requires an application")
 	}
-	data := UnknownDashboardAggregate()
+	data := UnknownDashboard()
 	var first error
 	load := func(target *int, fn func() (int, error)) {
 		value, err := fn()
@@ -102,9 +102,9 @@ func (a *App) Dashboard(ctx *middleware.Context) (DashboardAggregate, error) {
 	return data, first
 }
 
-func (s *Session) Dashboard() (DashboardAggregate, error) {
+func (s *Session) Dashboard() (Dashboard, error) {
 	if s == nil || s.App == nil {
-		return DashboardAggregate{}, errors.New("dashboard requires an application session")
+		return Dashboard{}, errors.New("dashboard requires an application session")
 	}
 	return s.App.Dashboard(s.Context())
 }
