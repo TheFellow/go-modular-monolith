@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -497,6 +498,12 @@ func TestStructuredRecipeWidgetsUseNamesAndConstrainedChoices(t *testing.T) {
 	testutil.Equals(t, v.recipe[0].optional.Checked, true)
 	testutil.Equals(t, v.recipe[0].substitutes[sub2.ID].Checked, true)
 	testutil.Equals(t, len(v.recipe[0].substitutes), 2)
+	if v.recipe[0].actions == nil || !slices.Contains(v.recipe[0].actions.Options, "Add substitute") || !slices.Contains(v.recipe[0].actions.Options, "Remove") {
+		t.Fatalf("prescribed ingredient does not expose compact row actions: %#v", v.recipe[0].actions)
+	}
+	if v.recipe[0].ingredient.Visible() || v.recipe[0].amount.Visible() || v.recipe[0].unit.Visible() {
+		t.Fatal("prescribed ingredient still renders as an editable form band")
+	}
 	testutil.Equals(t, v.category.Options, categoryOptions())
 	testutil.Equals(t, v.glass.Options, glassOptions())
 	v.readForm()
@@ -604,7 +611,7 @@ func TestAcceptedDrinkSubmitDisablesEveryMutableControl(t *testing.T) {
 	executor.RunNext()
 	p.SetForm(Form{Name: "Pending", Category: "cocktail", Glass: "coupe", Recipe: []RecipeRow{{Ingredient: ingredient.ID, Amount: "1", Unit: measurement.UnitOz}}, Steps: "Stir"})
 	p.Save()
-	for name, disabled := range map[string]bool{"name": v.name.Disabled(), "category": v.category.Disabled(), "glass": v.glass.Disabled(), "description": v.description.Disabled(), "steps": v.steps.Disabled(), "garnish": v.garnish.Disabled(), "tags": v.tags.Input.Disabled(), "add": v.addIngredient.Disabled(), "ingredient": v.recipe[0].ingredient.Disabled(), "amount": v.recipe[0].amount.Disabled(), "unit": v.recipe[0].unit.Disabled(), "optional": v.recipe[0].optional.Disabled(), "remove": v.recipe[0].remove.Disabled(), "substitute picker": v.recipe[0].substitutePicker.Disabled(), "add substitute": v.recipe[0].addSubstitute.Disabled()} {
+	for name, disabled := range map[string]bool{"name": v.name.Disabled(), "category": v.category.Disabled(), "glass": v.glass.Disabled(), "description": v.description.Disabled(), "steps": v.steps.Disabled(), "garnish": v.garnish.Disabled(), "tags": v.tags.Input.Disabled(), "add": v.addIngredient.Disabled(), "ingredient": v.recipe[0].ingredient.Disabled(), "amount": v.recipe[0].amount.Disabled(), "unit": v.recipe[0].unit.Disabled(), "optional": v.recipe[0].optional.Disabled(), "remove": v.recipe[0].remove.Disabled(), "substitute picker": v.recipe[0].substitutePicker.Disabled(), "add substitute": v.recipe[0].addSubstitute.Disabled(), "ingredient actions": v.recipe[0].actions.Disabled()} {
 		if !disabled {
 			t.Fatalf("%s remained enabled during submit", name)
 		}

@@ -7,6 +7,7 @@ import (
 
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
@@ -252,7 +253,12 @@ func (v *View) detail(s State) framework.CanvasObject {
 		fields.Add(ui.EmptyCollection(ui.IconEmpty, "No order items", "This order contains no line items."))
 	}
 	for _, line := range r.Lines {
-		fields.Add(ui.DetailForm(ui.DetailField("Drink", readonly(line.Name)), ui.DetailField("Quantity", readonly(strconv.Itoa(line.Quantity))), ui.DetailField("Line total", readonly(line.Total)), ui.DetailField("Notes", readonly(line.Notes))))
+		name := widget.NewLabelWithStyle(line.Name, framework.TextAlignLeading, framework.TextStyle{Bold: true})
+		meta := fmt.Sprintf("Quantity %d  ·  %s", line.Quantity, line.Total)
+		if strings.TrimSpace(line.Notes) != "" {
+			meta += "  ·  " + line.Notes
+		}
+		fields.Add(container.NewVBox(container.NewBorder(nil, nil, nil, widget.NewLabel(meta), name), widget.NewSeparator()))
 	}
 	fields.Add(ui.DetailForm(ui.DetailField("Order total", readonly(r.Total))))
 	actions := []framework.CanvasObject{}
@@ -340,7 +346,22 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 			remove.Disable()
 		}
 		v.removeItems[i] = remove
-		items.Add(container.NewBorder(nil, nil, nil, remove, widget.NewLabel(fmt.Sprintf("%s × %d%s", item.Name, item.Quantity, noteSuffix(item.Notes)))))
+		remove.Hide()
+		actions := widget.NewSelect([]string{"Remove"}, nil)
+		actions.PlaceHolder = "Actions"
+		actions.OnChanged = func(choice string) {
+			actions.ClearSelected()
+			if choice == "Remove" {
+				v.presenter.RemoveItem(index)
+			}
+		}
+		if s.Submitting || s.CatalogLoading {
+			actions.Disable()
+		}
+		name := widget.NewLabelWithStyle(item.Name, framework.TextAlignLeading, framework.TextStyle{Bold: true})
+		meta := widget.NewLabel(fmt.Sprintf("Quantity %d%s", item.Quantity, noteSuffix(item.Notes)))
+		line := container.NewBorder(nil, nil, nil, meta, name)
+		items.Add(container.NewVBox(container.NewBorder(nil, nil, remove, container.NewCenter(actions), line), widget.NewSeparator()))
 	}
 	if len(s.Form.Items) == 0 {
 		items.Add(ui.EmptyCollection(ui.IconEmpty, "No items yet", "Choose an available drink and add it to the order."))
@@ -378,7 +399,7 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	if s.Err != nil {
 		message = "Error: " + s.Err.Error()
 	}
-	fields := container.NewVBox(container.NewBorder(nil, nil, nil, searchMenus, v.menuQuery), widget.NewLabel("Published menu"), v.menus, container.NewBorder(nil, nil, nil, searchDrinks, v.drinkQuery), widget.NewLabel("Available drink"), v.drinks, widget.NewLabel("Quantity"), v.quantity, widget.NewLabel("Item notes"), v.itemNotes, add, widget.NewLabelWithStyle("Order items", framework.TextAlignLeading, framework.TextStyle{Bold: true}), items, widget.NewLabel("Order notes"), v.orderNotes, widget.NewLabel("Tags"), v.tags.Content)
+	fields := container.NewVBox(container.NewBorder(nil, nil, nil, searchMenus, v.menuQuery), widget.NewLabel("Published menu"), v.menus, container.NewBorder(nil, nil, nil, searchDrinks, v.drinkQuery), widget.NewLabel("Available drink"), v.drinks, widget.NewLabel("Quantity"), v.quantity, widget.NewLabel("Item notes"), v.itemNotes, container.NewHBox(layout.NewSpacer(), add), widget.NewLabelWithStyle("Order items", framework.TextAlignLeading, framework.TextStyle{Bold: true}), items, widget.NewLabel("Order notes"), v.orderNotes, widget.NewLabel("Tags"), v.tags.Content)
 	return ui.StandardFormPage(ui.FormPage{Title: "Place order", Breadcrumb: container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", v.presenter.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Orders", v.presenter.ResetList), widget.NewLabel(">"), widget.NewLabel("Place order")), Subtitle: "Choose a published menu, add drinks, then place the order.", Fields: fields, Status: widget.NewLabel(message), Save: v.save, Cancel: v.cancel})
 }
 func (v *View) tagForm(s State) framework.CanvasObject {

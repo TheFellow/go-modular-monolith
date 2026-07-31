@@ -29,6 +29,7 @@ const (
 	IconAudit
 	IconTags
 	IconEmpty
+	IconCopy
 )
 
 func IconResource(icon Icon) framework.Resource {
@@ -67,6 +68,8 @@ func IconResource(icon Icon) framework.Resource {
 		return theme.InfoIcon()
 	case IconEmpty:
 		return theme.SearchIcon()
+	case IconCopy:
+		return theme.ContentCopyIcon()
 	default:
 		return nil
 	}
