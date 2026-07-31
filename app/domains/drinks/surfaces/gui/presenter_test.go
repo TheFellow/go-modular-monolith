@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
@@ -392,11 +393,11 @@ func TestDrinksViewCatalogAndDetailContract(t *testing.T) {
 	}
 	rows, columns := v.list.Length()
 	testutil.Equals(t, rows, 2)
-	testutil.Equals(t, columns, 5)
-	for column, want := range []string{"Name", "Category", "Glass", "Ingredients", "Tags"} {
+	testutil.Equals(t, columns, 6)
+	for column, want := range []string{"Name", "Category", "Glass", "Ingredients", "Tags", "Actions"} {
 		cell := v.list.CreateCell()
 		v.list.UpdateCell(widget.TableCellID{Row: 0, Col: column}, cell)
-		testutil.Equals(t, cell.(*widget.Label).Text, want)
+		testutil.Equals(t, cell.(*framework.Container).Objects[0].(*widget.Label).Text, want)
 	}
 	if v.browse.Hidden || !v.formPanel.Hidden {
 		t.Fatal("catalog and detail were shown together")

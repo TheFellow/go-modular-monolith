@@ -71,25 +71,36 @@ func NewView(p *Presenter) *View {
 	v.expression = bar.Expression
 	// Mirrors the CLI inventory list except for the inventory record ID; the
 	// joined ingredient name makes the otherwise opaque ingredient ID useful.
-	columns := []string{"Ingredient", "Ingredient ID", "Quantity", "Unit", "Cost per unit", "Last updated", "Tags", "Status"}
+	columns := []string{"Ingredient", "Ingredient ID", "Quantity", "Unit", "Cost per unit", "Last updated", "Tags", "Status", "Actions"}
 	v.list = widget.NewTable(func() (int, int) { return len(v.state.Rows) + 1, len(columns) }, func() framework.CanvasObject {
-		l := widget.NewLabel("")
-		l.Truncation = framework.TextTruncateEllipsis
-		return l
+		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
-		l := object.(*widget.Label)
+		cell := object
 		if id.Row == 0 {
-			l.TextStyle = framework.TextStyle{Bold: true}
-			l.SetText(columns[id.Col])
+			ui.ShowCellText(cell, columns[id.Col], true)
 			return
 		}
-		l.TextStyle = framework.TextStyle{}
 		r := v.state.Rows[id.Row-1]
 		values := []string{r.Ingredient.Name, r.Inventory.IngredientID.String(), fmt.Sprintf("%.2f", r.Inventory.Amount.Value()), string(r.Inventory.Amount.Unit()), r.Cost, formatInventoryTime(r.Inventory.LastUpdated), r.Inventory.Tags.Canonical().String(), r.Status}
-		l.SetText(values[id.Col])
+		if id.Col == len(columns)-1 {
+			rowID := r.Inventory.ID
+			actions := []ui.RowAction{{Label: "View", Run: func() { p.Select(rowID) }}}
+			if r.CanAdjust {
+				actions = append(actions, ui.RowAction{Label: "Adjust", Run: func() { p.Select(rowID); p.StartAdjust() }})
+			}
+			if r.CanSet {
+				actions = append(actions, ui.RowAction{Label: "Set", Run: func() { p.Select(rowID); p.StartSet() }})
+			}
+			if r.CanTag {
+				actions = append(actions, ui.RowAction{Label: "Tags", Run: func() { p.Select(rowID); p.StartTags() }})
+			}
+			ui.ShowCellActions(cell, actions)
+			return
+		}
+		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 {
+		if id.Row > 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
 			p.Select(v.state.Rows[id.Row-1].Inventory.ID)
 		}
@@ -97,6 +108,7 @@ func NewView(p *Presenter) *View {
 	for i, width := range []float32{180, 230, 90, 70, 120, 210, 180, 70} {
 		v.list.SetColumnWidth(i, width)
 	}
+	v.list.SetColumnWidth(8, 120)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No inventory found", "Adjust the filter to find stock items.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)

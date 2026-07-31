@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	framework "fyne.io/fyne/v2"
 	frameworktest "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
@@ -409,11 +410,12 @@ func TestViewListDetailStatesPermissionsAndEmptyCollection(t *testing.T) {
 	presenter, _ := newTestPresenter(fix.App, toolkit.InlineExecutor{})
 	view := NewView(presenter)
 	view.Activate()
-	for column, want := range []string{"Name", "Category", "Unit", "Description", "Tags"} {
-		cell := view.list.CreateCell().(*widget.Label)
+	for column, want := range []string{"Name", "Category", "Unit", "Description", "Tags", "Actions"} {
+		cell := view.list.CreateCell().(*framework.Container)
 		view.list.UpdateCell(widget.TableCellID{Row: 0, Col: column}, cell)
-		if cell.Text != want {
-			t.Fatalf("header %d = %q, want %q", column, cell.Text, want)
+		text := cell.Objects[0].(*widget.Label).Text
+		if text != want {
+			t.Fatalf("header %d = %q, want %q", column, text, want)
 		}
 	}
 	if view.expression.Hidden || view.browse.Hidden || !view.formPanel.Hidden {

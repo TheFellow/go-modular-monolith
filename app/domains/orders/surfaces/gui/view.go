@@ -133,19 +133,15 @@ func (v *View) browser(s State) framework.CanvasObject {
 	setEnabled(v.expression, !busy)
 	setEnabled(v.limit, !busy)
 	setEnabled(bar.Apply, !busy)
-	columns := []string{"Menu", "Menu ID", "Status", "Items", "Total quantity", "Total", "Created", "Completed", "Tags"}
+	columns := []string{"Menu", "Menu ID", "Status", "Items", "Total quantity", "Total", "Created", "Completed", "Tags", "Actions"}
 	v.list = widget.NewTable(func() (int, int) { return len(v.state.Rows) + 1, len(columns) }, func() framework.CanvasObject {
-		l := widget.NewLabel("")
-		l.Truncation = framework.TextTruncateEllipsis
-		return l
+		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
-		l := object.(*widget.Label)
+		cell := object
 		if id.Row == 0 {
-			l.TextStyle = framework.TextStyle{Bold: true}
-			l.SetText(columns[id.Col])
+			ui.ShowCellText(cell, columns[id.Col], true)
 			return
 		}
-		l.TextStyle = framework.TextStyle{}
 		row := v.state.Rows[id.Row-1]
 		completed := ""
 		if t, ok := row.Order.CompletedAt.Unwrap(); ok {
@@ -156,15 +152,31 @@ func (v *View) browser(s State) framework.CanvasObject {
 			qty += item.Quantity
 		}
 		values := []string{row.MenuName, row.Order.MenuID.String(), string(row.Order.Status), strconv.Itoa(len(row.Order.Items)), strconv.Itoa(qty), row.Total, formatTime(row.Order.CreatedAt), completed, row.Order.Tags.Canonical().String()}
-		l.SetText(values[id.Col])
+		if id.Col == len(columns)-1 {
+			index := id.Row - 1
+			actions := []ui.RowAction{{Label: "View", Run: func() { v.presenter.Select(index) }}}
+			canComplete, canCancel, canTag := v.presenter.ListPermissions(index)
+			if canComplete {
+				actions = append(actions, ui.RowAction{Label: "Complete", Run: func() { v.presenter.Select(index); v.presenter.ConfirmComplete() }})
+			}
+			if canCancel {
+				actions = append(actions, ui.RowAction{Label: "Cancel order", Run: func() { v.presenter.Select(index); v.presenter.ConfirmCancel() }})
+			}
+			if canTag {
+				actions = append(actions, ui.RowAction{Label: "Tags", Run: func() { v.presenter.Select(index); v.presenter.StartTags() }})
+			}
+			ui.ShowCellActions(cell, actions)
+			return
+		}
+		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 {
+		if id.Row > 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
 			v.presenter.Select(id.Row - 1)
 		}
 	}
-	for i, width := range []float32{190, 240, 100, 65, 100, 90, 175, 175, 180} {
+	for i, width := range []float32{190, 240, 100, 65, 100, 90, 175, 175, 180, 140} {
 		v.list.SetColumnWidth(i, width)
 	}
 	list := framework.CanvasObject(v.list)

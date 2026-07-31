@@ -56,25 +56,26 @@ func NewView(p *Presenter) *View {
 		}, container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.limit), func(expression string) { v.applyExpression(expression) })
 	v.expression, v.apply, v.scope = bar.Expression, bar.Apply, bar.Presets[0]
 
-	columns := []string{"Started", "Completed", "Duration", "Action", "Resource", "Principal", "Success", "Touches", "Error"}
+	columns := []string{"Started", "Completed", "Duration", "Action", "Resource", "Principal", "Success", "Touches", "Error", "Actions"}
 	v.list = widget.NewTable(func() (int, int) { return len(v.state.Rows) + 1, len(columns) }, func() framework.CanvasObject {
-		label := widget.NewLabel("")
-		label.Truncation = framework.TextTruncateEllipsis
-		return label
+		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
-		label := object.(*widget.Label)
+		cell := object
 		if id.Row == 0 {
-			label.TextStyle = framework.TextStyle{Bold: true}
-			label.SetText(columns[id.Col])
+			ui.ShowCellText(cell, columns[id.Col], true)
 			return
 		}
-		label.TextStyle = framework.TextStyle{}
 		r := v.state.Rows[id.Row-1]
 		values := []string{formatTime(r.Entry.StartedAt), formatTime(r.Entry.CompletedAt), formatDuration(r.Entry.StartedAt, r.Entry.CompletedAt), r.Entry.Action, r.Entry.Resource.String(), r.Entry.Principal.String(), strconv.FormatBool(r.Entry.Success), strconv.Itoa(len(r.Touches)), r.Entry.Error}
-		label.SetText(values[id.Col])
+		if id.Col == len(columns)-1 {
+			index := id.Row - 1
+			ui.ShowCellActions(cell, []ui.RowAction{{Label: "View", Run: func() { p.Select(index) }}})
+			return
+		}
+		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 {
+		if id.Row > 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
 			p.Select(id.Row - 1)
 		}
@@ -82,6 +83,7 @@ func NewView(p *Presenter) *View {
 	for i, width := range []float32{170, 170, 90, 210, 220, 190, 70, 65, 240} {
 		v.list.SetColumnWidth(i, width)
 	}
+	v.list.SetColumnWidth(9, 120)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No audit activity found", "Adjust the filter or return later after application activity occurs.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)

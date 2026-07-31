@@ -204,6 +204,18 @@ func (p *Presenter) Select(index int) {
 	p.publish()
 }
 
+func (p *Presenter) ListPermissions(index int) (complete, cancel, tags bool) {
+	if index < 0 || index >= len(p.state.Rows) {
+		return false, false, false
+	}
+	order := p.state.Rows[index].Order
+	principal, resource := p.app.Context().Principal(), order.CedarEntity()
+	pending := order.Status == models.OrderStatusPending
+	return pending && pkgAuthz.AuthorizeWithEntity(principal, ordersauthz.ActionComplete, resource) == nil,
+		pending && pkgAuthz.AuthorizeWithEntity(principal, ordersauthz.ActionCancel, resource) == nil,
+		pkgAuthz.AuthorizeWithEntity(principal, ordersauthz.ActionTag, resource) == nil
+}
+
 // Back returns to the exact list state from which the order was opened.
 func (p *Presenter) Back() { p.leaveDetail(false) }
 

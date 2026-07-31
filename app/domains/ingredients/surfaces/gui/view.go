@@ -76,25 +76,26 @@ func NewView(p *Presenter) *View {
 		})
 	v.expression = bar.Expression
 	v.state = p.Snapshot()
-	columns := []string{"Name", "Category", "Unit", "Description", "Tags"}
+	columns := []string{"Name", "Category", "Unit", "Description", "Tags", "Actions"}
 	v.list = widget.NewTable(func() (int, int) { return len(v.state.Items) + 1, len(columns) }, func() framework.CanvasObject {
-		label := widget.NewLabel("")
-		label.Truncation = framework.TextTruncateEllipsis
-		return label
+		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
-		label := object.(*widget.Label)
+		cell := object
 		if id.Row == 0 {
-			label.TextStyle = framework.TextStyle{Bold: true}
-			label.SetText(columns[id.Col])
+			ui.ShowCellText(cell, columns[id.Col], true)
 			return
 		}
-		label.TextStyle = framework.TextStyle{}
 		item := v.state.Items[id.Row-1]
 		values := []string{item.Name, string(item.Category), string(item.Unit), item.Description, item.Tags.Canonical().String()}
-		label.SetText(values[id.Col])
+		if id.Col == len(columns)-1 {
+			itemID := item.ID
+			ui.ShowCellActions(cell, []ui.RowAction{{Label: "View", Run: func() { p.Select(itemID) }}})
+			return
+		}
+		ui.ShowCellText(cell, values[id.Col], false)
 	})
 	v.list.OnSelected = func(id widget.TableCellID) {
-		if id.Row > 0 {
+		if id.Row > 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
 			p.Select(v.state.Items[id.Row-1].ID)
 		}
@@ -102,6 +103,7 @@ func NewView(p *Presenter) *View {
 	for i, width := range []float32{180, 110, 85, 260, 180} {
 		v.list.SetColumnWidth(i, width)
 	}
+	v.list.SetColumnWidth(5, 120)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No ingredients found", "Adjust the filter or create a new ingredient.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)

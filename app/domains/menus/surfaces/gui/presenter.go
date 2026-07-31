@@ -214,6 +214,17 @@ func (p *Presenter) Select(index int) {
 	p.publish()
 }
 
+func (p *Presenter) ListPermissions(index int) (publish, draft bool) {
+	if index < 0 || index >= len(p.state.Items) || p.state.Items[index] == nil {
+		return false, false
+	}
+	menu := p.state.Items[index]
+	principal, resource := p.app.Context().Principal(), menu.CedarEntity()
+	publish = menu.Status == models.MenuStatusDraft && len(menu.Items) > 0 && pkgAuthz.AuthorizeWithEntity(principal, menusauthz.ActionPublish, resource) == nil
+	draft = menu.Status == models.MenuStatusPublished && pkgAuthz.AuthorizeWithEntity(principal, menusauthz.ActionDraft, resource) == nil
+	return publish, draft
+}
+
 func (p *Presenter) Back()      { p.leaveDetail(false) }
 func (p *Presenter) ResetList() { p.leaveDetail(true) }
 func (p *Presenter) leaveDetail(reset bool) {
