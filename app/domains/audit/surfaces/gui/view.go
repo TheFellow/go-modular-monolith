@@ -30,31 +30,6 @@ const (
 
 func rowControl(id string) string { return "audit.row." + id }
 
-var scopeLabels = []string{"All activity", "Entity history", "Actor activity"}
-
-type semanticSelect struct {
-	widget.Select
-	id string
-}
-
-func newSelect(id string, options []string) *semanticSelect {
-	selectWidget := &semanticSelect{id: id}
-	selectWidget.Options = options
-	selectWidget.ExtendBaseWidget(selectWidget)
-	return selectWidget
-}
-func (s *semanticSelect) SemanticID() string { return s.id }
-
-type semanticSelectEntry struct {
-	*widget.SelectEntry
-	id string
-}
-
-func newSelectEntry(id string, options []string) *semanticSelectEntry {
-	return &semanticSelectEntry{SelectEntry: widget.NewSelectEntry(options), id: id}
-}
-func (s *semanticSelectEntry) SemanticID() string { return s.id }
-
 type View struct {
 	presenter *Presenter
 	root      *framework.Container
@@ -63,8 +38,7 @@ type View struct {
 	status    *widget.Label
 
 	scope                          *ui.FilterSelect
-	entity, principal, action      *semanticSelectEntry
-	from, to, expression, limit    *ui.SemanticEntry
+	expression, limit              *ui.SemanticEntry
 	apply, refresh, previous, next *ui.SemanticButton
 	rowButtons                     map[string]*ui.SemanticButton
 }
@@ -125,17 +99,6 @@ func (v *View) applyFilter() {
 		limit = -1
 	}
 	v.presenter.ApplyFilter(Filter{Expression: v.expression.Text, Limit: limit})
-}
-
-func scopeFromLabel(label string) Scope {
-	switch label {
-	case scopeLabels[1]:
-		return EntityHistory
-	case scopeLabels[2]:
-		return ActorActivity
-	default:
-		return AllActivity
-	}
 }
 
 func (v *View) render(state State) {

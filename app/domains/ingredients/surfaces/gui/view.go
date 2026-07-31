@@ -38,7 +38,7 @@ type View struct {
 	root      *framework.Container
 
 	expression                                                       *toolkit.SemanticEntry
-	category, limit                                                  *widget.Select
+	limit                                                            *widget.Select
 	name                                                             *toolkit.SemanticEntry
 	description                                                      *toolkit.SemanticEntry
 	tags                                                             *toolkit.SemanticEntry
@@ -85,10 +85,6 @@ func (v *View) render(state State) {
 	v.expression = toolkit.NewEntry(ControlFilter)
 	v.expression.SetPlaceHolder(`category == "spirit"`)
 	v.expression.SetText(state.Expression)
-	categoryOptions := []string{"all"}
-	for _, category := range models.AllCategories() {
-		categoryOptions = append(categoryOptions, string(category))
-	}
 	v.limit = widget.NewSelect([]string{"25", "50", "100"}, nil)
 	v.limit.SetSelected(strconv.Itoa(state.Limit))
 	presetOptions := []toolkit.FilterOption{{Label: "Any category"}}

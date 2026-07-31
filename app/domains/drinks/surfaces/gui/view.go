@@ -112,8 +112,8 @@ type View struct {
 	detail, status, formStatus, tagStatus                 *widget.Label
 	detailBox                                             *framework.Container
 	browse, formPanel, tagsPanel                          *framework.Container
-	filterName, filterExpression                          *ui.SemanticEntry
-	filterCategory, filterGlass, filterLimit              *semanticSelect
+	filterExpression                                      *ui.SemanticEntry
+	filterLimit                                           *semanticSelect
 	name, description, steps, garnish, tags, mutationTags *ui.SemanticEntry
 	category, glass                                       *semanticSelect
 	recipeBox                                             *framework.Container

@@ -44,7 +44,7 @@ type View struct {
 	presenter                                                                *Presenter
 	root                                                                     *framework.Container
 	expression, menuQuery, drinkQuery, quantity, itemNotes, orderNotes, tags *ui.SemanticEntry
-	status, limit, menus, drinks                                             *widget.Select
+	limit, menus, drinks                                                     *widget.Select
 	rows                                                                     map[string]*ui.SemanticButton
 	removeItems                                                              map[int]*ui.SemanticButton
 	refresh, create, save, cancel                                            *ui.SemanticButton
