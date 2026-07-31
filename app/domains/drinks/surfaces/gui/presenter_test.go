@@ -492,10 +492,11 @@ func TestStructuredRecipeWidgetsUseNamesAndConstrainedChoices(t *testing.T) {
 	v := NewView(p)
 	p.StartEdit()
 	if !strings.Contains(v.recipe[0].ingredient.Text, "London Dry Gin") || v.recipe[0].substitutes[sub.ID] == nil || v.recipe[0].substitutes[sub.ID].Text != "Old Tom Gin, Barrel Aged" {
-		t.Fatal("recipe selectors did not render ingredient names")
+		t.Fatalf("recipe selectors did not render ingredient names: ingredient=%q substitute=%#v", v.recipe[0].ingredient.Text, v.recipe[0].substitutes[sub.ID])
 	}
 	testutil.Equals(t, v.recipe[0].optional.Checked, true)
 	testutil.Equals(t, v.recipe[0].substitutes[sub2.ID].Checked, true)
+	testutil.Equals(t, len(v.recipe[0].substitutes), 2)
 	testutil.Equals(t, v.category.Options, categoryOptions())
 	testutil.Equals(t, v.glass.Options, glassOptions())
 	v.readForm()
@@ -509,6 +510,20 @@ func TestStructuredRecipeWidgetsUseNamesAndConstrainedChoices(t *testing.T) {
 	v.recipe[0].substitutes[sub.ID].SetChecked(false)
 	v.readForm()
 	testutil.Equals(t, p.State().Form.Recipe[0].Substitutes, []entity.IngredientID{sub2.ID})
+
+	// Substitute choices stay collapsed until explicitly requested, and
+	// collapse again after a choice is added or the interaction is cancelled.
+	testutil.Equals(t, v.recipe[0].choosingSubstitute, false)
+	v.recipe[0].addSubstitute.OnTapped()
+	testutil.Equals(t, v.recipe[0].choosingSubstitute, true)
+	v.recipe[0].cancelSubstitute.OnTapped()
+	testutil.Equals(t, v.recipe[0].choosingSubstitute, false)
+	v.removeRecipeSubstitute(0, sub.ID)
+	v.recipe[0].addSubstitute.OnTapped()
+	v.recipe[0].substitutePicker.SetText(v.optionLabel(sub.ID))
+	v.recipe[0].confirmSubstitute.OnTapped()
+	testutil.Equals(t, v.recipe[0].choosingSubstitute, false)
+	testutil.Equals(t, v.recipe[0].substitutes[sub.ID].Checked, true)
 }
 
 func TestIngredientLoadDoesNotWipeLiveWidgetEdits(t *testing.T) {
@@ -589,7 +604,7 @@ func TestAcceptedDrinkSubmitDisablesEveryMutableControl(t *testing.T) {
 	executor.RunNext()
 	p.SetForm(Form{Name: "Pending", Category: "cocktail", Glass: "coupe", Recipe: []RecipeRow{{Ingredient: ingredient.ID, Amount: "1", Unit: measurement.UnitOz}}, Steps: "Stir"})
 	p.Save()
-	for name, disabled := range map[string]bool{"name": v.name.Disabled(), "category": v.category.Disabled(), "glass": v.glass.Disabled(), "description": v.description.Disabled(), "steps": v.steps.Disabled(), "garnish": v.garnish.Disabled(), "tags": v.tags.Input.Disabled(), "add": v.addIngredient.Disabled(), "ingredient": v.recipe[0].ingredient.Disabled(), "amount": v.recipe[0].amount.Disabled(), "unit": v.recipe[0].unit.Disabled(), "optional": v.recipe[0].optional.Disabled(), "remove": v.recipe[0].remove.Disabled(), "substitute": v.recipe[0].substitutes[ingredient.ID].Disabled()} {
+	for name, disabled := range map[string]bool{"name": v.name.Disabled(), "category": v.category.Disabled(), "glass": v.glass.Disabled(), "description": v.description.Disabled(), "steps": v.steps.Disabled(), "garnish": v.garnish.Disabled(), "tags": v.tags.Input.Disabled(), "add": v.addIngredient.Disabled(), "ingredient": v.recipe[0].ingredient.Disabled(), "amount": v.recipe[0].amount.Disabled(), "unit": v.recipe[0].unit.Disabled(), "optional": v.recipe[0].optional.Disabled(), "remove": v.recipe[0].remove.Disabled(), "substitute picker": v.recipe[0].substitutePicker.Disabled(), "add substitute": v.recipe[0].addSubstitute.Disabled()} {
 		if !disabled {
 			t.Fatalf("%s remained enabled during submit", name)
 		}
