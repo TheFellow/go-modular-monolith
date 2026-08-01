@@ -2,7 +2,7 @@ package gui_test
 
 import (
 	"testing"
-	"time"
+	"testing/synctest"
 
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
@@ -12,28 +12,19 @@ import (
 )
 
 func TestAutoPagingRowTableLoadsOnceWhenFinalRowIsRendered(t *testing.T) {
-	rows := 25
-	loaded := make(chan struct{}, 2)
-	table := gui.NewAutoPagingRowTable(func() (int, int) { return rows, 2 }, func() framework.CanvasObject { return widget.NewLabel("") }, func(widget.TableCellID, framework.CanvasObject) {}, func() { loaded <- struct{}{} })
-	cell := widget.NewLabel("")
-	table.UpdateCell(widget.TableCellID{Row: 24, Col: 1}, cell)
-	table.UpdateCell(widget.TableCellID{Row: 24, Col: 1}, cell)
-	select {
-	case <-loaded:
-	case <-time.After(time.Second):
-		t.Fatal("final row did not request another page")
-	}
-	select {
-	case <-loaded:
-		t.Fatal("same row count requested more than once")
-	case <-time.After(10 * time.Millisecond):
-	}
-	rows = 50
-	table.UpdateCell(widget.TableCellID{Row: 49, Col: 1}, cell)
-	select {
-	case <-loaded:
-	case <-time.After(time.Second):
-		t.Fatal("new final row did not request another page")
-	}
-	testutil.Equals(t, gui.PageLimit, 25)
+	synctest.Test(t, func(t *testing.T) {
+		rows, loads := 25, 0
+		table := gui.NewAutoPagingRowTable(func() (int, int) { return rows, 2 }, func() framework.CanvasObject { return widget.NewLabel("") }, func(widget.TableCellID, framework.CanvasObject) {}, func() { loads++ })
+		cell := widget.NewLabel("")
+		table.UpdateCell(widget.TableCellID{Row: 24, Col: 1}, cell)
+		table.UpdateCell(widget.TableCellID{Row: 24, Col: 1}, cell)
+		synctest.Wait()
+		testutil.Equals(t, loads, 1)
+
+		rows = 50
+		table.UpdateCell(widget.TableCellID{Row: 49, Col: 1}, cell)
+		synctest.Wait()
+		testutil.Equals(t, loads, 2)
+		testutil.Equals(t, gui.PageLimit, 25)
+	})
 }
