@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"context"
 	"sort"
 	"strings"
 	"time"
@@ -100,8 +101,8 @@ func (p *Presenter) Refresh() {
 		p.fail(err)
 		return
 	}
-	p.load.Load(func() (listResult, error) {
-		page, err := p.app.Audit.List(p.app.Context(), req)
+	p.load.LoadContext(p.app.Context(), func(ctx context.Context) (listResult, error) {
+		page, err := p.app.Audit.List(p.app.ContextFrom(ctx), req)
 		if err != nil {
 			return listResult{}, err
 		}

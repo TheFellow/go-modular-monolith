@@ -14,13 +14,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
+	"github.com/TheFellow/go-modular-monolith/pkg/runtimeconfig"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 )
 
-const defaultDatabasePath = "data/mixology.db"
+const defaultDatabasePath = runtimeconfig.DefaultDatabasePath
 
 type tuiConfig struct {
+	databasePath  string
 	actor         string
 	logLevel      string
 	logFormat     string
@@ -36,24 +38,30 @@ func main() {
 }
 
 func newCommand() *cli.Command {
+	defaults := runtimeconfig.Default()
 	config := tuiConfig{
-		actor:     "owner",
-		logLevel:  "info",
-		logFormat: "text",
-		logFile:   defaultLogPath(defaultDatabasePath),
+		databasePath: defaults.DatabasePath,
+		actor:        defaults.Actor,
+		logLevel:     defaults.LogLevel,
+		logFormat:    defaults.LogFormat,
+		logFile:      defaultLogPath(defaults.DatabasePath),
 	}
 	return &cli.Command{
 		Name:  "mixology-tui",
 		Usage: "Interactive terminal client for Mixology",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "log-level", Value: config.logLevel, Usage: "Log level (debug, info, warn, error)", Destination: &config.logLevel, Sources: cli.EnvVars("MIXOLOGY_LOG_LEVEL")},
-			&cli.StringFlag{Name: "log-format", Value: config.logFormat, Usage: "Log format (text, json)", Destination: &config.logFormat, Sources: cli.EnvVars("MIXOLOGY_LOG_FORMAT")},
-			&cli.StringFlag{Name: "log-file", Value: config.logFile, Usage: "Write logs to file", Destination: &config.logFile, Sources: cli.EnvVars("MIXOLOGY_LOG_FILE")},
-			&cli.StringFlag{Name: "actor", Aliases: []string{"as"}, Value: config.actor, Usage: "Actor to run as (owner|manager|sommelier|bartender|anonymous)", Destination: &config.actor},
-			&cli.BoolFlag{Name: "metrics", Usage: "Enable Prometheus metrics endpoint on :9090/metrics", Destination: &config.enableMetrics, Sources: cli.EnvVars("MIXOLOGY_METRICS")},
+			&cli.StringFlag{Name: "db", Value: config.databasePath, Usage: "Database path", Destination: &config.databasePath, Sources: cli.EnvVars(runtimeconfig.EnvDatabasePath)},
+			&cli.StringFlag{Name: "log-level", Value: config.logLevel, Usage: "Log level (debug, info, warn, error)", Destination: &config.logLevel, Sources: cli.EnvVars(runtimeconfig.EnvLogLevel)},
+			&cli.StringFlag{Name: "log-format", Value: config.logFormat, Usage: "Log format (text, json)", Destination: &config.logFormat, Sources: cli.EnvVars(runtimeconfig.EnvLogFormat)},
+			&cli.StringFlag{Name: "log-file", Value: config.logFile, Usage: "Write logs to file", Destination: &config.logFile, Sources: cli.EnvVars(runtimeconfig.EnvLogFile)},
+			&cli.StringFlag{Name: "actor", Aliases: []string{"as"}, Value: config.actor, Usage: "Actor to run as (owner|manager|sommelier|bartender|anonymous)", Destination: &config.actor, Sources: cli.EnvVars(runtimeconfig.EnvActor)},
+			&cli.BoolFlag{Name: "metrics", Usage: "Enable Prometheus metrics endpoint on :9090/metrics", Destination: &config.enableMetrics, Sources: cli.EnvVars(runtimeconfig.EnvMetrics)},
 		},
-		Action: func(ctx context.Context, _ *cli.Command) error {
-			return run(ctx, config, defaultDatabasePath)
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if !cmd.IsSet("log-file") {
+				config.logFile = defaultLogPath(config.databasePath)
+			}
+			return run(ctx, config, config.databasePath)
 		},
 	}
 }
@@ -80,7 +88,7 @@ func run(ctx context.Context, config tuiConfig, databasePath string) error {
 		shutdownMetrics = prom.Shutdown
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", prom.Handler)
-		metricsServer = &http.Server{Addr: ":9090", Handler: mux}
+		metricsServer = &http.Server{Addr: runtimeconfig.DefaultMetricsAddr, Handler: mux}
 		go func() { _ = metricsServer.ListenAndServe() }()
 	}
 	if metricsServer != nil {

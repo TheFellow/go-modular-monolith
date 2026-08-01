@@ -2,6 +2,7 @@
 package gui_test
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"testing"
@@ -43,6 +44,26 @@ func TestLatestRequestChecksStalenessWhenUIPublicationRuns(t *testing.T) {
 	dispatcher.Drain()
 
 	testutil.ErrorIf(t, len(values) != 1 || values[0] != 2, "published values = %v, want [2]", values)
+}
+
+func TestLatestRequestCancelsSupersededWork(t *testing.T) {
+	executor := gui.NewManagedExecutor()
+	t.Cleanup(executor.Close)
+	request := gui.NewLatestRequest[int](executor, gui.InlineDispatcher{})
+	started, cancelled, current := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	request.LoadContext(context.Background(), func(ctx context.Context) (int, error) {
+		close(started)
+		<-ctx.Done()
+		close(cancelled)
+		return 0, ctx.Err()
+	}, func(gui.LoadState[int]) {})
+	<-started
+	request.LoadContext(context.Background(), func(context.Context) (int, error) {
+		close(current)
+		return 2, nil
+	}, func(gui.LoadState[int]) {})
+	<-cancelled
+	<-current
 }
 
 func TestLatestRequestPublishesTypedFailure(t *testing.T) {

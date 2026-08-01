@@ -28,3 +28,17 @@ func NewSession(ctx context.Context, application *App) *Session {
 func (s *Session) Context() *middleware.Context {
 	return middleware.NewContext(s.ctx)
 }
+
+// ContextFrom creates an operation context from a cancellable descendant of
+// this session's authenticated context.
+func (s *Session) ContextFrom(ctx context.Context) *middleware.Context {
+	if ctx == nil {
+		return middleware.NewContext(s.ctx)
+	}
+	derived, cancel := context.WithCancel(s.ctx)
+	if deadline, ok := ctx.Deadline(); ok {
+		derived, cancel = context.WithDeadline(s.ctx, deadline)
+	}
+	context.AfterFunc(ctx, cancel)
+	return middleware.NewContext(derived)
+}

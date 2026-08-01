@@ -142,6 +142,19 @@ Run `go run ./main/gui -help` for the complete startup options. The selected
 persona is fixed for that process, so restart the desktop to exercise another
 authorization policy.
 
+The desktop accepts the same database, actor, logging, and metrics settings as
+the CLI and TUI. Command-line flags take precedence over their environment
+counterparts:
+
+```sh
+go run ./main/gui --db ./review.db --actor sommelier
+MIXOLOGY_DB=./review.db MIXOLOGY_LOG_LEVEL=debug go run ./main/gui
+go run ./main/gui --data-dir ./desktop-data --log-file ./desktop.log
+```
+
+Use `--metrics` or `MIXOLOGY_METRICS=true` to expose Prometheus metrics at
+`http://localhost:9090/metrics`. Only one local process can bind that address.
+
 The desktop navigation and dashboard only show workspaces whose read path is
 authorized for that persona. Inside a visible workspace, Cedar continues to
 filter individual rows. For example, a sommelier sees Drinks but only wine

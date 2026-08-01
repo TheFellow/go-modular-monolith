@@ -22,6 +22,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/runtimeconfig"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -78,8 +79,8 @@ func run() error {
 	fmt.Println()
 
 	// Open store
-	dbPath := "data/mixology.db"
-	if p := os.Getenv("MIXOLOGY_DB"); p != "" {
+	dbPath := runtimeconfig.DefaultDatabasePath
+	if p := os.Getenv(runtimeconfig.EnvDatabasePath); p != "" {
 		dbPath = p
 	}
 

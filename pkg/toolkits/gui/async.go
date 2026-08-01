@@ -1,6 +1,9 @@
 package gui
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 // LoadStatus describes the lifecycle of an asynchronous value.
 type LoadStatus uint8
@@ -30,6 +33,7 @@ type LatestRequest[T any] struct {
 
 	mu         sync.Mutex
 	generation uint64
+	cancel     context.CancelFunc
 }
 
 func NewLatestRequest[T any](executor Executor, dispatcher Dispatcher) *LatestRequest[T] {
@@ -38,14 +42,27 @@ func NewLatestRequest[T any](executor Executor, dispatcher Dispatcher) *LatestRe
 
 // Load starts work, immediately publishes Loading, and returns its generation.
 func (r *LatestRequest[T]) Load(work func() (T, error), publish func(LoadState[T])) uint64 {
+	return r.LoadContext(context.Background(), func(context.Context) (T, error) { return work() }, publish)
+}
+
+// LoadContext starts a latest-wins request derived from parent. Beginning a
+// newer request or invalidating this one cancels its context. When the
+// executor owns a shutdown context, closing it cancels the request as well.
+func (r *LatestRequest[T]) LoadContext(parent context.Context, work func(context.Context) (T, error), publish func(LoadState[T])) uint64 {
 	r.mu.Lock()
+	if r.cancel != nil {
+		r.cancel()
+	}
+	ctx, cancel := context.WithCancel(parent)
+	r.cancel = cancel
 	r.generation++
 	generation := r.generation
 	r.mu.Unlock()
 
 	r.dispatch(generation, func() { publish(LoadState[T]{Status: Loading}) })
-	r.executor.Execute(func() {
-		value, err := work()
+	r.execute(cancel, func() {
+		defer cancel()
+		value, err := work(ctx)
 		r.dispatch(generation, func() {
 			if err != nil {
 				publish(LoadState[T]{Status: Failed, Err: err})
@@ -57,9 +74,29 @@ func (r *LatestRequest[T]) Load(work func() (T, error), publish func(LoadState[T
 	return generation
 }
 
+func (r *LatestRequest[T]) execute(cancel context.CancelFunc, work func()) {
+	if executor, ok := r.executor.(interface {
+		ExecuteContext(func(context.Context)) bool
+	}); ok {
+		if !executor.ExecuteContext(func(executorCtx context.Context) {
+			stop := context.AfterFunc(executorCtx, cancel)
+			defer stop()
+			work()
+		}) {
+			cancel()
+		}
+		return
+	}
+	r.executor.Execute(work)
+}
+
 // Invalidate prevents all currently queued publications from being observed.
 func (r *LatestRequest[T]) Invalidate() {
 	r.mu.Lock()
+	if r.cancel != nil {
+		r.cancel()
+		r.cancel = nil
+	}
 	r.generation++
 	r.mu.Unlock()
 }

@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -127,8 +128,9 @@ func (p *Presenter) State() State           { return cloneState(p.state) }
 
 func (p *Presenter) Refresh() {
 	f, cursor := p.state.Filter, p.state.Cursor
-	p.load.Load(func() (listResult, error) {
-		page, err := p.app.Orders.List(p.app.Context(), orders.ListRequest{Status: f.Status, Filter: strings.TrimSpace(f.Expression), Cursor: cursor, Limit: f.Limit})
+	p.load.LoadContext(p.app.Context(), func(ctx context.Context) (listResult, error) {
+		op := p.app.ContextFrom(ctx)
+		page, err := p.app.Orders.List(op, orders.ListRequest{Status: f.Status, Filter: strings.TrimSpace(f.Expression), Cursor: cursor, Limit: f.Limit})
 		if err != nil {
 			return listResult{}, err
 		}
@@ -137,7 +139,7 @@ func (p *Presenter) Refresh() {
 			if order == nil {
 				return listResult{}, apperrors.Internalf("order missing")
 			}
-			row, err := p.resolve(*order)
+			row, err := p.resolve(op, *order)
 			if err != nil {
 				return listResult{}, err
 			}
@@ -270,9 +272,10 @@ func (p *Presenter) StartPlace() {
 	p.loadPlaceCatalog()
 }
 func (p *Presenter) loadPlaceCatalog() {
-	p.catalog.Load(func() (placeCatalog, error) {
+	p.catalog.LoadContext(p.app.Context(), func(ctx context.Context) (placeCatalog, error) {
+		op := p.app.ContextFrom(ctx)
 		all, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*menumodels.Menu], error) {
-			return p.app.Menus.List(p.app.Context(), menus.ListRequest{Status: menumodels.MenuStatusPublished, Cursor: cursor})
+			return p.app.Menus.List(op, menus.ListRequest{Status: menumodels.MenuStatusPublished, Cursor: cursor})
 		})
 		if err != nil {
 			return placeCatalog{}, err
@@ -289,7 +292,7 @@ func (p *Presenter) loadPlaceCatalog() {
 				}
 				name, ok := item.DisplayName.Unwrap()
 				if !ok || strings.TrimSpace(name) == "" {
-					drink, getErr := p.app.Drinks.Get(p.app.Context(), item.DrinkID)
+					drink, getErr := p.app.Drinks.Get(op, item.DrinkID)
 					if getErr != nil {
 						return placeCatalog{}, getErr
 					}
@@ -602,8 +605,8 @@ func (p *Presenter) permissions() {
 	p.state.CanTag = pkgAuthz.AuthorizeWithEntity(principal, ordersauthz.ActionTag, resource) == nil
 }
 
-func (p *Presenter) resolve(order models.Order) (Row, error) {
-	menu, err := p.app.Menus.Get(p.app.Context(), order.MenuID)
+func (p *Presenter) resolve(ctx *middleware.Context, order models.Order) (Row, error) {
+	menu, err := p.app.Menus.Get(ctx, order.MenuID)
 	if err != nil {
 		return Row{}, err
 	}
@@ -625,7 +628,7 @@ func (p *Presenter) resolve(order models.Order) (Row, error) {
 		if displayName, hasDisplayName := mi.DisplayName.Unwrap(); ok && hasDisplayName && strings.TrimSpace(displayName) != "" {
 			name = displayName
 		} else {
-			drink, getErr := p.app.Drinks.Get(p.app.Context(), item.DrinkID)
+			drink, getErr := p.app.Drinks.Get(ctx, item.DrinkID)
 			if getErr != nil && !apperrors.IsPermission(getErr) {
 				return Row{}, getErr
 			}

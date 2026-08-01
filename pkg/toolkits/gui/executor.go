@@ -1,6 +1,9 @@
 package gui
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 // Executor starts background application work. Production surfaces normally
 // use AsyncExecutor; tests inject a deterministic executor.
@@ -27,15 +30,27 @@ type ManagedExecutor struct {
 	mu     sync.Mutex
 	closed bool
 	work   sync.WaitGroup
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // NewManagedExecutor constructs an executor that owns its goroutines.
-func NewManagedExecutor() *ManagedExecutor { return &ManagedExecutor{} }
+func NewManagedExecutor() *ManagedExecutor {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &ManagedExecutor{ctx: ctx, cancel: cancel}
+}
 
 // Execute starts fn when the executor is open and silently rejects it after
 // Close. Surface code deliberately does not need to coordinate application
 // shutdown.
 func (e *ManagedExecutor) Execute(fn func()) { e.TryExecute(fn) }
+
+// ExecuteContext starts work with a context cancelled when the executor
+// closes. LatestRequest uses this optional extension so shutdown can interrupt
+// application work instead of merely waiting for it.
+func (e *ManagedExecutor) ExecuteContext(fn func(context.Context)) bool {
+	return e.TryExecute(func() { fn(e.ctx) })
+}
 
 // TryExecute reports whether fn was accepted for background execution.
 func (e *ManagedExecutor) TryExecute(fn func()) bool {
@@ -63,6 +78,7 @@ func (e *ManagedExecutor) Wait() { e.work.Wait() }
 func (e *ManagedExecutor) Close() {
 	e.mu.Lock()
 	e.closed = true
+	e.cancel()
 	e.mu.Unlock()
 	e.work.Wait()
 }
