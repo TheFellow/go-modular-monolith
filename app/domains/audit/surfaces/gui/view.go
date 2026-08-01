@@ -32,9 +32,9 @@ type View struct {
 	list                                         *widget.Table
 	listStack                                    *framework.Container
 	empty                                        *framework.Container
-	expression, limit                            *ui.SemanticEntry
+	expression                                   *ui.SemanticEntry
 	scope                                        *ui.FilterSelect
-	apply, refresh, previous, next               *ui.SemanticButton
+	apply, refresh                               *ui.SemanticButton
 	status, detailTitle, crumbName, detailStatus *widget.Label
 	detailFields                                 []*ui.SemanticEntry
 	state                                        State
@@ -46,18 +46,16 @@ var _ ui.Activated = (*View)(nil)
 
 func NewView(p *Presenter) *View {
 	v := &View{presenter: p, state: p.State()}
-	v.limit = ui.NewEntry(ControlLimit)
-	v.limit.SetText(strconv.Itoa(v.state.Filter.Limit))
 	bar := ui.NewSingleRowFilterBar(ControlExpression, ControlApplyFilter, `Filter activity (for example: !success && error.contains("permission"))`, v.state.Filter.Expression,
 		[]ui.FilterPreset{
 			{ID: ControlScope, Placeholder: "Outcome", Options: []ui.FilterOption{{Label: "Any outcome"}, {Label: "Succeeded", Expression: "success"}, {Label: "Failed", Expression: "!success"}}},
 			{ID: ControlAction, Placeholder: "Activity", Options: []ui.FilterOption{{Label: "Any activity"}, {Label: "Created", Expression: `action.contains("create")`}, {Label: "Updated", Expression: `action.contains("update")`}, {Label: "Deleted", Expression: `action.contains("delete")`}}},
 			{ID: ControlPrincipal, Placeholder: "Actor", Options: []ui.FilterOption{{Label: "Any actor"}, {Label: "Owner", Expression: `principal.contains("owner")`}, {Label: "Manager", Expression: `principal.contains("manager")`}, {Label: "Bartender", Expression: `principal.contains("bartender")`}}},
-		}, container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.limit), func(expression string) { v.applyExpression(expression) })
+		}, nil, func(expression string) { v.applyExpression(expression) })
 	v.expression, v.apply, v.scope = bar.Expression, bar.Apply, bar.Presets[0]
 
 	columns := []string{"Started", "Completed", "Duration", "Action", "Resource", "Principal", "Success", "Touches", "Error", "Actions"}
-	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Rows), len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewAutoPagingRowTable(func() (int, int) { return len(v.state.Rows), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
 		cell := object
@@ -69,7 +67,7 @@ func NewView(p *Presenter) *View {
 			return
 		}
 		ui.ShowCellText(cell, values[id.Col], false)
-	})
+	}, p.NextPage)
 	v.list.OnSelected = func(id widget.TableCellID) {
 		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
@@ -80,10 +78,8 @@ func NewView(p *Presenter) *View {
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No audit activity found", "Adjust the filter or return later after application activity occurs.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
-	v.previous = ui.WithIcon(ui.NewButton(ControlPrevious, "Previous", p.PreviousPage), ui.IconPrevious)
-	v.next = ui.WithIcon(ui.NewButton(ControlNext, "Next", p.NextPage), ui.IconNext)
 	v.status = widget.NewLabel("")
-	v.browse = ui.StandardListPage(ui.ListPage{Title: "Audit", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.refresh}, List: v.listStack, Status: v.status, Paging: container.NewHBox(v.previous, v.next)}).(*framework.Container)
+	v.browse = ui.StandardListPage(ui.ListPage{Title: "Audit", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.refresh}, List: v.listStack, Status: v.status}).(*framework.Container)
 
 	v.detailTitle, v.crumbName, v.detailStatus = widget.NewLabel("Audit activity"), widget.NewLabel(""), widget.NewLabel("")
 	labels := []string{"ID", "Action", "Entity", "Actor", "Started", "Completed", "Duration", "Success", "Error", "Touched entities"}
@@ -109,11 +105,7 @@ func (v *View) ExecuteCommand(c ui.Command) bool {
 	return c == ui.CommandRefresh && v.state.Mode == Browsing && ui.Trigger(v.refresh)
 }
 func (v *View) applyExpression(expression string) {
-	limit, err := strconv.Atoi(strings.TrimSpace(v.limit.Text))
-	if err != nil {
-		limit = -1
-	}
-	v.presenter.ApplyFilter(Filter{Expression: expression, Limit: limit})
+	v.presenter.ApplyFilter(Filter{Expression: expression, Limit: ui.PageLimit})
 }
 func (v *View) applyFilter() { v.applyExpression(v.expression.Text) }
 
@@ -163,20 +155,10 @@ func (v *View) render(s State) {
 	} else {
 		v.status.SetText(fmt.Sprintf("Page %d · %d audit entries", len(s.History)+1, len(s.Rows)))
 	}
-	if s.Loading || len(s.History) == 0 {
-		v.previous.Disable()
-	} else {
-		v.previous.Enable()
-	}
-	if s.Loading || s.Next == "" {
-		v.next.Disable()
-	} else {
-		v.next.Enable()
-	}
 	for _, control := range []interface {
 		Enable()
 		Disable()
-	}{v.scope, v.expression, v.limit, v.apply, v.refresh} {
+	}{v.scope, v.expression, v.apply, v.refresh} {
 		if s.Loading {
 			control.Disable()
 		} else {

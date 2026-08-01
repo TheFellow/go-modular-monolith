@@ -62,7 +62,6 @@ type View struct {
 	root                                                               *framework.Container
 	expression, menuQuery, drinkQuery, quantity, itemNotes, orderNotes *ui.SemanticEntry
 	tags                                                               *ui.TagTokenEditor
-	limit                                                              *semanticSelect
 	menus, drinks                                                      *widget.Select
 	list                                                               *widget.Table
 	removeItems                                                        map[int]*ui.SemanticButton
@@ -114,31 +113,21 @@ func (v *View) render(s State) {
 }
 
 func (v *View) browser(s State) framework.CanvasObject {
-	v.limit = newSemanticSelect("orders-filter-limit", []string{"25", "50", "100"})
-	v.limit.SetSelected(strconv.Itoa(s.Filter.Limit))
 	bar := ui.NewSingleRowFilterBar(ControlFilter, ControlApplyFilter, `Filter orders (for example: tags contains "featured")`, s.Filter.Expression,
 		[]ui.FilterPreset{{ID: "orders-status", Placeholder: "Status", Options: []ui.FilterOption{{Label: "Any status"}, {Label: "Pending", Expression: `status == "pending"`}, {Label: "Completed", Expression: `status == "completed"`}, {Label: "Cancelled", Expression: `status == "cancelled"`}}}},
-		container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.limit), func(expression string) {
-			limit, _ := strconv.Atoi(v.limit.Selected)
-			v.presenter.ApplyFilter(Filter{Expression: expression, Limit: limit})
-		})
+		nil, func(expression string) { v.presenter.ApplyFilter(Filter{Expression: expression, Limit: ui.PageLimit}) })
 	v.expression = bar.Expression
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", v.presenter.Refresh), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlPlace, "Place order", v.presenter.StartPlace), ui.IconAdd))
-	previous := ui.WithIcon(ui.NewButton(ControlPrevious, "Previous", v.presenter.PreviousPage), ui.IconPrevious)
-	next := ui.WithIcon(ui.NewButton(ControlNext, "Next", v.presenter.NextPage), ui.IconNext)
 	busy := s.Loading || s.Submitting || s.Confirming
-	setEnabled(previous, !busy && len(s.History) > 0)
-	setEnabled(next, !busy && s.Next != "")
 	setEnabled(v.refresh, !busy)
 	setEnabled(v.create, !busy)
 	v.create.Hidden = !s.CanPlace
 	setEnabled(v.expression, !busy)
-	setEnabled(v.limit, !busy)
 	setEnabled(bar.Apply, !busy)
 	columns := []string{"Menu", "Menu ID", "Status", "Items", "Total quantity", "Total", "Created", "Completed", "Tags", "Actions"}
 	if v.list == nil {
-		v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Rows), len(columns) }, func() framework.CanvasObject {
+		v.list = ui.NewAutoPagingRowTable(func() (int, int) { return len(v.state.Rows), len(columns) }, func() framework.CanvasObject {
 			return ui.NewActionCell()
 		}, func(id widget.TableCellID, object framework.CanvasObject) {
 			cell := object
@@ -173,7 +162,7 @@ func (v *View) browser(s State) framework.CanvasObject {
 				return
 			}
 			ui.ShowCellText(cell, values[id.Col], false)
-		})
+		}, v.presenter.NextPage)
 		v.list.OnSelected = func(id widget.TableCellID) {
 			if id.Row >= 0 && id.Col < len(columns)-1 {
 				v.list.UnselectAll()
@@ -205,7 +194,7 @@ func (v *View) browser(s State) framework.CanvasObject {
 	} else {
 		status = fmt.Sprintf("%d orders", len(s.Rows))
 	}
-	return ui.StandardListPage(ui.ListPage{Title: "Orders", Subtitle: "Browse orders and select one for complete details.", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, v.refresh}, List: list, Status: widget.NewLabel(status), Paging: container.NewHBox(previous, next)})
+	return ui.StandardListPage(ui.ListPage{Title: "Orders", Subtitle: "Browse orders and select one for complete details.", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, v.refresh}, List: list, Status: widget.NewLabel(status)})
 }
 
 func (v *View) breadcrumb(name string) framework.CanvasObject {

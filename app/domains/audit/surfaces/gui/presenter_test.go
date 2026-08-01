@@ -176,26 +176,15 @@ func TestViewDrivesRealRetainedWidgetsAndDisablesDuringLoad(t *testing.T) {
 	testutil.ErrorIf(t, presenter.State().Err == nil || !strings.Contains(view.status.Text, "Error:"), "widget filter validation not rendered: state=%#v status=%q expression=%q disabled=%t", presenter.State(), view.status.Text, view.expression.Text, view.apply.Disabled())
 }
 
-func TestViewValidatesPageSizeThroughRealRetainedWidgets(t *testing.T) {
+func TestViewUsesFixedPageSizeThroughRealRetainedWidgets(t *testing.T) {
 	fixture := testutil.NewFixture(t)
 	createAuditedIngredient(t, fixture, "Widget page size")
 	presenter := auditPresenter(fixture)
 	view := NewView(presenter)
 	view.Activate()
-	before := presenter.State()
-
-	for _, input := range []string{"abc", "0", "-1"} {
-		view.limit.SetText(input)
-		frameworktest.Tap(view.apply)
-		state := presenter.State()
-		testutil.ErrorIf(t, state.Err == nil || !strings.Contains(view.status.Text, "page size must be greater than zero"), "page size %q did not render validation: state=%#v status=%q", input, state, view.status.Text)
-		testutil.ErrorIf(t, state.Filter != before.Filter || len(state.Rows) != len(before.Rows) || (state.Selected == nil) != (before.Selected == nil) || (state.Selected != nil && state.Selected.Entry.ID != before.Selected.Entry.ID), "page size %q changed retained query state: before=%#v after=%#v", input, before, state)
-	}
-
-	view.limit.SetText("1")
 	frameworktest.Tap(view.apply)
 	state := presenter.State()
-	testutil.ErrorIf(t, state.Err != nil || state.Filter.Limit != 1 || len(state.Rows) != 1, "valid page size not applied: %#v", state)
+	testutil.ErrorIf(t, state.Err != nil || state.Filter.Limit != ui.PageLimit, "fixed page size not applied: %#v", state)
 }
 
 func TestDateParsingMatchesCLIBoundaries(t *testing.T) {

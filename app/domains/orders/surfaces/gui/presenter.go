@@ -116,7 +116,7 @@ type Presenter struct {
 
 func NewPresenter(session *app.Session, deps Dependencies) *Presenter {
 	p := &Presenter{app: session, dialogs: deps.Dialogs, menuDrinks: make(map[entity.MenuID][]DrinkOption)}
-	p.state.Filter.Limit = paging.DefaultLimit
+	p.state.Filter.Limit = ui.PageLimit
 	p.state.CanPlace = pkgAuthz.AuthorizeWithEntity(session.Context().Principal(), ordersauthz.ActionPlace, (models.Order{}).CedarEntity()) == nil
 	p.load = ui.NewLatestRequest[listResult](deps.Executor, deps.Dispatcher)
 	p.catalog = ui.NewLatestRequest[placeCatalog](deps.Executor, deps.Dispatcher)
@@ -154,7 +154,12 @@ func (p *Presenter) Refresh() {
 		}
 		if r.Status == ui.Loaded {
 			selected := selectedID(p.state.Selected)
-			p.state.Rows, p.state.Next, p.state.Err = cloneRows(r.Value.rows), r.Value.next, nil
+			if cursor == "" {
+				p.state.Rows = cloneRows(r.Value.rows)
+			} else {
+				p.state.Rows = append(p.state.Rows, cloneRows(r.Value.rows)...)
+			}
+			p.state.Next, p.state.Err = r.Value.next, nil
 			p.state.Selected = findRow(p.state.Rows, selected)
 			p.permissions()
 		}
@@ -235,7 +240,7 @@ func (p *Presenter) leaveDetail(reset bool) {
 		p.state.Err, p.state.Dirty, p.state.Confirming = nil, false, false
 		if reset {
 			p.state.Selected = nil
-			p.state.Filter, p.state.Cursor, p.state.Next, p.state.History = Filter{Limit: paging.DefaultLimit}, "", "", nil
+			p.state.Filter, p.state.Cursor, p.state.Next, p.state.History = Filter{Limit: ui.PageLimit}, "", "", nil
 		}
 		p.permissions()
 		p.publish()
