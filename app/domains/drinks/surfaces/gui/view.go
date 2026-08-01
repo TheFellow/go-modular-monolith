@@ -118,7 +118,6 @@ type View struct {
 	browse, formPanel, tagsPanel      *framework.Container
 	filterExpression                  *ui.SemanticEntry
 	filterBar                         *ui.FilterBar
-	filterLimit                       *semanticSelect
 	name, description, steps, garnish *ui.SemanticEntry
 	tags, mutationTags                *ui.TagTokenEditor
 	category, glass                   *semanticSelect
@@ -126,7 +125,7 @@ type View struct {
 	recipe                            []recipeWidgets
 	save, cancel, tagSave, tagCancel  *ui.SemanticButton
 	addIngredient                     *ui.SemanticButton
-	refresh, create, previous, next   *ui.SemanticButton
+	refresh, create                   *ui.SemanticButton
 	detailActions                     []*ui.SemanticButton
 	renderedMode                      Mode
 	renderedFormInstance              uint64
@@ -141,8 +140,6 @@ var _ ui.Activated = (*View)(nil)
 
 func NewView(p *Presenter) *View {
 	v := &View{presenter: p}
-	v.filterLimit = newSelect("drinks.filter.limit", []string{"25", "50", "100"})
-	v.filterLimit.SetSelected(strconv.Itoa(p.State().Filter.Limit))
 	categoryPresets := []ui.FilterOption{{Label: "Any category"}}
 	for _, category := range categoryOptions() {
 		categoryPresets = append(categoryPresets, ui.FilterOption{Label: category, Expression: fmt.Sprintf(`category == %q`, category)})
@@ -153,9 +150,8 @@ func NewView(p *Presenter) *View {
 	}
 	bar := ui.NewSingleRowFilterBar(ControlFilterExpression, ControlApplyFilter, `Filter drinks (for example: name.contains("martini"))`, p.State().Filter.Expression,
 		[]ui.FilterPreset{{ID: ControlFilterCategory, Placeholder: "Category", Options: categoryPresets}, {ID: ControlFilterGlass, Placeholder: "Glass", Options: glassPresets}},
-		container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.filterLimit), func(expression string) {
-			limit, _ := strconv.Atoi(v.filterLimit.Selected)
-			if p.SetFilter(Filter{Expression: expression, Limit: limit}) {
+		nil, func(expression string) {
+			if p.SetFilter(Filter{Expression: expression, Limit: ui.PageLimit}) {
 				p.Refresh()
 			}
 		})
@@ -163,7 +159,7 @@ func NewView(p *Presenter) *View {
 	v.filterBar = bar
 	filters := bar.Content
 	columns := []string{"Name", "Category", "Glass", "Ingredients", "Tags", "Actions"}
-	v.list = ui.NewRowTable(func() (int, int) { return len(p.State().Items), len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewAutoPagingRowTable(func() (int, int) { return len(p.State().Items), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, o framework.CanvasObject) {
 		cell := o
@@ -179,7 +175,7 @@ func NewView(p *Presenter) *View {
 			return
 		}
 		ui.ShowCellText(cell, values[id.Col], false)
-	})
+	}, p.NextPage)
 	v.list.OnSelected = func(id widget.TableCellID) {
 		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
@@ -189,8 +185,6 @@ func NewView(p *Presenter) *View {
 	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 190}, {Title: "Category", Width: 110}, {Title: "Glass", Width: 110}, {Title: "Ingredients", Width: 125}, {Title: "Tags", Width: 190}, {Title: "Actions", Width: 120}}, nil)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New drink", p.StartCreate), ui.IconAdd))
-	v.previous = ui.WithIcon(ui.NewButton(ControlPrevious, "Previous", p.PreviousPage), ui.IconPrevious)
-	v.next = ui.WithIcon(ui.NewButton(ControlNext, "Next", p.NextPage), ui.IconNext)
 	edit := ui.NewButton(ControlEdit, "Edit", p.StartEdit)
 	tagsAction := ui.NewButton(ControlTags, "Tags", p.StartTags)
 	deleteAction := ui.Destructive(ui.WithIcon(ui.NewButton(ControlDelete, "Delete", p.Delete), ui.IconDelete))
@@ -200,7 +194,7 @@ func NewView(p *Presenter) *View {
 		Title: "Drinks", Filters: filters,
 		CollectionActions: []framework.CanvasObject{v.create, v.refresh},
 		List:              v.list, Status: v.status,
-		Paging: container.NewHBox(v.previous, v.next), ListRatio: .35,
+		ListRatio: .35,
 	}).(*framework.Container)
 	v.name = ui.NewEntry(ControlName)
 	v.category = newSelect(ControlCategory, categoryOptions())
@@ -329,16 +323,6 @@ func (v *View) render(state State) {
 	}
 	v.rendering = true
 	defer func() { v.rendering = false }()
-	if len(state.History) == 0 || state.Loading {
-		v.previous.Disable()
-	} else {
-		v.previous.Enable()
-	}
-	if state.Next == "" || state.Loading {
-		v.next.Disable()
-	} else {
-		v.next.Enable()
-	}
 	v.browse.Hidden = state.Mode != Browsing
 	v.formPanel.Hidden = state.Mode != Creating && state.Mode != Editing && state.Mode != Viewing
 	v.tagsPanel.Hidden = state.Mode != Tagging

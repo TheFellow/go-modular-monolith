@@ -88,14 +88,11 @@ func TestWidgetPagesMoreThanOneHundredDrinksAndValidatesPageSize(t *testing.T) {
 	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
 	v := NewView(p)
 	driver := fynetest.NewDriver(t, v.Content())
-	v.filterLimit.SetSelected("25")
 	driver.Tap(ControlApplyFilter)
 	testutil.Equals(t, len(p.State().Items), 25)
 	first := p.State().Items[0].ID
-	driver.Tap(ControlNext)
-	testutil.Equals(t, len(p.State().Items), 25)
-	testutil.ErrorIf(t, p.State().Items[0].ID == first, "%v", "next retained first page")
-	driver.Tap(ControlPrevious)
+	p.NextPage()
+	testutil.Equals(t, len(p.State().Items), 50)
 	testutil.Equals(t, p.State().Items[0].ID, first)
 	testutil.ErrorIf(t, p.SetFilter(Filter{Limit: -1}), "%v", "negative page size accepted")
 }
