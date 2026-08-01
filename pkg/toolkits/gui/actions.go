@@ -2,6 +2,7 @@ package gui
 
 import (
 	"slices"
+	"sync/atomic"
 
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -151,6 +152,26 @@ func NewRowTable(length func() (rows int, cols int), create func() framework.Can
 	table := widget.NewTable(length, create, update)
 	table.HideSeparators = true
 	return table
+}
+
+// NewAutoPagingRowTable creates a row table that asks for more data when its
+// final row becomes visible. The callback runs outside Fyne's render stack so
+// presenters may safely publish a new table snapshot from it.
+func NewAutoPagingRowTable(length func() (rows int, cols int), create func() framework.CanvasObject, update func(widget.TableCellID, framework.CanvasObject), loadMore func()) *widget.Table {
+	var requestedRows atomic.Int64
+	requestedRows.Store(-1)
+	return NewRowTable(length, create, func(id widget.TableCellID, object framework.CanvasObject) {
+		update(id, object)
+		rows, cols := length()
+		if loadMore == nil || rows == 0 || id.Row != rows-1 || id.Col != cols-1 {
+			return
+		}
+		count := int64(rows)
+		if requestedRows.Swap(count) == count {
+			return
+		}
+		go loadMore()
+	})
 }
 
 // NewActionCell returns a native container because widget.Table requires one
