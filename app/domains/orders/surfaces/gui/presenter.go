@@ -127,6 +127,11 @@ func (p *Presenter) Observe(fn func(State)) { p.changed = fn; p.publish() }
 func (p *Presenter) State() State           { return cloneState(p.state) }
 
 func (p *Presenter) Refresh() {
+	p.state.Cursor, p.state.Next, p.state.History = "", "", nil
+	p.loadPage(false)
+}
+
+func (p *Presenter) loadPage(appendPage bool) {
 	f, cursor := p.state.Filter, p.state.Cursor
 	p.load.LoadContext(p.app.Context(), func(ctx context.Context) (listResult, error) {
 		op := p.app.ContextFrom(ctx)
@@ -154,10 +159,10 @@ func (p *Presenter) Refresh() {
 		}
 		if r.Status == ui.Loaded {
 			selected := selectedID(p.state.Selected)
-			if cursor == "" {
-				p.state.Rows = cloneRows(r.Value.rows)
-			} else {
+			if appendPage {
 				p.state.Rows = append(p.state.Rows, cloneRows(r.Value.rows)...)
+			} else {
+				p.state.Rows = cloneRows(r.Value.rows)
 			}
 			p.state.Next, p.state.Err = r.Value.next, nil
 			p.state.Selected = findRow(p.state.Rows, selected)
@@ -176,7 +181,7 @@ func (p *Presenter) ApplyFilter(filter Filter) bool {
 	}
 	filter.Expression = strings.TrimSpace(filter.Expression)
 	p.state.Filter, p.state.Cursor, p.state.Next, p.state.History = filter, "", "", nil
-	p.Refresh()
+	p.loadPage(false)
 	return true
 }
 func (p *Presenter) NextPage() {
@@ -185,7 +190,7 @@ func (p *Presenter) NextPage() {
 	}
 	p.state.History = append(p.state.History, p.state.Cursor)
 	p.state.Cursor = p.state.Next
-	p.Refresh()
+	p.loadPage(true)
 }
 func (p *Presenter) PreviousPage() {
 	if p.busy() || len(p.state.History) == 0 {
@@ -194,7 +199,7 @@ func (p *Presenter) PreviousPage() {
 	n := len(p.state.History) - 1
 	p.state.Cursor = p.state.History[n]
 	p.state.History = p.state.History[:n]
-	p.Refresh()
+	p.loadPage(false)
 }
 func (p *Presenter) Select(index int) {
 	if p.busy() || p.state.Mode != Browsing {

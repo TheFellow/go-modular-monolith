@@ -475,17 +475,17 @@ func TestRefreshExposesEveryPage(t *testing.T) {
 	}
 	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
 	p.Refresh()
-	testutil.Equals(t, len(p.State().Items), paging.DefaultLimit)
+	testutil.Equals(t, len(p.State().Items), appgui.PageLimit)
 	testutil.ErrorIf(t, p.State().Next == "", "expected a cursor for the remaining drink")
-	firstPage := make(map[entity.DrinkID]bool, paging.DefaultLimit)
+	firstPage := make(map[entity.DrinkID]bool, appgui.PageLimit)
 	for _, drink := range p.State().Items {
 		firstPage[drink.ID] = true
 	}
 	p.NextPage()
-	testutil.Equals(t, len(p.State().Items), 1)
-	testutil.ErrorIf(t, firstPage[p.State().Items[0].ID], "second page repeated a first-page drink")
+	testutil.Equals(t, len(p.State().Items), appgui.PageLimit*2)
+	testutil.ErrorIf(t, firstPage[p.State().Items[appgui.PageLimit].ID], "second page repeated a first-page drink")
 	p.PreviousPage()
-	testutil.Equals(t, len(p.State().Items), paging.DefaultLimit)
+	testutil.Equals(t, len(p.State().Items), appgui.PageLimit)
 	for _, drink := range p.State().Items {
 		testutil.ErrorIf(t, !firstPage[drink.ID], "previous page did not restore the initial result set")
 	}

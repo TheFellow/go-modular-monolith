@@ -14,7 +14,6 @@ import (
 	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
@@ -46,7 +45,7 @@ func TestPresenterLoadsPagesDetailsAndKeepsStableSelection(t *testing.T) {
 	testutil.ErrorIf(t, presenter.State().Selected == nil || presenter.State().Selected.Entry.ID != selected, "%v", "refresh did not preserve selection")
 	presenter.NextPage()
 	state = presenter.State()
-	testutil.ErrorIf(t, len(state.Rows) != 1 || len(state.History) != 1 || state.Next != "", "second page = %#v", state)
+	testutil.ErrorIf(t, len(state.Rows) != 3 || len(state.History) != 1 || state.Next != "", "second page = %#v", state)
 	presenter.PreviousPage()
 	{
 		state = presenter.State()
@@ -229,7 +228,7 @@ func TestListDetailNavigationPreservesBackAndResetsBreadcrumb(t *testing.T) {
 	presenter.ResetList()
 	{
 		state := presenter.State()
-		testutil.ErrorIf(t, state.Mode != Browsing || state.Selected != nil || state.Filter.Expression != "" || state.Filter.Limit != paging.DefaultLimit || len(state.History) != 0, "breadcrumb did not reset list state: %#v", state)
+		testutil.ErrorIf(t, state.Mode != Browsing || state.Selected != nil || state.Filter.Expression != "" || state.Filter.Limit != ui.PageLimit || len(state.History) != 0, "breadcrumb did not reset list state: %#v", state)
 	}
 }
 

@@ -71,7 +71,7 @@ func TestListDetailNavigationPreservesBackAndResetsBreadcrumb(t *testing.T) {
 	p.ResetList()
 	testutil.Equals(t, p.State().Mode, Browsing)
 	testutil.Equals(t, p.State().Filter.Expression, "")
-	testutil.Equals(t, p.State().Filter.Limit, 100)
+	testutil.Equals(t, p.State().Filter.Limit, appgui.PageLimit)
 }
 
 func TestActionsColumnDoesNotImplicitlySelectRow(t *testing.T) {

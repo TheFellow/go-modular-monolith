@@ -220,7 +220,7 @@ func TestInventoryListDetailBackAndResetSemantics(t *testing.T) {
 	p.ResetList()
 	{
 		got := p.Snapshot()
-		testutil.ErrorIf(t, got.Mode != Browse || got.Expression != "" || got.Limit != 100 || got.Cursor != "" || len(got.History) != 0, "breadcrumb did not reset list = %#v", got)
+		testutil.ErrorIf(t, got.Mode != Browse || got.Expression != "" || got.Limit != toolkit.PageLimit || got.Cursor != "" || len(got.History) != 0, "breadcrumb did not reset list = %#v", got)
 	}
 }
 
@@ -279,7 +279,7 @@ func TestDirtyInventoryNavigationConfirmsThenPreservesOrResetsList(t *testing.T)
 	dialogs.Confirmations()[1].Respond(true)
 	{
 		got := p.Snapshot()
-		testutil.ErrorIf(t, got.Mode != Browse || got.Expression != "" || got.Limit != 100, "confirmed breadcrumb state = %#v", got)
+		testutil.ErrorIf(t, got.Mode != Browse || got.Expression != "" || got.Limit != toolkit.PageLimit, "confirmed breadcrumb state = %#v", got)
 	}
 }
 

@@ -75,7 +75,7 @@ func TestPresenterTraversesForwardAndBackwardPages(t *testing.T) {
 	p.NextPage()
 	second := p.State()
 	testutil.Equals(t, len(second.Rows), 2)
-	testutil.ErrorIf(t, second.Rows[0].Order.ID == firstID, "%v", "next page repeated the first order")
+	testutil.ErrorIf(t, second.Rows[0].Order.ID != firstID || second.Rows[1].Order.ID == firstID, "%v", "next page was not appended")
 	testutil.Equals(t, len(second.History), 1)
 	p.PreviousPage()
 	previous := p.State()

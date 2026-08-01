@@ -118,6 +118,11 @@ func (p *Presenter) SetFilter(f Filter) bool {
 	return true
 }
 func (p *Presenter) Refresh() {
+	p.state.Cursor, p.state.Next, p.state.History = "", "", nil
+	p.loadPage(false)
+}
+
+func (p *Presenter) loadPage(appendPage bool) {
 	f := p.state.Filter
 	cursor := p.state.Cursor
 	p.load.LoadContext(p.app.Context(), func(ctx context.Context) (drinkCatalog, error) {
@@ -136,10 +141,10 @@ func (p *Presenter) Refresh() {
 		}
 		if r.Status == ui.Loaded {
 			p.state.Err = nil
-			if cursor == "" {
-				p.state.Items = cloneDrinks(r.Value.drinks)
-			} else {
+			if appendPage {
 				p.state.Items = append(p.state.Items, cloneDrinks(r.Value.drinks)...)
+			} else {
+				p.state.Items = cloneDrinks(r.Value.drinks)
 			}
 			p.state.Next = r.Value.next
 			p.state.Ingredients = append([]IngredientOption(nil), r.Value.ingredients...)
@@ -154,7 +159,7 @@ func (p *Presenter) NextPage() {
 	}
 	p.state.History = append(p.state.History, p.state.Cursor)
 	p.state.Cursor = p.state.Next
-	p.Refresh()
+	p.loadPage(true)
 }
 func (p *Presenter) PreviousPage() {
 	if len(p.state.History) == 0 || p.state.Loading {
@@ -163,7 +168,7 @@ func (p *Presenter) PreviousPage() {
 	last := len(p.state.History) - 1
 	p.state.Cursor = p.state.History[last]
 	p.state.History = p.state.History[:last]
-	p.Refresh()
+	p.loadPage(false)
 }
 func (p *Presenter) Select(i int) {
 	if i < 0 || i >= len(p.state.Items) {

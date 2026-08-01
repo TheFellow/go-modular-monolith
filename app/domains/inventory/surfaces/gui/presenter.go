@@ -114,6 +114,13 @@ func (p *Presenter) Snapshot() State              { p.mu.Lock(); defer p.mu.Unlo
 
 func (p *Presenter) Load() {
 	p.mu.Lock()
+	p.state.Cursor, p.state.Next, p.state.History = "", "", nil
+	p.mu.Unlock()
+	p.loadPage(false)
+}
+
+func (p *Presenter) loadPage(appendPage bool) {
+	p.mu.Lock()
 	req := inventory.ListRequest{Filter: p.state.Expression, Cursor: p.state.Cursor, Limit: p.state.Limit}
 	threshold := p.state.LowStock
 	if p.state.Stock == LowStock {
@@ -151,10 +158,10 @@ func (p *Presenter) Load() {
 		p.state.Status, p.state.Err = result.Status, toolkit.PresentError(result.Err)
 		if result.Status == toolkit.Loaded {
 			selected := selectedID(p.state.Selected)
-			if req.Cursor == "" {
-				p.state.Rows = result.Value.rows
-			} else {
+			if appendPage {
 				p.state.Rows = append(p.state.Rows, result.Value.rows...)
+			} else {
+				p.state.Rows = result.Value.rows
 			}
 			p.state.Next = result.Value.next
 			p.state.Selected = findRow(p.state.Rows, selected)
@@ -187,7 +194,7 @@ func (p *Presenter) Filter(stock StockMode, expression string, lowStock float64,
 	p.state.Stock, p.state.Expression, p.state.LowStock, p.state.Limit = stock, strings.TrimSpace(expression), lowStock, limit
 	p.state.Cursor, p.state.Next, p.state.History = "", "", nil
 	p.mu.Unlock()
-	p.Load()
+	p.loadPage(false)
 	return true
 }
 func (p *Presenter) NextPage() {
@@ -199,7 +206,7 @@ func (p *Presenter) NextPage() {
 	p.state.History = append(p.state.History, p.state.Cursor)
 	p.state.Cursor = p.state.Next
 	p.mu.Unlock()
-	p.Load()
+	p.loadPage(true)
 }
 func (p *Presenter) PreviousPage() {
 	p.mu.Lock()
@@ -211,7 +218,7 @@ func (p *Presenter) PreviousPage() {
 	p.state.Cursor = p.state.History[n]
 	p.state.History = p.state.History[:n]
 	p.mu.Unlock()
-	p.Load()
+	p.loadPage(false)
 }
 func (p *Presenter) Select(id entity.InventoryID) {
 	p.mu.Lock()
