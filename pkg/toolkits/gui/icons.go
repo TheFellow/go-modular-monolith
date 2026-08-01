@@ -1,9 +1,31 @@
 package gui
 
 import (
+	"embed"
+	"strings"
+	"sync"
+
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
 )
+
+//go:embed icons/*.svg
+var iconAssets embed.FS
+var iconResources sync.Map
+
+func themedIcon(name string) framework.Resource {
+	if resource, ok := iconResources.Load(name); ok {
+		return resource.(framework.Resource)
+	}
+	data, err := iconAssets.ReadFile("icons/" + name + ".svg")
+	if err != nil {
+		panic("missing embedded GUI icon: " + name)
+	}
+	// Fyne's themed SVG resource recolors black for the active light/dark theme.
+	data = []byte(strings.ReplaceAll(string(data), "currentColor", "#000000"))
+	resource, _ := iconResources.LoadOrStore(name, theme.NewThemedResource(framework.NewStaticResource(name+".svg", data)))
+	return resource.(framework.Resource)
+}
 
 // Icon names are presentation vocabulary, deliberately independent of labels
 // and semantic IDs so visual choices can be reviewed and swapped centrally.
@@ -37,41 +59,41 @@ func IconResource(icon Icon) framework.Resource {
 	case IconNone:
 		return nil
 	case IconAdd:
-		return theme.ContentAddIcon()
+		return themedIcon("lucide-plus")
 	case IconRefresh:
-		return theme.ViewRefreshIcon()
+		return themedIcon("lucide-refresh-cw")
 	case IconSave:
-		return theme.DocumentSaveIcon()
+		return themedIcon("lucide-save")
 	case IconCancel:
-		return theme.CancelIcon()
+		return themedIcon("lucide-x")
 	case IconBack, IconPrevious:
-		return theme.NavigateBackIcon()
+		return themedIcon("lucide-arrow-left")
 	case IconNext:
-		return theme.NavigateNextIcon()
+		return themedIcon("lucide-arrow-right")
 	case IconDelete:
-		return theme.DeleteIcon()
+		return themedIcon("lucide-trash-2")
 	case IconTag:
-		return theme.InfoIcon()
+		return themedIcon("lucide-tag")
 	case IconDashboard:
-		return theme.HomeIcon()
+		return themedIcon("lucide-layout-dashboard")
 	case IconDrinks:
-		return theme.MediaMusicIcon()
+		return themedIcon("fontawesome-martini-glass-citrus")
 	case IconIngredients:
-		return theme.GridIcon()
+		return themedIcon("lucide-carrot")
 	case IconInventory:
-		return theme.StorageIcon()
+		return themedIcon("lucide-warehouse")
 	case IconMenus:
-		return theme.DocumentIcon()
+		return themedIcon("lucide-book-open-text")
 	case IconOrders:
-		return theme.MailComposeIcon()
+		return themedIcon("lucide-receipt-text")
 	case IconAudit:
-		return theme.HistoryIcon()
+		return themedIcon("lucide-scroll-text")
 	case IconTags:
-		return theme.InfoIcon()
+		return themedIcon("lucide-tags")
 	case IconEmpty:
-		return theme.SearchIcon()
+		return themedIcon("lucide-search-x")
 	case IconCopy:
-		return theme.ContentCopyIcon()
+		return themedIcon("lucide-copy")
 	}
 	return nil
 }
