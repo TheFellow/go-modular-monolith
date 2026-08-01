@@ -43,19 +43,17 @@ func TestRenderWorkspaceReview(t *testing.T) {
 	gui := test.NewApp()
 	t.Cleanup(gui.Quit)
 	desktop, err := openDesktopWithDependencies(context.Background(), gui, desktopConfig{dataDirectory: t.TempDir(), actor: "owner"}, deterministicDesktopDependencies(nil))
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	t.Cleanup(func() { _ = desktop.Close() })
 	ingredient, err := desktop.session.Ingredients.Create(desktop.session.Context(), &ingredientsmodels.Ingredient{Name: "London Dry Gin", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	testutil.ErrorIf(t, err != nil, "%v", err)
+	{
+		_, err := desktop.session.Tags.Replace(desktop.session.Context(), ingredient.EntityUID(), tag.Tags{{Key: "featured"}, {Key: "env", Value: "development"}, {Key: "region", Value: "west"}})
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
-	if _, err := desktop.session.Tags.Replace(desktop.session.Context(), ingredient.EntityUID(), tag.Tags{{Key: "featured"}, {Key: "env", Value: "development"}, {Key: "region", Value: "west"}}); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
-	if _, err := desktop.session.Inventory.Set(desktop.session.Context(), &inventorymodels.Update{IngredientID: ingredient.ID, Amount: measurement.MustAmount(14, measurement.UnitOz), CostPerUnit: money.NewPriceFromCents(325, currency.USD)}); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	{
+		_, err := desktop.session.Inventory.Set(desktop.session.Context(), &inventorymodels.Update{IngredientID: ingredient.ID, Amount: measurement.MustAmount(14, measurement.UnitOz), CostPerUnit: money.NewPriceFromCents(325, currency.USD)})
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
 	drink, err := desktop.session.Drinks.Create(desktop.session.Context(), &drinksmodels.Drink{
 		Name: "Negroni", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeRocks,
@@ -64,101 +62,82 @@ func TestRenderWorkspaceReview(t *testing.T) {
 			Steps:       []string{"Stir with ice", "Strain over a large cube"}, Garnish: "Orange peel",
 		},
 	})
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
-	if _, err := desktop.session.Tags.Replace(desktop.session.Context(), drink.EntityUID(), tag.Tags{{Key: "classic"}}); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	testutil.ErrorIf(t, err != nil, "%v", err)
+	{
+		_, err := desktop.session.Tags.Replace(desktop.session.Context(), drink.EntityUID(), tag.Tags{{Key: "classic"}})
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
 	menu, err := desktop.session.Menus.Create(desktop.session.Context(), &menusmodels.Menu{Name: "Summer Classics", Description: "A concise menu of balanced classics."})
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	menu, err = desktop.session.Menus.AddDrink(desktop.session.Context(), &menusmodels.MenuPatch{MenuID: menu.ID, DrinkID: drink.ID})
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	publishedMenu, err := desktop.session.Menus.Create(desktop.session.Context(), &menusmodels.Menu{Name: "Published Classics", Description: "The currently published menu."})
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	publishedMenu, err = desktop.session.Menus.AddDrink(desktop.session.Context(), &menusmodels.MenuPatch{MenuID: publishedMenu.ID, DrinkID: drink.ID})
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	publishedMenu, err = desktop.session.Menus.Publish(desktop.session.Context(), publishedMenu)
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	pendingOrder, err := desktop.session.Orders.Place(desktop.session.Context(), &ordersmodels.Order{MenuID: publishedMenu.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 2, Notes: "Orange peel on the side"}}, Notes: "Bar seat four"})
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	completedOrder, err := desktop.session.Orders.Place(desktop.session.Context(), &ordersmodels.Order{MenuID: publishedMenu.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 1}}, Notes: "Already served"})
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	completedOrder, err = desktop.session.Orders.Complete(desktop.session.Context(), completedOrder)
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
-	if err := os.MkdirAll(directory, 0o755); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	testutil.ErrorIf(t, err != nil, "%v", err)
+	{
+		err := os.MkdirAll(directory, 0o755)
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
 	for _, route := range []string{"drinks", "ingredients", "inventory", "menus", "orders", "audit", "tags"} {
-		if err := desktop.shell.Navigate(route); err != nil {
-			testutil.ErrorIf(t, true, "%v", err)
+		{
+			err := desktop.shell.Navigate(route)
+			testutil.ErrorIf(t, err != nil, "%v", err)
 		}
 		file, err := os.Create(filepath.Join(directory, route+".png"))
-		if err != nil {
-			testutil.ErrorIf(t, true, "%v", err)
-		}
+		testutil.ErrorIf(t, err != nil, "%v", err)
 		if err := png.Encode(file, desktop.window.Canvas().Capture()); err != nil {
 			_ = file.Close()
-			testutil.ErrorIf(t, true, "%v", err)
+			testutil.ErrorIf(t, err != nil, "%v", err)
 		}
-		if err := file.Close(); err != nil {
-			testutil.ErrorIf(t, true, "%v", err)
+		{
+			err := file.Close()
+			testutil.ErrorIf(t, err != nil, "%v", err)
 		}
 		if route == "ingredients" {
 			presenter := desktop.presenters[route].(*ingredientsgui.Presenter)
 			presenter.Select(ingredient.ID)
 			file, err = os.Create(filepath.Join(directory, route+"-london-dry-gin.png"))
-			if err != nil {
-				testutil.ErrorIf(t, true, "%v", err)
-			}
+			testutil.ErrorIf(t, err != nil, "%v", err)
 			if err := png.Encode(file, desktop.window.Canvas().Capture()); err != nil {
 				_ = file.Close()
-				testutil.ErrorIf(t, true, "%v", err)
+				testutil.ErrorIf(t, err != nil, "%v", err)
 			}
-			if err := file.Close(); err != nil {
-				testutil.ErrorIf(t, true, "%v", err)
+			{
+				err := file.Close()
+				testutil.ErrorIf(t, err != nil, "%v", err)
 			}
 			presenter.Back()
 			presenter.Filter("", `name == "missing"`)
 			file, err = os.Create(filepath.Join(directory, route+"-empty.png"))
-			if err != nil {
-				testutil.ErrorIf(t, true, "%v", err)
-			}
+			testutil.ErrorIf(t, err != nil, "%v", err)
 			if err := png.Encode(file, desktop.window.Canvas().Capture()); err != nil {
 				_ = file.Close()
-				testutil.ErrorIf(t, true, "%v", err)
+				testutil.ErrorIf(t, err != nil, "%v", err)
 			}
-			if err := file.Close(); err != nil {
-				testutil.ErrorIf(t, true, "%v", err)
+			{
+				err := file.Close()
+				testutil.ErrorIf(t, err != nil, "%v", err)
 			}
 			presenter.ResetList()
 			presenter.StartCreate()
 			file, err = os.Create(filepath.Join(directory, route+"-create.png"))
-			if err != nil {
-				testutil.ErrorIf(t, true, "%v", err)
-			}
+			testutil.ErrorIf(t, err != nil, "%v", err)
 			if err := png.Encode(file, desktop.window.Canvas().Capture()); err != nil {
 				_ = file.Close()
-				testutil.ErrorIf(t, true, "%v", err)
+				testutil.ErrorIf(t, err != nil, "%v", err)
 			}
-			if err := file.Close(); err != nil {
-				testutil.ErrorIf(t, true, "%v", err)
+			{
+				err := file.Close()
+				testutil.ErrorIf(t, err != nil, "%v", err)
 			}
 			presenter.Cancel()
 		}
@@ -166,15 +145,14 @@ func TestRenderWorkspaceReview(t *testing.T) {
 			presenter := desktop.presenters[route].(*drinksgui.Presenter)
 			presenter.Select(0)
 			file, err = os.Create(filepath.Join(directory, route+"-negroni.png"))
-			if err != nil {
-				testutil.ErrorIf(t, true, "%v", err)
-			}
+			testutil.ErrorIf(t, err != nil, "%v", err)
 			if err := png.Encode(file, desktop.window.Canvas().Capture()); err != nil {
 				_ = file.Close()
-				testutil.ErrorIf(t, true, "%v", err)
+				testutil.ErrorIf(t, err != nil, "%v", err)
 			}
-			if err := file.Close(); err != nil {
-				testutil.ErrorIf(t, true, "%v", err)
+			{
+				err := file.Close()
+				testutil.ErrorIf(t, err != nil, "%v", err)
 			}
 			presenter.Back()
 			presenter.StartCreate()
@@ -204,7 +182,7 @@ func TestRenderWorkspaceReview(t *testing.T) {
 						return
 					}
 				}
-				testutil.ErrorIf(t, true, "menu %s missing", id)
+				testutil.Fail(t, "menu %s missing", id)
 			}
 			selectMenu(menu.ID)
 			captureReview(t, desktop, directory, route+"-summer-classics.png")
@@ -242,7 +220,7 @@ func TestRenderWorkspaceReview(t *testing.T) {
 						return
 					}
 				}
-				testutil.ErrorIf(t, true, "order %s missing", id)
+				testutil.Fail(t, "order %s missing", id)
 			}
 			selectOrder(pendingOrder.ID)
 			captureReview(t, desktop, directory, route+"-pending.png")
@@ -269,15 +247,14 @@ func TestRenderWorkspaceReview(t *testing.T) {
 			presenter.ResetList()
 			openFilterDisclosures(desktop.shell.Content())
 			file, err = os.Create(filepath.Join(directory, route+"-expanded.png"))
-			if err != nil {
-				testutil.ErrorIf(t, true, "%v", err)
-			}
+			testutil.ErrorIf(t, err != nil, "%v", err)
 			if err := png.Encode(file, desktop.window.Canvas().Capture()); err != nil {
 				_ = file.Close()
-				testutil.ErrorIf(t, true, "%v", err)
+				testutil.ErrorIf(t, err != nil, "%v", err)
 			}
-			if err := file.Close(); err != nil {
-				testutil.ErrorIf(t, true, "%v", err)
+			{
+				err := file.Close()
+				testutil.ErrorIf(t, err != nil, "%v", err)
 			}
 		}
 		if route == "tags" {
@@ -300,15 +277,14 @@ func TestRenderWorkspaceReview(t *testing.T) {
 func captureReview(t *testing.T, desktop *desktop, directory, name string) {
 	t.Helper()
 	file, err := os.Create(filepath.Join(directory, name))
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	if err := png.Encode(file, desktop.window.Canvas().Capture()); err != nil {
 		_ = file.Close()
-		testutil.ErrorIf(t, true, "%v", err)
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
-	if err := file.Close(); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	{
+		err := file.Close()
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
 }
 

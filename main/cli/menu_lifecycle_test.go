@@ -43,9 +43,7 @@ func TestMenusCLIUpdateDeleteLifecycleAndCrossInvocationVisibility(t *testing.T)
 	testutil.Ok(t, deleted.Err)
 	testutil.StringContains(t, deleted.Stdout, `"status": "archived"`)
 	missing := cli.Run("menus", "show", "--id", menu.ID)
-	if missing.Err == nil {
-		testutil.ErrorIf(t, true, "%v", "deleted menu remained visible")
-	}
+	testutil.ErrorIf(t, missing.Err == nil, "%v", "deleted menu remained visible")
 }
 
 func TestMenusCLIUpdateStructuredInputAndTemplate(t *testing.T) {
@@ -69,9 +67,7 @@ func TestMenusCLIAnalysisRejectsNonFiniteAndOutOfRangeMargins(t *testing.T) {
 	cli := newCLIE2E(filepath.Join(t.TempDir(), "menus.db"))
 	for _, margin := range []string{"NaN", "+Inf", "0", "1"} {
 		result := cli.Run("menus", "list", "--costs", "--target-margin", margin)
-		if result.Err == nil {
-			testutil.ErrorIf(t, true, "target margin %q was accepted", margin)
-		}
+		testutil.ErrorIf(t, result.Err == nil, "target margin %q was accepted", margin)
 		testutil.StringContains(t, result.Err.Error(), "target margin must be a number between 0 and 1")
 	}
 }
@@ -84,31 +80,23 @@ func TestMenusCLIUpdateAndDeleteEnforceValidationAuthorizationStateAndAtomicTags
 	testutil.Ok(t, json.Unmarshal([]byte(created.Stdout), &menu))
 
 	invalid := cli.Run("menus", "update", "--id", menu.ID, "--name", "Must Not Persist", "--tags", "region=east,region=west")
-	if invalid.Err == nil {
-		testutil.ErrorIf(t, true, "%v", "invalid duplicate tags were accepted")
-	}
+	testutil.ErrorIf(t, invalid.Err == nil, "%v", "invalid duplicate tags were accepted")
 	shown := cli.Run("menus", "show", "--id", menu.ID, "--json")
 	testutil.Ok(t, shown.Err)
 	testutil.StringContains(t, shown.Stdout, `"name": "Original"`)
 	testutil.StringContains(t, shown.Stdout, `"stable=yes"`)
 
 	denied := cli.As("bartender").Run("menus", "update", "--id", menu.ID, "--name", "Denied")
-	if denied.Err == nil {
-		testutil.ErrorIf(t, true, "%v", "unauthorized update was accepted")
-	}
+	testutil.ErrorIf(t, denied.Err == nil, "%v", "unauthorized update was accepted")
 	deniedDelete := cli.As("bartender").Run("menus", "delete", "--id", menu.ID)
-	if deniedDelete.Err == nil {
-		testutil.ErrorIf(t, true, "%v", "unauthorized delete was accepted")
-	}
+	testutil.ErrorIf(t, deniedDelete.Err == nil, "%v", "unauthorized delete was accepted")
 
 	testutil.Ok(t, cli.Run("menus", "publish", "--id", menu.ID).Err)
 	for _, result := range []cliResult{
 		cli.Run("menus", "update", "--id", menu.ID, "--name", "Published Change"),
 		cli.Run("menus", "delete", "--id", menu.ID),
 	} {
-		if result.Err == nil {
-			testutil.ErrorIf(t, true, "%v", "published menu mutation was accepted")
-		}
+		testutil.ErrorIf(t, result.Err == nil, "%v", "published menu mutation was accepted")
 	}
 	shown = cli.Run("menus", "show", "--id", menu.ID, "--json")
 	testutil.Ok(t, shown.Err)
@@ -145,5 +133,5 @@ func requireAuditAction(t *testing.T, output, action string) {
 			return
 		}
 	}
-	testutil.ErrorIf(t, true, "audit action %q not found in %s", action, output)
+	testutil.Fail(t, "audit action %q not found in %s", action, output)
 }

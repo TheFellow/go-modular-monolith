@@ -39,9 +39,7 @@ func TestDomainPackageTopology(t *testing.T) {
 
 	domainsRoot := filepath.Join(repositoryRoot(t), "app", "domains")
 	domains, err := os.ReadDir(domainsRoot)
-	if err != nil {
-		testutil.ErrorIf(t, true, "read domains directory: %v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "read domains directory: %v", err)
 
 	for _, domain := range domains {
 		if !domain.IsDir() {
@@ -90,9 +88,7 @@ func TestOperationalDomainProfileRejectsNovelPackageLayers(t *testing.T) {
 		`package "services" is outside the domain profile; allowed root packages are authz, events, handlers, internal, models, queries, surfaces`,
 		`package "utils" is outside the domain profile; allowed root packages are authz, events, handlers, internal, models, queries, surfaces`,
 	}
-	if !slices.Equal(got, want) {
-		testutil.ErrorIf(t, true, "unexpected topology violations:\n got: %q\nwant: %q", got, want)
-	}
+	testutil.ErrorIf(t, !slices.Equal(got, want), "unexpected topology violations:\n got: %q\nwant: %q", got, want)
 }
 
 func profileForDomain(name string) domainProfile {

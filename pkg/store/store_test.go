@@ -19,42 +19,42 @@ func TestCommitPersistsAndUnregistersCallerTransaction(t *testing.T) {
 
 	ctx := context.Background()
 	s, err := Open(ctx, filepath.Join(t.TempDir(), "store.db"))
-	if err != nil {
-		testutil.ErrorIf(t, true, "open store: %v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "open store: %v", err)
 	t.Cleanup(func() {
-		if err := s.Close(); err != nil {
-			testutil.ErrorIf(t, true, "close store: %v", err)
+		{
+			err := s.Close()
+			testutil.ErrorIf(t, err != nil, "close store: %v", err)
 		}
 	})
 	s.Register(ctx, transactionLifecycleRecord{})
 	tx, err := s.Begin(ctx, true)
-	if err != nil {
-		testutil.ErrorIf(t, true, "begin transaction: %v", err)
+	testutil.ErrorIf(t, err != nil, "begin transaction: %v", err)
+	{
+		_, ok := transactionLocks.Load(tx)
+		testutil.ErrorIf(t, !ok, "%v", "transaction lock was not registered")
 	}
-	if _, ok := transactionLocks.Load(tx); !ok {
-		testutil.ErrorIf(t, true, "%v", "transaction lock was not registered")
-	}
-	if err := tx.Insert(&transactionLifecycleRecord{Name: "committed"}); err != nil {
-		testutil.ErrorIf(t, true, "insert record: %v", err)
+	{
+		err := tx.Insert(&transactionLifecycleRecord{Name: "committed"})
+		testutil.ErrorIf(t, err != nil, "insert record: %v", err)
 	}
 
-	if err := s.Commit(tx); err != nil {
-		testutil.ErrorIf(t, true, "commit transaction: %v", err)
+	{
+		err := s.Commit(tx)
+		testutil.ErrorIf(t, err != nil, "commit transaction: %v", err)
 	}
-	if _, ok := transactionLocks.Load(tx); ok {
-		testutil.ErrorIf(t, true, "%v", "transaction lock remained registered after commit")
+	{
+		_, ok := transactionLocks.Load(tx)
+		testutil.ErrorIf(t, ok, "%v", "transaction lock remained registered after commit")
 	}
 
 	var records []transactionLifecycleRecord
-	if err := s.Read(ctx, func(tx *bstore.Tx) error {
-		var err error
-		records, err = bstore.QueryTx[transactionLifecycleRecord](tx).List()
-		return err
-	}); err != nil {
-		testutil.ErrorIf(t, true, "read records: %v", err)
+	{
+		err := s.Read(ctx, func(tx *bstore.Tx) error {
+			var err error
+			records, err = bstore.QueryTx[transactionLifecycleRecord](tx).List()
+			return err
+		})
+		testutil.ErrorIf(t, err != nil, "read records: %v", err)
 	}
-	if len(records) != 1 || records[0].Name != "committed" {
-		testutil.ErrorIf(t, true, "records = %#v, want committed record", records)
-	}
+	testutil.ErrorIf(t, len(records) != 1 || records[0].Name != "committed", "records = %#v, want committed record", records)
 }

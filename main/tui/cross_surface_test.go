@@ -25,17 +25,16 @@ func TestCLIAndComposedTUIShareTagContracts(t *testing.T) {
 	binary := testutil.ExecutablePath(workingDirectory, "mixology")
 	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "./main/cli")
 	build.Dir = repository
-	if output, buildErr := build.CombinedOutput(); buildErr != nil {
-		testutil.ErrorIf(t, true, "build CLI: %v\n%s", buildErr, output)
+	{
+		output, buildErr := build.CombinedOutput()
+		testutil.ErrorIf(t, buildErr != nil, "build CLI: %v\n%s", buildErr, output)
 	}
 	runCLI := func(args ...string) string {
 		t.Helper()
 		command := exec.CommandContext(t.Context(), binary, append([]string{"--log-level", "error"}, args...)...)
 		command.Dir = workingDirectory
 		output, runErr := command.CombinedOutput()
-		if runErr != nil {
-			testutil.ErrorIf(t, true, "CLI %v: %v\n%s", args, runErr, output)
-		}
+		testutil.ErrorIf(t, runErr != nil, "CLI %v: %v\n%s", args, runErr, output)
 		return string(output)
 	}
 

@@ -142,9 +142,7 @@ func TestCreateDrinkProgramPersistsCompleteStructuredRecipe(t *testing.T) {
 
 	history, err := fix.Audit.List(fix.OwnerContext(), audit.ListRequest{Entity: stored.ID.EntityUID()})
 	testutil.Ok(t, err)
-	if len(history.Items) == 0 || !history.Items[0].Success {
-		testutil.ErrorIf(t, true, "%v", "create through TUI did not produce a successful audit entry")
-	}
+	testutil.ErrorIf(t, len(history.Items) == 0 || !history.Items[0].Success, "%v", "create through TUI did not produce a successful audit entry")
 }
 
 func TestRecipeCreateRunsThroughRealBubbleTeaProgram(t *testing.T) {
@@ -197,9 +195,7 @@ func TestEditDrinkProgramRoundTripsRecipeWithoutRecipeChanges(t *testing.T) {
 	updated := driver.Model().(*editDrinkProgram).updated
 	testutil.NotNil(t, updated)
 	testutil.Equals(t, updated.Recipe, drink.Recipe)
-	if driver.Model().(*editDrinkProgram).vm.Submitting() {
-		testutil.ErrorIf(t, true, "%v", "edit form remained stuck in submitting state after success")
-	}
+	testutil.ErrorIf(t, driver.Model().(*editDrinkProgram).vm.Submitting(), "%v", "edit form remained stuck in submitting state after success")
 }
 
 func TestCreateRecipeValidationRetainsFormAndWritesNothing(t *testing.T) {
@@ -210,9 +206,7 @@ func TestCreateRecipeValidationRetainsFormAndWritesNothing(t *testing.T) {
 	driver.Press("Invalid Recipe")
 	driver.Press("ctrl+s")
 	driver.RequireText("Invalid Recipe", "must be selected from the catalog")
-	if driver.Model().(*createDrinkProgram).created != nil {
-		testutil.ErrorIf(t, true, "%v", "invalid recipe was written")
-	}
+	testutil.ErrorIf(t, driver.Model().(*createDrinkProgram).created != nil, "%v", "invalid recipe was written")
 	page, err := fix.Drinks.List(fix.OwnerContext(), drinks.ListRequest{})
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(page.Items), 0)
@@ -230,9 +224,7 @@ func TestCreateRecipeAuthorizationFailureRetainsFormAndWritesNothing(t *testing.
 	program.vm.recipe.steps[0].SetValue("Stir")
 	driver.Press("ctrl+s")
 	driver.RequireText("Unauthorized Recipe", "authz denied")
-	if driver.Model().(*createDrinkProgram).created != nil {
-		testutil.ErrorIf(t, true, "%v", "unauthorized recipe was written")
-	}
+	testutil.ErrorIf(t, driver.Model().(*createDrinkProgram).created != nil, "%v", "unauthorized recipe was written")
 	page, err := fix.Drinks.List(fix.OwnerContext(), drinks.ListRequest{})
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(page.Items), 0)
@@ -248,9 +240,7 @@ func TestCreateRecipeRejectsDuplicateSubmissionAndFreshOpenResetsState(t *testin
 	vm.recipe.rows[0].amount.SetValue("1")
 	vm.recipe.steps[0].SetValue("Stir")
 	first := vm.submit()
-	if first == nil || vm.submit() != nil {
-		testutil.ErrorIf(t, true, "%v", "submission guard did not reject duplicate mutation")
-	}
+	testutil.ErrorIf(t, first == nil || vm.submit() != nil, "%v", "submission guard did not reject duplicate mutation")
 	vm.Update(first())
 
 	list := NewListViewModel(fix.App)
@@ -259,8 +249,9 @@ func TestCreateRecipeRejectsDuplicateSubmissionAndFreshOpenResetsState(t *testin
 	list.create.recipe.rows[0].ingredient = ingredient.ID
 	list.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	list.startCreate()
-	if got := toString(list.create.nameField.Value()); got != "" || !list.create.recipe.rows[0].ingredient.IsZero() {
-		testutil.ErrorIf(t, true, "reopened form retained canceled state: name=%q ingredient=%s", got, list.create.recipe.rows[0].ingredient)
+	{
+		got := toString(list.create.nameField.Value())
+		testutil.ErrorIf(t, got != "" || !list.create.recipe.rows[0].ingredient.IsZero(), "reopened form retained canceled state: name=%q ingredient=%s", got, list.create.recipe.rows[0].ingredient)
 	}
 }
 
@@ -340,16 +331,12 @@ func TestRecipeViewportTracksHighlightedIngredientAndSubstituteCandidatesAt80x24
 		driver.Press("right")
 	}
 	driver.RequireText("Picker > Candidate 04", "↑/↓: recipe field")
-	if program.vm.viewport.model.YOffset <= startOffset {
-		testutil.ErrorIf(t, true, "ingredient candidate did not scroll viewport forward: start=%d current=%d focus=%d", startOffset, program.vm.viewport.model.YOffset, program.vm.recipe.focusLine())
-	}
+	testutil.ErrorIf(t, program.vm.viewport.model.YOffset <= startOffset, "ingredient candidate did not scroll viewport forward: start=%d current=%d focus=%d", startOffset, program.vm.viewport.model.YOffset, program.vm.recipe.focusLine())
 	for range 4 {
 		driver.Press("left")
 	}
 	driver.RequireText("Picker > Candidate 00", "Ingredient 1")
-	if program.vm.viewport.model.YOffset >= startOffset+1 {
-		testutil.ErrorIf(t, true, "%v", "ingredient candidate did not scroll viewport back")
-	}
+	testutil.ErrorIf(t, program.vm.viewport.model.YOffset >= startOffset+1, "%v", "ingredient candidate did not scroll viewport back")
 
 	for range 4 {
 		driver.Send(tea.KeyMsg{Type: tea.KeyCtrlN})
@@ -360,14 +347,10 @@ func TestRecipeViewportTracksHighlightedIngredientAndSubstituteCandidatesAt80x24
 		driver.Press("right")
 	}
 	driver.RequireText("Picker > Candidate 04", "Substitutes", "↑/↓: recipe field")
-	if program.vm.viewport.model.YOffset <= substituteStart {
-		testutil.ErrorIf(t, true, "%v", "substitute candidate did not scroll viewport forward")
-	}
+	testutil.ErrorIf(t, program.vm.viewport.model.YOffset <= substituteStart, "%v", "substitute candidate did not scroll viewport forward")
 	for range 4 {
 		driver.Press("left")
 	}
 	driver.RequireText("Picker > Candidate 00", "Substitutes")
-	if program.vm.viewport.model.YOffset >= substituteStart+1 {
-		testutil.ErrorIf(t, true, "%v", "substitute candidate did not scroll viewport back")
-	}
+	testutil.ErrorIf(t, program.vm.viewport.model.YOffset >= substituteStart+1, "%v", "substitute candidate did not scroll viewport back")
 }

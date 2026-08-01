@@ -20,8 +20,6 @@ func TestCreateIngredientPersistsAtomicCompleteTags(t *testing.T) {
 	_, _ = vm.tags.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("channel=tui,featured")})
 	msg := vm.submit()()
 	created, ok := msg.(IngredientCreatedMsg)
-	if !ok {
-		testutil.ErrorIf(t, true, "create = %#v", msg)
-	}
+	testutil.ErrorIf(t, !ok, "create = %#v", msg)
 	testutil.Equals(t, created.Ingredient.Tags.Canonical().String(), "channel=tui,featured")
 }

@@ -37,27 +37,20 @@ func TestPresenterLoadsPagesDetailsAndKeepsStableSelection(t *testing.T) {
 	createAuditedIngredient(t, fixture, "Two")
 	createAuditedIngredient(t, fixture, "Three")
 	presenter := auditPresenter(fixture)
-	if !presenter.ApplyFilter(Filter{Limit: 2}) {
-		testutil.ErrorIf(t, true, "%v", "filter rejected")
-	}
+	testutil.ErrorIf(t, !presenter.ApplyFilter(Filter{Limit: 2}), "%v", "filter rejected")
 	state := presenter.State()
-	if len(state.Rows) != 2 || state.Next == "" || state.Selected != nil || state.Mode != Browsing {
-		testutil.ErrorIf(t, true, "first page = %#v", state)
-	}
+	testutil.ErrorIf(t, len(state.Rows) != 2 || state.Next == "" || state.Selected != nil || state.Mode != Browsing, "first page = %#v", state)
 	presenter.Select(1)
 	selected := presenter.State().Selected.Entry.ID
 	presenter.Refresh()
-	if presenter.State().Selected == nil || presenter.State().Selected.Entry.ID != selected {
-		testutil.ErrorIf(t, true, "%v", "refresh did not preserve selection")
-	}
+	testutil.ErrorIf(t, presenter.State().Selected == nil || presenter.State().Selected.Entry.ID != selected, "%v", "refresh did not preserve selection")
 	presenter.NextPage()
 	state = presenter.State()
-	if len(state.Rows) != 1 || len(state.History) != 1 || state.Next != "" {
-		testutil.ErrorIf(t, true, "second page = %#v", state)
-	}
+	testutil.ErrorIf(t, len(state.Rows) != 1 || len(state.History) != 1 || state.Next != "", "second page = %#v", state)
 	presenter.PreviousPage()
-	if state = presenter.State(); len(state.Rows) != 2 || len(state.History) != 0 {
-		testutil.ErrorIf(t, true, "previous page = %#v", state)
+	{
+		state = presenter.State()
+		testutil.ErrorIf(t, len(state.Rows) != 2 || len(state.History) != 0, "previous page = %#v", state)
 	}
 }
 
@@ -71,17 +64,11 @@ func TestPresenterComposesAllFiltersAndScopePresets(t *testing.T) {
 		Entity: ingredient.ID.EntityUID().String(), Principal: "owner", Action: ingredientsauthz.ActionCreate.String(),
 		From: stamp, To: stamp, Expression: `success && action.contains("create")`, Limit: 10,
 	}
-	if !presenter.ApplyFilter(filter) || len(presenter.State().Rows) != 1 {
-		testutil.ErrorIf(t, true, "composed filters = %#v", presenter.State())
-	}
+	testutil.ErrorIf(t, !presenter.ApplyFilter(filter) || len(presenter.State().Rows) != 1, "composed filters = %#v", presenter.State())
 	filter.Scope, filter.Action, filter.Principal = EntityHistory, "not-an-action", "not-an-actor"
-	if !presenter.ApplyFilter(filter) || len(presenter.State().Rows) != 1 {
-		testutil.ErrorIf(t, true, "history scope = %#v", presenter.State())
-	}
+	testutil.ErrorIf(t, !presenter.ApplyFilter(filter) || len(presenter.State().Rows) != 1, "history scope = %#v", presenter.State())
 	filter.Scope, filter.Entity, filter.Principal = ActorActivity, "not-an-entity", "owner"
-	if !presenter.ApplyFilter(filter) || len(presenter.State().Rows) != 1 {
-		testutil.ErrorIf(t, true, "actor scope = %#v", presenter.State())
-	}
+	testutil.ErrorIf(t, !presenter.ApplyFilter(filter) || len(presenter.State().Rows) != 1, "actor scope = %#v", presenter.State())
 }
 
 func TestPresenterValidatesFiltersWithoutScheduling(t *testing.T) {
@@ -97,51 +84,33 @@ func TestPresenterValidatesFiltersWithoutScheduling(t *testing.T) {
 		{Limit: 10, Scope: ActorActivity},
 	}
 	for _, filter := range cases {
-		if presenter.ApplyFilter(filter) || executor.Pending() != 0 || presenter.State().Err == nil {
-			testutil.ErrorIf(t, true, "invalid filter accepted: %#v", filter)
-		}
+		testutil.ErrorIf(t, presenter.ApplyFilter(filter) || executor.Pending() != 0 || presenter.State().Err == nil, "invalid filter accepted: %#v", filter)
 	}
-	if presenter.ApplyFilter(Filter{Limit: 10, Expression: "("}) == false {
-		testutil.ErrorIf(t, true, "%v", "expression should be validated by public query")
-	}
+	testutil.ErrorIf(t, presenter.ApplyFilter(Filter{Limit: 10, Expression: "("}) == false, "%v", "expression should be validated by public query")
 	executor.RunNext()
-	if presenter.State().Err == nil {
-		testutil.ErrorIf(t, true, "%v", "invalid expression did not surface")
-	}
+	testutil.ErrorIf(t, presenter.State().Err == nil, "%v", "invalid expression did not surface")
 }
 
 func TestPresenterPreservesPublicQuerySemanticsForEmptyInterval(t *testing.T) {
 	fixture := testutil.NewFixture(t)
 	createAuditedIngredient(t, fixture, "Outside inverted interval")
 	presenter := auditPresenter(fixture)
-	if !presenter.ApplyFilter(Filter{Limit: 10, From: "2026-08-02", To: "2026-08-01"}) {
-		testutil.ErrorIf(t, true, "public query inputs rejected: %v", presenter.State().Err)
-	}
+	testutil.ErrorIf(t, !presenter.ApplyFilter(Filter{Limit: 10, From: "2026-08-02", To: "2026-08-01"}), "public query inputs rejected: %v", presenter.State().Err)
 	state := presenter.State()
-	if state.Err != nil || len(state.Rows) != 0 {
-		testutil.ErrorIf(t, true, "inverted interval should be a valid empty query: %#v", state)
-	}
+	testutil.ErrorIf(t, state.Err != nil || len(state.Rows) != 0, "inverted interval should be a valid empty query: %#v", state)
 }
 
 func TestPresenterInvalidPageSizePreservesQueryAndRows(t *testing.T) {
 	fixture := testutil.NewFixture(t)
 	createAuditedIngredient(t, fixture, "Stable")
 	presenter := auditPresenter(fixture)
-	if !presenter.ApplyFilter(Filter{Limit: 10, Expression: `success`}) {
-		testutil.ErrorIf(t, true, "%v", "valid filter rejected")
-	}
+	testutil.ErrorIf(t, !presenter.ApplyFilter(Filter{Limit: 10, Expression: `success`}), "%v", "valid filter rejected")
 	before := presenter.State()
 	for _, limit := range []int{0, -1} {
-		if presenter.ApplyFilter(Filter{Limit: limit}) {
-			testutil.ErrorIf(t, true, "invalid page size %d accepted", limit)
-		}
+		testutil.ErrorIf(t, presenter.ApplyFilter(Filter{Limit: limit}), "invalid page size %d accepted", limit)
 		after := presenter.State()
-		if after.Filter != before.Filter || after.Cursor != before.Cursor || after.Next != before.Next || len(after.History) != len(before.History) || len(after.Rows) != len(before.Rows) {
-			testutil.ErrorIf(t, true, "page size %d changed query state: before=%#v after=%#v", limit, before, after)
-		}
-		if (after.Selected == nil) != (before.Selected == nil) || (after.Selected != nil && after.Selected.Entry.ID != before.Selected.Entry.ID) {
-			testutil.ErrorIf(t, true, "page size %d changed selection", limit)
-		}
+		testutil.ErrorIf(t, after.Filter != before.Filter || after.Cursor != before.Cursor || after.Next != before.Next || len(after.History) != len(before.History) || len(after.Rows) != len(before.Rows), "page size %d changed query state: before=%#v after=%#v", limit, before, after)
+		testutil.ErrorIf(t, (after.Selected == nil) != (before.Selected == nil) || (after.Selected != nil && after.Selected.Entry.ID != before.Selected.Entry.ID), "page size %d changed selection", limit)
 	}
 }
 
@@ -152,17 +121,11 @@ func TestPresenterSuppressesStaleOutOfOrderReads(t *testing.T) {
 	presenter := NewPresenter(fixture.App, Dependencies{Executor: executor, Dispatcher: ui.InlineDispatcher{}})
 	presenter.ApplyFilter(Filter{Limit: 10})
 	presenter.Refresh()
-	if executor.Pending() != 2 || !executor.Run(1) {
-		testutil.ErrorIf(t, true, "%v", "expected two reads")
-	}
+	testutil.ErrorIf(t, executor.Pending() != 2 || !executor.Run(1), "%v", "expected two reads")
 	createAuditedIngredient(t, fixture, "Created after newest read")
-	if !executor.RunNext() {
-		testutil.ErrorIf(t, true, "%v", "expected stale read")
-	}
+	testutil.ErrorIf(t, !executor.RunNext(), "%v", "expected stale read")
 	state := presenter.State()
-	if len(state.Rows) != 1 {
-		testutil.ErrorIf(t, true, "stale read published: %#v", state)
-	}
+	testutil.ErrorIf(t, len(state.Rows) != 1, "stale read published: %#v", state)
 }
 
 func TestPresenterSnapshotsAreDefensiveAndTouchesSorted(t *testing.T) {
@@ -174,20 +137,14 @@ func TestPresenterSnapshotsAreDefensiveAndTouchesSorted(t *testing.T) {
 	presenter.Refresh()
 	presenter.Select(0)
 	state := presenter.State()
-	if state.Selected == nil || state.Selected.Entry.ID.String() == "" || len(state.Selected.Touches) == 0 {
-		testutil.ErrorIf(t, true, "detail incomplete: %#v", state.Selected)
-	}
+	testutil.ErrorIf(t, state.Selected == nil || state.Selected.Entry.ID.String() == "" || len(state.Selected.Touches) == 0, "detail incomplete: %#v", state.Selected)
 	for i := 1; i < len(state.Selected.Touches); i++ {
-		if state.Selected.Touches[i-1] > state.Selected.Touches[i] {
-			testutil.ErrorIf(t, true, "touches unsorted: %v", state.Selected.Touches)
-		}
+		testutil.ErrorIf(t, state.Selected.Touches[i-1] > state.Selected.Touches[i], "touches unsorted: %v", state.Selected.Touches)
 	}
 	state.Rows[0].Touches = append(state.Rows[0].Touches, "corrupt")
 	state.Selected.Entry.Touches = nil
 	fresh := presenter.State()
-	if strings.Contains(strings.Join(fresh.Rows[0].Touches, ","), "corrupt") || len(fresh.Selected.Entry.Touches) == 0 {
-		testutil.ErrorIf(t, true, "%v", "snapshot aliases presenter state")
-	}
+	testutil.ErrorIf(t, strings.Contains(strings.Join(fresh.Rows[0].Touches, ","), "corrupt") || len(fresh.Selected.Entry.Touches) == 0, "%v", "snapshot aliases presenter state")
 }
 
 func TestPresenterPublicOperationVisibleAndUnauthorizedActorSeesNoAudit(t *testing.T) {
@@ -195,15 +152,11 @@ func TestPresenterPublicOperationVisibleAndUnauthorizedActorSeesNoAudit(t *testi
 	createAuditedIngredient(t, fixture, "Other surface operation")
 	presenter := auditPresenter(fixture)
 	presenter.Refresh()
-	if len(presenter.State().Rows) != 1 {
-		testutil.ErrorIf(t, true, "public operation not visible: %#v", presenter.State())
-	}
+	testutil.ErrorIf(t, len(presenter.State().Rows) != 1, "public operation not visible: %#v", presenter.State())
 	deniedSession := application.NewSession(fixture.ActorContext("manager"), fixture.App.App)
 	denied := NewPresenter(deniedSession, Dependencies{Executor: ui.InlineExecutor{}, Dispatcher: ui.InlineDispatcher{}})
 	denied.Refresh()
-	if denied.State().Err != nil || len(denied.State().Rows) != 0 {
-		testutil.ErrorIf(t, true, "unauthorized audit disclosure: %#v", denied.State())
-	}
+	testutil.ErrorIf(t, denied.State().Err != nil || len(denied.State().Rows) != 0, "unauthorized audit disclosure: %#v", denied.State())
 }
 
 func TestViewDrivesRealRetainedWidgetsAndDisablesDuringLoad(t *testing.T) {
@@ -213,20 +166,14 @@ func TestViewDrivesRealRetainedWidgetsAndDisablesDuringLoad(t *testing.T) {
 	presenter := NewPresenter(fixture.App, Dependencies{Executor: executor, Dispatcher: ui.InlineDispatcher{}})
 	view := NewView(presenter)
 	view.Activate()
-	if !view.apply.Disabled() || !view.scope.Disabled() || !view.refresh.Disabled() {
-		testutil.ErrorIf(t, true, "%v", "filters enabled during accepted read")
-	}
+	testutil.ErrorIf(t, !view.apply.Disabled() || !view.scope.Disabled() || !view.refresh.Disabled(), "%v", "filters enabled during accepted read")
 	executor.RunNext()
 	view.list.Select(widget.TableCellID{Row: 0, Col: 0})
-	if presenter.State().Selected == nil || view.browse.Hidden == false || view.detailPanel.Hidden || view.detailFields[7].Text != "true" {
-		testutil.ErrorIf(t, true, "%v", "real row widget did not select detail")
-	}
+	testutil.ErrorIf(t, presenter.State().Selected == nil || view.browse.Hidden == false || view.detailPanel.Hidden || view.detailFields[7].Text != "true", "%v", "real row widget did not select detail")
 	view.expression.SetText("(")
 	view.applyFilter()
 	executor.RunNext()
-	if presenter.State().Err == nil || !strings.Contains(view.status.Text, "Error:") {
-		testutil.ErrorIf(t, true, "widget filter validation not rendered: state=%#v status=%q expression=%q disabled=%t", presenter.State(), view.status.Text, view.expression.Text, view.apply.Disabled())
-	}
+	testutil.ErrorIf(t, presenter.State().Err == nil || !strings.Contains(view.status.Text, "Error:"), "widget filter validation not rendered: state=%#v status=%q expression=%q disabled=%t", presenter.State(), view.status.Text, view.expression.Text, view.apply.Disabled())
 }
 
 func TestViewValidatesPageSizeThroughRealRetainedWidgets(t *testing.T) {
@@ -241,33 +188,24 @@ func TestViewValidatesPageSizeThroughRealRetainedWidgets(t *testing.T) {
 		view.limit.SetText(input)
 		frameworktest.Tap(view.apply)
 		state := presenter.State()
-		if state.Err == nil || !strings.Contains(view.status.Text, "page size must be greater than zero") {
-			testutil.ErrorIf(t, true, "page size %q did not render validation: state=%#v status=%q", input, state, view.status.Text)
-		}
-		if state.Filter != before.Filter || len(state.Rows) != len(before.Rows) || (state.Selected == nil) != (before.Selected == nil) || (state.Selected != nil && state.Selected.Entry.ID != before.Selected.Entry.ID) {
-			testutil.ErrorIf(t, true, "page size %q changed retained query state: before=%#v after=%#v", input, before, state)
-		}
+		testutil.ErrorIf(t, state.Err == nil || !strings.Contains(view.status.Text, "page size must be greater than zero"), "page size %q did not render validation: state=%#v status=%q", input, state, view.status.Text)
+		testutil.ErrorIf(t, state.Filter != before.Filter || len(state.Rows) != len(before.Rows) || (state.Selected == nil) != (before.Selected == nil) || (state.Selected != nil && state.Selected.Entry.ID != before.Selected.Entry.ID), "page size %q changed retained query state: before=%#v after=%#v", input, before, state)
 	}
 
 	view.limit.SetText("1")
 	frameworktest.Tap(view.apply)
 	state := presenter.State()
-	if state.Err != nil || state.Filter.Limit != 1 || len(state.Rows) != 1 {
-		testutil.ErrorIf(t, true, "valid page size not applied: %#v", state)
-	}
+	testutil.ErrorIf(t, state.Err != nil || state.Filter.Limit != 1 || len(state.Rows) != 1, "valid page size not applied: %#v", state)
 }
 
 func TestDateParsingMatchesCLIBoundaries(t *testing.T) {
 	date, err := parseTime("2026-07-29")
-	if err != nil || !date.Equal(time.Date(2026, 7, 29, 0, 0, 0, 0, time.UTC)) {
-		testutil.ErrorIf(t, true, "date=%s err=%v", date, err)
-	}
+	testutil.ErrorIf(t, err != nil || !date.Equal(time.Date(2026, 7, 29, 0, 0, 0, 0, time.UTC)), "date=%s err=%v", date, err)
 	instant, err := parseTime("2026-07-29T12:34:56Z")
-	if err != nil || instant.Hour() != 12 {
-		testutil.ErrorIf(t, true, "instant=%s err=%v", instant, err)
-	}
-	if _, err := parseTime("07/29/2026"); err == nil {
-		testutil.ErrorIf(t, true, "%v", "invalid date accepted")
+	testutil.ErrorIf(t, err != nil || instant.Hour() != 12, "instant=%s err=%v", instant, err)
+	{
+		_, err := parseTime("07/29/2026")
+		testutil.ErrorIf(t, err == nil, "%v", "invalid date accepted")
 	}
 }
 
@@ -279,9 +217,7 @@ func TestAuditSurfaceContainsNoWrites(t *testing.T) {
 	presenter.Refresh()
 	after, err := fixture.Audit.Count(fixture.OwnerContext(), audit.ListRequest{})
 	testutil.Ok(t, err)
-	if after != before {
-		testutil.ErrorIf(t, true, "read-only surface wrote audit entries: before=%d after=%d", before, after)
-	}
+	testutil.ErrorIf(t, after != before, "read-only surface wrote audit entries: before=%d after=%d", before, after)
 }
 
 func TestListDetailNavigationPreservesBackAndResetsBreadcrumb(t *testing.T) {
@@ -289,21 +225,22 @@ func TestListDetailNavigationPreservesBackAndResetsBreadcrumb(t *testing.T) {
 	createAuditedIngredient(t, fixture, "Navigation")
 	presenter := auditPresenter(fixture)
 	filter := Filter{Expression: "success", Limit: 1}
-	if !presenter.ApplyFilter(filter) {
-		testutil.ErrorIf(t, true, "%v", "filter rejected")
-	}
+	testutil.ErrorIf(t, !presenter.ApplyFilter(filter), "%v", "filter rejected")
 	presenter.Select(0)
-	if state := presenter.State(); state.Mode != Viewing || state.Selected == nil {
-		testutil.ErrorIf(t, true, "detail state = %#v", state)
+	{
+		state := presenter.State()
+		testutil.ErrorIf(t, state.Mode != Viewing || state.Selected == nil, "detail state = %#v", state)
 	}
 	presenter.Back()
-	if state := presenter.State(); state.Mode != Browsing || state.Selected != nil || state.Filter != filter || state.Cursor != "" || len(state.Rows) != 1 {
-		testutil.ErrorIf(t, true, "back did not preserve list state: %#v", state)
+	{
+		state := presenter.State()
+		testutil.ErrorIf(t, state.Mode != Browsing || state.Selected != nil || state.Filter != filter || state.Cursor != "" || len(state.Rows) != 1, "back did not preserve list state: %#v", state)
 	}
 	presenter.Select(0)
 	presenter.ResetList()
-	if state := presenter.State(); state.Mode != Browsing || state.Selected != nil || state.Filter.Expression != "" || state.Filter.Limit != paging.DefaultLimit || len(state.History) != 0 {
-		testutil.ErrorIf(t, true, "breadcrumb did not reset list state: %#v", state)
+	{
+		state := presenter.State()
+		testutil.ErrorIf(t, state.Mode != Browsing || state.Selected != nil || state.Filter.Expression != "" || state.Filter.Limit != paging.DefaultLimit || len(state.History) != 0, "breadcrumb did not reset list state: %#v", state)
 	}
 }
 
@@ -314,20 +251,12 @@ func TestAuditDetailIsFullWidthCopyableReadOnlyAndHasNoFilters(t *testing.T) {
 	view := NewView(presenter)
 	view.Activate()
 	view.list.Select(widget.TableCellID{Row: 0, Col: 0})
-	if !view.browse.Hidden || view.detailPanel.Hidden || len(view.detailFields) != 10 {
-		testutil.ErrorIf(t, true, "%v", "detail did not replace the list with the complete audit form")
-	}
+	testutil.ErrorIf(t, !view.browse.Hidden || view.detailPanel.Hidden || len(view.detailFields) != 10, "%v", "detail did not replace the list with the complete audit form")
 	for _, field := range view.detailFields {
-		if field.Disabled() {
-			testutil.ErrorIf(t, true, "%v", "read-only detail field is disabled and cannot be copied")
-		}
+		testutil.ErrorIf(t, field.Disabled(), "%v", "read-only detail field is disabled and cannot be copied")
 	}
 	original := view.detailFields[1].Text
 	view.detailFields[1].SetText("locally changed")
-	if view.detailFields[1].Text != original {
-		testutil.ErrorIf(t, true, "%v", "read-only audit detail accepted a local mutation")
-	}
-	if !view.browse.Hidden {
-		testutil.ErrorIf(t, true, "%v", "filter controls leaked into detail view")
-	}
+	testutil.ErrorIf(t, view.detailFields[1].Text != original, "%v", "read-only audit detail accepted a local mutation")
+	testutil.ErrorIf(t, !view.browse.Hidden, "%v", "filter controls leaked into detail view")
 }

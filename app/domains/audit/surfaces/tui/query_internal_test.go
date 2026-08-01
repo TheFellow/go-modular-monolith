@@ -56,9 +56,7 @@ func TestAuditProgramSupportsAllEntityAndActorScopes(t *testing.T) {
 			testutil.Ok(t, program.vm.filter.expression.SetValue("success == true"))
 			driver.Press("ctrl+s")
 			driver.RequireText(string(tc.scope), ingredientsauthz.ActionCreate.String())
-			if program.vm.filter != nil {
-				testutil.ErrorIf(t, true, "%v", "valid query panel remained open")
-			}
+			testutil.ErrorIf(t, program.vm.filter != nil, "%v", "valid query panel remained open")
 		})
 	}
 	after, err := fix.Audit.Count(fix.OwnerContext(), audit.ListRequest{})
@@ -78,9 +76,7 @@ func TestAuditQueryDatesAreInclusiveAndInvertedRangeIsEmpty(t *testing.T) {
 	testutil.Ok(t, err)
 	inclusive, err := fix.Audit.List(fix.OwnerContext(), req)
 	testutil.Ok(t, err)
-	if len(inclusive.Items) == 0 {
-		testutil.ErrorIf(t, true, "%v", "inclusive exact timestamp excluded entry")
-	}
+	testutil.ErrorIf(t, len(inclusive.Items) == 0, "%v", "inclusive exact timestamp excluded entry")
 	q.from = entry.StartedAt.Add(time.Hour).Format(time.RFC3339Nano)
 	q.to = entry.StartedAt.Add(-time.Hour).Format(time.RFC3339Nano)
 	req, err = q.Request()
@@ -98,8 +94,9 @@ func TestAuditProgramInvalidQueryRetainsLoadedDataAndInputOwnership(t *testing.T
 	driver.RequireText(ingredientsauthz.ActionCreate.String())
 	before := len(program.vm.shell.Items())
 	driver.Press("f")
-	if got := program.vm.Interaction(); !got.CapturesText || !got.HandlesBack {
-		testutil.ErrorIf(t, true, "filter does not own text/back: %+v", got)
+	{
+		got := program.vm.Interaction()
+		testutil.ErrorIf(t, !got.CapturesText || !got.HandlesBack, "filter does not own text/back: %+v", got)
 	}
 	testutil.Ok(t, program.vm.filter.scope.SetValue(scopeEntity))
 	testutil.Ok(t, program.vm.filter.entity.SetValue("bad uid"))
@@ -107,9 +104,7 @@ func TestAuditProgramInvalidQueryRetainsLoadedDataAndInputOwnership(t *testing.T
 	driver.RequireText("invalid entity uid", "bad uid")
 	testutil.Equals(t, len(program.vm.shell.Items()), before)
 	driver.Press("esc")
-	if program.vm.filter != nil {
-		testutil.ErrorIf(t, true, "%v", "escape did not close filter")
-	}
+	testutil.ErrorIf(t, program.vm.filter != nil, "%v", "escape did not close filter")
 	driver.RequireText(ingredientsauthz.ActionCreate.String())
 }
 
@@ -125,9 +120,7 @@ func TestAuditProgramPagesForwardBackAndIgnoresStaleLoad(t *testing.T) {
 	testutil.Equals(t, len(program.vm.shell.Items()), 100)
 	driver.Press("]")
 	driver.RequireText("page 2")
-	if len(program.vm.shell.Items()) == 0 {
-		testutil.ErrorIf(t, true, "%v", "second cursor page empty")
-	}
+	testutil.ErrorIf(t, len(program.vm.shell.Items()) == 0, "%v", "second cursor page empty")
 	driver.Press("[")
 	driver.RequireText("page 1")
 	testutil.Equals(t, len(program.vm.shell.Items()), 100)

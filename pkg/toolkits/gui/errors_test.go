@@ -31,38 +31,27 @@ func TestPresentErrorClassifiesKindsAndProtectsInternalDetail(t *testing.T) {
 			t.Parallel()
 			got := gui.PresentError(test.err)
 			var presentation gui.ErrorPresentation
-			if !errors.As(got, &presentation) {
-				testutil.ErrorIf(t, true, "presentation type = %T", got)
-			}
-			if presentation.Severity != test.severity || got.Error() != test.message {
-				testutil.ErrorIf(t, true, "presentation = %#v", presentation)
-			}
-			if !errors.Is(got, test.err) {
-				testutil.ErrorIf(t, true, "%v", "presentation did not retain its cause")
-			}
+			testutil.ErrorIf(t, !errors.As(got, &presentation), "presentation type = %T", got)
+			testutil.ErrorIf(t, presentation.Severity != test.severity || got.Error() != test.message, "presentation = %#v", presentation)
+			testutil.ErrorIf(t, !errors.Is(got, test.err), "%v", "presentation did not retain its cause")
 		})
 	}
 }
 
 func TestPresentErrorHandlesNilWrappedAndExplicitSafeMessages(t *testing.T) {
 	t.Parallel()
-	if got := gui.PresentError(nil); got != nil {
-		testutil.ErrorIf(t, true, "nil presentation = %#v", got)
+	{
+		got := gui.PresentError(nil)
+		testutil.ErrorIf(t, got != nil, "nil presentation = %#v", got)
 	}
 
 	cause := apperrors.Conflictf("diagnostic detail").WithUserMessage("That name is already in use")
 	wrapped := errors.Join(errors.New("operation failed"), cause)
 	got := gui.PresentError(wrapped)
 	var presentation gui.ErrorPresentation
-	if !errors.As(got, &presentation) {
-		testutil.ErrorIf(t, true, "presentation type = %T", got)
-	}
-	if presentation.Severity != gui.ErrorSeverityWarning || presentation.Message != "That name is already in use" {
-		testutil.ErrorIf(t, true, "presentation = %#v", presentation)
-	}
-	if !errors.Is(got, cause) {
-		testutil.ErrorIf(t, true, "%v", "presentation did not retain wrapped typed cause")
-	}
+	testutil.ErrorIf(t, !errors.As(got, &presentation), "presentation type = %T", got)
+	testutil.ErrorIf(t, presentation.Severity != gui.ErrorSeverityWarning || presentation.Message != "That name is already in use", "presentation = %#v", presentation)
+	testutil.ErrorIf(t, !errors.Is(got, cause), "%v", "presentation did not retain wrapped typed cause")
 }
 
 func TestShowPresentationUsesSeverityAndSuppressesInlineValidation(t *testing.T) {
@@ -72,13 +61,7 @@ func TestShowPresentationUsesSeverityAndSuppressesInlineValidation(t *testing.T)
 	gui.ShowPresentation(dialogs, apperrors.Conflictf("already exists"))
 	permission := apperrors.Permissionf("denied")
 	gui.ShowPresentation(dialogs, permission)
-	if len(dialogs.Warnings()) != 1 || dialogs.Warnings()[0].Message != "already exists" {
-		testutil.ErrorIf(t, true, "warnings = %#v", dialogs.Warnings())
-	}
-	if len(dialogs.Errors()) != 1 || dialogs.Errors()[0].Error() != "denied" {
-		testutil.ErrorIf(t, true, "errors = %#v", dialogs.Errors())
-	}
-	if !errors.Is(dialogs.Errors()[0], permission) {
-		testutil.ErrorIf(t, true, "%v", "error dialog discarded typed cause")
-	}
+	testutil.ErrorIf(t, len(dialogs.Warnings()) != 1 || dialogs.Warnings()[0].Message != "already exists", "warnings = %#v", dialogs.Warnings())
+	testutil.ErrorIf(t, len(dialogs.Errors()) != 1 || dialogs.Errors()[0].Error() != "denied", "errors = %#v", dialogs.Errors())
+	testutil.ErrorIf(t, !errors.Is(dialogs.Errors()[0], permission), "%v", "error dialog discarded typed cause")
 }

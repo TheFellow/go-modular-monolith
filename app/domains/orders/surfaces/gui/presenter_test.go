@@ -49,9 +49,7 @@ func TestPresenterPagesFiltersResolvesDetailAndSnapshots(t *testing.T) {
 	testutil.Equals(t, state.Rows[0].Lines[0].Quantity, 2)
 	testutil.Equals(t, state.Rows[0].Lines[0].Total, "N/A")
 	testutil.Equals(t, state.Rows[0].Total, "N/A")
-	if formatTime(state.Rows[0].Order.CreatedAt) == "" {
-		testutil.ErrorIf(t, true, "%v", "resolved detail omitted created time")
-	}
+	testutil.ErrorIf(t, formatTime(state.Rows[0].Order.CreatedAt) == "", "%v", "resolved detail omitted created time")
 	testutil.Equals(t, state.Rows[0].Order.ID, first.ID)
 	state.Rows[0].Order.Notes = "mutated"
 	state.Rows[0].Lines[0].Name = "mutated"
@@ -73,16 +71,12 @@ func TestPresenterTraversesForwardAndBackwardPages(t *testing.T) {
 	testutil.Equals(t, p.ApplyFilter(Filter{Limit: 1}), true)
 	first := p.State()
 	testutil.Equals(t, len(first.Rows), 1)
-	if first.Next == "" {
-		testutil.ErrorIf(t, true, "%v", "first page omitted next cursor")
-	}
+	testutil.ErrorIf(t, first.Next == "", "%v", "first page omitted next cursor")
 	firstID := first.Rows[0].Order.ID
 	p.NextPage()
 	second := p.State()
 	testutil.Equals(t, len(second.Rows), 1)
-	if second.Rows[0].Order.ID == firstID {
-		testutil.ErrorIf(t, true, "%v", "next page repeated the first order")
-	}
+	testutil.ErrorIf(t, second.Rows[0].Order.ID == firstID, "%v", "next page repeated the first order")
 	testutil.Equals(t, len(second.History), 1)
 	p.PreviousPage()
 	previous := p.State()
@@ -129,17 +123,13 @@ func TestPresenterExposesOnlyAuthorizedOrderActions(t *testing.T) {
 	owner.Refresh()
 	owner.Select(0)
 	state := owner.State()
-	if !state.CanPlace || !state.CanComplete || !state.CanCancel || !state.CanTag {
-		testutil.ErrorIf(t, true, "owner actions missing: %#v", state)
-	}
+	testutil.ErrorIf(t, !state.CanPlace || !state.CanComplete || !state.CanCancel || !state.CanTag, "owner actions missing: %#v", state)
 
 	reader := NewPresenter(application.NewSession(f.ActorContext("sommelier"), f.App.App), Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: &fynetest.Dialogs{}})
 	reader.Refresh()
 	reader.Select(0)
 	state = reader.State()
-	if state.CanPlace || state.CanComplete || state.CanCancel || state.CanTag {
-		testutil.ErrorIf(t, true, "read-only actor actions disclosed: %#v", state)
-	}
+	testutil.ErrorIf(t, state.CanPlace || state.CanComplete || state.CanCancel || state.CanTag, "read-only actor actions disclosed: %#v", state)
 }
 
 func TestDirtyPlaceBackAndResetRequireConfirmationAndRetainInput(t *testing.T) {
@@ -222,9 +212,7 @@ func TestPlaceCatalogPreservesDirtyFormRejectsStaleAndPlacesOnlyAvailableDrink(t
 	dispatcher.Drain()
 	testutil.Equals(t, len(p.State().Menus), 1) // stale first catalog did not overwrite the second
 	p.ChooseMenu(menu.ID)
-	if len(p.State().Drinks) == 0 {
-		testutil.ErrorIf(t, true, "%v", "published menu drink was not available in catalog")
-	}
+	testutil.ErrorIf(t, len(p.State().Drinks) == 0, "%v", "published menu drink was not available in catalog")
 	testutil.Equals(t, p.AddItem(drink.ID, 2, " first "), true)
 	p.SetPlaceNotes("  counter  ")
 	testutil.Equals(t, p.SavePlace(), true)
@@ -451,9 +439,7 @@ func TestOrdersListRetainsTableInstanceAcrossRenders(t *testing.T) {
 	v.browser(p.State())
 	first := v.list
 	v.browser(p.State())
-	if v.list != first {
-		testutil.ErrorIf(t, true, "%v", "orders refresh recreated the table and discarded resized column widths")
-	}
+	testutil.ErrorIf(t, v.list != first, "%v", "orders refresh recreated the table and discarded resized column widths")
 }
 
 func TestHeadlessWidgetsTagAndCompleteSelectedOrder(t *testing.T) {
@@ -504,12 +490,11 @@ func TestCatalogRefreshDisablesEveryPlacementControl(t *testing.T) {
 		"quantity": v.quantity.Disabled(), "item notes": v.itemNotes.Disabled(),
 		"order notes": v.orderNotes.Disabled(), "menus": v.menus.Disabled(), "drinks": v.drinks.Disabled(),
 	} {
-		if !disabled {
-			testutil.ErrorIf(t, true, "%s remained enabled during catalog refresh", name)
-		}
+		testutil.ErrorIf(t, !disabled, "%s remained enabled during catalog refresh", name)
 	}
-	if remove := v.removeItems[0]; remove == nil || !remove.Disabled() {
-		testutil.ErrorIf(t, true, "%v", "remove item remained enabled during catalog refresh")
+	{
+		remove := v.removeItems[0]
+		testutil.ErrorIf(t, remove == nil || !remove.Disabled(), "%v", "remove item remained enabled during catalog refresh")
 	}
 }
 
@@ -522,16 +507,12 @@ func TestCLIAndFyneShareOrderPersistenceContract(t *testing.T) {
 	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "./main/cli")
 	build.Dir = repo
 	output, err := build.CombinedOutput()
-	if err != nil {
-		testutil.ErrorIf(t, true, "build CLI: %v\n%s", err, output)
-	}
+	testutil.ErrorIf(t, err != nil, "build CLI: %v\n%s", err, output)
 	run := func(args ...string) string {
 		cmd := exec.CommandContext(t.Context(), binary, args...)
 		cmd.Dir = dir
 		output, runErr := cmd.CombinedOutput()
-		if runErr != nil {
-			testutil.ErrorIf(t, true, "CLI %v: %v\n%s", args, runErr, output)
-		}
+		testutil.ErrorIf(t, runErr != nil, "CLI %v: %v\n%s", args, runErr, output)
 		return string(output)
 	}
 

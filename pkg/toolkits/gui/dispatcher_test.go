@@ -12,9 +12,7 @@ import (
 func TestInlineDispatcherPublishesSynchronously(t *testing.T) {
 	called := false
 	InlineDispatcher{}.Dispatch(func() { called = true })
-	if !called {
-		testutil.ErrorIf(t, true, "%v", "inline dispatcher did not publish before returning")
-	}
+	testutil.ErrorIf(t, !called, "%v", "inline dispatcher did not publish before returning")
 }
 
 func TestMainDispatcherPublishesThroughFyneDriver(t *testing.T) {
@@ -25,7 +23,7 @@ func TestMainDispatcherPublishesThroughFyneDriver(t *testing.T) {
 	select {
 	case <-called:
 	case <-time.After(time.Second):
-		testutil.ErrorIf(t, true, "%v", "main dispatcher did not publish through the Fyne driver")
+		testutil.Fail(t, "%v", "main dispatcher did not publish through the Fyne driver")
 	}
 }
 
@@ -38,18 +36,12 @@ func TestGatedDispatcherDropsQueuedAndFuturePublicationsAfterClose(t *testing.T)
 	dispatcher := NewGatedDispatcher(queue)
 	var published int
 	dispatcher.Dispatch(func() { published++ })
-	if len(queue.callbacks) != 1 {
-		testutil.ErrorIf(t, true, "queued %d callbacks, want 1", len(queue.callbacks))
-	}
+	testutil.ErrorIf(t, len(queue.callbacks) != 1, "queued %d callbacks, want 1", len(queue.callbacks))
 	dispatcher.Close()
 	queue.callbacks[0]()
 	dispatcher.Dispatch(func() { published++ })
-	if published != 0 {
-		testutil.ErrorIf(t, true, "published %d callbacks after close, want 0", published)
-	}
-	if len(queue.callbacks) != 1 {
-		testutil.ErrorIf(t, true, "queued %d callbacks after close, want 1", len(queue.callbacks))
-	}
+	testutil.ErrorIf(t, published != 0, "published %d callbacks after close, want 0", published)
+	testutil.ErrorIf(t, len(queue.callbacks) != 1, "queued %d callbacks after close, want 1", len(queue.callbacks))
 }
 
 func TestGatedDispatcherAllowsReentrantDispatchWhileCloseWaits(t *testing.T) {

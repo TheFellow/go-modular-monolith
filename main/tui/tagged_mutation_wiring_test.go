@@ -66,8 +66,6 @@ func TestTUIMutationWorkflowsUseAtomicTagComposition(t *testing.T) {
 				return true
 			})
 		}
-		if calls != 1 || callbacks != 1 {
-			testutil.ErrorIf(t, true, "%s %s wiring has %d atomic tagged mutations around %d %s callbacks, want 1 and 1", workflow.domain, workflow.action, calls, callbacks, workflow.callback)
-		}
+		testutil.ErrorIf(t, calls != 1 || callbacks != 1, "%s %s wiring has %d atomic tagged mutations around %d %s callbacks, want 1 and 1", workflow.domain, workflow.action, calls, callbacks, workflow.callback)
 	}
 }

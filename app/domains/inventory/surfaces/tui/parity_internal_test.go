@@ -33,20 +33,14 @@ func TestAdjustInventorySupportsCostOnlyAndCombinedNonUSPrice(t *testing.T) {
 	_ = costOnly.reason.SetValue(models.ReasonCorrected)
 	_ = costOnly.cost.SetValue("$1.23")
 	cmd := costOnly.submit()
-	if cmd == nil {
-		testutil.ErrorIf(t, true, "cost-only validation: %v", costOnly.err)
-	}
+	testutil.ErrorIf(t, cmd == nil, "cost-only validation: %v", costOnly.err)
 	msg := cmd()
 	if adjusted, ok := msg.(InventoryAdjustedMsg); !ok {
-		testutil.ErrorIf(t, true, "cost-only adjustment = %#v", msg)
+		testutil.ErrorIf(t, !ok, "cost-only adjustment = %#v", msg)
 	} else {
-		if adjusted.Inventory.Amount.Value() != 10 {
-			testutil.ErrorIf(t, true, "cost-only amount = %v", adjusted.Inventory.Amount.Value())
-		}
+		testutil.ErrorIf(t, adjusted.Inventory.Amount.Value() != 10, "cost-only amount = %v", adjusted.Inventory.Amount.Value())
 		price, _ := adjusted.Inventory.CostPerUnit.Unwrap()
-		if price.String() != "$1.23" {
-			testutil.ErrorIf(t, true, "cost-only price = %s", price.String())
-		}
+		testutil.ErrorIf(t, price.String() != "$1.23", "cost-only price = %s", price.String())
 		row.Inventory = *adjusted.Inventory
 		testutil.Equals(t, adjusted.Inventory.Tags.Canonical().String(), "source=tui")
 		testutil.AuditTouches(t, fix.LatestAuditEntry(inventoryauthz.ActionAdjust), adjusted.Inventory.EntityUID())
@@ -57,21 +51,13 @@ func TestAdjustInventorySupportsCostOnlyAndCombinedNonUSPrice(t *testing.T) {
 	_ = combined.amount.SetValue(-2.5)
 	_ = combined.cost.SetValue("EUR 2.50")
 	cmd = combined.submit()
-	if cmd == nil {
-		testutil.ErrorIf(t, true, "combined validation: %v", combined.err)
-	}
+	testutil.ErrorIf(t, cmd == nil, "combined validation: %v", combined.err)
 	msg = cmd()
 	adjusted, ok := msg.(InventoryAdjustedMsg)
-	if !ok {
-		testutil.ErrorIf(t, true, "combined adjustment = %#v", msg)
-	}
-	if math.Abs(adjusted.Inventory.Amount.Value()-7.5) > 1e-9 {
-		testutil.ErrorIf(t, true, "combined amount = %v", adjusted.Inventory.Amount.Value())
-	}
+	testutil.ErrorIf(t, !ok, "combined adjustment = %#v", msg)
+	testutil.ErrorIf(t, math.Abs(adjusted.Inventory.Amount.Value()-7.5) > 1e-9, "combined amount = %v", adjusted.Inventory.Amount.Value())
 	price, _ := adjusted.Inventory.CostPerUnit.Unwrap()
-	if price.String() != "2.50 €" {
-		testutil.ErrorIf(t, true, "combined price = %s", price.String())
-	}
+	testutil.ErrorIf(t, price.String() != "2.50 €", "combined price = %s", price.String())
 }
 
 func TestSetInventoryCanExplicitlyClearCompleteTags(t *testing.T) {
@@ -87,9 +73,7 @@ func TestSetInventoryCanExplicitlyClearCompleteTags(t *testing.T) {
 	_, _ = vm.tags.Update(tea.KeyMsg{Type: tea.KeyCtrlU})
 	msg := vm.submit()()
 	updated, ok := msg.(InventorySetMsg)
-	if !ok {
-		testutil.ErrorIf(t, true, "set = %#v", msg)
-	}
+	testutil.ErrorIf(t, !ok, "set = %#v", msg)
 	testutil.Equals(t, len(updated.Inventory.Tags), 0)
 }
 
@@ -127,37 +111,26 @@ func TestAdjustInventoryPermissionFailureDoesNotWrite(t *testing.T) {
 	_ = vm.cost.SetValue("EUR 8.00")
 	msg := vm.submit()()
 	failure, ok := msg.(AdjustErrorMsg)
-	if !ok {
-		testutil.ErrorIf(t, true, "denied adjustment = %#v", msg)
-	}
+	testutil.ErrorIf(t, !ok, "denied adjustment = %#v", msg)
 	testutil.ErrorIsPermission(t, failure.Err)
 	unchanged, err := fix.Inventory.Get(fix.OwnerContext(), ingredient.ID)
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	price, _ := unchanged.CostPerUnit.Unwrap()
-	if unchanged.Amount.Value() != 10 || price.String() != "$1.00" {
-		testutil.ErrorIf(t, true, "denied adjustment wrote %#v", unchanged)
-	}
+	testutil.ErrorIf(t, unchanged.Amount.Value() != 10 || price.String() != "$1.00", "denied adjustment wrote %#v", unchanged)
 }
 
 func TestInventoryFilterRequestPreservesAllStockAndConfiguresLowStock(t *testing.T) {
 	all := newFilterVM(inventory.ListRequest{Filter: `unit == "oz"`, Limit: 25})
 	req, err := all.Request()
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
-	if req.Filter != `unit == "oz"` || req.Limit != 25 || req.LowStock.IsSome() {
-		testutil.ErrorIf(t, true, "all request = %#v", req)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
+	testutil.ErrorIf(t, req.Filter != `unit == "oz"` || req.Limit != 25 || req.LowStock.IsSome(), "all request = %#v", req)
 	_ = all.stock.SetValue("low stock")
 	_ = all.threshold.SetValue(3.5)
 	req, err = all.Request()
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
-	if threshold, ok := req.LowStock.Unwrap(); !ok || threshold != 3.5 {
-		testutil.ErrorIf(t, true, "threshold = %v, %v", threshold, ok)
+	testutil.ErrorIf(t, err != nil, "%v", err)
+	{
+		threshold, ok := req.LowStock.Unwrap()
+		testutil.ErrorIf(t, !ok || threshold != 3.5, "threshold = %v, %v", threshold, ok)
 	}
 }
 
@@ -193,11 +166,7 @@ func TestInventoryTraversesMoreThanOneHundredRowsThroughRealProgram(t *testing.T
 	}
 	root := &inventoryPagingProgram{vm: NewListViewModel(fix.App)}
 	final, err := tea.NewProgram(root, tea.WithInput(nil), tea.WithOutput(io.Discard), tea.WithoutRenderer()).Run()
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	program := final.(*inventoryPagingProgram)
-	if program.loads != 2 || strings.TrimSpace(program.first) == "" || strings.TrimSpace(program.second) == "" || program.first == program.second {
-		testutil.ErrorIf(t, true, "page traversal loads=%d equal=%v", program.loads, program.first == program.second)
-	}
+	testutil.ErrorIf(t, program.loads != 2 || strings.TrimSpace(program.first) == "" || strings.TrimSpace(program.second) == "" || program.first == program.second, "page traversal loads=%d equal=%v", program.loads, program.first == program.second)
 }
