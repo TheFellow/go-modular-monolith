@@ -102,7 +102,7 @@ type Presenter struct {
 }
 
 func NewPresenter(session *app.Session, d Dependencies) *Presenter {
-	p := &Presenter{app: session, dialogs: d.Dialogs, names: make(map[entity.DrinkID]string), state: State{Filter: Filter{Limit: paging.DefaultLimit}}}
+	p := &Presenter{app: session, dialogs: d.Dialogs, names: make(map[entity.DrinkID]string), state: State{Filter: Filter{Limit: ui.PageLimit}}}
 	p.state.CanCreate = pkgAuthz.AuthorizeWithEntity(session.Context().Principal(), menusauthz.ActionCreate, (models.Menu{}).CedarEntity()) == nil
 	p.load = ui.NewLatestRequest[catalog](d.Executor, d.Dispatcher)
 	p.choices = ui.NewLatestRequest[[]DrinkOption](d.Executor, d.Dispatcher)
@@ -121,7 +121,7 @@ func (p *Presenter) SetFilter(filter Filter) bool {
 		return false
 	}
 	if filter.Limit == 0 {
-		filter.Limit = paging.DefaultLimit
+		filter.Limit = ui.PageLimit
 	}
 	filter.Expression = strings.TrimSpace(filter.Expression)
 	p.state.Filter, p.state.Cursor, p.state.Next, p.state.History, p.state.Err = filter, "", "", nil, nil
@@ -169,9 +169,19 @@ func (p *Presenter) Refresh() {
 		}
 		if r.Status == ui.Loaded {
 			p.state.Err = nil
-			p.state.Items = cloneMenus(r.Value.menus)
+			if cursor == "" {
+				p.state.Items = cloneMenus(r.Value.menus)
+			} else {
+				p.state.Items = append(p.state.Items, cloneMenus(r.Value.menus)...)
+			}
 			p.state.Next = r.Value.next
-			p.names = cloneNames(r.Value.names)
+			if cursor == "" {
+				p.names = cloneNames(r.Value.names)
+			} else {
+				for id, name := range r.Value.names {
+					p.names[id] = name
+				}
+			}
 			p.reselect()
 		}
 		p.publish()
@@ -235,7 +245,7 @@ func (p *Presenter) leaveDetail(reset bool) {
 	}
 	proceed := func() {
 		if reset {
-			p.state.Filter = Filter{Limit: paging.DefaultLimit}
+			p.state.Filter = Filter{Limit: ui.PageLimit}
 			p.state.Cursor, p.state.Next, p.state.History = "", "", nil
 		}
 		p.state.Mode, p.state.Dirty, p.state.Err = Browsing, false, nil

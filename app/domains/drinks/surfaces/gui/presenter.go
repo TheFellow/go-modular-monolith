@@ -95,7 +95,7 @@ type Presenter struct {
 }
 
 func NewPresenter(session *app.Session, d Dependencies) *Presenter {
-	p := &Presenter{app: session, dialogs: d.Dialogs, state: State{Filter: Filter{Limit: paging.DefaultLimit}}}
+	p := &Presenter{app: session, dialogs: d.Dialogs, state: State{Filter: Filter{Limit: ui.PageLimit}}}
 	p.load = ui.NewLatestRequest[drinkCatalog](d.Executor, d.Dispatcher)
 	p.ingredients = ui.NewLatestRequest[[]IngredientOption](d.Executor, d.Dispatcher)
 	p.deleteCheck = ui.NewLatestRequest[int](d.Executor, d.Dispatcher)
@@ -110,7 +110,7 @@ func (p *Presenter) SetFilter(f Filter) bool {
 		return false
 	}
 	if f.Limit == 0 {
-		f.Limit = paging.DefaultLimit
+		f.Limit = ui.PageLimit
 	}
 	f.Name, f.Expression = strings.TrimSpace(f.Name), strings.TrimSpace(f.Expression)
 	p.state.Filter, p.state.Cursor, p.state.Next, p.state.History, p.state.Err = f, "", "", nil, nil
@@ -136,7 +136,11 @@ func (p *Presenter) Refresh() {
 		}
 		if r.Status == ui.Loaded {
 			p.state.Err = nil
-			p.state.Items = cloneDrinks(r.Value.drinks)
+			if cursor == "" {
+				p.state.Items = cloneDrinks(r.Value.drinks)
+			} else {
+				p.state.Items = append(p.state.Items, cloneDrinks(r.Value.drinks)...)
+			}
 			p.state.Next = r.Value.next
 			p.state.Ingredients = append([]IngredientOption(nil), r.Value.ingredients...)
 			p.reselect()
@@ -193,7 +197,7 @@ func (p *Presenter) leaveDetail(reset bool) {
 	}
 	proceed := func() {
 		if reset {
-			p.state.Filter = Filter{Limit: paging.DefaultLimit}
+			p.state.Filter = Filter{Limit: ui.PageLimit}
 			p.state.Cursor, p.state.Next, p.state.History = "", "", nil
 		}
 		p.state.Mode, p.state.Dirty, p.state.Err = Browsing, false, nil

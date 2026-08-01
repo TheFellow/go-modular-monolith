@@ -67,13 +67,12 @@ type View struct {
 	root, browse, detail, drinkPanel, analysisPanel, tagsPanel     *framework.Container
 	list                                                           *widget.Table
 	listStack, empty                                               *framework.Container
-	filterLimit                                                    *semanticSelect
 	filterStatus                                                   *ui.FilterSelect
 	filterExpression, name, description, drinkSearch, targetMargin *ui.SemanticEntry
 	tags, drinkTags                                                *ui.TagTokenEditor
 	status, formStatus, drinkStatus, analysisStatus                *widget.Label
 	descriptionHelp                                                *widget.Label
-	save, cancel, refresh, create, previous, next                  *ui.SemanticButton
+	save, cancel, refresh, create                                  *ui.SemanticButton
 	applyFilter                                                    *ui.SemanticButton
 	rename, delete, publish, draft, analyze, tagAction, addDrink   *ui.SemanticButton
 	drinkSearchAction, drinkCancel, runAnalysis, analysisCancel    *ui.SemanticButton
@@ -91,13 +90,10 @@ var _ ui.Activated = (*View)(nil)
 
 func NewView(p *Presenter) *View {
 	v := &View{p: p, state: p.State()}
-	v.filterLimit = newSelect("menus.filter.limit", []string{"25", "50", "100"})
-	v.filterLimit.SetSelected(strconv.Itoa(v.state.Filter.Limit))
 	bar := ui.NewSingleRowFilterBar(ControlFilterExpression, ControlApplyFilter, `Filter menus (for example: name.contains("summer"))`, v.state.Filter.Expression,
 		[]ui.FilterPreset{{ID: ControlFilterStatus, Placeholder: "Status", Options: []ui.FilterOption{{Label: "Any status"}, {Label: "Draft", Expression: `status == "draft"`}, {Label: "Published", Expression: `status == "published"`}, {Label: "Archived", Expression: `status == "archived"`}}}},
-		container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.filterLimit), func(expression string) {
-			limit, _ := strconv.Atoi(v.filterLimit.Selected)
-			if p.SetFilter(Filter{Expression: expression, Limit: limit}) {
+		nil, func(expression string) {
+			if p.SetFilter(Filter{Expression: expression, Limit: ui.PageLimit}) {
 				p.Refresh()
 			}
 		})
@@ -106,7 +102,7 @@ func NewView(p *Presenter) *View {
 	v.descriptionHelp = widget.NewLabel("")
 	v.descriptionHelp.Hide()
 	columns := []string{"Name", "Status", "Items", "Created", "Published", "Tags", "Actions"}
-	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Items), len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewAutoPagingRowTable(func() (int, int) { return len(v.state.Items), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, o framework.CanvasObject) {
 		cell := o
@@ -134,7 +130,7 @@ func NewView(p *Presenter) *View {
 			return
 		}
 		ui.ShowCellText(cell, values[id.Col], false)
-	})
+	}, p.NextPage)
 	v.list.OnSelected = func(id widget.TableCellID) {
 		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
@@ -146,10 +142,8 @@ func NewView(p *Presenter) *View {
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New menu", p.StartCreate), ui.IconAdd))
-	v.previous = ui.WithIcon(ui.NewButton(ControlPrevious, "Previous", p.PreviousPage), ui.IconPrevious)
-	v.next = ui.WithIcon(ui.NewButton(ControlNext, "Next", p.NextPage), ui.IconNext)
 	v.status = widget.NewLabel("")
-	v.browse = ui.StandardListPage(ui.ListPage{Title: "Menus", Subtitle: "Browse menus and select one for complete details.", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, v.refresh}, List: v.listStack, Status: v.status, Paging: container.NewHBox(v.previous, v.next)}).(*framework.Container)
+	v.browse = ui.StandardListPage(ui.ListPage{Title: "Menus", Subtitle: "Browse menus and select one for complete details.", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, v.refresh}, List: v.listStack, Status: v.status}).(*framework.Container)
 
 	v.name, v.description = ui.NewEntry(ControlName), ui.NewEntry(ControlDescription)
 	v.tags = ui.NewTagTokenEditor(ControlTagValues, "")
@@ -388,14 +382,11 @@ func (v *View) render(s State) {
 	v.tagAction.Hidden = !cleanDetail || !s.CanTag
 	v.delete.Hidden = !draftMenu || !s.CanDelete
 	v.descriptionHelp.Hidden = s.Mode != Editing && s.Mode != Renaming
-	setEnabled(v.previous, !busy && len(s.History) > 0)
-	setEnabled(v.next, !busy && s.Next != "")
 	setEnabled(v.refresh, !busy)
 	setEnabled(v.create, !busy)
 	v.create.Hidden = !s.CanCreate
 	setEnabled(v.filterExpression, !busy)
 	setEnabled(v.filterStatus, !busy)
-	setEnabled(v.filterLimit, !busy)
 	setEnabled(v.applyFilter, !busy)
 	setEnabled(v.rename, !busy)
 	setEnabled(v.tagAction, !busy)
