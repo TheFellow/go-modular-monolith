@@ -14,6 +14,8 @@ import (
 )
 
 func TestTestsUseTestutilAssertions(t *testing.T) {
+	t.Parallel()
+
 	root := repositoryRoot(t)
 	files := token.NewFileSet()
 	var violations []string
