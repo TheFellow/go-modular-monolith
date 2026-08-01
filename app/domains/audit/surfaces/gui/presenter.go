@@ -95,6 +95,11 @@ func (p *Presenter) Observe(fn func(State)) { p.changed = fn; p.publish() }
 func (p *Presenter) State() State           { return cloneState(p.state) }
 
 func (p *Presenter) Refresh() {
+	p.state.Cursor, p.state.Next, p.state.History = "", "", nil
+	p.loadPage(false)
+}
+
+func (p *Presenter) loadPage(appendPage bool) {
 	filter, cursor := p.state.Filter, p.state.Cursor
 	req, err := requestFromFilter(filter, cursor)
 	if err != nil {
@@ -121,10 +126,10 @@ func (p *Presenter) Refresh() {
 			ui.ShowPresentation(p.dialogs, result.Err)
 		}
 		if result.Status == ui.Loaded {
-			if cursor == "" {
-				p.state.Rows = cloneRows(result.Value.rows)
-			} else {
+			if appendPage {
 				p.state.Rows = append(p.state.Rows, cloneRows(result.Value.rows)...)
+			} else {
+				p.state.Rows = cloneRows(result.Value.rows)
 			}
 			p.state.Next, p.state.Err = result.Value.next, nil
 			if p.state.Mode == Viewing {
@@ -145,7 +150,7 @@ func (p *Presenter) ApplyFilter(filter Filter) bool {
 		return false
 	}
 	p.state.Filter, p.state.Cursor, p.state.Next, p.state.History = filter, "", "", nil
-	p.Refresh()
+	p.loadPage(false)
 	return true
 }
 
@@ -155,7 +160,7 @@ func (p *Presenter) NextPage() {
 	}
 	p.state.History = append(p.state.History, p.state.Cursor)
 	p.state.Cursor = p.state.Next
-	p.Refresh()
+	p.loadPage(true)
 }
 
 func (p *Presenter) PreviousPage() {
@@ -165,7 +170,7 @@ func (p *Presenter) PreviousPage() {
 	last := len(p.state.History) - 1
 	p.state.Cursor = p.state.History[last]
 	p.state.History = p.state.History[:last]
-	p.Refresh()
+	p.loadPage(false)
 }
 
 func (p *Presenter) Select(index int) {

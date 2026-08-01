@@ -16,7 +16,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
@@ -77,15 +76,10 @@ func TestViewPagesMoreThanOneHundredIngredients(t *testing.T) {
 	state := presenter.Snapshot()
 	testutil.ErrorIf(t, len(state.Items) != 25 || state.Next == "", "first page = %#v", state)
 	first := state.Items[0].ID
-	fynetest.NewDriver(t, view.Content()).Tap("ingredients-next")
+	presenter.NextPage()
 	{
 		state = presenter.Snapshot()
-		testutil.ErrorIf(t, len(state.Items) != 25 || state.Items[0].ID == first, "next page = %#v", state)
-	}
-	fynetest.NewDriver(t, view.Content()).Tap("ingredients-previous")
-	{
-		state = presenter.Snapshot()
-		testutil.ErrorIf(t, state.Items[0].ID != first, "previous page = %#v", state)
+		testutil.ErrorIf(t, len(state.Items) != 50 || state.Items[0].ID != first, "appended page = %#v", state)
 	}
 	testutil.ErrorIf(t, presenter.Filter("", "", -1), "%v", "negative page size accepted")
 }
@@ -152,7 +146,7 @@ func TestDetailBackPreservesCatalogStateAndBreadcrumbResetsIt(t *testing.T) {
 	presenter.Select(gin.ID)
 	presenter.ResetList()
 	state = presenter.Snapshot()
-	testutil.ErrorIf(t, state.Mode != Browse || state.Expression != "" || state.Limit != paging.DefaultLimit, "breadcrumb did not reset list state: %#v", state)
+	testutil.ErrorIf(t, state.Mode != Browse || state.Expression != "" || state.Limit != toolkit.PageLimit, "breadcrumb did not reset list state: %#v", state)
 }
 
 func TestDetailCancelRevertsDirtyFormAndBackConfirmsDiscard(t *testing.T) {

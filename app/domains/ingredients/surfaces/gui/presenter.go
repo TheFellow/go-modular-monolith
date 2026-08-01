@@ -101,6 +101,13 @@ func (p *Presenter) Snapshot() State {
 
 func (p *Presenter) Load() {
 	p.mu.Lock()
+	p.state.Cursor, p.state.Next, p.state.History = "", "", nil
+	p.mu.Unlock()
+	p.loadPage(false)
+}
+
+func (p *Presenter) loadPage(appendPage bool) {
+	p.mu.Lock()
 	request := ingredients.ListRequest{Category: p.state.Category, Filter: p.state.Expression, Cursor: p.state.Cursor, Limit: p.state.Limit}
 	p.mu.Unlock()
 	p.loads.LoadContext(p.app.Context(), func(ctx context.Context) (loadResult, error) {
@@ -121,10 +128,10 @@ func (p *Presenter) Load() {
 		p.state.Status, p.state.Err = result.Status, toolkit.PresentError(result.Err)
 		if result.Status == toolkit.Loaded {
 			selected := selectedID(p.state.Selected)
-			if request.Cursor == "" {
-				p.state.Items = result.Value.items
-			} else {
+			if appendPage {
 				p.state.Items = append(p.state.Items, result.Value.items...)
+			} else {
+				p.state.Items = result.Value.items
 			}
 			p.state.Next = result.Value.next
 			p.state.Selected = findIngredient(p.state.Items, selected)
@@ -153,7 +160,7 @@ func (p *Presenter) Filter(category models.Category, expression string, limits .
 	p.state.Category, p.state.Expression, p.state.Limit = category, strings.TrimSpace(expression), limit
 	p.state.Cursor, p.state.Next, p.state.History = "", "", nil
 	p.mu.Unlock()
-	p.Load()
+	p.loadPage(false)
 	return true
 }
 func (p *Presenter) NextPage() {
@@ -165,7 +172,7 @@ func (p *Presenter) NextPage() {
 	p.state.History = append(p.state.History, p.state.Cursor)
 	p.state.Cursor = p.state.Next
 	p.mu.Unlock()
-	p.Load()
+	p.loadPage(true)
 }
 func (p *Presenter) PreviousPage() {
 	p.mu.Lock()
@@ -177,7 +184,7 @@ func (p *Presenter) PreviousPage() {
 	p.state.Cursor = p.state.History[last]
 	p.state.History = p.state.History[:last]
 	p.mu.Unlock()
-	p.Load()
+	p.loadPage(false)
 }
 
 func (p *Presenter) Select(id entity.IngredientID) {
