@@ -181,9 +181,7 @@ func (p *Presenter) loadPage(appendPage bool) {
 			}
 			p.state.Next = r.Value.next
 			if appendPage {
-				for id, name := range r.Value.names {
-					p.names[id] = name
-				}
+				maps.Copy(p.names, r.Value.names)
 			} else {
 				p.names = cloneNames(r.Value.names)
 			}
