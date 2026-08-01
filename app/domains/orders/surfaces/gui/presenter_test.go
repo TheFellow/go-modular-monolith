@@ -27,7 +27,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
@@ -75,7 +74,7 @@ func TestPresenterTraversesForwardAndBackwardPages(t *testing.T) {
 	firstID := first.Rows[0].Order.ID
 	p.NextPage()
 	second := p.State()
-	testutil.Equals(t, len(second.Rows), 1)
+	testutil.Equals(t, len(second.Rows), 2)
 	testutil.ErrorIf(t, second.Rows[0].Order.ID == firstID, "%v", "next page repeated the first order")
 	testutil.Equals(t, len(second.History), 1)
 	p.PreviousPage()
@@ -108,7 +107,7 @@ func TestPresenterDetailBackPreservesListStateAndBreadcrumbResetClearsIt(t *test
 	reset := p.State()
 	testutil.Equals(t, reset.Mode, Browsing)
 	testutil.Equals(t, reset.Filter.Expression, "")
-	testutil.Equals(t, reset.Filter.Limit, paging.DefaultLimit)
+	testutil.Equals(t, reset.Filter.Limit, appgui.PageLimit)
 	testutil.Equals(t, len(reset.History), 0)
 	testutil.Equals(t, reset.Selected == nil, true)
 }
@@ -161,7 +160,7 @@ func TestDirtyPlaceBackAndResetRequireConfirmationAndRetainInput(t *testing.T) {
 	testutil.Equals(t, state.Mode, Browsing)
 	testutil.Equals(t, state.Dirty, false)
 	testutil.Equals(t, state.Filter.Expression, "")
-	testutil.Equals(t, state.Filter.Limit, paging.DefaultLimit)
+	testutil.Equals(t, state.Filter.Limit, appgui.PageLimit)
 }
 
 func TestDirtyTagsBackAndResetRequireConfirmationAndRetainInput(t *testing.T) {

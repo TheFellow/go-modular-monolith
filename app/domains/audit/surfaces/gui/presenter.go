@@ -86,7 +86,7 @@ type Presenter struct {
 
 func NewPresenter(session *app.Session, deps Dependencies) *Presenter {
 	p := &Presenter{app: session, dialogs: deps.Dialogs}
-	p.state.Filter.Limit = paging.DefaultLimit
+	p.state.Filter.Limit = ui.PageLimit
 	p.load = ui.NewLatestRequest[listResult](deps.Executor, deps.Dispatcher)
 	return p
 }
@@ -121,7 +121,12 @@ func (p *Presenter) Refresh() {
 			ui.ShowPresentation(p.dialogs, result.Err)
 		}
 		if result.Status == ui.Loaded {
-			p.state.Rows, p.state.Next, p.state.Err = cloneRows(result.Value.rows), result.Value.next, nil
+			if cursor == "" {
+				p.state.Rows = cloneRows(result.Value.rows)
+			} else {
+				p.state.Rows = append(p.state.Rows, cloneRows(result.Value.rows)...)
+			}
+			p.state.Next, p.state.Err = result.Value.next, nil
 			if p.state.Mode == Viewing {
 				p.state.Selected = findRow(p.state.Rows, selectedID(p.state.Selected))
 			}
@@ -187,7 +192,7 @@ func (p *Presenter) Back() {
 // discards the retained filter and paging state.
 func (p *Presenter) ResetList() {
 	p.state.Mode, p.state.Selected = Browsing, nil
-	p.state.Filter = Filter{Limit: paging.DefaultLimit}
+	p.state.Filter = Filter{Limit: ui.PageLimit}
 	p.state.Cursor, p.state.Next, p.state.History = "", "", nil
 	p.Refresh()
 }
