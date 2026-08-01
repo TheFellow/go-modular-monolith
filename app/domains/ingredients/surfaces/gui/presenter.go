@@ -84,7 +84,7 @@ type loadResult struct {
 }
 
 func NewPresenter(session *app.Session, executor toolkit.Executor, dispatcher toolkit.Dispatcher, dialogs toolkit.Dialogs) *Presenter {
-	p := &Presenter{app: session, executor: executor, dispatcher: dispatcher, dialogs: dialogs, state: State{Limit: paging.DefaultLimit}}
+	p := &Presenter{app: session, executor: executor, dispatcher: dispatcher, dialogs: dialogs, state: State{Limit: toolkit.PageLimit}}
 	p.state.CanCreate = pkgAuthz.AuthorizeWithEntity(session.Context().Principal(), ingredientauthz.ActionCreate, (models.Ingredient{}).CedarEntity()) == nil
 	p.loads = toolkit.NewLatestRequest[loadResult](executor, dispatcher)
 	p.mutation = toolkit.NewSubmission(executor, dispatcher)
@@ -121,7 +121,12 @@ func (p *Presenter) Load() {
 		p.state.Status, p.state.Err = result.Status, toolkit.PresentError(result.Err)
 		if result.Status == toolkit.Loaded {
 			selected := selectedID(p.state.Selected)
-			p.state.Items, p.state.Next = result.Value.items, result.Value.next
+			if request.Cursor == "" {
+				p.state.Items = result.Value.items
+			} else {
+				p.state.Items = append(p.state.Items, result.Value.items...)
+			}
+			p.state.Next = result.Value.next
 			p.state.Selected = findIngredient(p.state.Items, selected)
 		}
 		p.publishLocked()
@@ -133,7 +138,7 @@ func (p *Presenter) Load() {
 }
 
 func (p *Presenter) Filter(category models.Category, expression string, limits ...int) bool {
-	limit := paging.DefaultLimit
+	limit := toolkit.PageLimit
 	if len(limits) > 0 {
 		limit = limits[0]
 	}
@@ -210,7 +215,7 @@ func (p *Presenter) leaveDetail(reset bool) {
 	proceed := func() {
 		p.mu.Lock()
 		if reset {
-			p.state.Category, p.state.Expression, p.state.Limit = "", "", paging.DefaultLimit
+			p.state.Category, p.state.Expression, p.state.Limit = "", "", toolkit.PageLimit
 			p.state.Cursor, p.state.Next, p.state.History = "", "", nil
 		}
 		p.state.Mode, p.state.Dirty, p.state.Err = Browse, false, nil

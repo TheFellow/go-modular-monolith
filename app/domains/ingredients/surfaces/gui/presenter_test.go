@@ -73,7 +73,6 @@ func TestViewPagesMoreThanOneHundredIngredients(t *testing.T) {
 	}
 	presenter, _ := newTestPresenter(fix.App, toolkit.InlineExecutor{})
 	view := NewView(presenter)
-	view.limit.SetSelected("25")
 	fynetest.NewDriver(t, view.Content()).Tap("ingredients-apply-filter")
 	state := presenter.Snapshot()
 	testutil.ErrorIf(t, len(state.Items) != 25 || state.Next == "", "first page = %#v", state)
