@@ -3,7 +3,6 @@ package gui
 import (
 	"fmt"
 	"reflect"
-	"strconv"
 	"time"
 
 	framework "fyne.io/fyne/v2"
@@ -39,23 +38,23 @@ const (
 )
 
 type View struct {
-	presenter                             *Presenter
-	root, browse, detail, mutation        *framework.Container
-	list                                  *widget.Table
-	listStack, empty                      *framework.Container
-	expression, amount, cost              *ui.SemanticEntry
-	tags                                  *ui.TagTokenEditor
-	limit, reason                         *widget.Select
-	save, cancel, refresh, previous, next *ui.SemanticButton
-	adjust, set, tagAction                *ui.SemanticButton
-	status, formStatus, title, crumb      *widget.Label
-	state                                 State
-	rows                                  map[string]*ui.SemanticButton
-	rendering                             bool
-	renderedMode                          Mode
-	renderedForm                          Form
-	renderedInstance                      uint64
-	tagNaturalWidth                       float32
+	presenter                        *Presenter
+	root, browse, detail, mutation   *framework.Container
+	list                             *widget.Table
+	listStack, empty                 *framework.Container
+	expression, amount, cost         *ui.SemanticEntry
+	tags                             *ui.TagTokenEditor
+	reason                           *widget.Select
+	save, cancel, refresh            *ui.SemanticButton
+	adjust, set, tagAction           *ui.SemanticButton
+	status, formStatus, title, crumb *widget.Label
+	state                            State
+	rows                             map[string]*ui.SemanticButton
+	rendering                        bool
+	renderedMode                     Mode
+	renderedForm                     Form
+	renderedInstance                 uint64
+	tagNaturalWidth                  float32
 }
 
 var _ ui.View = (*View)(nil)
@@ -63,19 +62,14 @@ var _ ui.Activated = (*View)(nil)
 
 func NewView(p *Presenter) *View {
 	v := &View{presenter: p, state: p.Snapshot(), rows: map[string]*ui.SemanticButton{}}
-	v.limit = widget.NewSelect([]string{"25", "50", "100"}, nil)
-	v.limit.SetSelected(strconv.Itoa(v.state.Limit))
 	bar := ui.NewSingleRowFilterBar(ControlFilter, ControlApplyFilter, `Filter inventory (for example: tags contains "featured")`, v.state.Expression,
 		[]ui.FilterPreset{{ID: "inventory-stock", Placeholder: "Stock", Options: []ui.FilterOption{{Label: "All stock"}, {Label: "Low stock", Expression: fmt.Sprintf("quantity <= %g", v.state.LowStock)}}}},
-		container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.limit), func(expression string) {
-			limit, _ := strconv.Atoi(v.limit.Selected)
-			p.Filter(AllStock, expression, v.state.LowStock, limit)
-		})
+		nil, func(expression string) { p.Filter(AllStock, expression, v.state.LowStock, ui.PageLimit) })
 	v.expression = bar.Expression
 	// Mirrors the CLI inventory list except for the inventory record ID; the
 	// joined ingredient name makes the otherwise opaque ingredient ID useful.
 	columns := []string{"Ingredient", "Ingredient ID", "Quantity", "Unit", "Cost per unit", "Last updated", "Tags", "Status", "Actions"}
-	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Rows), len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewAutoPagingRowTable(func() (int, int) { return len(v.state.Rows), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
 		cell := object
@@ -101,7 +95,7 @@ func NewView(p *Presenter) *View {
 			return
 		}
 		ui.ShowCellText(cell, values[id.Col], false)
-	})
+	}, p.NextPage)
 	v.list.OnSelected = func(id widget.TableCellID) {
 		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
@@ -112,10 +106,8 @@ func NewView(p *Presenter) *View {
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No inventory found", "Adjust the filter to find stock items.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)
-	v.previous = ui.WithIcon(ui.NewButton(ControlPrevious, "Previous", p.PreviousPage), ui.IconPrevious)
-	v.next = ui.WithIcon(ui.NewButton(ControlNext, "Next", p.NextPage), ui.IconNext)
 	v.status = widget.NewLabel("")
-	v.browse = ui.StandardListPage(ui.ListPage{Title: "Inventory", Subtitle: "Review stock levels and select an item for complete details.", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.refresh}, List: v.listStack, Status: v.status, Paging: container.NewHBox(v.previous, v.next), ListRatio: .35}).(*framework.Container)
+	v.browse = ui.StandardListPage(ui.ListPage{Title: "Inventory", Subtitle: "Review stock levels and select an item for complete details.", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.refresh}, List: v.listStack, Status: v.status, ListRatio: .35}).(*framework.Container)
 
 	v.adjust = ui.Primary(ui.WithIcon(ui.NewButton(ControlAdjust, "Adjust stock", p.StartAdjust), ui.IconAdd))
 	v.set = ui.WithIcon(ui.NewButton(ControlSet, "Set stock", p.StartSet), ui.IconSave)
@@ -271,16 +263,6 @@ func (v *View) render(s State) {
 	v.adjust.Hidden = s.Selected == nil || !s.CanAdjust
 	v.set.Hidden = s.Selected == nil || !s.CanSet
 	v.tagAction.Hidden = s.Selected == nil || !s.CanTag
-	if len(s.History) == 0 || s.Status == ui.Loading {
-		v.previous.Disable()
-	} else {
-		v.previous.Enable()
-	}
-	if s.Next == "" || s.Status == ui.Loading {
-		v.next.Disable()
-	} else {
-		v.next.Enable()
-	}
 	if s.Submitting || !s.Dirty {
 		v.save.Disable()
 		v.cancel.Disable()

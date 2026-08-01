@@ -100,7 +100,7 @@ type Presenter struct {
 }
 
 func NewPresenter(session *app.Session, executor toolkit.Executor, dispatcher toolkit.Dispatcher, dialogs ...toolkit.Dialogs) *Presenter {
-	p := &Presenter{app: session, state: State{Limit: paging.DefaultLimit, LowStock: LowStockThreshold}}
+	p := &Presenter{app: session, state: State{Limit: toolkit.PageLimit, LowStock: LowStockThreshold}}
 	if len(dialogs) > 0 {
 		p.dialogs = dialogs[0]
 	}
@@ -151,7 +151,12 @@ func (p *Presenter) Load() {
 		p.state.Status, p.state.Err = result.Status, toolkit.PresentError(result.Err)
 		if result.Status == toolkit.Loaded {
 			selected := selectedID(p.state.Selected)
-			p.state.Rows, p.state.Next = result.Value.rows, result.Value.next
+			if req.Cursor == "" {
+				p.state.Rows = result.Value.rows
+			} else {
+				p.state.Rows = append(p.state.Rows, result.Value.rows...)
+			}
+			p.state.Next = result.Value.next
 			p.state.Selected = findRow(p.state.Rows, selected)
 			// Keep a latent selection for command compatibility; Browse still renders
 			// only the collection until the actor explicitly selects a table row.
@@ -170,7 +175,7 @@ func (p *Presenter) Load() {
 
 func (p *Presenter) Filter(stock StockMode, expression string, lowStock float64, limit int) bool {
 	if limit <= 0 {
-		limit = paging.DefaultLimit
+		limit = toolkit.PageLimit
 	}
 	p.mu.Lock()
 	if lowStock < 0 {
@@ -241,7 +246,7 @@ func (p *Presenter) leaveDetail(reset bool) {
 	proceed := func() {
 		p.mu.Lock()
 		if reset {
-			p.state.Expression, p.state.Stock, p.state.LowStock, p.state.Limit = "", AllStock, LowStockThreshold, paging.DefaultLimit
+			p.state.Expression, p.state.Stock, p.state.LowStock, p.state.Limit = "", AllStock, LowStockThreshold, toolkit.PageLimit
 			p.state.Cursor, p.state.Next, p.state.History = "", "", nil
 		}
 		p.state.Mode, p.state.Dirty, p.state.Err = Browse, false, nil

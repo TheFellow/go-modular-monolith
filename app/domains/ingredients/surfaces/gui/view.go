@@ -3,7 +3,6 @@ package gui
 import (
 	"fmt"
 	"reflect"
-	"strconv"
 
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -37,26 +36,26 @@ const (
 )
 
 type View struct {
-	presenter                                     *Presenter
-	root, browse, formPanel, tagsPanel            *framework.Container
-	list                                          *widget.Table
-	listStack                                     *framework.Container
-	empty                                         *framework.Container
-	expression                                    *ui.SemanticEntry
-	limit, formCategory, formUnit                 *widget.Select
-	name, description                             *ui.SemanticEntry
-	tags, tagOnly                                 *ui.TagTokenEditor
-	save, cancel, refresh, create, previous, next *ui.SemanticButton
-	tagSave, tagCancel                            *ui.SemanticButton
-	tagAction, delete                             *ui.SemanticButton
-	status, formStatus, detailTitle, crumbName    *widget.Label
-	tagStatus                                     *widget.Label
-	rendering                                     bool
-	renderedMode                                  Mode
-	renderedForm                                  Form
-	renderedInstance                              uint64
-	state                                         State
-	tagNaturalWidth                               float32
+	presenter                                  *Presenter
+	root, browse, formPanel, tagsPanel         *framework.Container
+	list                                       *widget.Table
+	listStack                                  *framework.Container
+	empty                                      *framework.Container
+	expression                                 *ui.SemanticEntry
+	formCategory, formUnit                     *widget.Select
+	name, description                          *ui.SemanticEntry
+	tags, tagOnly                              *ui.TagTokenEditor
+	save, cancel, refresh, create              *ui.SemanticButton
+	tagSave, tagCancel                         *ui.SemanticButton
+	tagAction, delete                          *ui.SemanticButton
+	status, formStatus, detailTitle, crumbName *widget.Label
+	tagStatus                                  *widget.Label
+	rendering                                  bool
+	renderedMode                               Mode
+	renderedForm                               Form
+	renderedInstance                           uint64
+	state                                      State
+	tagNaturalWidth                            float32
 }
 
 var _ ui.View = (*View)(nil)
@@ -64,22 +63,17 @@ var _ ui.Activated = (*View)(nil)
 
 func NewView(p *Presenter) *View {
 	v := &View{presenter: p}
-	v.limit = widget.NewSelect([]string{"25", "50", "100"}, nil)
-	v.limit.SetSelected(strconv.Itoa(p.Snapshot().Limit))
 	presets := []ui.FilterOption{{Label: "Any category"}}
 	for _, category := range models.AllCategories() {
 		presets = append(presets, ui.FilterOption{Label: string(category), Expression: fmt.Sprintf(`category == %q`, category)})
 	}
 	bar := ui.NewSingleRowFilterBar(ControlFilter, ControlApplyFilter, `Filter ingredients (for example: name.contains("gin"))`, p.Snapshot().Expression,
 		[]ui.FilterPreset{{ID: "ingredients-filter-category", Placeholder: "Category", Options: presets}},
-		container.NewBorder(nil, nil, widget.NewLabel("Page size"), nil, v.limit), func(expression string) {
-			limit, _ := strconv.Atoi(v.limit.Selected)
-			p.Filter("", expression, limit)
-		})
+		nil, func(expression string) { p.Filter("", expression, ui.PageLimit) })
 	v.expression = bar.Expression
 	v.state = p.Snapshot()
 	columns := []string{"Name", "Category", "Unit", "Description", "Tags", "Actions"}
-	v.list = ui.NewRowTable(func() (int, int) { return len(v.state.Items), len(columns) }, func() framework.CanvasObject {
+	v.list = ui.NewAutoPagingRowTable(func() (int, int) { return len(v.state.Items), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
 		cell := object
@@ -95,7 +89,7 @@ func NewView(p *Presenter) *View {
 			return
 		}
 		ui.ShowCellText(cell, values[id.Col], false)
-	})
+	}, p.NextPage)
 	v.list.OnSelected = func(id widget.TableCellID) {
 		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
@@ -107,12 +101,10 @@ func NewView(p *Presenter) *View {
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New ingredient", p.StartCreate), ui.IconAdd))
-	v.previous = ui.WithIcon(ui.NewButton(ControlPrevious, "Previous", p.PreviousPage), ui.IconPrevious)
-	v.next = ui.WithIcon(ui.NewButton(ControlNext, "Next", p.NextPage), ui.IconNext)
 	v.tagAction = ui.WithIcon(ui.NewButton(ControlTags, "Tags", p.StartTags), ui.IconTag)
 	v.delete = ui.Destructive(ui.WithIcon(ui.NewButton(ControlDelete, "Delete", p.RequestDelete), ui.IconDelete))
 	v.status = widget.NewLabel("")
-	v.browse = ui.StandardListPage(ui.ListPage{Title: "Ingredients", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, v.refresh}, List: v.listStack, Status: v.status, Paging: container.NewHBox(v.previous, v.next), ListRatio: .35}).(*framework.Container)
+	v.browse = ui.StandardListPage(ui.ListPage{Title: "Ingredients", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, v.refresh}, List: v.listStack, Status: v.status, ListRatio: .35}).(*framework.Container)
 
 	v.name = ui.NewEntry(ControlName)
 	v.description = ui.NewEntry(ControlDescription)
@@ -234,16 +226,6 @@ func (v *View) render(s State) {
 	}
 	if s.Mode == Tags {
 		v.tagOnly.SetCSV(s.Form.Tags)
-	}
-	if len(s.History) == 0 || s.Status == ui.Loading {
-		v.previous.Disable()
-	} else {
-		v.previous.Enable()
-	}
-	if s.Next == "" || s.Status == ui.Loading {
-		v.next.Disable()
-	} else {
-		v.next.Enable()
 	}
 	if s.Submitting || (s.Mode == Edit && !s.Dirty) || s.Mode == Viewing {
 		v.save.Disable()
