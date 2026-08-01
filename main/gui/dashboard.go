@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"sync"
@@ -20,13 +21,13 @@ const (
 )
 
 type dashboardLoader interface {
-	LoadDashboard() (application.Dashboard, error)
+	LoadDashboard(context.Context) (application.Dashboard, error)
 }
 
 type sessionDashboardLoader struct{ session *application.Session }
 
-func (l sessionDashboardLoader) LoadDashboard() (application.Dashboard, error) {
-	return l.session.Dashboard()
+func (l sessionDashboardLoader) LoadDashboard(ctx context.Context) (application.Dashboard, error) {
+	return l.session.DashboardContext(ctx)
 }
 
 func unknownDashboardData() application.Dashboard {
@@ -86,9 +87,9 @@ func (m *dashboardViewModel) Refresh() {
 	}
 	m.work.Add(1)
 	m.mu.Unlock()
-	m.request.Load(func() (dashboardLoadResult, error) {
+	m.request.LoadContext(context.Background(), func(ctx context.Context) (dashboardLoadResult, error) {
 		defer m.work.Done()
-		data, err := m.loader.LoadDashboard()
+		data, err := m.loader.LoadDashboard(ctx)
 		return dashboardLoadResult{data: data, err: err}, nil
 	}, m.publish)
 }

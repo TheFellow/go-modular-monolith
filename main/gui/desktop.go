@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -32,6 +33,7 @@ import (
 	pkg_authz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
+	"github.com/TheFellow/go-modular-monolith/pkg/runtimeconfig"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
@@ -48,6 +50,10 @@ type desktopConfig struct {
 	dataDirectory string
 	databasePath  string
 	actor         string
+	logLevel      string
+	logFormat     string
+	logFile       string
+	enableMetrics bool
 }
 
 type desktop struct {
@@ -57,6 +63,8 @@ type desktop struct {
 	session         *application.Session
 	shell           *gui.Shell
 	logFile         *os.File
+	metricsServer   *http.Server
+	metricsShutdown func(context.Context) error
 	closeOnce       sync.Once
 	closeErr        error
 	dashboard       *dashboardViewModel
@@ -211,13 +219,40 @@ func openDesktopWithDependencies(ctx context.Context, fyneApp framework.App, con
 		return nil, err
 	}
 
-	logFile, err := os.OpenFile(filepath.Join(config.dataDirectory, logFilename), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
+	logPath := config.logFile
+	if logPath == "" {
+		logPath = filepath.Join(config.dataDirectory, logFilename)
+	}
+	logFile, err := os.OpenFile(logPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("open desktop log: %w", err)
 	}
 	ctx = authn.ToContext(ctx, principal)
-	ctx = pkglog.ToContext(ctx, pkglog.Setup("info", "text", logFile))
-	ctx = telemetry.WithMetrics(ctx, telemetry.Nop())
+	logLevel, logFormat := config.logLevel, config.logFormat
+	if logLevel == "" {
+		logLevel = "info"
+	}
+	if logFormat == "" {
+		logFormat = "text"
+	}
+	ctx = pkglog.ToContext(ctx, pkglog.Setup(logLevel, logFormat, logFile))
+	metrics := telemetry.Nop()
+	var metricsServer *http.Server
+	var metricsShutdown func(context.Context) error
+	if config.enableMetrics {
+		prom, metricsErr := telemetry.NewPrometheus()
+		if metricsErr != nil {
+			_ = logFile.Close()
+			return nil, metricsErr
+		}
+		metrics = prom.Metrics
+		metricsShutdown = prom.Shutdown
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", prom.Handler)
+		metricsServer = &http.Server{Addr: runtimeconfig.DefaultMetricsAddr, Handler: mux}
+		go func() { _ = metricsServer.ListenAndServe() }()
+	}
+	ctx = telemetry.WithMetrics(ctx, metrics)
 
 	databasePath := config.databasePath
 	if databasePath == "" {
@@ -227,12 +262,19 @@ func openDesktopWithDependencies(ctx context.Context, fyneApp framework.App, con
 	}
 	s, err := store.Open(ctx, databasePath)
 	if err != nil {
+		if metricsServer != nil {
+			_ = metricsServer.Shutdown(context.Background())
+		}
+		if metricsShutdown != nil {
+			_ = metricsShutdown(context.Background())
+		}
 		_ = logFile.Close()
 		return nil, err
 	}
 	app := application.New(ctx, application.Config{Store: s})
 	d := &desktop{
 		gui: fyneApp, application: app, session: application.NewSession(ctx, app), logFile: logFile,
+		metricsServer: metricsServer, metricsShutdown: metricsShutdown,
 		views: make(map[string]gui.View), presenters: make(map[string]any),
 	}
 	if closer, ok := deps.executor.(interface{ Close() }); ok {
@@ -356,7 +398,14 @@ func (d *desktop) Close() error {
 		if d.logFile != nil {
 			logErr = d.logFile.Close()
 		}
-		d.closeErr = errors.Join(appErr, logErr)
+		var metricsErr error
+		if d.metricsServer != nil {
+			metricsErr = d.metricsServer.Shutdown(context.Background())
+		}
+		if d.metricsShutdown != nil {
+			metricsErr = errors.Join(metricsErr, d.metricsShutdown(context.Background()))
+		}
+		d.closeErr = errors.Join(appErr, logErr, metricsErr)
 	})
 	return d.closeErr
 }

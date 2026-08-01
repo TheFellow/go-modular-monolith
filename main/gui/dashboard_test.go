@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -26,7 +27,7 @@ type queuedDashboardLoader struct {
 	calls   int
 }
 
-func (l *queuedDashboardLoader) LoadDashboard() (application.Dashboard, error) {
+func (l *queuedDashboardLoader) LoadDashboard(context.Context) (application.Dashboard, error) {
 	index := l.calls
 	l.calls++
 	return l.results[index], l.errors[index]
@@ -137,7 +138,7 @@ func TestSessionDashboardLoaderMatchesRealApplicationCountsAndAudit(t *testing.T
 		MenuID: menu.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
 	})
 
-	data, err := (sessionDashboardLoader{session: f.App}).LoadDashboard()
+	data, err := (sessionDashboardLoader{session: f.App}).LoadDashboard(context.Background())
 	testutil.ErrorIf(t, err != nil, "%v", err)
 	want, err := f.App.Dashboard()
 	testutil.ErrorIf(t, err != nil, "%v", err)

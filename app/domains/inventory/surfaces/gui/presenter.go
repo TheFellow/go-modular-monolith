@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -119,8 +120,9 @@ func (p *Presenter) Load() {
 		req.LowStock = optional.Some(threshold)
 	}
 	p.mu.Unlock()
-	p.load.Load(func() (loadResult, error) {
-		page, err := p.app.Inventory.List(p.app.Context(), req)
+	p.load.LoadContext(p.app.Context(), func(ctx context.Context) (loadResult, error) {
+		op := p.app.ContextFrom(ctx)
+		page, err := p.app.Inventory.List(op, req)
 		if err != nil {
 			return loadResult{}, err
 		}
@@ -129,7 +131,7 @@ func (p *Presenter) Load() {
 			if item == nil {
 				return loadResult{}, apperrors.Internalf("inventory %d missing", i)
 			}
-			ingredient, err := p.app.Ingredients.Get(p.app.Context(), item.IngredientID)
+			ingredient, err := p.app.Ingredients.Get(op, item.IngredientID)
 			if err != nil {
 				return loadResult{}, fmt.Errorf("load ingredient %s: %w", item.IngredientID, err)
 			}
@@ -137,7 +139,7 @@ func (p *Presenter) Load() {
 				return loadResult{}, apperrors.Internalf("ingredient %s missing", item.IngredientID)
 			}
 			row := makeRow(*item, *ingredient, threshold)
-			principal, resource := p.app.Context().Principal(), item.CedarEntity()
+			principal, resource := op.Principal(), item.CedarEntity()
 			row.CanAdjust = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionAdjust, resource) == nil
 			row.CanSet = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionSet, resource) == nil
 			row.CanTag = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionTag, resource) == nil

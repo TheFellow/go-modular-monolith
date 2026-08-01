@@ -7,14 +7,16 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	"github.com/TheFellow/go-modular-monolith/pkg/runtimeconfig"
 )
 
-const defaultDatabasePath = "data/mixology.db"
+const defaultDatabasePath = runtimeconfig.DefaultDatabasePath
 
 func main() {
 	config, err := startupConfig(os.Args[1:], os.Stderr)
@@ -45,17 +47,31 @@ func withFyneDoMigration(metadata fyne.AppMetadata) fyne.AppMetadata {
 }
 
 func startupConfig(args []string, output io.Writer) (*desktopConfig, error) {
+	defaults := runtimeconfig.Default()
+	enableMetrics, err := environmentBool(runtimeconfig.EnvMetrics)
+	if err != nil {
+		return nil, err
+	}
 	dataDirectory, err := defaultDataDirectory()
 	if err != nil {
 		return nil, err
 	}
 	config := desktopConfig{
-		dataDirectory: dataDirectory,
-		databasePath:  defaultDatabasePath,
-		actor:         "owner",
+		dataDirectory: environmentOr(runtimeconfig.EnvDataDir, dataDirectory),
+		databasePath:  environmentOr(runtimeconfig.EnvDatabasePath, defaults.DatabasePath),
+		actor:         environmentOr(runtimeconfig.EnvActor, defaults.Actor),
+		logLevel:      environmentOr(runtimeconfig.EnvLogLevel, defaults.LogLevel),
+		logFormat:     environmentOr(runtimeconfig.EnvLogFormat, defaults.LogFormat),
+		enableMetrics: enableMetrics,
 	}
 	flags := flag.NewFlagSet("mixology-fyne", flag.ContinueOnError)
 	flags.SetOutput(output)
+	flags.StringVar(&config.dataDirectory, "data-dir", config.dataDirectory, "application data and default log directory (or "+runtimeconfig.EnvDataDir+")")
+	flags.StringVar(&config.databasePath, "db", config.databasePath, "database path (or "+runtimeconfig.EnvDatabasePath+")")
+	flags.StringVar(&config.logLevel, "log-level", config.logLevel, "log level (debug, info, warn, error)")
+	flags.StringVar(&config.logFormat, "log-format", config.logFormat, "log format (text, json)")
+	flags.StringVar(&config.logFile, "log-file", environmentOr(runtimeconfig.EnvLogFile, config.logFile), "diagnostic log path (or "+runtimeconfig.EnvLogFile+")")
+	flags.BoolVar(&config.enableMetrics, "metrics", config.enableMetrics, "enable Prometheus metrics on "+runtimeconfig.DefaultMetricsAddr+"/metrics")
 	flags.StringVar(&config.actor, "actor", config.actor, "actor to run as (owner|manager|sommelier|bartender|anonymous)")
 	flags.StringVar(&config.actor, "as", config.actor, "alias for -actor")
 	if err := flags.Parse(args); err != nil {
@@ -71,4 +87,23 @@ func startupConfig(args []string, output io.Writer) (*desktopConfig, error) {
 		return nil, err
 	}
 	return &config, nil
+}
+
+func environmentOr(name, fallback string) string {
+	if value, ok := os.LookupEnv(name); ok {
+		return value
+	}
+	return fallback
+}
+
+func environmentBool(name string) (bool, error) {
+	value, ok := os.LookupEnv(name)
+	if !ok || value == "" {
+		return false, nil
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("parse %s: %w", name, err)
+	}
+	return parsed, nil
 }

@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -119,12 +120,13 @@ func (p *Presenter) SetFilter(f Filter) bool {
 func (p *Presenter) Refresh() {
 	f := p.state.Filter
 	cursor := p.state.Cursor
-	p.load.Load(func() (drinkCatalog, error) {
-		page, err := p.app.Drinks.List(p.app.Context(), domain.ListRequest{Name: f.Name, Category: models.DrinkCategory(strings.TrimSpace(f.Category)), Glass: models.GlassType(strings.TrimSpace(f.Glass)), Filter: f.Expression, Cursor: cursor, Limit: f.Limit})
+	p.load.LoadContext(p.app.Context(), func(ctx context.Context) (drinkCatalog, error) {
+		op := p.app.ContextFrom(ctx)
+		page, err := p.app.Drinks.List(op, domain.ListRequest{Name: f.Name, Category: models.DrinkCategory(strings.TrimSpace(f.Category)), Glass: models.GlassType(strings.TrimSpace(f.Glass)), Filter: f.Expression, Cursor: cursor, Limit: f.Limit})
 		if err != nil {
 			return drinkCatalog{}, err
 		}
-		ingredients, err := p.listIngredients()
+		ingredients, err := p.listIngredients(op)
 		return drinkCatalog{drinks: page.Items, ingredients: ingredients, next: page.Next}, err
 	}, func(r ui.LoadState[drinkCatalog]) {
 		p.state.Loading = r.Status == ui.Loading
@@ -269,8 +271,8 @@ func (p *Presenter) SetForm(f Form) {
 	p.publish()
 }
 func (p *Presenter) loadIngredients() {
-	p.ingredients.Load(func() ([]IngredientOption, error) {
-		return p.listIngredients()
+	p.ingredients.LoadContext(p.app.Context(), func(ctx context.Context) ([]IngredientOption, error) {
+		return p.listIngredients(p.app.ContextFrom(ctx))
 	}, func(r ui.LoadState[[]IngredientOption]) {
 		p.state.Loading = r.Status == ui.Loading
 		if r.Status == ui.Failed {
@@ -284,9 +286,9 @@ func (p *Presenter) loadIngredients() {
 		p.publish()
 	})
 }
-func (p *Presenter) listIngredients() ([]IngredientOption, error) {
+func (p *Presenter) listIngredients(ctx *middleware.Context) ([]IngredientOption, error) {
 	items, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*ingredientsmodels.Ingredient], error) {
-		return p.app.Ingredients.List(p.app.Context(), ingredientsdomain.ListRequest{Cursor: cursor})
+		return p.app.Ingredients.List(ctx, ingredientsdomain.ListRequest{Cursor: cursor})
 	})
 	if err != nil {
 		return nil, err
@@ -342,9 +344,10 @@ func (p *Presenter) Delete() {
 		return
 	}
 	p.confirmingDelete = true
-	p.deleteCheck.Load(func() (int, error) {
+	p.deleteCheck.LoadContext(p.app.Context(), func(ctx context.Context) (int, error) {
+		op := p.app.ContextFrom(ctx)
 		items, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*menusmodels.Menu], error) {
-			return p.app.Menus.List(p.app.Context(), menusdomain.ListRequest{Cursor: cursor})
+			return p.app.Menus.List(op, menusdomain.ListRequest{Cursor: cursor})
 		})
 		return countMenusWithDrink(items, target.ID), err
 	}, func(r ui.LoadState[int]) {

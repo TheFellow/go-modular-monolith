@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -129,7 +131,7 @@ func (p *Presenter) Start(operation Operation) {
 	case ShowExact, ShowKey:
 		p.state.Mode = EnteringValue
 	case Summary:
-		p.runQuery(func() (any, error) { return p.app.Tags.Summary(p.app.Context()) })
+		p.runQuery(func(ctx *middleware.Context) (any, error) { return p.app.Tags.Summary(ctx) })
 	}
 	p.publish()
 }
@@ -140,7 +142,7 @@ func (p *Presenter) SelectType(kind cedar.EntityType) {
 	}
 	p.state.EntityType, p.state.Mode, p.state.Err = kind, Loading, nil
 	p.publish()
-	p.load.Load(func() (any, error) { return p.loadEntities(kind) }, func(r ui.LoadState[any]) {
+	p.load.LoadContext(p.app.Context(), func(ctx context.Context) (any, error) { return p.loadEntities(p.app.ContextFrom(ctx), kind) }, func(r ui.LoadState[any]) {
 		if r.Status == ui.Loading {
 			return
 		}
@@ -203,7 +205,7 @@ func (p *Presenter) SelectSummary(index int) {
 		return
 	}
 	p.state.Operation, p.state.Value = ShowExact, value.String()
-	p.runQuery(func() (any, error) { return p.app.Tags.Show(p.app.Context(), value, true) })
+	p.runQuery(func(ctx *middleware.Context) (any, error) { return p.app.Tags.Show(ctx, value, true) })
 }
 
 // ResetList is used by main navigation and the breadcrumb. Unlike Back it
@@ -214,7 +216,7 @@ func (p *Presenter) ResetList() {
 	}
 	p.load.Invalidate()
 	p.state = State{Operation: Summary}
-	p.runQuery(func() (any, error) { return p.app.Tags.Summary(p.app.Context()) })
+	p.runQuery(func(ctx *middleware.Context) (any, error) { return p.app.Tags.Summary(ctx) })
 }
 
 func (p *Presenter) SelectEntity(index int) {
@@ -225,7 +227,7 @@ func (p *Presenter) SelectEntity(index int) {
 	p.state.Target, p.state.TargetName, p.state.Value, p.state.Err = selected.UID, selected.Name, "", nil
 	if p.state.Operation == Inspect {
 		target := selected.UID
-		p.runQuery(func() (any, error) { return p.app.Tags.List(p.app.Context(), target) })
+		p.runQuery(func(ctx *middleware.Context) (any, error) { return p.app.Tags.List(ctx, target) })
 		return
 	}
 	p.state.Mode = EnteringValue
@@ -250,7 +252,7 @@ func (p *Presenter) Submit() bool {
 	switch p.state.Operation {
 	case ShowExact, ShowKey:
 		exact := p.state.Operation == ShowExact
-		p.runQuery(func() (any, error) { return p.app.Tags.Show(p.app.Context(), value, exact) })
+		p.runQuery(func(ctx *middleware.Context) (any, error) { return p.app.Tags.Show(ctx, value, exact) })
 		return true
 	case Add, Remove:
 		target, targetName, operation := p.state.Target, p.state.TargetName, p.state.Operation
@@ -318,11 +320,11 @@ func (p *Presenter) Back() bool {
 	return true
 }
 
-func (p *Presenter) runQuery(work func() (any, error)) {
+func (p *Presenter) runQuery(work func(*middleware.Context) (any, error)) {
 	operation, target, targetName := p.state.Operation, p.state.Target, p.state.TargetName
 	p.state.Mode, p.state.Err = Loading, nil
 	p.publish()
-	p.load.Load(work, func(r ui.LoadState[any]) {
+	p.load.LoadContext(p.app.Context(), func(ctx context.Context) (any, error) { return work(p.app.ContextFrom(ctx)) }, func(r ui.LoadState[any]) {
 		if r.Status == ui.Loading {
 			return
 		}
@@ -425,8 +427,7 @@ func (p *Presenter) sortSummaries() {
 	})
 }
 
-func (p *Presenter) loadEntities(kind cedar.EntityType) ([]EntityOption, error) {
-	ctx := p.app.Context()
+func (p *Presenter) loadEntities(ctx *middleware.Context, kind cedar.EntityType) ([]EntityOption, error) {
 	switch kind {
 	case entity.TypeDrink:
 		items, err := paging.Collect(func(c paging.Cursor) (paging.Page[*drinksmodels.Drink], error) {
@@ -453,7 +454,7 @@ func (p *Presenter) loadEntities(kind cedar.EntityType) ([]EntityOption, error) 
 		}
 		return out, nil
 	case entity.TypeInventory:
-		names, err := p.ingredientNames()
+		names, err := p.ingredientNames(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -501,9 +502,9 @@ func (p *Presenter) loadEntities(kind cedar.EntityType) ([]EntityOption, error) 
 	}
 }
 
-func (p *Presenter) ingredientNames() (map[entity.IngredientID]string, error) {
+func (p *Presenter) ingredientNames(ctx *middleware.Context) (map[entity.IngredientID]string, error) {
 	items, err := paging.Collect(func(c paging.Cursor) (paging.Page[*ingredientsmodels.Ingredient], error) {
-		return p.app.Ingredients.List(p.app.Context(), ingredients.ListRequest{Cursor: c})
+		return p.app.Ingredients.List(ctx, ingredients.ListRequest{Cursor: c})
 	})
 	if err != nil {
 		return nil, err

@@ -2,6 +2,7 @@
 package gui_test
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -51,6 +52,19 @@ func TestManagedExecutorCloseDrainsAcceptedWorkAndRejectsLaterWork(t *testing.T)
 	close(release)
 	<-closed
 	<-finished
+}
+
+func TestManagedExecutorCloseCancelsContextWork(t *testing.T) {
+	executor := gui.NewManagedExecutor()
+	started, cancelled := make(chan struct{}), make(chan struct{})
+	testutil.ErrorIf(t, !executor.ExecuteContext(func(ctx context.Context) {
+		close(started)
+		<-ctx.Done()
+		close(cancelled)
+	}), "%v", "open executor rejected context work")
+	<-started
+	executor.Close()
+	<-cancelled
 }
 
 func TestManagedExecutorConcurrentExecuteAndCloseDrainsEveryAcceptedOperation(t *testing.T) {

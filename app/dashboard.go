@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -107,4 +108,11 @@ func (s *Session) Dashboard() (Dashboard, error) {
 		return Dashboard{}, errors.New("dashboard requires an application session")
 	}
 	return s.App.Dashboard(s.Context())
+}
+
+func (s *Session) DashboardContext(ctx context.Context) (Dashboard, error) {
+	if s == nil || s.App == nil {
+		return Dashboard{}, errors.New("dashboard requires an application session")
+	}
+	return s.App.Dashboard(s.ContextFrom(ctx))
 }

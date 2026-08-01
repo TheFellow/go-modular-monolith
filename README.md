@@ -76,10 +76,15 @@ go run ./main/tui
 go run ./main/gui
 ```
 
-`MIXOLOGY_DB=path/to/other.db go run ./main/seed` seeds a different database. The interactive
-entry points currently use `data/mixology.db` without a database-path flag or environment
-override. Because the embedded database permits only one process to own it at a time, close one
+`MIXOLOGY_DB=path/to/other.db go run ./main/seed` seeds a different database. Every interactive
+entry point also accepts `--db path/to/other.db` or the `MIXOLOGY_DB`
+environment variable. Because the embedded database permits only one process to own it at a time, close one
 Mixology surface before launching another against the shared file.
+
+The CLI, TUI, and GUI also share `--actor`, `--log-level`, `--log-format`, `--log-file`, and
+`--metrics` settings with the corresponding `MIXOLOGY_*` environment variables. The GUI adds
+`--data-dir` for its platform configuration directory. Run an entry point with `--help` for its
+complete runtime options.
 
 ### Filtering Lists
 

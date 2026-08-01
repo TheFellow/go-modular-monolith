@@ -12,6 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/runtimeconfig"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	"github.com/urfave/cli/v3"
@@ -31,11 +32,12 @@ type CLI struct {
 }
 
 func NewCLI() (*CLI, error) {
+	defaults := runtimeconfig.Default()
 	return &CLI{
-		dbPath:    "data/mixology.db",
-		actor:     "owner",
-		logLevel:  "info",
-		logFormat: "text",
+		dbPath:    defaults.DatabasePath,
+		actor:     defaults.Actor,
+		logLevel:  defaults.LogLevel,
+		logFormat: defaults.LogFormat,
 	}, nil
 }
 
@@ -55,24 +57,31 @@ func (c *CLI) Command() *cli.Command {
 		Usage: "Mixology as a Service",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
+				Name:        "db",
+				Usage:       "Database path",
+				Value:       c.dbPath,
+				Destination: &c.dbPath,
+				Sources:     cli.EnvVars(runtimeconfig.EnvDatabasePath),
+			},
+			&cli.StringFlag{
 				Name:        "log-level",
 				Value:       c.logLevel,
 				Usage:       "Log level (debug, info, warn, error)",
 				Destination: &c.logLevel,
-				Sources:     cli.EnvVars("MIXOLOGY_LOG_LEVEL"),
+				Sources:     cli.EnvVars(runtimeconfig.EnvLogLevel),
 			},
 			&cli.StringFlag{
 				Name:        "log-format",
 				Value:       c.logFormat,
 				Usage:       "Log format (text, json)",
 				Destination: &c.logFormat,
-				Sources:     cli.EnvVars("MIXOLOGY_LOG_FORMAT"),
+				Sources:     cli.EnvVars(runtimeconfig.EnvLogFormat),
 			},
 			&cli.StringFlag{
 				Name:        "log-file",
 				Usage:       "Write logs to file instead of stderr",
 				Destination: &c.logFile,
-				Sources:     cli.EnvVars("MIXOLOGY_LOG_FILE"),
+				Sources:     cli.EnvVars(runtimeconfig.EnvLogFile),
 			},
 			&cli.StringFlag{
 				Name:        "actor",
@@ -80,12 +89,13 @@ func (c *CLI) Command() *cli.Command {
 				Usage:       "Actor to run as (owner|manager|sommelier|bartender|anonymous)",
 				Value:       c.actor,
 				Destination: &c.actor,
+				Sources:     cli.EnvVars(runtimeconfig.EnvActor),
 			},
 			&cli.BoolFlag{
 				Name:        "metrics",
 				Usage:       "Enable Prometheus metrics endpoint on :9090/metrics",
 				Destination: &c.enableMetrics,
-				Sources:     cli.EnvVars("MIXOLOGY_METRICS"),
+				Sources:     cli.EnvVars(runtimeconfig.EnvMetrics),
 			},
 		},
 		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
@@ -119,7 +129,7 @@ func (c *CLI) Command() *cli.Command {
 
 				mux := http.NewServeMux()
 				mux.Handle("/metrics", prom.Handler)
-				c.metricsServer = &http.Server{Addr: ":9090", Handler: mux}
+				c.metricsServer = &http.Server{Addr: runtimeconfig.DefaultMetricsAddr, Handler: mux}
 				go func() { _ = c.metricsServer.ListenAndServe() }()
 			}
 

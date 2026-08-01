@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"math"
@@ -130,8 +131,9 @@ func (p *Presenter) SetFilter(filter Filter) bool {
 func (p *Presenter) Refresh() {
 	f := p.state.Filter
 	cursor := p.state.Cursor
-	p.load.Load(func() (catalog, error) {
-		page, err := p.app.Menus.List(p.app.Context(), menus.ListRequest{Status: f.Status, Filter: f.Expression, Cursor: cursor, Limit: f.Limit})
+	p.load.LoadContext(p.app.Context(), func(ctx context.Context) (catalog, error) {
+		op := p.app.ContextFrom(ctx)
+		page, err := p.app.Menus.List(op, menus.ListRequest{Status: f.Status, Filter: f.Expression, Cursor: cursor, Limit: f.Limit})
 		if err != nil {
 			return catalog{}, err
 		}
@@ -146,7 +148,7 @@ func (p *Presenter) Refresh() {
 				}
 				name, ok := item.DisplayName.Unwrap()
 				if strings.TrimSpace(name) == "" || !ok {
-					drink, getErr := p.app.Drinks.Get(p.app.Context(), item.DrinkID)
+					drink, getErr := p.app.Drinks.Get(op, item.DrinkID)
 					if getErr != nil {
 						return catalog{}, getErr
 					}
@@ -306,8 +308,8 @@ func (p *Presenter) Analyze() bool {
 		return false
 	}
 	menu := *cloneMenu(p.state.Selected)
-	p.analysis.Load(func() (queries.MenuAnalytics, error) {
-		return p.app.Menus.Analyze(p.app.Context(), menu, target)
+	p.analysis.LoadContext(p.app.Context(), func(ctx context.Context) (queries.MenuAnalytics, error) {
+		return p.app.Menus.Analyze(p.app.ContextFrom(ctx), menu, target)
 	}, func(r ui.LoadState[queries.MenuAnalytics]) {
 		p.state.Loading = r.Status == ui.Loading
 		if r.Status == ui.Failed {
@@ -328,14 +330,15 @@ func (p *Presenter) SearchDrinks(query string) {
 	}
 	p.state.Form.DrinkQuery = query
 	menuID := p.state.Selected.ID
-	p.choices.Load(func() ([]DrinkOption, error) {
+	p.choices.LoadContext(p.app.Context(), func(ctx context.Context) ([]DrinkOption, error) {
+		op := p.app.ContextFrom(ctx)
 		all, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*drinkmodels.Drink], error) {
-			return p.app.Drinks.List(p.app.Context(), drinks.ListRequest{Cursor: cursor})
+			return p.app.Drinks.List(op, drinks.ListRequest{Cursor: cursor})
 		})
 		if err != nil {
 			return nil, err
 		}
-		menu, err := p.app.Menus.Get(p.app.Context(), menuID)
+		menu, err := p.app.Menus.Get(op, menuID)
 		if err != nil {
 			return nil, err
 		}

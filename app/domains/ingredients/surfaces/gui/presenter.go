@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"slices"
@@ -102,8 +103,8 @@ func (p *Presenter) Load() {
 	p.mu.Lock()
 	request := ingredients.ListRequest{Category: p.state.Category, Filter: p.state.Expression, Cursor: p.state.Cursor, Limit: p.state.Limit}
 	p.mu.Unlock()
-	p.loads.Load(func() (loadResult, error) {
-		page, err := p.app.Ingredients.List(p.app.Context(), request)
+	p.loads.LoadContext(p.app.Context(), func(ctx context.Context) (loadResult, error) {
+		page, err := p.app.Ingredients.List(p.app.ContextFrom(ctx), request)
 		if err != nil {
 			return loadResult{}, err
 		}

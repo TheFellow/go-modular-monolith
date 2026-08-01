@@ -419,8 +419,8 @@ type blockingDashboardLoader struct {
 	once     sync.Once
 }
 
-func (l *blockingDashboardLoader) LoadDashboard() (application.Dashboard, error) {
-	data, err := l.delegate.LoadDashboard()
+func (l *blockingDashboardLoader) LoadDashboard(ctx context.Context) (application.Dashboard, error) {
+	data, err := l.delegate.LoadDashboard(ctx)
 	l.once.Do(func() { close(l.started) })
 	<-l.release
 	return data, err
