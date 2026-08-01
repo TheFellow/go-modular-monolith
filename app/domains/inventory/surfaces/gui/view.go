@@ -18,8 +18,6 @@ const (
 	ControlFilter       = "inventory-filter"
 	ControlThreshold    = "inventory-low-stock-threshold"
 	ControlApplyFilter  = "inventory-apply-filter"
-	ControlPrevious     = "inventory-previous"
-	ControlNext         = "inventory-next"
 	ControlRefresh      = "inventory-refresh"
 	ControlAdjust       = "inventory-adjust"
 	ControlSet          = "inventory-set"
@@ -95,7 +93,7 @@ func NewView(p *Presenter) *View {
 			return
 		}
 		ui.ShowCellText(cell, values[id.Col], false)
-	}, p.NextPage)
+	}, func() { framework.Do(p.NextPage) })
 	v.list.OnSelected = func(id widget.TableCellID) {
 		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()

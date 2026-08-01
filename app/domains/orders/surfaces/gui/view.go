@@ -24,8 +24,6 @@ const (
 	ControlComplete         = "orders-complete"
 	ControlCancelOrder      = "orders-cancel-order"
 	ControlTags             = "orders-tags"
-	ControlPrevious         = "orders-previous"
-	ControlNext             = "orders-next"
 	ControlSelectPrefix     = "orders-select-"
 	ControlBack             = "orders-detail-back"
 	ControlBreadcrumb       = "orders-detail-breadcrumb"
@@ -162,7 +160,7 @@ func (v *View) browser(s State) framework.CanvasObject {
 				return
 			}
 			ui.ShowCellText(cell, values[id.Col], false)
-		}, v.presenter.NextPage)
+		}, func() { framework.Do(v.presenter.NextPage) })
 		v.list.OnSelected = func(id widget.TableCellID) {
 			if id.Row >= 0 && id.Col < len(columns)-1 {
 				v.list.UnselectAll()

@@ -22,8 +22,6 @@ const (
 	ControlEdit         = "ingredients-edit"
 	ControlDelete       = "ingredients-delete"
 	ControlTags         = "ingredients-tags"
-	ControlPrevious     = "ingredients-previous"
-	ControlNext         = "ingredients-next"
 	ControlSelectPrefix = "ingredient-select-"
 	ControlFormTags     = "ingredient-form-tags"
 	ControlName         = "ingredient-form-name"
@@ -89,7 +87,7 @@ func NewView(p *Presenter) *View {
 			return
 		}
 		ui.ShowCellText(cell, values[id.Col], false)
-	}, p.NextPage)
+	}, func() { framework.Do(p.NextPage) })
 	v.list.OnSelected = func(id widget.TableCellID) {
 		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()

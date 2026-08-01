@@ -35,8 +35,6 @@ const (
 	ControlApplyFilter       = "menus.filter.apply"
 	ControlFilterStatus      = "menus.filter.status"
 	ControlFilterExpression  = "menus.filter.expression"
-	ControlPrevious          = "menus.previous"
-	ControlNext              = "menus.next"
 	ControlName              = "menus.form.name"
 	ControlDescription       = "menus.form.description"
 	ControlTagValues         = "menus.form.tags"
@@ -130,7 +128,7 @@ func NewView(p *Presenter) *View {
 			return
 		}
 		ui.ShowCellText(cell, values[id.Col], false)
-	}, p.NextPage)
+	}, func() { framework.Do(p.NextPage) })
 	v.list.OnSelected = func(id widget.TableCellID) {
 		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()

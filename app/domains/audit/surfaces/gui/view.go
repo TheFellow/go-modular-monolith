@@ -19,9 +19,6 @@ const (
 	ControlAction      = "audit.filter.action"
 	ControlPrincipal   = "audit.filter.principal"
 	ControlExpression  = "audit.filter.expression"
-	ControlLimit       = "audit.filter.limit"
-	ControlPrevious    = "audit.page.previous"
-	ControlNext        = "audit.page.next"
 	ControlBack        = "audit.detail.back"
 	ControlBreadcrumb  = "audit.detail.breadcrumb"
 )
@@ -67,7 +64,7 @@ func NewView(p *Presenter) *View {
 			return
 		}
 		ui.ShowCellText(cell, values[id.Col], false)
-	}, p.NextPage)
+	}, func() { framework.Do(p.NextPage) })
 	v.list.OnSelected = func(id widget.TableCellID) {
 		if id.Row >= 0 && id.Col < len(columns)-1 {
 			v.list.UnselectAll()
@@ -153,7 +150,7 @@ func (v *View) render(s State) {
 	} else if s.Err != nil {
 		v.status.SetText("Error: " + s.Err.Error())
 	} else {
-		v.status.SetText(fmt.Sprintf("Page %d · %d audit entries", len(s.History)+1, len(s.Rows)))
+		v.status.SetText(fmt.Sprintf("%d audit entries", len(s.Rows)))
 	}
 	for _, control := range []interface {
 		Enable()
