@@ -21,7 +21,7 @@ func TestCreateIngredientPersistsAtomicCompleteTags(t *testing.T) {
 	msg := vm.submit()()
 	created, ok := msg.(IngredientCreatedMsg)
 	if !ok {
-		t.Fatalf("create = %#v", msg)
+		testutil.ErrorIf(t, true, "create = %#v", msg)
 	}
 	testutil.Equals(t, created.Ingredient.Tags.Canonical().String(), "channel=tui,featured")
 }

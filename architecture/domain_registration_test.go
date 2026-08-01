@@ -1,6 +1,7 @@
 package architecture_test
 
 import (
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -20,19 +21,19 @@ func TestEveryDomainIsComposed(t *testing.T) {
 	root := repositoryRoot(t)
 	domainEntries, err := os.ReadDir(filepath.Join(root, "app", "domains"))
 	if err != nil {
-		t.Fatalf("read domain directories: %v", err)
+		testutil.ErrorIf(t, true, "read domain directories: %v", err)
 	}
 
 	appFile, err := parser.ParseFile(token.NewFileSet(), filepath.Join(root, "app", "app.go"), nil, 0)
 	if err != nil {
-		t.Fatalf("parse application composition: %v", err)
+		testutil.ErrorIf(t, true, "parse application composition: %v", err)
 	}
 
 	domainAliases := make(map[string]string)
 	for _, spec := range appFile.Imports {
 		path, err := strconv.Unquote(spec.Path.Value)
 		if err != nil {
-			t.Fatalf("parse import path %s: %v", spec.Path.Value, err)
+			testutil.ErrorIf(t, true, "parse import path %s: %v", spec.Path.Value, err)
 		}
 		const domainPrefix = "github.com/TheFellow/go-modular-monolith/app/domains/"
 		domain, ok := cutExactChild(path, domainPrefix)
@@ -97,7 +98,7 @@ func appModuleFields(t *testing.T, file *ast.File) map[string]string {
 			}
 			structure, ok := typeSpec.Type.(*ast.StructType)
 			if !ok {
-				t.Fatal("App is not a struct")
+				testutil.ErrorIf(t, true, "%v", "App is not a struct")
 			}
 			for _, field := range structure.Fields.List {
 				pointer, ok := field.Type.(*ast.StarExpr)
@@ -116,7 +117,7 @@ func appModuleFields(t *testing.T, file *ast.File) map[string]string {
 			return fields
 		}
 	}
-	t.Fatal("App struct not found")
+	testutil.ErrorIf(t, true, "%v", "App struct not found")
 	return nil
 }
 
@@ -148,7 +149,7 @@ func initializedAppFields(t *testing.T, file *ast.File) map[string]bool {
 		return true
 	})
 	if len(fields) == 0 {
-		t.Fatal("initialized App literal not found")
+		testutil.ErrorIf(t, true, "%v", "initialized App literal not found")
 	}
 	return fields
 }

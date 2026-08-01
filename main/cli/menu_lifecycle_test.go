@@ -44,7 +44,7 @@ func TestMenusCLIUpdateDeleteLifecycleAndCrossInvocationVisibility(t *testing.T)
 	testutil.StringContains(t, deleted.Stdout, `"status": "archived"`)
 	missing := cli.Run("menus", "show", "--id", menu.ID)
 	if missing.Err == nil {
-		t.Fatal("deleted menu remained visible")
+		testutil.ErrorIf(t, true, "%v", "deleted menu remained visible")
 	}
 }
 
@@ -70,7 +70,7 @@ func TestMenusCLIAnalysisRejectsNonFiniteAndOutOfRangeMargins(t *testing.T) {
 	for _, margin := range []string{"NaN", "+Inf", "0", "1"} {
 		result := cli.Run("menus", "list", "--costs", "--target-margin", margin)
 		if result.Err == nil {
-			t.Fatalf("target margin %q was accepted", margin)
+			testutil.ErrorIf(t, true, "target margin %q was accepted", margin)
 		}
 		testutil.StringContains(t, result.Err.Error(), "target margin must be a number between 0 and 1")
 	}
@@ -85,7 +85,7 @@ func TestMenusCLIUpdateAndDeleteEnforceValidationAuthorizationStateAndAtomicTags
 
 	invalid := cli.Run("menus", "update", "--id", menu.ID, "--name", "Must Not Persist", "--tags", "region=east,region=west")
 	if invalid.Err == nil {
-		t.Fatal("invalid duplicate tags were accepted")
+		testutil.ErrorIf(t, true, "%v", "invalid duplicate tags were accepted")
 	}
 	shown := cli.Run("menus", "show", "--id", menu.ID, "--json")
 	testutil.Ok(t, shown.Err)
@@ -94,11 +94,11 @@ func TestMenusCLIUpdateAndDeleteEnforceValidationAuthorizationStateAndAtomicTags
 
 	denied := cli.As("bartender").Run("menus", "update", "--id", menu.ID, "--name", "Denied")
 	if denied.Err == nil {
-		t.Fatal("unauthorized update was accepted")
+		testutil.ErrorIf(t, true, "%v", "unauthorized update was accepted")
 	}
 	deniedDelete := cli.As("bartender").Run("menus", "delete", "--id", menu.ID)
 	if deniedDelete.Err == nil {
-		t.Fatal("unauthorized delete was accepted")
+		testutil.ErrorIf(t, true, "%v", "unauthorized delete was accepted")
 	}
 
 	testutil.Ok(t, cli.Run("menus", "publish", "--id", menu.ID).Err)
@@ -107,7 +107,7 @@ func TestMenusCLIUpdateAndDeleteEnforceValidationAuthorizationStateAndAtomicTags
 		cli.Run("menus", "delete", "--id", menu.ID),
 	} {
 		if result.Err == nil {
-			t.Fatal("published menu mutation was accepted")
+			testutil.ErrorIf(t, true, "%v", "published menu mutation was accepted")
 		}
 	}
 	shown = cli.Run("menus", "show", "--id", menu.ID, "--json")
@@ -145,5 +145,5 @@ func requireAuditAction(t *testing.T, output, action string) {
 			return
 		}
 	}
-	t.Fatalf("audit action %q not found in %s", action, output)
+	testutil.ErrorIf(t, true, "audit action %q not found in %s", action, output)
 }

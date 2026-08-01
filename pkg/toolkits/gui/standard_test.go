@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -27,7 +28,7 @@ func TestStandardListPageComposesDeclaredRegions(t *testing.T) {
 	window.SetContent(page)
 	for _, text := range []string{"Drinks", "Browse recipes", "FILTERS", "New", "Delete", "LIST", "DETAIL", "STATUS", "PAGING"} {
 		if !containsText(page, text) {
-			t.Fatalf("standard page does not contain %q", text)
+			testutil.ErrorIf(t, true, "standard page does not contain %q", text)
 		}
 	}
 }
@@ -37,7 +38,7 @@ func TestEmptyCollectionIsIntentionalAndUsesExplicitIcon(t *testing.T) { //nolin
 	t.Cleanup(app.Quit)
 	empty := gui.EmptyCollection(gui.IconEmpty, "No ingredients found", "Adjust the filter.")
 	if !containsText(empty, "No ingredients found") || !containsText(empty, "Adjust the filter.") {
-		t.Fatal("empty collection omitted its guidance")
+		testutil.ErrorIf(t, true, "%v", "empty collection omitted its guidance")
 	}
 }
 
@@ -49,7 +50,7 @@ func TestDetailFormGivesEveryFieldTheSameWidth(t *testing.T) { //nolint:parallel
 	form := gui.DetailForm(first, second)
 	form.Resize(fyne.NewSize(640, 240))
 	if first.Size().Width != second.Size().Width || first.Size().Width != 640 {
-		t.Fatalf("field widths = %v and %v, want 640", first.Size().Width, second.Size().Width)
+		testutil.ErrorIf(t, true, "field widths = %v and %v, want 640", first.Size().Width, second.Size().Width)
 	}
 }
 

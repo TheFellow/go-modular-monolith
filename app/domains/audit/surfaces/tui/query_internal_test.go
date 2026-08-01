@@ -57,7 +57,7 @@ func TestAuditProgramSupportsAllEntityAndActorScopes(t *testing.T) {
 			driver.Press("ctrl+s")
 			driver.RequireText(string(tc.scope), ingredientsauthz.ActionCreate.String())
 			if program.vm.filter != nil {
-				t.Fatal("valid query panel remained open")
+				testutil.ErrorIf(t, true, "%v", "valid query panel remained open")
 			}
 		})
 	}
@@ -79,7 +79,7 @@ func TestAuditQueryDatesAreInclusiveAndInvertedRangeIsEmpty(t *testing.T) {
 	inclusive, err := fix.Audit.List(fix.OwnerContext(), req)
 	testutil.Ok(t, err)
 	if len(inclusive.Items) == 0 {
-		t.Fatal("inclusive exact timestamp excluded entry")
+		testutil.ErrorIf(t, true, "%v", "inclusive exact timestamp excluded entry")
 	}
 	q.from = entry.StartedAt.Add(time.Hour).Format(time.RFC3339Nano)
 	q.to = entry.StartedAt.Add(-time.Hour).Format(time.RFC3339Nano)
@@ -99,7 +99,7 @@ func TestAuditProgramInvalidQueryRetainsLoadedDataAndInputOwnership(t *testing.T
 	before := len(program.vm.shell.Items())
 	driver.Press("f")
 	if got := program.vm.Interaction(); !got.CapturesText || !got.HandlesBack {
-		t.Fatalf("filter does not own text/back: %+v", got)
+		testutil.ErrorIf(t, true, "filter does not own text/back: %+v", got)
 	}
 	testutil.Ok(t, program.vm.filter.scope.SetValue(scopeEntity))
 	testutil.Ok(t, program.vm.filter.entity.SetValue("bad uid"))
@@ -108,7 +108,7 @@ func TestAuditProgramInvalidQueryRetainsLoadedDataAndInputOwnership(t *testing.T
 	testutil.Equals(t, len(program.vm.shell.Items()), before)
 	driver.Press("esc")
 	if program.vm.filter != nil {
-		t.Fatal("escape did not close filter")
+		testutil.ErrorIf(t, true, "%v", "escape did not close filter")
 	}
 	driver.RequireText(ingredientsauthz.ActionCreate.String())
 }
@@ -126,7 +126,7 @@ func TestAuditProgramPagesForwardBackAndIgnoresStaleLoad(t *testing.T) {
 	driver.Press("]")
 	driver.RequireText("page 2")
 	if len(program.vm.shell.Items()) == 0 {
-		t.Fatal("second cursor page empty")
+		testutil.ErrorIf(t, true, "%v", "second cursor page empty")
 	}
 	driver.Press("[")
 	driver.RequireText("page 1")

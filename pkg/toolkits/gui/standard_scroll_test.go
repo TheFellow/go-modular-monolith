@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestFormScrollRelayScrollsPageAboveEntry(t *testing.T) { //nolint:paralleltest // Fyne app and driver state is process-global.
@@ -25,10 +26,10 @@ func TestFormScrollRelayScrollsPageAboveEntry(t *testing.T) { //nolint:parallelt
 	relay.Scrolled(&framework.ScrollEvent{Scrolled: framework.NewDelta(0, -80)})
 
 	if scroll.Offset.Y == 0 {
-		t.Fatal("wheel event over a form control did not scroll the page")
+		testutil.ErrorIf(t, true, "%v", "wheel event over a form control did not scroll the page")
 	}
 	if entry.Text != "selectable text" || entry.Disabled() {
-		t.Fatal("scroll relay changed the editable/selectable entry")
+		testutil.ErrorIf(t, true, "%v", "scroll relay changed the editable/selectable entry")
 	}
 }
 
@@ -47,11 +48,11 @@ func TestFormScrollRelayScrollsBackAcrossReadOnlyEntry(t *testing.T) { //nolint:
 
 	relay.Scrolled(&framework.ScrollEvent{Scrolled: framework.NewDelta(0, -200)})
 	if scroll.Offset.Y == 0 {
-		t.Fatal("page did not scroll down")
+		testutil.ErrorIf(t, true, "%v", "page did not scroll down")
 	}
 	relay.Scrolled(&framework.ScrollEvent{Scrolled: framework.NewDelta(0, 200)})
 	if scroll.Offset.Y != 0 {
-		t.Fatalf("page offset after scrolling up = %v, want 0", scroll.Offset.Y)
+		testutil.ErrorIf(t, true, "page offset after scrolling up = %v, want 0", scroll.Offset.Y)
 	}
 }
 

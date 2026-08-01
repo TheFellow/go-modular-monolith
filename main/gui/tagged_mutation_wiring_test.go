@@ -72,7 +72,7 @@ func TestFyneMutationWorkflowsUseAtomicTagComposition(t *testing.T) {
 		expected := slices.Clone(workflow.callbacks)
 		slices.Sort(expected)
 		if calls != len(expected) || !slices.Equal(callbacks, expected) {
-			t.Fatalf("%s.%s wires %d atomic tagged mutations around %v, want %v", workflow.domain, workflow.method, calls, callbacks, expected)
+			testutil.ErrorIf(t, true, "%s.%s wires %d atomic tagged mutations around %v, want %v", workflow.domain, workflow.method, calls, callbacks, expected)
 		}
 		total += calls
 	}

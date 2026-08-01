@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	testutil "github.com/TheFellow/go-modular-monolith/pkg/testutil/assert"
 	"github.com/mjl-/bstore"
 )
 
@@ -19,30 +20,30 @@ func TestCommitPersistsAndUnregistersCallerTransaction(t *testing.T) {
 	ctx := context.Background()
 	s, err := Open(ctx, filepath.Join(t.TempDir(), "store.db"))
 	if err != nil {
-		t.Fatalf("open store: %v", err)
+		testutil.ErrorIf(t, true, "open store: %v", err)
 	}
 	t.Cleanup(func() {
 		if err := s.Close(); err != nil {
-			t.Fatalf("close store: %v", err)
+			testutil.ErrorIf(t, true, "close store: %v", err)
 		}
 	})
 	s.Register(ctx, transactionLifecycleRecord{})
 	tx, err := s.Begin(ctx, true)
 	if err != nil {
-		t.Fatalf("begin transaction: %v", err)
+		testutil.ErrorIf(t, true, "begin transaction: %v", err)
 	}
 	if _, ok := transactionLocks.Load(tx); !ok {
-		t.Fatal("transaction lock was not registered")
+		testutil.ErrorIf(t, true, "%v", "transaction lock was not registered")
 	}
 	if err := tx.Insert(&transactionLifecycleRecord{Name: "committed"}); err != nil {
-		t.Fatalf("insert record: %v", err)
+		testutil.ErrorIf(t, true, "insert record: %v", err)
 	}
 
 	if err := s.Commit(tx); err != nil {
-		t.Fatalf("commit transaction: %v", err)
+		testutil.ErrorIf(t, true, "commit transaction: %v", err)
 	}
 	if _, ok := transactionLocks.Load(tx); ok {
-		t.Fatal("transaction lock remained registered after commit")
+		testutil.ErrorIf(t, true, "%v", "transaction lock remained registered after commit")
 	}
 
 	var records []transactionLifecycleRecord
@@ -51,9 +52,9 @@ func TestCommitPersistsAndUnregistersCallerTransaction(t *testing.T) {
 		records, err = bstore.QueryTx[transactionLifecycleRecord](tx).List()
 		return err
 	}); err != nil {
-		t.Fatalf("read records: %v", err)
+		testutil.ErrorIf(t, true, "read records: %v", err)
 	}
 	if len(records) != 1 || records[0].Name != "committed" {
-		t.Fatalf("records = %#v, want committed record", records)
+		testutil.ErrorIf(t, true, "records = %#v, want committed record", records)
 	}
 }

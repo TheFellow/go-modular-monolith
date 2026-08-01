@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/presentation"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestTagLabelUsesApplicationEmptyState(t *testing.T) {
@@ -18,7 +19,7 @@ func TestTagLabelUsesApplicationEmptyState(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			if got := presentation.TagLabel(test.value); got != test.want {
-				t.Fatalf("TagLabel(%q) = %q, want %q", test.value, got, test.want)
+				testutil.ErrorIf(t, true, "TagLabel(%q) = %q, want %q", test.value, got, test.want)
 			}
 		})
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -16,13 +17,13 @@ func TestValidateReturnsFirstFailure(t *testing.T) {
 		return nil
 	})
 	if !errors.Is(err, first) || secondCalled {
-		t.Fatalf("err=%v secondCalled=%v", err, secondCalled)
+		testutil.ErrorIf(t, true, "err=%v secondCalled=%v", err, secondCalled)
 	}
 }
 
 func TestRequiredUsesSurfaceSpecificMessage(t *testing.T) {
 	t.Parallel()
 	if err := gui.Required("name is required")(``); err == nil || err.Error() != "name is required" {
-		t.Fatalf("error = %v", err)
+		testutil.ErrorIf(t, true, "error = %v", err)
 	}
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/TheFellow/arch-lint/pkg/config"
 	"github.com/TheFellow/arch-lint/pkg/linter"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
@@ -21,7 +22,7 @@ func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
 	writeFixture(t, fixtureRoot, "go.mod", "module github.com/TheFellow/go-modular-monolith\n\ngo 1.26.5\n")
 	configData, err := os.ReadFile(filepath.Join(repositoryRoot, ".arch-lint.yaml"))
 	if err != nil {
-		t.Fatalf("read repository architecture config: %v", err)
+		testutil.ErrorIf(t, true, "read repository architecture config: %v", err)
 	}
 	writeFixture(t, fixtureRoot, ".arch-lint.yaml", string(configData))
 
@@ -152,10 +153,10 @@ func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
 
 	workingDirectory, err := os.Getwd()
 	if err != nil {
-		t.Fatalf("get working directory: %v", err)
+		testutil.ErrorIf(t, true, "get working directory: %v", err)
 	}
 	if err := os.Chdir(fixtureRoot); err != nil {
-		t.Fatalf("enter fixture module: %v", err)
+		testutil.ErrorIf(t, true, "enter fixture module: %v", err)
 	}
 	t.Cleanup(func() {
 		if err := os.Chdir(workingDirectory); err != nil {
@@ -165,11 +166,11 @@ func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
 
 	cfg, err := config.Load(".arch-lint.yaml")
 	if err != nil {
-		t.Fatalf("load architecture config: %v", err)
+		testutil.ErrorIf(t, true, "load architecture config: %v", err)
 	}
 	violations, err := linter.Run(cfg)
 	if err != nil {
-		t.Fatalf("run arch-lint against fixture module: %v", err)
+		testutil.ErrorIf(t, true, "run arch-lint against fixture module: %v", err)
 	}
 
 	want := []string{
@@ -216,7 +217,7 @@ func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
 	slices.Sort(got)
 	slices.Sort(want)
 	if !slices.Equal(got, want) {
-		t.Fatalf("unexpected architecture violations:\n got: %q\nwant: %q", got, want)
+		testutil.ErrorIf(t, true, "unexpected architecture violations:\n got: %q\nwant: %q", got, want)
 	}
 }
 
@@ -224,7 +225,7 @@ func repositoryRoot(t *testing.T) string {
 	t.Helper()
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
-		t.Fatal("locate architecture test source")
+		testutil.ErrorIf(t, true, "%v", "locate architecture test source")
 	}
 	return filepath.Dir(filepath.Dir(filename))
 }
@@ -249,9 +250,9 @@ func writeFixture(t *testing.T, root, name, contents string) {
 	t.Helper()
 	path := filepath.Join(root, name)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("create fixture directory: %v", err)
+		testutil.ErrorIf(t, true, "create fixture directory: %v", err)
 	}
 	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
-		t.Fatalf("write fixture %s: %v", name, err)
+		testutil.ErrorIf(t, true, "write fixture %s: %v", name, err)
 	}
 }

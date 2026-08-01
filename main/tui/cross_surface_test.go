@@ -26,7 +26,7 @@ func TestCLIAndComposedTUIShareTagContracts(t *testing.T) {
 	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "./main/cli")
 	build.Dir = repository
 	if output, buildErr := build.CombinedOutput(); buildErr != nil {
-		t.Fatalf("build CLI: %v\n%s", buildErr, output)
+		testutil.ErrorIf(t, true, "build CLI: %v\n%s", buildErr, output)
 	}
 	runCLI := func(args ...string) string {
 		t.Helper()
@@ -34,7 +34,7 @@ func TestCLIAndComposedTUIShareTagContracts(t *testing.T) {
 		command.Dir = workingDirectory
 		output, runErr := command.CombinedOutput()
 		if runErr != nil {
-			t.Fatalf("CLI %v: %v\n%s", args, runErr, output)
+			testutil.ErrorIf(t, true, "CLI %v: %v\n%s", args, runErr, output)
 		}
 		return string(output)
 	}

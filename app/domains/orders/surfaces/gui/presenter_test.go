@@ -50,7 +50,7 @@ func TestPresenterPagesFiltersResolvesDetailAndSnapshots(t *testing.T) {
 	testutil.Equals(t, state.Rows[0].Lines[0].Total, "N/A")
 	testutil.Equals(t, state.Rows[0].Total, "N/A")
 	if formatTime(state.Rows[0].Order.CreatedAt) == "" {
-		t.Fatal("resolved detail omitted created time")
+		testutil.ErrorIf(t, true, "%v", "resolved detail omitted created time")
 	}
 	testutil.Equals(t, state.Rows[0].Order.ID, first.ID)
 	state.Rows[0].Order.Notes = "mutated"
@@ -74,14 +74,14 @@ func TestPresenterTraversesForwardAndBackwardPages(t *testing.T) {
 	first := p.State()
 	testutil.Equals(t, len(first.Rows), 1)
 	if first.Next == "" {
-		t.Fatal("first page omitted next cursor")
+		testutil.ErrorIf(t, true, "%v", "first page omitted next cursor")
 	}
 	firstID := first.Rows[0].Order.ID
 	p.NextPage()
 	second := p.State()
 	testutil.Equals(t, len(second.Rows), 1)
 	if second.Rows[0].Order.ID == firstID {
-		t.Fatal("next page repeated the first order")
+		testutil.ErrorIf(t, true, "%v", "next page repeated the first order")
 	}
 	testutil.Equals(t, len(second.History), 1)
 	p.PreviousPage()
@@ -130,7 +130,7 @@ func TestPresenterExposesOnlyAuthorizedOrderActions(t *testing.T) {
 	owner.Select(0)
 	state := owner.State()
 	if !state.CanPlace || !state.CanComplete || !state.CanCancel || !state.CanTag {
-		t.Fatalf("owner actions missing: %#v", state)
+		testutil.ErrorIf(t, true, "owner actions missing: %#v", state)
 	}
 
 	reader := NewPresenter(application.NewSession(f.ActorContext("sommelier"), f.App.App), Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: &fynetest.Dialogs{}})
@@ -138,7 +138,7 @@ func TestPresenterExposesOnlyAuthorizedOrderActions(t *testing.T) {
 	reader.Select(0)
 	state = reader.State()
 	if state.CanPlace || state.CanComplete || state.CanCancel || state.CanTag {
-		t.Fatalf("read-only actor actions disclosed: %#v", state)
+		testutil.ErrorIf(t, true, "read-only actor actions disclosed: %#v", state)
 	}
 }
 
@@ -223,7 +223,7 @@ func TestPlaceCatalogPreservesDirtyFormRejectsStaleAndPlacesOnlyAvailableDrink(t
 	testutil.Equals(t, len(p.State().Menus), 1) // stale first catalog did not overwrite the second
 	p.ChooseMenu(menu.ID)
 	if len(p.State().Drinks) == 0 {
-		t.Fatal("published menu drink was not available in catalog")
+		testutil.ErrorIf(t, true, "%v", "published menu drink was not available in catalog")
 	}
 	testutil.Equals(t, p.AddItem(drink.ID, 2, " first "), true)
 	p.SetPlaceNotes("  counter  ")
@@ -452,7 +452,7 @@ func TestOrdersListRetainsTableInstanceAcrossRenders(t *testing.T) {
 	first := v.list
 	v.browser(p.State())
 	if v.list != first {
-		t.Fatal("orders refresh recreated the table and discarded resized column widths")
+		testutil.ErrorIf(t, true, "%v", "orders refresh recreated the table and discarded resized column widths")
 	}
 }
 
@@ -505,11 +505,11 @@ func TestCatalogRefreshDisablesEveryPlacementControl(t *testing.T) {
 		"order notes": v.orderNotes.Disabled(), "menus": v.menus.Disabled(), "drinks": v.drinks.Disabled(),
 	} {
 		if !disabled {
-			t.Fatalf("%s remained enabled during catalog refresh", name)
+			testutil.ErrorIf(t, true, "%s remained enabled during catalog refresh", name)
 		}
 	}
 	if remove := v.removeItems[0]; remove == nil || !remove.Disabled() {
-		t.Fatal("remove item remained enabled during catalog refresh")
+		testutil.ErrorIf(t, true, "%v", "remove item remained enabled during catalog refresh")
 	}
 }
 
@@ -523,14 +523,14 @@ func TestCLIAndFyneShareOrderPersistenceContract(t *testing.T) {
 	build.Dir = repo
 	output, err := build.CombinedOutput()
 	if err != nil {
-		t.Fatalf("build CLI: %v\n%s", err, output)
+		testutil.ErrorIf(t, true, "build CLI: %v\n%s", err, output)
 	}
 	run := func(args ...string) string {
 		cmd := exec.CommandContext(t.Context(), binary, args...)
 		cmd.Dir = dir
 		output, runErr := cmd.CombinedOutput()
 		if runErr != nil {
-			t.Fatalf("CLI %v: %v\n%s", args, runErr, output)
+			testutil.ErrorIf(t, true, "CLI %v: %v\n%s", args, runErr, output)
 		}
 		return string(output)
 	}

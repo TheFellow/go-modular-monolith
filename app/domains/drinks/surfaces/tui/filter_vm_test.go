@@ -44,7 +44,7 @@ func TestListViewModelTraversesServerPagesWithoutDuplicates(t *testing.T) {
 	driver := tuitest.NewDriver(t, program)
 	vm := program.vm
 	if len(vm.list.Items()) != 100 || vm.next == "" {
-		t.Fatalf("first page = %d next=%q", len(vm.list.Items()), vm.next)
+		testutil.ErrorIf(t, true, "first page = %d next=%q", len(vm.list.Items()), vm.next)
 	}
 	seen := map[string]bool{}
 	for _, item := range vm.list.Items() {
@@ -52,15 +52,15 @@ func TestListViewModelTraversesServerPagesWithoutDuplicates(t *testing.T) {
 	}
 	driver.Press("]")
 	if len(vm.list.Items()) != 1 {
-		t.Fatalf("second page = %d", len(vm.list.Items()))
+		testutil.ErrorIf(t, true, "second page = %d", len(vm.list.Items()))
 	}
 	id := vm.list.Items()[0].(drinkItem).Value.ID.String()
 	if seen[id] {
-		t.Fatalf("duplicate %s across cursor pages", id)
+		testutil.ErrorIf(t, true, "duplicate %s across cursor pages", id)
 	}
 	driver.Press("[")
 	if len(vm.list.Items()) != 100 {
-		t.Fatalf("previous page = %d", len(vm.list.Items()))
+		testutil.ErrorIf(t, true, "previous page = %d", len(vm.list.Items()))
 	}
 }
 
@@ -71,7 +71,7 @@ func TestFilterVMRejectsInvalidPageSizeWithoutChangingRequest(t *testing.T) {
 	_ = form.limit.SetValue(0)
 	_, err := form.Request()
 	if err == nil {
-		t.Fatal("zero page size accepted")
+		testutil.ErrorIf(t, true, "%v", "zero page size accepted")
 	}
 	testutil.Equals(t, before, drinks.ListRequest{Name: "Old", Limit: 25})
 }

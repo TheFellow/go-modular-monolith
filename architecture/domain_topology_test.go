@@ -2,6 +2,7 @@ package architecture_test
 
 import (
 	"fmt"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -39,7 +40,7 @@ func TestDomainPackageTopology(t *testing.T) {
 	domainsRoot := filepath.Join(repositoryRoot(t), "app", "domains")
 	domains, err := os.ReadDir(domainsRoot)
 	if err != nil {
-		t.Fatalf("read domains directory: %v", err)
+		testutil.ErrorIf(t, true, "read domains directory: %v", err)
 	}
 
 	for _, domain := range domains {
@@ -90,7 +91,7 @@ func TestOperationalDomainProfileRejectsNovelPackageLayers(t *testing.T) {
 		`package "utils" is outside the domain profile; allowed root packages are authz, events, handlers, internal, models, queries, surfaces`,
 	}
 	if !slices.Equal(got, want) {
-		t.Fatalf("unexpected topology violations:\n got: %q\nwant: %q", got, want)
+		testutil.ErrorIf(t, true, "unexpected topology violations:\n got: %q\nwant: %q", got, want)
 	}
 }
 

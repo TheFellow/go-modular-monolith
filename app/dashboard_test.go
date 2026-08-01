@@ -19,7 +19,7 @@ func TestDashboardRejectsSessionWithoutApplication(t *testing.T) {
 	t.Parallel()
 	_, err := app.NewSession(context.Background(), nil).Dashboard()
 	if err == nil {
-		t.Fatal("dashboard accepted a session without an application")
+		testutil.ErrorIf(t, true, "%v", "dashboard accepted a session without an application")
 	}
 }
 
