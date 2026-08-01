@@ -23,21 +23,21 @@ func TestListDetailOwnsStandardLoadingResultAndLayoutStates(t *testing.T) {
 	}
 	shell := tui.NewListDetail("Things", "Loading things...", styles)
 	shell.SetSize(100, 30)
-	if got := shell.View("detail"); !strings.Contains(got, "Loading things") {
-		testutil.ErrorIf(t, true, "loading view = %q", got)
+	{
+		got := shell.View("detail")
+		testutil.ErrorIf(t, !strings.Contains(got, "Loading things"), "loading view = %q", got)
 	}
 
 	shell.SetResult(nil, errors.New("unavailable"))
-	if got := shell.View("detail"); !strings.Contains(got, "unavailable") {
-		testutil.ErrorIf(t, true, "error view = %q", got)
+	{
+		got := shell.View("detail")
+		testutil.ErrorIf(t, !strings.Contains(got, "unavailable"), "error view = %q", got)
 	}
 
 	shell.SetResult([]list.Item{tui.NewListItem(42, "Answer", "A detail", "")}, nil)
 	got := shell.View("selected detail")
 	for _, want := range []string{"Things", "Answer", "selected detail"} {
-		if !strings.Contains(got, want) {
-			testutil.ErrorIf(t, true, "loaded view missing %q: %q", want, got)
-		}
+		testutil.ErrorIf(t, !strings.Contains(got, want), "loaded view missing %q: %q", want, got)
 	}
 
 	shell.SetSize(80, 20)

@@ -13,8 +13,9 @@ func TestStockStatusDefaultThresholdBoundaries(t *testing.T) {
 		value float64
 		want  string
 	}{{0, "OUT"}, {10, "LOW"}, {10.01, "OK"}} {
-		if got := stockStatus(measurement.MustAmount(tc.value, measurement.UnitOz)); got != tc.want {
-			testutil.ErrorIf(t, true, "stockStatus(%v) = %q, want %q", tc.value, got, tc.want)
+		{
+			got := stockStatus(measurement.MustAmount(tc.value, measurement.UnitOz))
+			testutil.ErrorIf(t, got != tc.want, "stockStatus(%v) = %q, want %q", tc.value, got, tc.want)
 		}
 	}
 }

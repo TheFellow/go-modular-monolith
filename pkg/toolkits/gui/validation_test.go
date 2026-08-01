@@ -16,14 +16,13 @@ func TestValidateReturnsFirstFailure(t *testing.T) {
 		secondCalled = true
 		return nil
 	})
-	if !errors.Is(err, first) || secondCalled {
-		testutil.ErrorIf(t, true, "err=%v secondCalled=%v", err, secondCalled)
-	}
+	testutil.ErrorIf(t, !errors.Is(err, first) || secondCalled, "err=%v secondCalled=%v", err, secondCalled)
 }
 
 func TestRequiredUsesSurfaceSpecificMessage(t *testing.T) {
 	t.Parallel()
-	if err := gui.Required("name is required")(``); err == nil || err.Error() != "name is required" {
-		testutil.ErrorIf(t, true, "error = %v", err)
+	{
+		err := gui.Required("name is required")(``)
+		testutil.ErrorIf(t, err == nil || err.Error() != "name is required", "error = %v", err)
 	}
 }

@@ -20,12 +20,8 @@ func TestListItemPresentsAndPreservesTypedValue(t *testing.T) {
 	item := tui.NewListItem(record{ID: 42}, "Title", "Description", "search terms")
 
 	var _ listItem = item
-	if item.Value != (record{ID: 42}) {
-		testutil.ErrorIf(t, true, "Value = %#v, want ID 42", item.Value)
-	}
-	if item.Title() != "Title" || item.Description() != "Description" || item.FilterValue() != "search terms" {
-		testutil.ErrorIf(t, true, "presentation = %q, %q, %q", item.Title(), item.Description(), item.FilterValue())
-	}
+	testutil.ErrorIf(t, item.Value != (record{ID: 42}), "Value = %#v, want ID 42", item.Value)
+	testutil.ErrorIf(t, item.Title() != "Title" || item.Description() != "Description" || item.FilterValue() != "search terms", "presentation = %q, %q, %q", item.Title(), item.Description(), item.FilterValue())
 }
 
 func TestListItemDefaultsFilterValueToTitle(t *testing.T) {
@@ -33,7 +29,5 @@ func TestListItemDefaultsFilterValueToTitle(t *testing.T) {
 
 	item := tui.NewListItem(struct{}{}, "Title", "Description", "")
 
-	if item.FilterValue() != "Title" {
-		testutil.ErrorIf(t, true, "FilterValue() = %q, want title", item.FilterValue())
-	}
+	testutil.ErrorIf(t, item.FilterValue() != "Title", "FilterValue() = %q, want title", item.FilterValue())
 }

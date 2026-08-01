@@ -15,14 +15,11 @@ func TestDialogsRecordConfirmationResponseAndErrors(t *testing.T) {
 	dialogs.ShowError(wantErr)
 
 	confirmations := dialogs.Confirmations()
-	if len(confirmations) != 1 || confirmations[0].Title != "Delete" || confirmations[0].Message != "Delete the drink?" {
-		testutil.ErrorIf(t, true, "confirmations = %#v", confirmations)
-	}
+	testutil.ErrorIf(t, len(confirmations) != 1 || confirmations[0].Title != "Delete" || confirmations[0].Message != "Delete the drink?", "confirmations = %#v", confirmations)
 	confirmations[0].Respond(true)
-	if !responded {
-		testutil.ErrorIf(t, true, "%v", "recorded confirmation did not retain response")
-	}
-	if got := dialogs.Errors(); len(got) != 1 || !errors.Is(got[0], wantErr) {
-		testutil.ErrorIf(t, true, "errors = %v", got)
+	testutil.ErrorIf(t, !responded, "%v", "recorded confirmation did not retain response")
+	{
+		got := dialogs.Errors()
+		testutil.ErrorIf(t, len(got) != 1 || !errors.Is(got[0], wantErr), "errors = %v", got)
 	}
 }

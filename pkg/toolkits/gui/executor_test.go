@@ -17,7 +17,7 @@ func TestAsyncExecutorCompletesBackgroundWork(t *testing.T) {
 	select {
 	case <-done:
 	case <-time.After(time.Second):
-		testutil.ErrorIf(t, true, "%v", "asynchronous work did not complete")
+		testutil.Fail(t, "%v", "asynchronous work did not complete")
 	}
 }
 
@@ -26,13 +26,11 @@ func TestManagedExecutorCloseDrainsAcceptedWorkAndRejectsLaterWork(t *testing.T)
 	started := make(chan struct{})
 	release := make(chan struct{})
 	finished := make(chan struct{})
-	if !executor.TryExecute(func() {
+	testutil.ErrorIf(t, !executor.TryExecute(func() {
 		close(started)
 		<-release
 		close(finished)
-	}) {
-		testutil.ErrorIf(t, true, "%v", "open executor rejected work")
-	}
+	}), "%v", "open executor rejected work")
 	<-started
 
 	closed := make(chan struct{})
@@ -44,12 +42,10 @@ func TestManagedExecutorCloseDrainsAcceptedWorkAndRejectsLaterWork(t *testing.T)
 		// An operation racing Close may be accepted. Rejection proves Close has
 		// closed admission before we assert the stable post-close behavior.
 	}
-	if executor.TryExecute(func() { t.Error("post-close work ran") }) {
-		testutil.ErrorIf(t, true, "%v", "executor accepted work after its admission gate closed")
-	}
+	testutil.ErrorIf(t, executor.TryExecute(func() { t.Error("post-close work ran") }), "%v", "executor accepted work after its admission gate closed")
 	select {
 	case <-closed:
-		testutil.ErrorIf(t, true, "%v", "close returned before accepted work completed")
+		testutil.Fail(t, "%v", "close returned before accepted work completed")
 	default:
 	}
 	close(release)
@@ -78,7 +74,8 @@ func TestManagedExecutorConcurrentExecuteAndCloseDrainsEveryAcceptedOperation(t 
 	executor.Close()
 	callersDone.Wait()
 	executor.Close()
-	if got, want := completed.Load(), accepted.Load(); got != want {
-		testutil.ErrorIf(t, true, "completed %d operations, want all %d accepted operations", got, want)
+	{
+		got, want := completed.Load(), accepted.Load()
+		testutil.ErrorIf(t, got != want, "completed %d operations, want all %d accepted operations", got, want)
 	}
 }

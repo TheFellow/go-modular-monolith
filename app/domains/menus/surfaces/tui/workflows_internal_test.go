@@ -19,9 +19,7 @@ func TestWorkflowResponsesIgnoreSupersededRequests(t *testing.T) {
 
 	vm.Update(analysisLoadedMsg{workflowID: 1, value: queries.MenuAnalytics{TotalCount: 99}})
 
-	if vm.analysis.result != nil {
-		testutil.ErrorIf(t, true, "%v", "a superseded analysis response replaced the active workflow")
-	}
+	testutil.ErrorIf(t, vm.analysis.result != nil, "%v", "a superseded analysis response replaced the active workflow")
 }
 
 func TestAnalysisTextDoesNotPresentUnknownCostAsKnown(t *testing.T) {
@@ -30,10 +28,6 @@ func TestAnalysisTextDoesNotPresentUnknownCostAsKnown(t *testing.T) {
 		Name: "Unknown cost drink", Cost: &cost, CostUnknown: true,
 	}}})
 
-	if !strings.Contains(view, "Cost: unknown") {
-		testutil.ErrorIf(t, true, "expected unknown cost marker, got:\n%s", view)
-	}
-	if strings.Contains(view, "$1.23") {
-		testutil.ErrorIf(t, true, "unknown cost leaked a misleading amount:\n%s", view)
-	}
+	testutil.ErrorIf(t, !strings.Contains(view, "Cost: unknown"), "expected unknown cost marker, got:\n%s", view)
+	testutil.ErrorIf(t, strings.Contains(view, "$1.23"), "unknown cost leaked a misleading amount:\n%s", view)
 }

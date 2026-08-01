@@ -27,9 +27,7 @@ func TestStandardListPageComposesDeclaredRegions(t *testing.T) {
 	window := app.NewWindow("standard")
 	window.SetContent(page)
 	for _, text := range []string{"Drinks", "Browse recipes", "FILTERS", "New", "Delete", "LIST", "DETAIL", "STATUS", "PAGING"} {
-		if !containsText(page, text) {
-			testutil.ErrorIf(t, true, "standard page does not contain %q", text)
-		}
+		testutil.ErrorIf(t, !containsText(page, text), "standard page does not contain %q", text)
 	}
 }
 
@@ -37,9 +35,7 @@ func TestEmptyCollectionIsIntentionalAndUsesExplicitIcon(t *testing.T) { //nolin
 	app := test.NewApp()
 	t.Cleanup(app.Quit)
 	empty := gui.EmptyCollection(gui.IconEmpty, "No ingredients found", "Adjust the filter.")
-	if !containsText(empty, "No ingredients found") || !containsText(empty, "Adjust the filter.") {
-		testutil.ErrorIf(t, true, "%v", "empty collection omitted its guidance")
-	}
+	testutil.ErrorIf(t, !containsText(empty, "No ingredients found") || !containsText(empty, "Adjust the filter."), "%v", "empty collection omitted its guidance")
 }
 
 func TestDetailFormGivesEveryFieldTheSameWidth(t *testing.T) { //nolint:paralleltest // Fyne app and driver state is process-global.
@@ -49,9 +45,7 @@ func TestDetailFormGivesEveryFieldTheSameWidth(t *testing.T) { //nolint:parallel
 	second := gui.DetailField("A much longer label", widget.NewEntry())
 	form := gui.DetailForm(first, second)
 	form.Resize(fyne.NewSize(640, 240))
-	if first.Size().Width != second.Size().Width || first.Size().Width != 640 {
-		testutil.ErrorIf(t, true, "field widths = %v and %v, want 640", first.Size().Width, second.Size().Width)
-	}
+	testutil.ErrorIf(t, first.Size().Width != second.Size().Width || first.Size().Width != 640, "field widths = %v and %v, want 640", first.Size().Width, second.Size().Width)
 }
 
 func containsText(object fyne.CanvasObject, want string) bool {

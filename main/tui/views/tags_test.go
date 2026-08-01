@@ -63,8 +63,9 @@ func TestTagsResultTableSupportsEveryShapeTransition(t *testing.T) {
 
 func requireValidANSI(t testing.TB, rendered string) {
 	t.Helper()
-	if fragment := regexp.MustCompile(`\[(?:[0-9]+;)*[0-9]+m`).FindString(ansi.Strip(rendered)); fragment != "" {
-		testutil.ErrorIf(t, true, "rendered table contains malformed ANSI fragment %q:\n%s", fragment, rendered)
+	{
+		fragment := regexp.MustCompile(`\[(?:[0-9]+;)*[0-9]+m`).FindString(ansi.Strip(rendered))
+		testutil.ErrorIf(t, fragment != "", "rendered table contains malformed ANSI fragment %q:\n%s", fragment, rendered)
 	}
 }
 

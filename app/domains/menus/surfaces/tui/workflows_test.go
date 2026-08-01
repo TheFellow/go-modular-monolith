@@ -130,9 +130,7 @@ func TestMenuTUIPickerBackAndInputOwnership(t *testing.T) {
 	driver.Press("a")
 	driver.Press("q")
 	driver.RequireText("No matching drinks")
-	if strings.Contains(driver.Screen(), "quit") {
-		testutil.ErrorIf(t, true, "%v", "text input escaped the workflow")
-	}
+	testutil.ErrorIf(t, strings.Contains(driver.Screen(), "quit"), "%v", "text input escaped the workflow")
 	driver.Press("esc")
 	driver.RequireText("Service")
 }
@@ -228,9 +226,7 @@ func TestMenuTUIStatusFilterUsesDomainListContract(t *testing.T) {
 	driver.Press("enter")
 	driver.Press("ctrl+s")
 	driver.RequireText("Draft only")
-	if strings.Contains(driver.Screen(), "Published only") {
-		testutil.ErrorIf(t, true, "%v", "published menu escaped the draft status filter")
-	}
+	testutil.ErrorIf(t, strings.Contains(driver.Screen(), "Published only"), "%v", "published menu escaped the draft status filter")
 }
 
 func TestMenuTUITraversesDomainCursorPagesBeyondOneHundred(t *testing.T) {
@@ -240,14 +236,10 @@ func TestMenuTUITraversesDomainCursorPagesBeyondOneHundred(t *testing.T) {
 	}
 	first, err := f.App.Menus.List(f.OwnerContext(), menus.ListRequest{Limit: 100})
 	testutil.Ok(t, err)
-	if first.Next == "" {
-		testutil.ErrorIf(t, true, "%v", "fixture did not produce a second cursor page")
-	}
+	testutil.ErrorIf(t, first.Next == "", "%v", "fixture did not produce a second cursor page")
 	second, err := f.App.Menus.List(f.OwnerContext(), menus.ListRequest{Cursor: first.Next, Limit: 100})
 	testutil.Ok(t, err)
-	if len(second.Items) != 1 {
-		testutil.ErrorIf(t, true, "second page contains %d menus", len(second.Items))
-	}
+	testutil.ErrorIf(t, len(second.Items) != 1, "second page contains %d menus", len(second.Items))
 
 	driver := newMenuDriver(t, f)
 	driver.Press("]")

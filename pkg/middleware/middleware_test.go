@@ -122,7 +122,7 @@ func findTestLogEntry(t *testing.T, b *testLogBuffer, message string) (string, m
 			return line, fields
 		}
 	}
-	testutil.ErrorIf(t, true, "log message %q not found in %s", message, b.String())
+	testutil.Fail(t, "log message %q not found in %s", message, b.String())
 	return "", nil
 }
 

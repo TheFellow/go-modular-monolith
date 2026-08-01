@@ -22,9 +22,7 @@ func TestSemanticDriverInteractsWithActualWidgets(t *testing.T) {
 
 	driver.Type("drink-name", "Gimlet")
 	driver.Tap("save-drink")
-	if entry.Text != "Gimlet" || !tapped {
-		testutil.ErrorIf(t, true, "entry=%q tapped=%v", entry.Text, tapped)
-	}
+	testutil.ErrorIf(t, entry.Text != "Gimlet" || !tapped, "entry=%q tapped=%v", entry.Text, tapped)
 }
 
 func TestListDetailPreservesSuppliedObjectsAndRatio(t *testing.T) {
@@ -33,7 +31,5 @@ func TestListDetailPreservesSuppliedObjectsAndRatio(t *testing.T) {
 	left := gui.NewEntry("left")
 	right := gui.NewEntry("right")
 	split := gui.ListDetail(left, right, .35)
-	if split.Leading != left || split.Trailing != right || split.Offset != .35 {
-		testutil.ErrorIf(t, true, "unexpected split: %#v", split)
-	}
+	testutil.ErrorIf(t, split.Leading != left || split.Trailing != right || split.Offset != .35, "unexpected split: %#v", split)
 }

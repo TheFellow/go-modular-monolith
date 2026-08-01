@@ -14,25 +14,18 @@ func TestTriggerRespectsVisibleEnabledState(t *testing.T) {
 	startTestApp(t)
 	called := 0
 	button := NewButton("save", "Save", func() { called++ })
-	if !Trigger(button) || called != 1 {
-		testutil.ErrorIf(t, true, "enabled trigger = %v calls=%d", Trigger(button), called)
-	}
+	triggered := Trigger(button)
+	testutil.ErrorIf(t, !triggered || called != 1, "enabled trigger = %v calls=%d", triggered, called)
 	button.Disable()
-	if Trigger(button) || called != 1 {
-		testutil.ErrorIf(t, true, "disabled button triggered: calls=%d", called)
-	}
+	testutil.ErrorIf(t, Trigger(button) || called != 1, "disabled button triggered: calls=%d", called)
 	button.Enable()
 	button.Hide()
-	if Trigger(button) || called != 1 {
-		testutil.ErrorIf(t, true, "hidden button triggered: calls=%d", called)
-	}
+	testutil.ErrorIf(t, Trigger(button) || called != 1, "hidden button triggered: calls=%d", called)
 }
 
 func TestTriggerRejectsButtonWithoutAction(t *testing.T) {
 	startTestApp(t)
-	if Trigger(NewButton("placeholder", "Placeholder", nil)) {
-		testutil.ErrorIf(t, true, "%v", "button without a command reported a successful trigger")
-	}
+	testutil.ErrorIf(t, Trigger(NewButton("placeholder", "Placeholder", nil)), "%v", "button without a command reported a successful trigger")
 }
 
 func TestSubmitOnEnterUsesGuardedButtonActionExactlyOnce(t *testing.T) {
@@ -50,9 +43,7 @@ func TestSubmitOnEnterUsesGuardedButtonActionExactlyOnce(t *testing.T) {
 	entry.OnSubmitted("hidden")
 	button.Show()
 	entry.OnSubmitted("second")
-	if calls != 2 {
-		testutil.ErrorIf(t, true, "submitted callback %d times, want 2 enabled visible submissions", calls)
-	}
+	testutil.ErrorIf(t, calls != 2, "submitted callback %d times, want 2 enabled visible submissions", calls)
 }
 
 func TestKeyboardFocusTraversesSemanticControlsInBothDirections(t *testing.T) {
@@ -64,13 +55,9 @@ func TestKeyboardFocusTraversesSemanticControlsInBothDirections(t *testing.T) {
 	canvas := window.Canvas()
 	canvas.Focus(first)
 	canvas.FocusNext()
-	if canvas.Focused() != second {
-		testutil.ErrorIf(t, true, "FocusNext focused %T, want second entry", canvas.Focused())
-	}
+	testutil.ErrorIf(t, canvas.Focused() != second, "FocusNext focused %T, want second entry", canvas.Focused())
 	canvas.FocusPrevious()
-	if canvas.Focused() != first {
-		testutil.ErrorIf(t, true, "FocusPrevious focused %T, want first entry", canvas.Focused())
-	}
+	testutil.ErrorIf(t, canvas.Focused() != first, "FocusPrevious focused %T, want first entry", canvas.Focused())
 	canvas.Focus(first)
 	canvas.Focused().TypedKey(&framework.KeyEvent{Name: framework.KeyTab})
 }

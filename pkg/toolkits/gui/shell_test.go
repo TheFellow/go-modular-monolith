@@ -59,48 +59,33 @@ func TestShellNavigatesLazilyAndPreservesViews(t *testing.T) {
 		{ID: "home", Label: "Home", Build: build("home")},
 		{ID: "drinks", Label: "Drinks", Build: build("drinks")},
 	}, "home")
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	testutil.ErrorIf(t, err != nil, "%v", err)
+	testutil.ErrorIf(t, shell.Current() != "home" || builds["home"] != 1 || builds["drinks"] != 0, "unexpected initial state: current=%q builds=%v", shell.Current(), builds)
+	testutil.ErrorIf(t, shell.navigation["home"].Importance != widget.HighImportance || shell.navigation["drinks"].Importance != widget.LowImportance, "%v", "initial route is not distinguished in the navigation rail")
+	{
+		err := shell.Navigate("drinks")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
-	if shell.Current() != "home" || builds["home"] != 1 || builds["drinks"] != 0 {
-		testutil.ErrorIf(t, true, "unexpected initial state: current=%q builds=%v", shell.Current(), builds)
+	testutil.ErrorIf(t, shell.navigation["drinks"].Importance != widget.HighImportance || shell.navigation["home"].Importance != widget.LowImportance, "%v", "navigation rail did not track the selected route")
+	{
+		err := shell.Navigate("home")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
-	if shell.navigation["home"].Importance != widget.HighImportance || shell.navigation["drinks"].Importance != widget.LowImportance {
-		testutil.ErrorIf(t, true, "%v", "initial route is not distinguished in the navigation rail")
-	}
-	if err := shell.Navigate("drinks"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
-	if shell.navigation["drinks"].Importance != widget.HighImportance || shell.navigation["home"].Importance != widget.LowImportance {
-		testutil.ErrorIf(t, true, "%v", "navigation rail did not track the selected route")
-	}
-	if err := shell.Navigate("home"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
-	if builds["home"] != 1 || builds["drinks"] != 1 {
-		testutil.ErrorIf(t, true, "views were not preserved: %v", builds)
-	}
+	testutil.ErrorIf(t, builds["home"] != 1 || builds["drinks"] != 1, "views were not preserved: %v", builds)
 }
 
 func TestShellShowsPersistentIdentityAndExplicitRouteIcon(t *testing.T) {
 	startTestApp(t)
 	shell, err := NewShell([]Route{{ID: "home", Label: "Home", Icon: IconDashboard, Build: func() View { return &testView{title: "Home", content: widget.NewLabel("home")} }}}, "home")
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	shell.SetIdentity("Mixology", "Local user", "manager")
-	if shell.identity.Text != "Mixology\nLocal user · manager" {
-		testutil.ErrorIf(t, true, "identity = %q", shell.identity.Text)
+	testutil.ErrorIf(t, shell.identity.Text != "Mixology\nLocal user · manager", "identity = %q", shell.identity.Text)
+	testutil.ErrorIf(t, shell.navigation["home"].Icon != IconResource(IconDashboard), "%v", "route did not use its enumerated icon")
+	{
+		err := shell.Navigate("home")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
-	if shell.navigation["home"].Icon != IconResource(IconDashboard) {
-		testutil.ErrorIf(t, true, "%v", "route did not use its enumerated icon")
-	}
-	if err := shell.Navigate("home"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
-	if shell.identity.Text == "" {
-		testutil.ErrorIf(t, true, "%v", "identity did not persist")
-	}
+	testutil.ErrorIf(t, shell.identity.Text == "", "%v", "identity did not persist")
 }
 
 func TestShellActivatesInitialViewAndEveryReentryWithoutRebuilding(t *testing.T) {
@@ -111,23 +96,19 @@ func TestShellActivatesInitialViewAndEveryReentryWithoutRebuilding(t *testing.T)
 		{ID: "home", Label: "Home", Build: func() View { return home }},
 		{ID: "other", Label: "Other", Build: func() View { return other }},
 	}, "home")
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	shell.ActivateCurrent()
 	shell.ActivateCurrent()
-	if home.activations != 1 {
-		testutil.ErrorIf(t, true, "initial activations = %d, want 1", home.activations)
+	testutil.ErrorIf(t, home.activations != 1, "initial activations = %d, want 1", home.activations)
+	{
+		err := shell.Navigate("other")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
-	if err := shell.Navigate("other"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	{
+		err := shell.Navigate("home")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
-	if err := shell.Navigate("home"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
-	if home.activations != 2 {
-		testutil.ErrorIf(t, true, "reentry activations = %d, want 2", home.activations)
-	}
+	testutil.ErrorIf(t, home.activations != 2, "reentry activations = %d, want 2", home.activations)
 }
 
 func TestShellRejectsInvalidRoutesWithoutChangingSelection(t *testing.T) {
@@ -136,15 +117,12 @@ func TestShellRejectsInvalidRoutesWithoutChangingSelection(t *testing.T) {
 		ID: "home", Label: "Home",
 		Build: func() View { return &testView{title: "Home", content: widget.NewLabel("home")} },
 	}}, "home")
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	testutil.ErrorIf(t, err != nil, "%v", err)
+	{
+		err := shell.Navigate("missing")
+		testutil.ErrorIf(t, err == nil, "%v", "expected unknown route error")
 	}
-	if err := shell.Navigate("missing"); err == nil {
-		testutil.ErrorIf(t, true, "%v", "expected unknown route error")
-	}
-	if shell.Current() != "home" {
-		testutil.ErrorIf(t, true, "invalid navigation changed route to %q", shell.Current())
-	}
+	testutil.ErrorIf(t, shell.Current() != "home", "invalid navigation changed route to %q", shell.Current())
 }
 
 func TestShellRejectsDuplicateRoutes(t *testing.T) {
@@ -154,9 +132,7 @@ func TestShellRejectsDuplicateRoutes(t *testing.T) {
 		{ID: "home", Label: "Home", Build: build},
 		{ID: "home", Label: "Again", Build: build},
 	}, "home")
-	if err == nil {
-		testutil.ErrorIf(t, true, "%v", "expected duplicate route error")
-	}
+	testutil.ErrorIf(t, err == nil, "%v", "expected duplicate route error")
 }
 
 func TestShellOffersCommandsOnlyToCurrentConcreteView(t *testing.T) {
@@ -167,18 +143,13 @@ func TestShellOffersCommandsOnlyToCurrentConcreteView(t *testing.T) {
 		{ID: "home", Label: "Home", Build: func() View { return home }},
 		{ID: "other", Label: "Other", Build: func() View { return other }},
 	}, "home")
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	testutil.ErrorIf(t, err != nil, "%v", err)
+	testutil.ErrorIf(t, !shell.ExecuteCommand(CommandRefresh) || len(home.commands) != 1, "%v", "current view did not handle command")
+	{
+		err := shell.Navigate("other")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
-	if !shell.ExecuteCommand(CommandRefresh) || len(home.commands) != 1 {
-		testutil.ErrorIf(t, true, "%v", "current view did not handle command")
-	}
-	if err := shell.Navigate("other"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
-	if shell.ExecuteCommand(CommandSave) || len(home.commands) != 1 {
-		testutil.ErrorIf(t, true, "%v", "disabled view or inactive view handled command")
-	}
+	testutil.ErrorIf(t, shell.ExecuteCommand(CommandSave) || len(home.commands) != 1, "%v", "disabled view or inactive view handled command")
 }
 
 func startTestApp(t *testing.T) {
@@ -194,28 +165,22 @@ func TestShellConfirmsBeforeLeavingUnsavedEditor(t *testing.T) {
 		{ID: "editor", Label: "Editor", Build: func() View { return editor }},
 		{ID: "other", Label: "Other", Build: func() View { return &testView{title: "Other", content: widget.NewLabel("other")} }},
 	}, "editor")
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	var respond func(bool)
 	shell.SetAbandonConfirmation(func(callback func(bool)) { respond = callback })
-	if err := shell.Navigate("other"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	{
+		err := shell.Navigate("other")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
-	if shell.Current() != "editor" || respond == nil {
-		testutil.ErrorIf(t, true, "%v", "unsaved editor was replaced without confirmation")
-	}
+	testutil.ErrorIf(t, shell.Current() != "editor" || respond == nil, "%v", "unsaved editor was replaced without confirmation")
 	respond(false)
-	if shell.Current() != "editor" {
-		testutil.ErrorIf(t, true, "%v", "cancelled navigation changed route")
-	}
-	if err := shell.Navigate("other"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	testutil.ErrorIf(t, shell.Current() != "editor", "%v", "cancelled navigation changed route")
+	{
+		err := shell.Navigate("other")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
 	respond(true)
-	if shell.Current() != "other" {
-		testutil.ErrorIf(t, true, "%v", "confirmed navigation did not continue")
-	}
+	testutil.ErrorIf(t, shell.Current() != "other", "%v", "confirmed navigation did not continue")
 }
 
 func TestShellConfirmsBeforeReactivatingDirtyCurrentRoute(t *testing.T) {
@@ -226,28 +191,22 @@ func TestShellConfirmsBeforeReactivatingDirtyCurrentRoute(t *testing.T) {
 		// Combine the lifecycle and dirty contracts for this focused assertion.
 		return structView{View: activated, dirty: editor}
 	}}}, "editor")
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	var respond func(bool)
 	shell.SetAbandonConfirmation(func(callback func(bool)) { respond = callback })
-	if err := shell.Navigate("editor"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	{
+		err := shell.Navigate("editor")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
-	if respond == nil || activated.activations != 0 {
-		testutil.ErrorIf(t, true, "%v", "same-route navigation bypassed confirmation")
-	}
+	testutil.ErrorIf(t, respond == nil || activated.activations != 0, "%v", "same-route navigation bypassed confirmation")
 	respond(false)
-	if activated.activations != 0 {
-		testutil.ErrorIf(t, true, "%v", "cancelled reactivation ran")
-	}
-	if err := shell.Navigate("editor"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	testutil.ErrorIf(t, activated.activations != 0, "%v", "cancelled reactivation ran")
+	{
+		err := shell.Navigate("editor")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
 	respond(true)
-	if activated.activations != 1 {
-		testutil.ErrorIf(t, true, "activations = %d, want 1", activated.activations)
-	}
+	testutil.ErrorIf(t, activated.activations != 1, "activations = %d, want 1", activated.activations)
 }
 
 type structView struct {

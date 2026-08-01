@@ -18,9 +18,7 @@ import (
 func TestDashboardRejectsSessionWithoutApplication(t *testing.T) {
 	t.Parallel()
 	_, err := app.NewSession(context.Background(), nil).Dashboard()
-	if err == nil {
-		testutil.ErrorIf(t, true, "%v", "dashboard accepted a session without an application")
-	}
+	testutil.ErrorIf(t, err == nil, "%v", "dashboard accepted a session without an application")
 }
 
 func TestDashboardUsesThresholdBoundaryAndAuditOrder(t *testing.T) {

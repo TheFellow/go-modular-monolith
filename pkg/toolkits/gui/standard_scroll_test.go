@@ -25,12 +25,8 @@ func TestFormScrollRelayScrollsPageAboveEntry(t *testing.T) { //nolint:parallelt
 	relay := scroll.Content.(*framework.Container).Objects[1].(*formScrollRelay)
 	relay.Scrolled(&framework.ScrollEvent{Scrolled: framework.NewDelta(0, -80)})
 
-	if scroll.Offset.Y == 0 {
-		testutil.ErrorIf(t, true, "%v", "wheel event over a form control did not scroll the page")
-	}
-	if entry.Text != "selectable text" || entry.Disabled() {
-		testutil.ErrorIf(t, true, "%v", "scroll relay changed the editable/selectable entry")
-	}
+	testutil.ErrorIf(t, scroll.Offset.Y == 0, "%v", "wheel event over a form control did not scroll the page")
+	testutil.ErrorIf(t, entry.Text != "selectable text" || entry.Disabled(), "%v", "scroll relay changed the editable/selectable entry")
 }
 
 func TestFormScrollRelayScrollsBackAcrossReadOnlyEntry(t *testing.T) { //nolint:paralleltest // Fyne app and driver state is process-global.
@@ -47,13 +43,9 @@ func TestFormScrollRelayScrollsBackAcrossReadOnlyEntry(t *testing.T) { //nolint:
 	relay := scroll.Content.(*framework.Container).Objects[1].(*formScrollRelay)
 
 	relay.Scrolled(&framework.ScrollEvent{Scrolled: framework.NewDelta(0, -200)})
-	if scroll.Offset.Y == 0 {
-		testutil.ErrorIf(t, true, "%v", "page did not scroll down")
-	}
+	testutil.ErrorIf(t, scroll.Offset.Y == 0, "%v", "page did not scroll down")
 	relay.Scrolled(&framework.ScrollEvent{Scrolled: framework.NewDelta(0, 200)})
-	if scroll.Offset.Y != 0 {
-		testutil.ErrorIf(t, true, "page offset after scrolling up = %v, want 0", scroll.Offset.Y)
-	}
+	testutil.ErrorIf(t, scroll.Offset.Y != 0, "page offset after scrolling up = %v, want 0", scroll.Offset.Y)
 }
 
 func spacer(count int) []framework.CanvasObject {

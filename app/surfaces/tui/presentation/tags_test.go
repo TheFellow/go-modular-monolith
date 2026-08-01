@@ -18,8 +18,9 @@ func TestTagLabelUsesApplicationEmptyState(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			if got := presentation.TagLabel(test.value); got != test.want {
-				testutil.ErrorIf(t, true, "TagLabel(%q) = %q, want %q", test.value, got, test.want)
+			{
+				got := presentation.TagLabel(test.value)
+				testutil.ErrorIf(t, got != test.want, "TagLabel(%q) = %q, want %q", test.value, got, test.want)
 			}
 		})
 	}

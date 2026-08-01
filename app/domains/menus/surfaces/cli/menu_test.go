@@ -20,10 +20,6 @@ func TestMenuItemJSONAndTextViewsPreservePrice(t *testing.T) {
 
 	jsonView := FromDomainMenuItem(item)
 	textView := ToMenuItemRows([]models.MenuItem{item})[0]
-	if jsonView.Price != "$12.50" {
-		testutil.ErrorIf(t, true, "JSON price = %q", jsonView.Price)
-	}
-	if textView.Price != jsonView.Price {
-		testutil.ErrorIf(t, true, "text price %q differs from JSON price %q", textView.Price, jsonView.Price)
-	}
+	testutil.ErrorIf(t, jsonView.Price != "$12.50", "JSON price = %q", jsonView.Price)
+	testutil.ErrorIf(t, textView.Price != jsonView.Price, "text price %q differs from JSON price %q", textView.Price, jsonView.Price)
 }

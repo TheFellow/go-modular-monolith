@@ -25,12 +25,14 @@ import (
 func TestSummarySortingCoversCompleteInMemoryCatalogAndTogglesDirection(t *testing.T) {
 	p := &Presenter{state: State{Mode: Results, Operation: Summary, VisibleSummaries: []tagging.Summary{{Tag: "z", Total: 1}, {Tag: "a", Total: 3}, {Tag: "m", Total: 2}}}}
 	p.SortSummaries(1, ui.SortAscending)
-	if got := p.state.VisibleSummaries; got[0].Total != 1 || got[2].Total != 3 {
-		testutil.ErrorIf(t, true, "ascending totals = %#v", got)
+	{
+		got := p.state.VisibleSummaries
+		testutil.ErrorIf(t, got[0].Total != 1 || got[2].Total != 3, "ascending totals = %#v", got)
 	}
 	p.SortSummaries(1, ui.SortDescending)
-	if got := p.state.VisibleSummaries; got[0].Total != 3 || got[2].Total != 1 {
-		testutil.ErrorIf(t, true, "descending totals = %#v", got)
+	{
+		got := p.state.VisibleSummaries
+		testutil.ErrorIf(t, got[0].Total != 3 || got[2].Total != 1, "descending totals = %#v", got)
 	}
 }
 
@@ -61,9 +63,7 @@ func TestViewActivationPreservesTagWorkflowState(t *testing.T) {
 
 	v.Activate()
 	state := p.State()
-	if state.Mode != EnteringValue || state.Operation != ShowKey || state.Value != "seasonal" {
-		testutil.ErrorIf(t, true, "activation changed in-progress tag workflow: %#v", state)
-	}
+	testutil.ErrorIf(t, state.Mode != EnteringValue || state.Operation != ShowKey || state.Value != "seasonal", "activation changed in-progress tag workflow: %#v", state)
 }
 
 func TestEntityPickerProvidesNamedSearchableActiveTargetsForEveryType(t *testing.T) {
@@ -73,13 +73,9 @@ func TestEntityPickerProvidesNamedSearchableActiveTargetsForEveryType(t *testing
 		p.Start(Add)
 		p.SelectType(kind)
 		s := p.State()
-		if s.Mode != PickingEntity || len(s.Entities) != 1 || s.Entities[0].Name == "" || s.Entities[0].Name == string(s.Entities[0].UID.ID) {
-			testutil.ErrorIf(t, true, "%s catalog = %#v", kind, s)
-		}
+		testutil.ErrorIf(t, s.Mode != PickingEntity || len(s.Entities) != 1 || s.Entities[0].Name == "" || s.Entities[0].Name == string(s.Entities[0].UID.ID), "%s catalog = %#v", kind, s)
 		p.Search("no such active entity")
-		if len(p.State().Visible) != 0 {
-			testutil.ErrorIf(t, true, "%s search did not filter", kind)
-		}
+		testutil.ErrorIf(t, len(p.State().Visible) != 0, "%s search did not filter", kind)
 	}
 }
 
@@ -91,14 +87,10 @@ func TestPresenterMutatesEveryOperationalEntityType(t *testing.T) {
 		p.SelectType(kind)
 		p.SelectEntity(0)
 		p.SetValue("surface=fyne")
-		if !p.Submit() || !p.State().Result.Changed {
-			testutil.ErrorIf(t, true, "%s mutation = %#v", kind, p.State())
-		}
+		testutil.ErrorIf(t, !p.Submit() || !p.State().Result.Changed, "%s mutation = %#v", kind, p.State())
 		values, err := fx.f.App.Tags.List(fx.f.OwnerContext(), fx.targets[kind])
 		testutil.Ok(t, err)
-		if values.Canonical().String() != "surface=fyne" {
-			testutil.ErrorIf(t, true, "%s tags = %q", kind, values.Canonical().String())
-		}
+		testutil.ErrorIf(t, values.Canonical().String() != "surface=fyne", "%s tags = %q", kind, values.Canonical().String())
 	}
 }
 
@@ -112,44 +104,38 @@ func TestRealWidgetsExerciseMutationInspectionDiscoveryAndSummary(t *testing.T) 
 	driver.Tap(entityControl(0))
 	driver.Type(ControlValue, "region=west")
 	driver.Tap(ControlSubmit)
-	if s := p.State(); s.Mode != Results || !s.Result.Changed || s.Result.Tags.Canonical().String() != "region=west" {
-		testutil.ErrorIf(t, true, "add state = %#v", s)
+	{
+		s := p.State()
+		testutil.ErrorIf(t, s.Mode != Results || !s.Result.Changed || s.Result.Tags.Canonical().String() != "region=west", "add state = %#v", s)
 	}
 	p.Back()
 	driver.Tap(ControlInspect)
 	driver.Tap(typeControl(entity.TypeIngredient))
 	driver.Tap(entityControl(0))
-	if got := p.State().Result.Tags.Canonical().String(); got != "region=west" {
-		testutil.ErrorIf(t, true, "inspect = %q", got)
+	{
+		got := p.State().Result.Tags.Canonical().String()
+		testutil.ErrorIf(t, got != "region=west", "inspect = %q", got)
 	}
 	p.Back()
 	driver.Tap(ControlShowExact)
 	driver.Type(ControlValue, "region=west")
 	driver.Tap(ControlSubmit)
-	if len(p.State().Result.References) != 1 {
-		testutil.ErrorIf(t, true, "references = %#v", p.State().Result.References)
-	}
+	testutil.ErrorIf(t, len(p.State().Result.References) != 1, "references = %#v", p.State().Result.References)
 	p.Back()
 	driver.Tap(ControlShowKey)
 	driver.Type(ControlValue, "region")
 	driver.Tap(ControlSubmit)
-	if len(p.State().Result.References) != 1 {
-		testutil.ErrorIf(t, true, "key references = %#v", p.State().Result.References)
-	}
+	testutil.ErrorIf(t, len(p.State().Result.References) != 1, "key references = %#v", p.State().Result.References)
 	p.Back()
 	driver.Tap(ControlSummary)
-	if len(p.State().Result.Summaries) != 1 || p.State().Result.Summaries[0].Ingredients != 1 {
-		testutil.ErrorIf(t, true, "summary = %#v", p.State().Result.Summaries)
-	}
+	testutil.ErrorIf(t, len(p.State().Result.Summaries) != 1 || p.State().Result.Summaries[0].Ingredients != 1, "summary = %#v", p.State().Result.Summaries)
 	p.Back()
 	driver.Tap(ControlRemove)
 	driver.Tap(typeControl(entity.TypeIngredient))
 	driver.Tap(entityControl(0))
 	driver.Type(ControlValue, "region")
 	driver.Tap(ControlSubmit)
-	if !p.State().Result.Changed || len(p.State().Result.Tags) != 0 {
-		testutil.ErrorIf(t, true, "remove = %#v", p.State())
-	}
+	testutil.ErrorIf(t, !p.State().Result.Changed || len(p.State().Result.Tags) != 0, "remove = %#v", p.State())
 }
 
 func TestCanonicalValidationUnchangedAndDefensiveSnapshots(t *testing.T) {
@@ -162,29 +148,21 @@ func TestCanonicalValidationUnchangedAndDefensiveSnapshots(t *testing.T) {
 	p.SelectType(entity.TypeIngredient)
 	p.SelectEntity(0)
 	p.SetValue("a=1")
-	if !p.Submit() || p.State().Result.Changed {
-		testutil.ErrorIf(t, true, "expected unchanged result: %#v", p.State())
-	}
+	testutil.ErrorIf(t, !p.Submit() || p.State().Result.Changed, "expected unchanged result: %#v", p.State())
 	p.Back()
 	p.Start(ShowExact)
 	p.SetValue("")
-	if p.Submit() || p.State().Err == nil {
-		testutil.ErrorIf(t, true, "invalid tag accepted: %#v", p.State())
-	}
+	testutil.ErrorIf(t, p.Submit() || p.State().Err == nil, "invalid tag accepted: %#v", p.State())
 	s := p.State()
 	s.Entities = append(s.Entities, EntityOption{Name: "poison"})
-	if len(p.State().Entities) == len(s.Entities) {
-		testutil.ErrorIf(t, true, "%v", "state snapshot aliases entity catalog")
-	}
+	testutil.ErrorIf(t, len(p.State().Entities) == len(s.Entities), "%v", "state snapshot aliases entity catalog")
 	p.Back()
 	p.Start(Inspect)
 	p.SelectType(entity.TypeIngredient)
 	p.SelectEntity(0)
 	s = p.State()
 	s.Result.Tags[0].Key = "poison"
-	if p.State().Result.Tags[0].Key == "poison" {
-		testutil.ErrorIf(t, true, "%v", "state snapshot aliases result tags")
-	}
+	testutil.ErrorIf(t, p.State().Result.Tags[0].Key == "poison", "%v", "state snapshot aliases result tags")
 }
 
 func TestViewResetsSearchWithNewEntityCatalogAndIdentifiesResultTarget(t *testing.T) {
@@ -198,13 +176,9 @@ func TestViewResetsSearchWithNewEntityCatalogAndIdentifiesResultTarget(t *testin
 	driver.Tap(ControlSearch + ".apply")
 	p.Back()
 	driver.Tap(typeControl(entity.TypeIngredient))
-	if v.search.Text != "" || len(p.State().Visible) != 1 {
-		testutil.ErrorIf(t, true, "new catalog retained stale search: text=%q state=%#v", v.search.Text, p.State())
-	}
+	testutil.ErrorIf(t, v.search.Text != "" || len(p.State().Visible) != 1, "new catalog retained stale search: text=%q state=%#v", v.search.Text, p.State())
 	driver.Tap(entityControl(0))
-	if p.State().Result.Target != fx.targets[entity.TypeIngredient] || p.State().Result.TargetName == "" {
-		testutil.ErrorIf(t, true, "result lost target identity: %#v", p.State().Result)
-	}
+	testutil.ErrorIf(t, p.State().Result.Target != fx.targets[entity.TypeIngredient] || p.State().Result.TargetName == "", "result lost target identity: %#v", p.State().Result)
 }
 
 func TestDeniedMutationRetainsEditorAndDoesNotPersist(t *testing.T) {
@@ -217,15 +191,11 @@ func TestDeniedMutationRetainsEditorAndDoesNotPersist(t *testing.T) {
 	p.SetValue("denied=yes")
 	p.Submit()
 	s := p.State()
-	if s.Mode != EnteringValue || s.Err == nil {
-		testutil.ErrorIf(t, true, "denied state = %#v", s)
-	}
+	testutil.ErrorIf(t, s.Mode != EnteringValue || s.Err == nil, "denied state = %#v", s)
 	testutil.ErrorIsPermission(t, s.Err)
 	values, err := fx.f.App.Tags.List(fx.f.OwnerContext(), fx.targets[entity.TypeIngredient])
 	testutil.Ok(t, err)
-	if len(values) != 0 {
-		testutil.ErrorIf(t, true, "denied mutation persisted: %#v", values)
-	}
+	testutil.ErrorIf(t, len(values) != 0, "denied mutation persisted: %#v", values)
 }
 
 func TestBackInvalidatesQueuedLoadAndSubmissionLocksNavigation(t *testing.T) {
@@ -235,27 +205,19 @@ func TestBackInvalidatesQueuedLoadAndSubmissionLocksNavigation(t *testing.T) {
 	p := NewPresenter(fx.f.App, Dependencies{Executor: executor, Dispatcher: dispatcher})
 	p.Start(Summary)
 	dispatcher.Drain()
-	if !p.Back() {
-		testutil.ErrorIf(t, true, "%v", "back rejected while loading")
-	}
+	testutil.ErrorIf(t, !p.Back(), "%v", "back rejected while loading")
 	executor.RunNext()
 	dispatcher.Drain()
-	if p.State().Mode != Browsing {
-		testutil.ErrorIf(t, true, "stale result published: %#v", p.State())
-	}
+	testutil.ErrorIf(t, p.State().Mode != Browsing, "stale result published: %#v", p.State())
 	p = NewPresenter(fx.f.App, Dependencies{Executor: executor, Dispatcher: ui.InlineDispatcher{}})
 	p.Start(Add)
 	p.SelectType(entity.TypeIngredient)
 	executor.RunNext()
 	p.SelectEntity(0)
 	p.SetValue("locked=yes")
-	if !p.Submit() || p.Back() {
-		testutil.ErrorIf(t, true, "%v", "accepted submission did not lock navigation")
-	}
+	testutil.ErrorIf(t, !p.Submit() || p.Back(), "%v", "accepted submission did not lock navigation")
 	executor.RunNext()
-	if p.State().Mode != Results {
-		testutil.ErrorIf(t, true, "submission = %#v", p.State())
-	}
+	testutil.ErrorIf(t, p.State().Mode != Results, "submission = %#v", p.State())
 }
 
 func TestMutationAuditsTouchedEntity(t *testing.T) {
@@ -276,22 +238,26 @@ func TestSummaryIsFilterableListAndBackRetainsDiscoveryState(t *testing.T) {
 	testutil.Ok(t, err)
 	p := presenter(fx.f.App)
 	p.ResetList()
-	if s := p.State(); s.Mode != Results || s.Operation != Summary || len(s.VisibleSummaries) != 1 {
-		testutil.ErrorIf(t, true, "summary list = %#v", s)
+	{
+		s := p.State()
+		testutil.ErrorIf(t, s.Mode != Results || s.Operation != Summary || len(s.VisibleSummaries) != 1, "summary list = %#v", s)
 	}
 	p.Search("region")
 	p.SelectSummary(0)
-	if s := p.State(); s.Operation != ShowExact || s.Value != "region=west" || len(s.Result.References) != 1 {
-		testutil.ErrorIf(t, true, "tag detail = %#v", s)
+	{
+		s := p.State()
+		testutil.ErrorIf(t, s.Operation != ShowExact || s.Value != "region=west" || len(s.Result.References) != 1, "tag detail = %#v", s)
 	}
 	p.Back()
-	if s := p.State(); s.Operation != Summary || s.Query != "region" || len(s.VisibleSummaries) != 1 {
-		testutil.ErrorIf(t, true, "back did not retain list state: %#v", s)
+	{
+		s := p.State()
+		testutil.ErrorIf(t, s.Operation != Summary || s.Query != "region" || len(s.VisibleSummaries) != 1, "back did not retain list state: %#v", s)
 	}
 	p.SelectSummary(0)
 	p.ResetList()
-	if s := p.State(); s.Operation != Summary || s.Query != "" || len(s.VisibleSummaries) != 1 {
-		testutil.ErrorIf(t, true, "breadcrumb reset = %#v", s)
+	{
+		s := p.State()
+		testutil.ErrorIf(t, s.Operation != Summary || s.Query != "" || len(s.VisibleSummaries) != 1, "breadcrumb reset = %#v", s)
 	}
 }
 
@@ -300,19 +266,13 @@ func TestSummaryEmptyStateAndTypedDetailNavigationControls(t *testing.T) {
 	p := presenter(fx.f.App)
 	v := NewView(p)
 	v.Activate()
-	if !v.list.Hidden || v.empty.Hidden {
-		testutil.ErrorIf(t, true, "empty summary visibility: list=%v empty=%v", v.list.Hidden, v.empty.Hidden)
-	}
+	testutil.ErrorIf(t, !v.list.Hidden || v.empty.Hidden, "empty summary visibility: list=%v empty=%v", v.list.Hidden, v.empty.Hidden)
 	_, err := fx.f.App.Tags.Upsert(fx.f.OwnerContext(), fx.targets[entity.TypeDrink], tag.Tag{Key: "classic"})
 	testutil.Ok(t, err)
 	p.ResetList()
-	if v.list.Hidden || !v.empty.Hidden {
-		testutil.ErrorIf(t, true, "populated summary visibility: list=%v empty=%v", v.list.Hidden, v.empty.Hidden)
-	}
+	testutil.ErrorIf(t, v.list.Hidden || !v.empty.Hidden, "populated summary visibility: list=%v empty=%v", v.list.Hidden, v.empty.Hidden)
 	p.SelectSummary(0)
 	driver := fynetest.NewDriver(t, v.Content())
 	driver.Tap(ControlBack)
-	if p.State().Operation != Summary {
-		testutil.ErrorIf(t, true, "typed Back did not return to summary: %#v", p.State())
-	}
+	testutil.ErrorIf(t, p.State().Operation != Summary, "typed Back did not return to summary: %#v", p.State())
 }

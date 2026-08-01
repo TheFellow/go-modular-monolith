@@ -19,14 +19,10 @@ func TestLatestRequestRejectsOutOfOrderCompletion(t *testing.T) {
 
 	request.Load(func() (string, error) { return "old", nil }, publish)
 	request.Load(func() (string, error) { return "new", nil }, publish)
-	if !executor.Run(1) || !executor.RunNext() {
-		testutil.ErrorIf(t, true, "%v", "expected two queued operations")
-	}
+	testutil.ErrorIf(t, !executor.Run(1) || !executor.RunNext(), "%v", "expected two queued operations")
 
-	if len(states) != 3 || states[0].Status != gui.Loading || states[1].Status != gui.Loading ||
-		states[2].Status != gui.Loaded || states[2].Value != "new" {
-		testutil.ErrorIf(t, true, "unexpected publications: %#v", states)
-	}
+	testutil.ErrorIf(t, len(states) != 3 || states[0].Status != gui.Loading || states[1].Status != gui.Loading ||
+		states[2].Status != gui.Loaded || states[2].Value != "new", "unexpected publications: %#v", states)
 }
 
 func TestLatestRequestChecksStalenessWhenUIPublicationRuns(t *testing.T) {
@@ -46,9 +42,7 @@ func TestLatestRequestChecksStalenessWhenUIPublicationRuns(t *testing.T) {
 	executor.RunNext()
 	dispatcher.Drain()
 
-	if len(values) != 1 || values[0] != 2 {
-		testutil.ErrorIf(t, true, "published values = %v, want [2]", values)
-	}
+	testutil.ErrorIf(t, len(values) != 1 || values[0] != 2, "published values = %v, want [2]", values)
 }
 
 func TestLatestRequestPublishesTypedFailure(t *testing.T) {
@@ -56,9 +50,7 @@ func TestLatestRequestPublishesTypedFailure(t *testing.T) {
 	request := gui.NewLatestRequest[int](gui.InlineExecutor{}, gui.InlineDispatcher{})
 	var got gui.LoadState[int]
 	request.Load(func() (int, error) { return 0, want }, func(state gui.LoadState[int]) { got = state })
-	if got.Status != gui.Failed || !errors.Is(got.Err, want) {
-		testutil.ErrorIf(t, true, "state = %#v", got)
-	}
+	testutil.ErrorIf(t, got.Status != gui.Failed || !errors.Is(got.Err, want), "state = %#v", got)
 }
 
 func TestSubmissionRejectsDuplicateUntilPublication(t *testing.T) {
@@ -66,62 +58,43 @@ func TestSubmissionRejectsDuplicateUntilPublication(t *testing.T) {
 	dispatcher := &fynetest.ManualDispatcher{}
 	submission := gui.NewSubmission(executor, dispatcher)
 	runs := 0
-	if !submission.Submit(func() error { runs++; return nil }, func(error) {}) {
-		testutil.ErrorIf(t, true, "%v", "first submission rejected")
-	}
-	if submission.Submit(func() error { runs++; return nil }, func(error) {}) {
-		testutil.ErrorIf(t, true, "%v", "duplicate submission accepted")
-	}
+	testutil.ErrorIf(t, !submission.Submit(func() error { runs++; return nil }, func(error) {}), "%v", "first submission rejected")
+	testutil.ErrorIf(t, submission.Submit(func() error { runs++; return nil }, func(error) {}), "%v", "duplicate submission accepted")
 	executor.RunNext()
-	if !submission.Active() {
-		testutil.ErrorIf(t, true, "%v", "submission became inactive before UI publication")
-	}
+	testutil.ErrorIf(t, !submission.Active(), "%v", "submission became inactive before UI publication")
 	dispatcher.Drain()
-	if submission.Active() || runs != 1 {
-		testutil.ErrorIf(t, true, "active=%v runs=%d", submission.Active(), runs)
-	}
+	testutil.ErrorIf(t, submission.Active() || runs != 1, "active=%v runs=%d", submission.Active(), runs)
 }
 
 func TestSubmissionPublishesFailureAndBecomesReusable(t *testing.T) {
 	want := errors.New("save failed")
 	submission := gui.NewSubmission(gui.InlineExecutor{}, gui.InlineDispatcher{})
 	var got error
-	if !submission.Submit(func() error { return want }, func(err error) { got = err }) {
-		testutil.ErrorIf(t, true, "%v", "submission rejected")
-	}
-	if submission.Active() || !errors.Is(got, want) {
-		testutil.ErrorIf(t, true, "active=%v error=%v", submission.Active(), got)
-	}
-	if !submission.Submit(func() error { return nil }, func(error) {}) {
-		testutil.ErrorIf(t, true, "%v", "submission was not reusable after failure")
-	}
+	testutil.ErrorIf(t, !submission.Submit(func() error { return want }, func(err error) { got = err }), "%v", "submission rejected")
+	testutil.ErrorIf(t, submission.Active() || !errors.Is(got, want), "active=%v error=%v", submission.Active(), got)
+	testutil.ErrorIf(t, !submission.Submit(func() error { return nil }, func(error) {}), "%v", "submission was not reusable after failure")
 }
 
 func TestSubmissionReleasesAfterPanickingWorkIsPublished(t *testing.T) {
 	executor := &fynetest.ManualExecutor{}
 	dispatcher := &fynetest.ManualDispatcher{}
 	submission := gui.NewSubmission(executor, dispatcher)
-	if !submission.Submit(func() error { panic("boom") }, func(error) {
-		testutil.ErrorIf(t, true, "%v", "panic must not be published as an ordinary error")
-	}) {
-		testutil.ErrorIf(t, true, "%v", "submission rejected")
-	}
+	testutil.ErrorIf(t, !submission.Submit(func() error { panic("boom") }, func(error) {
+		testutil.Fail(t, "%v", "panic must not be published as an ordinary error")
+	}), "%v", "submission rejected")
 
 	func() {
 		defer func() {
-			if recovered := recover(); recovered != "boom" {
-				testutil.ErrorIf(t, true, "recovered %v, want boom", recovered)
+			{
+				recovered := recover()
+				testutil.ErrorIf(t, recovered != "boom", "recovered %v, want boom", recovered)
 			}
 		}()
 		executor.RunNext()
 	}()
-	if !submission.Active() {
-		testutil.ErrorIf(t, true, "%v", "submission became inactive before UI publication")
-	}
+	testutil.ErrorIf(t, !submission.Active(), "%v", "submission became inactive before UI publication")
 	dispatcher.Drain()
-	if submission.Active() {
-		testutil.ErrorIf(t, true, "%v", "submission remained active after panic publication")
-	}
+	testutil.ErrorIf(t, submission.Active(), "%v", "submission remained active after panic publication")
 }
 
 func TestLatestRequestIsRaceSafe(t *testing.T) {

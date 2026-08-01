@@ -22,24 +22,21 @@ import (
 //nolint:paralleltest // exercises independent process lifecycles against one database file.
 func TestCLIAndComposedDesktopShareIngredientInventoryAuditAndTagContracts(t *testing.T) {
 	repository, err := filepath.Abs("../..")
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	workingDirectory := t.TempDir()
 	binary := testutil.ExecutablePath(workingDirectory, "mixology")
 	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "./main/cli")
 	build.Dir = repository
-	if output, buildErr := build.CombinedOutput(); buildErr != nil {
-		testutil.ErrorIf(t, true, "build CLI: %v\n%s", buildErr, output)
+	{
+		output, buildErr := build.CombinedOutput()
+		testutil.ErrorIf(t, buildErr != nil, "build CLI: %v\n%s", buildErr, output)
 	}
 	run := func(args ...string) string {
 		t.Helper()
 		command := exec.CommandContext(t.Context(), binary, append([]string{"--log-level", "error"}, args...)...)
 		command.Dir = workingDirectory
 		output, runErr := command.CombinedOutput()
-		if runErr != nil {
-			testutil.ErrorIf(t, true, "CLI %v: %v\n%s", args, runErr, output)
-		}
+		testutil.ErrorIf(t, runErr != nil, "CLI %v: %v\n%s", args, runErr, output)
 		return string(output)
 	}
 
@@ -51,36 +48,31 @@ func TestCLIAndComposedDesktopShareIngredientInventoryAuditAndTagContracts(t *te
 	desktop, err := openDesktopWithDependencies(context.Background(), gui, desktopConfig{
 		dataDirectory: filepath.Join(workingDirectory, "data"), actor: "owner",
 	}, deterministicDesktopDependencies(nil))
-	if err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
-	}
+	testutil.ErrorIf(t, err != nil, "%v", err)
 	driver := fynetest.NewDriver(t, desktop.shell.Content())
-	if err := desktop.shell.Navigate("ingredients"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	{
+		err := desktop.shell.Navigate("ingredients")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
 	driver.Tap("ingredients-refresh")
 	ingredients := desktop.presenters["ingredients"].(*ingredientsgui.Presenter).Snapshot()
-	if len(ingredients.Items) != 1 || ingredients.Items[0].Name != "Lifecycle ingredient" {
-		testutil.ErrorIf(t, true, "Fyne did not observe CLI ingredient: %#v", ingredients)
-	}
+	testutil.ErrorIf(t, len(ingredients.Items) != 1 || ingredients.Items[0].Name != "Lifecycle ingredient", "Fyne did not observe CLI ingredient: %#v", ingredients)
 
-	if err := desktop.shell.Navigate("inventory"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	{
+		err := desktop.shell.Navigate("inventory")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
 	driver.Tap("inventory-refresh")
 	inventory := desktop.presenters["inventory"].(*inventorygui.Presenter).Snapshot()
-	if len(inventory.Rows) != 1 || inventory.Rows[0].Inventory.IngredientID.String() != ingredientID {
-		testutil.ErrorIf(t, true, "Fyne did not observe CLI inventory: %#v", inventory)
-	}
+	testutil.ErrorIf(t, len(inventory.Rows) != 1 || inventory.Rows[0].Inventory.IngredientID.String() != ingredientID, "Fyne did not observe CLI inventory: %#v", inventory)
 
-	if err := desktop.shell.Navigate("audit"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	{
+		err := desktop.shell.Navigate("audit")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
 	driver.Tap(auditgui.ControlRefresh)
 	audit := desktop.presenters["audit"].(*auditgui.Presenter).State()
-	if audit.Err != nil {
-		testutil.ErrorIf(t, true, "Fyne did not observe CLI audit history: %#v", audit)
-	}
+	testutil.ErrorIf(t, audit.Err != nil, "Fyne did not observe CLI audit history: %#v", audit)
 	wantActions := map[string]bool{
 		ingredientauthz.ActionCreate.String(): false,
 		inventoryauthz.ActionSet.String():     false,
@@ -92,37 +84,34 @@ func TestCLIAndComposedDesktopShareIngredientInventoryAuditAndTagContracts(t *te
 		}
 	}
 	for action, found := range wantActions {
-		if !found {
-			testutil.ErrorIf(t, true, "Fyne audit did not contain successful CLI action %s: %#v", action, audit.Rows)
-		}
+		testutil.ErrorIf(t, !found, "Fyne audit did not contain successful CLI action %s: %#v", action, audit.Rows)
 	}
 
-	if err := desktop.shell.Navigate("tags"); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	{
+		err := desktop.shell.Navigate("tags")
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
 	driver.Tap(tagginggui.ControlInspect)
 	driver.Tap("tags.type.Mixology::Ingredient")
 	driver.Tap("tags.entity.0")
 	tagState := desktop.presenters["tags"].(*tagginggui.Presenter).State()
-	if tagState.Result.Tags.Canonical().String() != "origin=cli" {
-		testutil.ErrorIf(t, true, "Fyne did not observe CLI tags: %#v", tagState)
-	}
+	testutil.ErrorIf(t, tagState.Result.Tags.Canonical().String() != "origin=cli", "Fyne did not observe CLI tags: %#v", tagState)
 	driver.Tap(tagginggui.ControlBack)
 	driver.Tap(tagginggui.ControlAdd)
 	driver.Tap("tags.type.Mixology::Ingredient")
 	driver.Tap("tags.entity.0")
 	driver.Type(tagginggui.ControlValue, "origin=fyne")
 	driver.Tap(tagginggui.ControlSubmit)
-	if state := desktop.presenters["tags"].(*tagginggui.Presenter).State(); state.Err != nil || !state.Result.Changed {
-		testutil.ErrorIf(t, true, "Fyne tag mutation failed: %#v", state)
+	{
+		state := desktop.presenters["tags"].(*tagginggui.Presenter).State()
+		testutil.ErrorIf(t, state.Err != nil || !state.Result.Changed, "Fyne tag mutation failed: %#v", state)
 	}
-	if err := desktop.Close(); err != nil {
-		testutil.ErrorIf(t, true, "%v", err)
+	{
+		err := desktop.Close()
+		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
 	gui.Quit()
 
 	output := run("tags", "list", ingredientID)
-	if !strings.Contains(output, "origin=fyne") {
-		testutil.ErrorIf(t, true, "CLI did not observe Fyne tag after a fresh lifecycle:\n%s", output)
-	}
+	testutil.ErrorIf(t, !strings.Contains(output, "origin=fyne"), "CLI did not observe Fyne tag after a fresh lifecycle:\n%s", output)
 }

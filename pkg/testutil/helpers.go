@@ -130,6 +130,11 @@ func ErrorIf(t testing.TB, isErr bool, msg string, args ...any) {
 	}
 }
 
+func Fail(t testing.TB, msg string, args ...any) {
+	t.Helper()
+	t.Fatalf(msg, args...)
+}
+
 func StringNonEmpty(t testing.TB, value string, msg string, args ...any) {
 	t.Helper()
 	if strings.TrimSpace(value) == "" {
