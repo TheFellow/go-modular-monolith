@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestMenuItemJSONAndTextViewsPreservePrice(t *testing.T) {
@@ -20,9 +21,9 @@ func TestMenuItemJSONAndTextViewsPreservePrice(t *testing.T) {
 	jsonView := FromDomainMenuItem(item)
 	textView := ToMenuItemRows([]models.MenuItem{item})[0]
 	if jsonView.Price != "$12.50" {
-		t.Fatalf("JSON price = %q", jsonView.Price)
+		testutil.ErrorIf(t, true, "JSON price = %q", jsonView.Price)
 	}
 	if textView.Price != jsonView.Price {
-		t.Fatalf("text price %q differs from JSON price %q", textView.Price, jsonView.Price)
+		testutil.ErrorIf(t, true, "text price %q differs from JSON price %q", textView.Price, jsonView.Price)
 	}
 }

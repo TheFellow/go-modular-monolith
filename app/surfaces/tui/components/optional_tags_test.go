@@ -14,7 +14,7 @@ func TestOptionalTagsDistinguishesPreserveClearAndReplace(t *testing.T) {
 	desired, err := DesiredTags(field)
 	testutil.Ok(t, err)
 	if desired != nil {
-		t.Fatal("untouched tags did not preserve")
+		testutil.ErrorIf(t, true, "%v", "untouched tags did not preserve")
 	}
 	field.Focus()
 	for range len("old") {
@@ -23,7 +23,7 @@ func TestOptionalTagsDistinguishesPreserveClearAndReplace(t *testing.T) {
 	desired, err = DesiredTags(field)
 	testutil.Ok(t, err)
 	if desired == nil || len(*desired) != 0 {
-		t.Fatalf("cleared tags = %#v", desired)
+		testutil.ErrorIf(t, true, "cleared tags = %#v", desired)
 	}
 	_, _ = field.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("new=value")})
 	desired, err = DesiredTags(field)
@@ -36,6 +36,6 @@ func TestOptionalTagsRejectsInvalidEditedSet(t *testing.T) {
 	field.Focus()
 	_, _ = field.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("region=west,region=east")})
 	if _, err := DesiredTags(field); err == nil {
-		t.Fatal("duplicate complete tag set accepted")
+		testutil.ErrorIf(t, true, "%v", "duplicate complete tag set accepted")
 	}
 }

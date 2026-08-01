@@ -7,6 +7,7 @@ import (
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 type testView struct {
@@ -59,25 +60,25 @@ func TestShellNavigatesLazilyAndPreservesViews(t *testing.T) {
 		{ID: "drinks", Label: "Drinks", Build: build("drinks")},
 	}, "home")
 	if err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	if shell.Current() != "home" || builds["home"] != 1 || builds["drinks"] != 0 {
-		t.Fatalf("unexpected initial state: current=%q builds=%v", shell.Current(), builds)
+		testutil.ErrorIf(t, true, "unexpected initial state: current=%q builds=%v", shell.Current(), builds)
 	}
 	if shell.navigation["home"].Importance != widget.HighImportance || shell.navigation["drinks"].Importance != widget.LowImportance {
-		t.Fatal("initial route is not distinguished in the navigation rail")
+		testutil.ErrorIf(t, true, "%v", "initial route is not distinguished in the navigation rail")
 	}
 	if err := shell.Navigate("drinks"); err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	if shell.navigation["drinks"].Importance != widget.HighImportance || shell.navigation["home"].Importance != widget.LowImportance {
-		t.Fatal("navigation rail did not track the selected route")
+		testutil.ErrorIf(t, true, "%v", "navigation rail did not track the selected route")
 	}
 	if err := shell.Navigate("home"); err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	if builds["home"] != 1 || builds["drinks"] != 1 {
-		t.Fatalf("views were not preserved: %v", builds)
+		testutil.ErrorIf(t, true, "views were not preserved: %v", builds)
 	}
 }
 
@@ -85,20 +86,20 @@ func TestShellShowsPersistentIdentityAndExplicitRouteIcon(t *testing.T) {
 	startTestApp(t)
 	shell, err := NewShell([]Route{{ID: "home", Label: "Home", Icon: IconDashboard, Build: func() View { return &testView{title: "Home", content: widget.NewLabel("home")} }}}, "home")
 	if err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	shell.SetIdentity("Mixology", "Local user", "manager")
 	if shell.identity.Text != "Mixology\nLocal user · manager" {
-		t.Fatalf("identity = %q", shell.identity.Text)
+		testutil.ErrorIf(t, true, "identity = %q", shell.identity.Text)
 	}
 	if shell.navigation["home"].Icon != IconResource(IconDashboard) {
-		t.Fatal("route did not use its enumerated icon")
+		testutil.ErrorIf(t, true, "%v", "route did not use its enumerated icon")
 	}
 	if err := shell.Navigate("home"); err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	if shell.identity.Text == "" {
-		t.Fatal("identity did not persist")
+		testutil.ErrorIf(t, true, "%v", "identity did not persist")
 	}
 }
 
@@ -111,21 +112,21 @@ func TestShellActivatesInitialViewAndEveryReentryWithoutRebuilding(t *testing.T)
 		{ID: "other", Label: "Other", Build: func() View { return other }},
 	}, "home")
 	if err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	shell.ActivateCurrent()
 	shell.ActivateCurrent()
 	if home.activations != 1 {
-		t.Fatalf("initial activations = %d, want 1", home.activations)
+		testutil.ErrorIf(t, true, "initial activations = %d, want 1", home.activations)
 	}
 	if err := shell.Navigate("other"); err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	if err := shell.Navigate("home"); err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	if home.activations != 2 {
-		t.Fatalf("reentry activations = %d, want 2", home.activations)
+		testutil.ErrorIf(t, true, "reentry activations = %d, want 2", home.activations)
 	}
 }
 
@@ -136,13 +137,13 @@ func TestShellRejectsInvalidRoutesWithoutChangingSelection(t *testing.T) {
 		Build: func() View { return &testView{title: "Home", content: widget.NewLabel("home")} },
 	}}, "home")
 	if err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	if err := shell.Navigate("missing"); err == nil {
-		t.Fatal("expected unknown route error")
+		testutil.ErrorIf(t, true, "%v", "expected unknown route error")
 	}
 	if shell.Current() != "home" {
-		t.Fatalf("invalid navigation changed route to %q", shell.Current())
+		testutil.ErrorIf(t, true, "invalid navigation changed route to %q", shell.Current())
 	}
 }
 
@@ -154,7 +155,7 @@ func TestShellRejectsDuplicateRoutes(t *testing.T) {
 		{ID: "home", Label: "Again", Build: build},
 	}, "home")
 	if err == nil {
-		t.Fatal("expected duplicate route error")
+		testutil.ErrorIf(t, true, "%v", "expected duplicate route error")
 	}
 }
 
@@ -167,16 +168,16 @@ func TestShellOffersCommandsOnlyToCurrentConcreteView(t *testing.T) {
 		{ID: "other", Label: "Other", Build: func() View { return other }},
 	}, "home")
 	if err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	if !shell.ExecuteCommand(CommandRefresh) || len(home.commands) != 1 {
-		t.Fatal("current view did not handle command")
+		testutil.ErrorIf(t, true, "%v", "current view did not handle command")
 	}
 	if err := shell.Navigate("other"); err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	if shell.ExecuteCommand(CommandSave) || len(home.commands) != 1 {
-		t.Fatal("disabled view or inactive view handled command")
+		testutil.ErrorIf(t, true, "%v", "disabled view or inactive view handled command")
 	}
 }
 
@@ -194,26 +195,26 @@ func TestShellConfirmsBeforeLeavingUnsavedEditor(t *testing.T) {
 		{ID: "other", Label: "Other", Build: func() View { return &testView{title: "Other", content: widget.NewLabel("other")} }},
 	}, "editor")
 	if err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	var respond func(bool)
 	shell.SetAbandonConfirmation(func(callback func(bool)) { respond = callback })
 	if err := shell.Navigate("other"); err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	if shell.Current() != "editor" || respond == nil {
-		t.Fatal("unsaved editor was replaced without confirmation")
+		testutil.ErrorIf(t, true, "%v", "unsaved editor was replaced without confirmation")
 	}
 	respond(false)
 	if shell.Current() != "editor" {
-		t.Fatal("cancelled navigation changed route")
+		testutil.ErrorIf(t, true, "%v", "cancelled navigation changed route")
 	}
 	if err := shell.Navigate("other"); err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	respond(true)
 	if shell.Current() != "other" {
-		t.Fatal("confirmed navigation did not continue")
+		testutil.ErrorIf(t, true, "%v", "confirmed navigation did not continue")
 	}
 }
 
@@ -226,26 +227,26 @@ func TestShellConfirmsBeforeReactivatingDirtyCurrentRoute(t *testing.T) {
 		return structView{View: activated, dirty: editor}
 	}}}, "editor")
 	if err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	var respond func(bool)
 	shell.SetAbandonConfirmation(func(callback func(bool)) { respond = callback })
 	if err := shell.Navigate("editor"); err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	if respond == nil || activated.activations != 0 {
-		t.Fatal("same-route navigation bypassed confirmation")
+		testutil.ErrorIf(t, true, "%v", "same-route navigation bypassed confirmation")
 	}
 	respond(false)
 	if activated.activations != 0 {
-		t.Fatal("cancelled reactivation ran")
+		testutil.ErrorIf(t, true, "%v", "cancelled reactivation ran")
 	}
 	if err := shell.Navigate("editor"); err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	respond(true)
 	if activated.activations != 1 {
-		t.Fatalf("activations = %d, want 1", activated.activations)
+		testutil.ErrorIf(t, true, "activations = %d, want 1", activated.activations)
 	}
 }
 

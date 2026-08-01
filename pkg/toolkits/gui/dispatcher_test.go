@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2/test"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestInlineDispatcherPublishesSynchronously(t *testing.T) {
 	called := false
 	InlineDispatcher{}.Dispatch(func() { called = true })
 	if !called {
-		t.Fatal("inline dispatcher did not publish before returning")
+		testutil.ErrorIf(t, true, "%v", "inline dispatcher did not publish before returning")
 	}
 }
 
@@ -24,7 +25,7 @@ func TestMainDispatcherPublishesThroughFyneDriver(t *testing.T) {
 	select {
 	case <-called:
 	case <-time.After(time.Second):
-		t.Fatal("main dispatcher did not publish through the Fyne driver")
+		testutil.ErrorIf(t, true, "%v", "main dispatcher did not publish through the Fyne driver")
 	}
 }
 
@@ -38,16 +39,16 @@ func TestGatedDispatcherDropsQueuedAndFuturePublicationsAfterClose(t *testing.T)
 	var published int
 	dispatcher.Dispatch(func() { published++ })
 	if len(queue.callbacks) != 1 {
-		t.Fatalf("queued %d callbacks, want 1", len(queue.callbacks))
+		testutil.ErrorIf(t, true, "queued %d callbacks, want 1", len(queue.callbacks))
 	}
 	dispatcher.Close()
 	queue.callbacks[0]()
 	dispatcher.Dispatch(func() { published++ })
 	if published != 0 {
-		t.Fatalf("published %d callbacks after close, want 0", published)
+		testutil.ErrorIf(t, true, "published %d callbacks after close, want 0", published)
 	}
 	if len(queue.callbacks) != 1 {
-		t.Fatalf("queued %d callbacks after close, want 1", len(queue.callbacks))
+		testutil.ErrorIf(t, true, "queued %d callbacks after close, want 1", len(queue.callbacks))
 	}
 }
 

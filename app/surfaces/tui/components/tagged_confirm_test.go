@@ -21,6 +21,6 @@ func TestTaggedConfirmAdvancesFromTagChoiceToDomainConfirmation(t *testing.T) {
 	desired, err := component.DesiredTags()
 	testutil.Ok(t, err)
 	if desired != nil {
-		t.Fatal("untouched transition tags must preserve the existing set")
+		testutil.ErrorIf(t, true, "%v", "untouched transition tags must preserve the existing set")
 	}
 }

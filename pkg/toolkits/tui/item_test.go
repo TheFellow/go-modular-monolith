@@ -3,6 +3,7 @@ package tui_test
 import (
 	"testing"
 
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 )
 
@@ -20,10 +21,10 @@ func TestListItemPresentsAndPreservesTypedValue(t *testing.T) {
 
 	var _ listItem = item
 	if item.Value != (record{ID: 42}) {
-		t.Fatalf("Value = %#v, want ID 42", item.Value)
+		testutil.ErrorIf(t, true, "Value = %#v, want ID 42", item.Value)
 	}
 	if item.Title() != "Title" || item.Description() != "Description" || item.FilterValue() != "search terms" {
-		t.Fatalf("presentation = %q, %q, %q", item.Title(), item.Description(), item.FilterValue())
+		testutil.ErrorIf(t, true, "presentation = %q, %q, %q", item.Title(), item.Description(), item.FilterValue())
 	}
 }
 
@@ -33,6 +34,6 @@ func TestListItemDefaultsFilterValueToTitle(t *testing.T) {
 	item := tui.NewListItem(struct{}{}, "Title", "Description", "")
 
 	if item.FilterValue() != "Title" {
-		t.Fatalf("FilterValue() = %q, want title", item.FilterValue())
+		testutil.ErrorIf(t, true, "FilterValue() = %q, want title", item.FilterValue())
 	}
 }

@@ -38,7 +38,7 @@ func chooseFirstSelectOption(t *testing.T, window framework.Window, selectWidget
 	test.Tap(selectWidget)
 	focused := window.Canvas().Focused()
 	if focused == nil {
-		t.Fatal("opening select did not focus its option menu")
+		testutil.ErrorIf(t, true, "%v", "opening select did not focus its option menu")
 	}
 	focused.TypedKey(&framework.KeyEvent{Name: framework.KeyDown})
 	focused.TypedKey(&framework.KeyEvent{Name: framework.KeyEnter})
@@ -78,7 +78,7 @@ func TestPresenterRefreshSelectionFilteringAndStaleness(t *testing.T) {
 	testutil.Equals(t, executor.RunNext(), true)
 	dispatcher.Drain()
 	if p.State().Err == nil {
-		t.Fatal("expected invalid expression failure")
+		testutil.ErrorIf(t, true, "%v", "expected invalid expression failure")
 	}
 	testutil.ErrorIsInvalid(t, p.State().Err)
 	testutil.Equals(t, len(p.State().Items), 1)
@@ -99,12 +99,12 @@ func TestWidgetPagesMoreThanOneHundredDrinksAndValidatesPageSize(t *testing.T) {
 	driver.Tap(ControlNext)
 	testutil.Equals(t, len(p.State().Items), 25)
 	if p.State().Items[0].ID == first {
-		t.Fatal("next retained first page")
+		testutil.ErrorIf(t, true, "%v", "next retained first page")
 	}
 	driver.Tap(ControlPrevious)
 	testutil.Equals(t, p.State().Items[0].ID, first)
 	if p.SetFilter(Filter{Limit: -1}) {
-		t.Fatal("negative page size accepted")
+		testutil.ErrorIf(t, true, "%v", "negative page size accepted")
 	}
 }
 
@@ -178,7 +178,7 @@ func TestWidgetCreateEditTagsAndDeletePersist(t *testing.T) {
 	dialogs.Confirmations()[1].Respond(true)
 	_, err = f.Drinks.Get(f.OwnerContext(), created.ID)
 	if err == nil {
-		t.Fatal("deleted drink remained visible")
+		testutil.ErrorIf(t, true, "%v", "deleted drink remained visible")
 	}
 	testutil.AuditTouches(t, f.LatestAuditEntry(authz.ActionDelete), created.EntityUID())
 }
@@ -197,12 +197,12 @@ func TestCreateIngredientAndSubstitutePickersExposeLoadedOptions(t *testing.T) {
 	p.StartCreate()
 	driver.Tap(ControlAddIngredient)
 	if got := len(v.recipe[1].ingredient.Options); got != 2 {
-		t.Fatalf("new ingredient picker has %d options, want 2", got)
+		testutil.ErrorIf(t, true, "new ingredient picker has %d options, want 2", got)
 	}
 	chooseFirstSelectOption(t, window, v.recipe[1].ingredient)
 	v.readForm()
 	if got := p.State().Form.Recipe[1].Ingredient; got == (entity.IngredientID{}) {
-		t.Fatal("selecting an ingredient from the open menu did not update the form")
+		testutil.ErrorIf(t, true, "%v", "selecting an ingredient from the open menu did not update the form")
 	}
 
 	// The subordinate substitute picker uses the same constrained interaction
@@ -212,12 +212,12 @@ func TestCreateIngredientAndSubstitutePickersExposeLoadedOptions(t *testing.T) {
 	p.SetForm(form)
 	v.recipe[0].actions.SetSelected("Add substitute")
 	if got := len(v.recipe[0].substitutePicker.Options); got != 1 {
-		t.Fatalf("substitute picker has %d options, want 1", got)
+		testutil.ErrorIf(t, true, "substitute picker has %d options, want 1", got)
 	}
 	chooseFirstSelectOption(t, window, v.recipe[0].substitutePicker)
 	appgui.Trigger(v.recipe[0].confirmSubstitute)
 	if v.recipe[0].substitutes[substitute.ID] == nil {
-		t.Fatal("selecting a substitute from the open menu did not add it")
+		testutil.ErrorIf(t, true, "%v", "selecting a substitute from the open menu did not add it")
 	}
 }
 
@@ -234,7 +234,7 @@ func TestValidationRetainsFormAndReadOnlyActorCannotMutate(t *testing.T) {
 	testutil.Equals(t, p.Save(), false)
 	testutil.Equals(t, p.State().Mode, Editing)
 	if p.State().Err == nil {
-		t.Fatal("expected validation failure")
+		testutil.ErrorIf(t, true, "%v", "expected validation failure")
 	}
 	testutil.ErrorIsInvalid(t, p.State().Err)
 	anonymous := appcore.NewSession(f.ActorContext("anonymous"), f.App.App)
@@ -308,7 +308,7 @@ func TestDeleteOpensOnlyOneConfirmationUntilResponse(t *testing.T) {
 	p.Delete()
 	testutil.Equals(t, len(dialogs.Confirmations()), 1)
 	if !strings.Contains(dialogs.Confirmations()[0].Message, "appears on 1 menu(s)") {
-		t.Fatalf("delete confirmation omitted menu impact: %q", dialogs.Confirmations()[0].Message)
+		testutil.ErrorIf(t, true, "delete confirmation omitted menu impact: %q", dialogs.Confirmations()[0].Message)
 	}
 	dialogs.Confirmations()[0].Respond(false)
 	p.Delete()
@@ -318,7 +318,7 @@ func TestDeleteOpensOnlyOneConfirmationUntilResponse(t *testing.T) {
 func TestRecipeRowsRequireStructuredIngredientSelection(t *testing.T) {
 	_, err := parseRecipe(Form{Recipe: []RecipeRow{{Amount: "1", Unit: measurement.UnitOz}}, Steps: "Stir"})
 	if err == nil {
-		t.Fatal("recipe row with unexpected fields was accepted")
+		testutil.ErrorIf(t, true, "%v", "recipe row with unexpected fields was accepted")
 	}
 	testutil.ErrorIsInvalid(t, err)
 }
@@ -359,7 +359,7 @@ func TestDetailIncludesCompleteRecipe(t *testing.T) {
 	text := detailText(d, []IngredientOption{{ID: ingredient.ID, Name: ingredient.Name}})
 	for _, want := range []string{"Complete", "description", ingredient.Name, "1. One", "2. Two", "twist"} {
 		if !strings.Contains(text, want) {
-			t.Fatalf("detail missing %q: %s", want, text)
+			testutil.ErrorIf(t, true, "detail missing %q: %s", want, text)
 		}
 	}
 }
@@ -392,7 +392,7 @@ func TestCatalogDetailNavigationPreservesBackAndResetsBreadcrumb(t *testing.T) {
 	p.state.History = []paging.Cursor{"first-page"}
 	p.Select(0)
 	if p.State().Mode != Editing || !p.State().CanUpdate {
-		t.Fatalf("manager did not enter editable detail: %+v", p.State())
+		testutil.ErrorIf(t, true, "manager did not enter editable detail: %+v", p.State())
 	}
 	p.Back()
 	got := p.State()
@@ -443,7 +443,7 @@ func TestDrinksViewCatalogAndDetailContract(t *testing.T) {
 	p.state.Items = []*models.Drink{drink}
 	v := NewView(p)
 	if v.filterBar.Advanced != nil {
-		t.Fatal("drinks filter unexpectedly uses a disclosure row")
+		testutil.ErrorIf(t, true, "%v", "drinks filter unexpectedly uses a disclosure row")
 	}
 	rows, columns := v.list.Length()
 	testutil.Equals(t, rows, 1)
@@ -454,18 +454,18 @@ func TestDrinksViewCatalogAndDetailContract(t *testing.T) {
 		testutil.Equals(t, header.(*widget.Button).Text, want)
 	}
 	if v.browse.Hidden || !v.formPanel.Hidden {
-		t.Fatal("catalog and detail were shown together")
+		testutil.ErrorIf(t, true, "%v", "catalog and detail were shown together")
 	}
 	v.list.Select(widget.TableCellID{Row: 0, Col: 0})
 	if !v.browse.Hidden || v.formPanel.Hidden {
-		t.Fatal("row selection did not replace catalog with detail")
+		testutil.ErrorIf(t, true, "%v", "row selection did not replace catalog with detail")
 	}
 	if !v.save.Disabled() || !v.cancel.Disabled() {
-		t.Fatal("clean detail enabled Save or Cancel")
+		testutil.ErrorIf(t, true, "%v", "clean detail enabled Save or Cancel")
 	}
 	test.Type(v.description, "changed")
 	if v.save.Disabled() || v.cancel.Disabled() {
-		t.Fatal("dirty detail did not enable Save and Cancel")
+		testutil.ErrorIf(t, true, "%v", "dirty detail did not enable Save and Cancel")
 	}
 
 	readOnly := appcore.NewSession(f.ActorContext("anonymous"), f.App.App)
@@ -474,14 +474,14 @@ func TestDrinksViewCatalogAndDetailContract(t *testing.T) {
 	rv := NewView(rp)
 	rp.Select(0)
 	if rv.description.Disabled() {
-		t.Fatal("read-only description is disabled and cannot be selected")
+		testutil.ErrorIf(t, true, "%v", "read-only description is disabled and cannot be selected")
 	}
 	if !rv.save.Hidden || !rv.cancel.Hidden {
-		t.Fatal("read-only detail exposed mutation actions")
+		testutil.ErrorIf(t, true, "%v", "read-only detail exposed mutation actions")
 	}
 	for _, action := range rv.detailActions {
 		if !action.Hidden {
-			t.Fatalf("unauthorized action %q is visible", action.SemanticID())
+			testutil.ErrorIf(t, true, "unauthorized action %q is visible", action.SemanticID())
 		}
 	}
 }
@@ -543,21 +543,21 @@ func TestStructuredRecipeWidgetsUseNamesAndConstrainedChoices(t *testing.T) {
 	v := NewView(p)
 	p.StartEdit()
 	if !strings.Contains(v.recipe[0].ingredient.Selected, "London Dry Gin") || v.recipe[0].substitutes[sub.ID] == nil || v.recipe[0].substitutes[sub.ID].Text != "Old Tom Gin, Barrel Aged" {
-		t.Fatalf("recipe selectors did not render ingredient names: ingredient=%q substitute=%#v", v.recipe[0].ingredient.Selected, v.recipe[0].substitutes[sub.ID])
+		testutil.ErrorIf(t, true, "recipe selectors did not render ingredient names: ingredient=%q substitute=%#v", v.recipe[0].ingredient.Selected, v.recipe[0].substitutes[sub.ID])
 	}
 	testutil.Equals(t, v.recipe[0].optional.Checked, true)
 	testutil.Equals(t, v.recipe[0].substitutes[sub2.ID].Checked, true)
 	testutil.Equals(t, len(v.recipe[0].substitutes), 2)
 	if v.recipe[0].actions == nil || !slices.Contains(v.recipe[0].actions.Options, "Add substitute") || !slices.Contains(v.recipe[0].actions.Options, "Remove") {
-		t.Fatalf("prescribed ingredient does not expose compact row actions: %#v", v.recipe[0].actions)
+		testutil.ErrorIf(t, true, "prescribed ingredient does not expose compact row actions: %#v", v.recipe[0].actions)
 	}
 	actions := v.recipe[0].actions
 	actions.SetSelected("Add substitute")
 	if actions.Selected != "" || !v.recipe[0].choosingSubstitute {
-		t.Fatalf("ingredient action did not reset safely: selected=%q choosing=%v", actions.Selected, v.recipe[0].choosingSubstitute)
+		testutil.ErrorIf(t, true, "ingredient action did not reset safely: selected=%q choosing=%v", actions.Selected, v.recipe[0].choosingSubstitute)
 	}
 	if v.recipe[0].ingredient.Visible() || v.recipe[0].amount.Visible() || v.recipe[0].unit.Visible() {
-		t.Fatal("prescribed ingredient still renders as an editable form band")
+		testutil.ErrorIf(t, true, "%v", "prescribed ingredient still renders as an editable form band")
 	}
 	testutil.Equals(t, v.category.Options, categoryOptions())
 	testutil.Equals(t, v.glass.Options, glassOptions())
@@ -615,7 +615,7 @@ func TestIngredientLoadDoesNotWipeLiveWidgetEdits(t *testing.T) {
 	chooseFirstSelectOption(t, window, v.recipe[0].ingredient)
 	v.readForm()
 	if p.State().Form.Recipe[0].Ingredient == (entity.IngredientID{}) {
-		t.Fatal("late-loaded ingredient options could not be selected from the open menu")
+		testutil.ErrorIf(t, true, "%v", "late-loaded ingredient options could not be selected from the open menu")
 	}
 }
 
@@ -674,7 +674,7 @@ func TestAcceptedDrinkSubmitDisablesEveryMutableControl(t *testing.T) {
 	p.Save()
 	for name, disabled := range map[string]bool{"name": v.name.Disabled(), "category": v.category.Disabled(), "glass": v.glass.Disabled(), "description": v.description.Disabled(), "steps": v.steps.Disabled(), "garnish": v.garnish.Disabled(), "tags": v.tags.Input.Disabled(), "add": v.addIngredient.Disabled(), "ingredient": v.recipe[0].ingredient.Disabled(), "amount": v.recipe[0].amount.Disabled(), "unit": v.recipe[0].unit.Disabled(), "optional": v.recipe[0].optional.Disabled(), "remove": v.recipe[0].remove.Disabled(), "substitute picker": v.recipe[0].substitutePicker.Disabled(), "add substitute": v.recipe[0].addSubstitute.Disabled(), "ingredient actions": v.recipe[0].actions.Disabled()} {
 		if !disabled {
-			t.Fatalf("%s remained enabled during submit", name)
+			testutil.ErrorIf(t, true, "%s remained enabled during submit", name)
 		}
 	}
 }
@@ -696,7 +696,7 @@ func TestTagsUseFocusedPanelAndAcceptedSubmitDisablesActions(t *testing.T) {
 	testutil.Equals(t, v.tagSave.Disabled(), true)
 	testutil.Equals(t, v.tagCancel.Disabled(), true)
 	if !strings.Contains(v.tagStatus.Text, "Saving") {
-		t.Fatalf("active tag form omitted status: %q", v.tagStatus.Text)
+		testutil.ErrorIf(t, true, "active tag form omitted status: %q", v.tagStatus.Text)
 	}
 	executor.RunNext()
 	executor.RunNext()
@@ -712,7 +712,7 @@ func TestCLIWorkflowAndFyneSharePersistenceContract(t *testing.T) {
 	build.Dir = repo
 	output, err := build.CombinedOutput()
 	if err != nil {
-		t.Fatalf("build CLI: %v\n%s", err, output)
+		testutil.ErrorIf(t, true, "build CLI: %v\n%s", err, output)
 	}
 	run := func(stdin string, args ...string) string {
 		cmd := exec.CommandContext(t.Context(), binary, args...)
@@ -722,7 +722,7 @@ func TestCLIWorkflowAndFyneSharePersistenceContract(t *testing.T) {
 		}
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			t.Fatalf("CLI %v: %v\n%s", args, err, output)
+			testutil.ErrorIf(t, true, "CLI %v: %v\n%s", args, err, output)
 		}
 		return string(output)
 	}

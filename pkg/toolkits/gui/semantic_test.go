@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/test"
 
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
@@ -22,7 +23,7 @@ func TestSemanticDriverInteractsWithActualWidgets(t *testing.T) {
 	driver.Type("drink-name", "Gimlet")
 	driver.Tap("save-drink")
 	if entry.Text != "Gimlet" || !tapped {
-		t.Fatalf("entry=%q tapped=%v", entry.Text, tapped)
+		testutil.ErrorIf(t, true, "entry=%q tapped=%v", entry.Text, tapped)
 	}
 }
 
@@ -33,6 +34,6 @@ func TestListDetailPreservesSuppliedObjectsAndRatio(t *testing.T) {
 	right := gui.NewEntry("right")
 	split := gui.ListDetail(left, right, .35)
 	if split.Leading != left || split.Trailing != right || split.Offset != .35 {
-		t.Fatalf("unexpected split: %#v", split)
+		testutil.ErrorIf(t, true, "unexpected split: %#v", split)
 	}
 }

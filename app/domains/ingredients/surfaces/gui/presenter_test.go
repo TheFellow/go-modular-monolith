@@ -41,16 +41,16 @@ func TestPresenterLoadsSelectsAndFiltersByExactCategoryAndExpression(t *testing.
 	presenter.Load()
 	state := presenter.Snapshot()
 	if len(state.Items) != 2 || state.Selected != nil {
-		t.Fatalf("initial state = %#v", state)
+		testutil.ErrorIf(t, true, "initial state = %#v", state)
 	}
 	presenter.Filter(models.CategorySpirit, `name == "London Gin"`)
 	state = presenter.Snapshot()
 	if len(state.Items) != 1 || state.Items[0].ID != gin.ID || state.Category != models.CategorySpirit {
-		t.Fatalf("filtered state = %#v", state)
+		testutil.ErrorIf(t, true, "filtered state = %#v", state)
 	}
 	presenter.Filter("", `(`)
 	if state = presenter.Snapshot(); state.Status != toolkit.Failed || state.Err == nil {
-		t.Fatalf("invalid expression state = %#v", state)
+		testutil.ErrorIf(t, true, "invalid expression state = %#v", state)
 	}
 }
 
@@ -61,11 +61,11 @@ func TestPresenterRejectsStaleOutOfOrderReads(t *testing.T) {
 	presenter.Filter(models.CategorySpirit, "")
 	presenter.Filter(models.CategoryJuice, "")
 	if !executor.Run(1) || !executor.RunNext() {
-		t.Fatal("expected two reads")
+		testutil.ErrorIf(t, true, "%v", "expected two reads")
 	}
 	state := presenter.Snapshot()
 	if len(state.Items) != 1 || state.Items[0].ID != lime.ID || state.Category != models.CategoryJuice {
-		t.Fatalf("stale read replaced latest state: %#v", state)
+		testutil.ErrorIf(t, true, "stale read replaced latest state: %#v", state)
 	}
 }
 
@@ -84,19 +84,19 @@ func TestViewPagesMoreThanOneHundredIngredients(t *testing.T) {
 	fynetest.NewDriver(t, view.Content()).Tap("ingredients-apply-filter")
 	state := presenter.Snapshot()
 	if len(state.Items) != 25 || state.Next == "" {
-		t.Fatalf("first page = %#v", state)
+		testutil.ErrorIf(t, true, "first page = %#v", state)
 	}
 	first := state.Items[0].ID
 	fynetest.NewDriver(t, view.Content()).Tap("ingredients-next")
 	if state = presenter.Snapshot(); len(state.Items) != 25 || state.Items[0].ID == first {
-		t.Fatalf("next page = %#v", state)
+		testutil.ErrorIf(t, true, "next page = %#v", state)
 	}
 	fynetest.NewDriver(t, view.Content()).Tap("ingredients-previous")
 	if state = presenter.Snapshot(); state.Items[0].ID != first {
-		t.Fatalf("previous page = %#v", state)
+		testutil.ErrorIf(t, true, "previous page = %#v", state)
 	}
 	if presenter.Filter("", "", -1) {
-		t.Fatal("negative page size accepted")
+		testutil.ErrorIf(t, true, "%v", "negative page size accepted")
 	}
 }
 
@@ -105,14 +105,14 @@ func TestPresenterRefreshObservesWritesThroughAnotherSurfaceBoundary(t *testing.
 	presenter, _ := newTestPresenter(fix.App, toolkit.InlineExecutor{})
 	presenter.Load()
 	if len(presenter.Snapshot().Items) != 0 {
-		t.Fatal("expected empty initial view")
+		testutil.ErrorIf(t, true, "%v", "expected empty initial view")
 	}
 	created, err := fix.Ingredients.Create(fix.OwnerContext(), &models.Ingredient{Name: "External Soda", Category: models.CategoryMixer, Unit: measurement.UnitMl})
 	testutil.Ok(t, err)
 	presenter.Load()
 	state := presenter.Snapshot()
 	if len(state.Items) != 1 || state.Items[0].ID != created.ID {
-		t.Fatalf("refresh did not observe public module write: %#v", state)
+		testutil.ErrorIf(t, true, "refresh did not observe public module write: %#v", state)
 	}
 }
 
@@ -122,11 +122,11 @@ func TestPresenterCreatesPersistsAndAuditsTouchedIngredient(t *testing.T) {
 	presenter.Load()
 	presenter.StartCreate()
 	if !presenter.Submit(Form{Name: "  Orgeat  ", Category: models.CategorySyrup, Unit: measurement.UnitMl, Description: "  Almond syrup  "}) {
-		t.Fatal("valid create was rejected")
+		testutil.ErrorIf(t, true, "%v", "valid create was rejected")
 	}
 	state := presenter.Snapshot()
 	if state.Mode != Browse || len(state.Items) != 1 || state.Items[0].Name != "Orgeat" || state.Items[0].Description != "Almond syrup" {
-		t.Fatalf("created state = %#v", state)
+		testutil.ErrorIf(t, true, "created state = %#v", state)
 	}
 	entry := fix.LatestAuditEntry(ingredientauthz.ActionCreate)
 	testutil.AuditTouches(t, entry, state.Items[0].ID.EntityUID())
@@ -139,18 +139,18 @@ func TestDuplicateNameCreateRetainsFormAndPresentsTypedConflict(t *testing.T) {
 	presenter.StartCreate()
 	form := Form{Name: "London Gin", Category: models.CategorySpirit, Unit: measurement.UnitOz, Description: "Keep this correction"}
 	if !presenter.Submit(form) {
-		t.Fatal("duplicate create was not accepted for execution")
+		testutil.ErrorIf(t, true, "%v", "duplicate create was not accepted for execution")
 	}
 	state := presenter.Snapshot()
 	if state.Mode != Create || state.Form.Description != form.Description || state.Err == nil {
-		t.Fatalf("conflict did not retain form: %#v", state)
+		testutil.ErrorIf(t, true, "conflict did not retain form: %#v", state)
 	}
 	testutil.ErrorIsConflict(t, state.Err)
 	if state.Err.Error() == "internal error" {
-		t.Fatal("typed conflict was reduced to generic failure")
+		testutil.ErrorIf(t, true, "%v", "typed conflict was reduced to generic failure")
 	}
 	if len(dialogs.Warnings()) != 1 || len(dialogs.Errors()) != 0 {
-		t.Fatalf("conflict dialogs: warnings=%#v errors=%#v", dialogs.Warnings(), dialogs.Errors())
+		testutil.ErrorIf(t, true, "conflict dialogs: warnings=%#v errors=%#v", dialogs.Warnings(), dialogs.Errors())
 	}
 }
 
@@ -162,12 +162,12 @@ func TestPresenterReadOnlyActorGetsSelectableNonEditableDetail(t *testing.T) {
 	presenter.Select(gin.ID)
 	state := presenter.Snapshot()
 	if state.Mode != Viewing || state.CanUpdate || state.Form.Description != "Juniper" {
-		t.Fatalf("read-only detail state = %#v", state)
+		testutil.ErrorIf(t, true, "read-only detail state = %#v", state)
 	}
 	stored, err := fix.Ingredients.Get(fix.OwnerContext(), gin.ID)
 	testutil.Ok(t, err)
 	if stored.Description != "Juniper" {
-		t.Fatalf("denied update mutated ingredient: %#v", stored)
+		testutil.ErrorIf(t, true, "denied update mutated ingredient: %#v", stored)
 	}
 }
 
@@ -179,13 +179,13 @@ func TestDetailBackPreservesCatalogStateAndBreadcrumbResetsIt(t *testing.T) {
 	presenter.Back()
 	state := presenter.Snapshot()
 	if state.Mode != Browse || state.Expression != `name.contains("Gin")` || state.Limit != 25 {
-		t.Fatalf("back did not preserve list state: %#v", state)
+		testutil.ErrorIf(t, true, "back did not preserve list state: %#v", state)
 	}
 	presenter.Select(gin.ID)
 	presenter.ResetList()
 	state = presenter.Snapshot()
 	if state.Mode != Browse || state.Expression != "" || state.Limit != paging.DefaultLimit {
-		t.Fatalf("breadcrumb did not reset list state: %#v", state)
+		testutil.ErrorIf(t, true, "breadcrumb did not reset list state: %#v", state)
 	}
 }
 
@@ -198,17 +198,17 @@ func TestDetailCancelRevertsDirtyFormAndBackConfirmsDiscard(t *testing.T) {
 	form.Description = "Changed"
 	presenter.SetForm(form)
 	if !presenter.Snapshot().Dirty {
-		t.Fatal("changed form was not dirty")
+		testutil.ErrorIf(t, true, "%v", "changed form was not dirty")
 	}
 	presenter.Back()
 	if presenter.Snapshot().Mode != Edit || len(dialogs.Confirmations()) != 1 {
-		t.Fatal("dirty back did not ask for confirmation")
+		testutil.ErrorIf(t, true, "%v", "dirty back did not ask for confirmation")
 	}
 	dialogs.Confirmations()[0].Respond(false)
 	presenter.Cancel()
 	state := presenter.Snapshot()
 	if state.Dirty || state.Form.Description != "Juniper" || state.Mode != Edit {
-		t.Fatalf("cancel did not revert local edits: %#v", state)
+		testutil.ErrorIf(t, true, "cancel did not revert local edits: %#v", state)
 	}
 }
 
@@ -226,12 +226,12 @@ func TestPresenterValidationIsExactAndDoesNotScheduleMutation(t *testing.T) {
 	}
 	for _, form := range cases {
 		if presenter.Submit(form) {
-			t.Fatalf("invalid form accepted: %#v", form)
+			testutil.ErrorIf(t, true, "invalid form accepted: %#v", form)
 		}
 		testutil.ErrorIsInvalid(t, presenter.Snapshot().Err)
 	}
 	if executor.Pending() != 0 || presenter.Snapshot().Mode != Create {
-		t.Fatalf("validation scheduled work or closed form: pending=%d state=%#v", executor.Pending(), presenter.Snapshot())
+		testutil.ErrorIf(t, true, "validation scheduled work or closed form: pending=%d state=%#v", executor.Pending(), presenter.Snapshot())
 	}
 }
 
@@ -242,18 +242,18 @@ func TestPresenterSuppressesDuplicateMutation(t *testing.T) {
 	presenter.StartCreate()
 	form := Form{Name: "Tonic", Category: models.CategoryMixer, Unit: measurement.UnitMl}
 	if !presenter.Submit(form) || presenter.Submit(form) || executor.Pending() != 1 {
-		t.Fatalf("duplicate submission was not suppressed: pending=%d", executor.Pending())
+		testutil.ErrorIf(t, true, "duplicate submission was not suppressed: pending=%d", executor.Pending())
 	}
 	executor.RunNext()
 	// Successful publication schedules the refresh.
 	if executor.Pending() != 1 {
-		t.Fatalf("refresh was not scheduled: %d", executor.Pending())
+		testutil.ErrorIf(t, true, "refresh was not scheduled: %d", executor.Pending())
 	}
 	executor.RunNext()
 	count, err := fix.Ingredients.Count(fix.OwnerContext(), ingredients.ListRequest{})
 	testutil.Ok(t, err)
 	if count != 1 {
-		t.Fatalf("created %d ingredients, want 1", count)
+		testutil.ErrorIf(t, true, "created %d ingredients, want 1", count)
 	}
 }
 
@@ -272,7 +272,7 @@ func TestPresenterReplacesCanonicalTagsAndClearsCompleteSet(t *testing.T) {
 	tags, err = fix.App.Tags.List(fix.OwnerContext(), gin.EntityUID())
 	testutil.Ok(t, err)
 	if len(tags) != 0 {
-		t.Fatalf("tags were not cleared: %#v", tags)
+		testutil.ErrorIf(t, true, "tags were not cleared: %#v", tags)
 	}
 }
 
@@ -307,16 +307,16 @@ func TestPresenterDeleteRequiresConfirmationAndPersists(t *testing.T) {
 	presenter.RequestDelete()
 	confirmations := dialogs.Confirmations()
 	if len(confirmations) != 1 || !strings.Contains(confirmations[0].Message, gin.Name) {
-		t.Fatalf("confirmation = %#v", confirmations)
+		testutil.ErrorIf(t, true, "confirmation = %#v", confirmations)
 	}
 	confirmations[0].Respond(false)
 	if _, err := fix.Ingredients.Get(fix.OwnerContext(), gin.ID); err != nil {
-		t.Fatalf("cancel deleted ingredient: %v", err)
+		testutil.ErrorIf(t, true, "cancel deleted ingredient: %v", err)
 	}
 	presenter.RequestDelete()
 	dialogs.Confirmations()[1].Respond(true)
 	if _, err := fix.Ingredients.Get(fix.OwnerContext(), gin.ID); err == nil {
-		t.Fatal("confirmed ingredient remains")
+		testutil.ErrorIf(t, true, "%v", "confirmed ingredient remains")
 	}
 }
 
@@ -330,11 +330,11 @@ func TestPresenterDeletePermissionFailureIsShownAndDoesNotMutate(t *testing.T) {
 	dialogs.Confirmations()[0].Respond(true)
 	state := presenter.Snapshot()
 	if state.Err == nil || len(dialogs.Errors()) != 1 {
-		t.Fatalf("delete failure was not presented: state=%#v errors=%#v", state, dialogs.Errors())
+		testutil.ErrorIf(t, true, "delete failure was not presented: state=%#v errors=%#v", state, dialogs.Errors())
 	}
 	testutil.ErrorIsPermission(t, state.Err)
 	if _, err := fix.Ingredients.Get(fix.OwnerContext(), gin.ID); err != nil {
-		t.Fatalf("denied delete mutated ingredient: %v", err)
+		testutil.ErrorIf(t, true, "denied delete mutated ingredient: %v", err)
 	}
 }
 
@@ -355,14 +355,14 @@ func TestCountDrinksUsingTraversesEveryPage(t *testing.T) {
 	count, err := presenter.countDrinksUsing(gin.ID)
 	testutil.Ok(t, err)
 	if count != 101 {
-		t.Fatalf("count = %d, want 101", count)
+		testutil.ErrorIf(t, true, "count = %d, want 101", count)
 	}
 	presenter.Load()
 	presenter.Select(gin.ID)
 	presenter.RequestDelete()
 	confirmations := dialogs.Confirmations()
 	if len(confirmations) != 1 || !strings.Contains(confirmations[0].Message, "101 drink(s)") {
-		t.Fatalf("delete confirmation did not report exhaustive dependency count: %#v", confirmations)
+		testutil.ErrorIf(t, true, "delete confirmation did not report exhaustive dependency count: %#v", confirmations)
 	}
 }
 
@@ -382,7 +382,7 @@ func TestViewDrivesRealWidgetsAndShowsCompleteDetail(t *testing.T) {
 	}
 	view.list.Select(widget.TableCellID{Row: row, Col: 0})
 	if selected := presenter.Snapshot().Selected; selected == nil || selected.ID != gin.ID {
-		t.Fatalf("real list button did not select ingredient: %#v", selected)
+		testutil.ErrorIf(t, true, "real list button did not select ingredient: %#v", selected)
 	}
 	driver.Tap("ingredients-create")
 	frameworktest.Type(view.name, "Soda")
@@ -392,13 +392,13 @@ func TestViewDrivesRealWidgetsAndShowsCompleteDetail(t *testing.T) {
 	frameworktest.Tap(view.save)
 	state := presenter.Snapshot()
 	if state.Mode != Browse || len(state.Items) != 3 {
-		t.Fatalf("widget create state = %#v", state)
+		testutil.ErrorIf(t, true, "widget create state = %#v", state)
 	}
 	// Selection detail is rendered from ID/category/unit/tags/description fields.
 	presenter.Select(gin.ID)
 	selected := presenter.Snapshot().Selected
 	if selected == nil || selected.ID.String() == "" || selected.Category != models.CategorySpirit || selected.Unit != measurement.UnitOz || selected.Description != "Juniper" {
-		t.Fatalf("detail selection is incomplete: %#v", selected)
+		testutil.ErrorIf(t, true, "detail selection is incomplete: %#v", selected)
 	}
 }
 
@@ -414,34 +414,34 @@ func TestViewListDetailStatesPermissionsAndEmptyCollection(t *testing.T) {
 		view.list.UpdateHeader(widget.TableCellID{Row: -1, Col: column}, header)
 		text := header.(*widget.Button).Text
 		if text != want {
-			t.Fatalf("header %d = %q, want %q", column, text, want)
+			testutil.ErrorIf(t, true, "header %d = %q, want %q", column, text, want)
 		}
 	}
 	if view.expression.Hidden || view.browse.Hidden || !view.formPanel.Hidden {
-		t.Fatal("list did not own the one-row filter state")
+		testutil.ErrorIf(t, true, "%v", "list did not own the one-row filter state")
 	}
 	presenter.Select(gin.ID)
 	if !view.browse.Hidden || view.formPanel.Hidden || !view.save.Disabled() || !view.cancel.Disabled() {
-		t.Fatal("clean detail visibility/actions are wrong")
+		testutil.ErrorIf(t, true, "%v", "clean detail visibility/actions are wrong")
 	}
 	if view.tagAction.Hidden || view.delete.Hidden {
-		t.Fatal("authorized detail actions are hidden")
+		testutil.ErrorIf(t, true, "%v", "authorized detail actions are hidden")
 	}
 	form := presenter.Snapshot().Form
 	form.Description = "Changed"
 	presenter.SetForm(form)
 	if view.save.Disabled() || view.cancel.Disabled() {
-		t.Fatal("dirty detail actions were not enabled")
+		testutil.ErrorIf(t, true, "%v", "dirty detail actions were not enabled")
 	}
 	presenter.Cancel()
 	presenter.StartTags()
 	if view.tagsPanel.Hidden || !view.formPanel.Hidden || view.tagOnly.CSV() != "" {
-		t.Fatal("tags-only workflow is not isolated")
+		testutil.ErrorIf(t, true, "%v", "tags-only workflow is not isolated")
 	}
 	presenter.Cancel()
 	presenter.Filter("", `name == "missing"`)
 	if view.empty.Hidden || !view.list.Hidden {
-		t.Fatal("successful empty collection state is not visible")
+		testutil.ErrorIf(t, true, "%v", "successful empty collection state is not visible")
 	}
 }
 
@@ -455,10 +455,10 @@ func TestViewReadOnlyDetailKeepsCopyableControlsEnabled(t *testing.T) {
 	view.Activate()
 	presenter.Select(gin.ID)
 	if presenter.Snapshot().Mode != Viewing || view.name.Disabled() || view.description.Disabled() || view.formCategory.Disabled() || view.formUnit.Disabled() {
-		t.Fatal("read-only controls must remain enabled and selectable")
+		testutil.ErrorIf(t, true, "%v", "read-only controls must remain enabled and selectable")
 	}
 	if !view.save.Hidden || !view.cancel.Hidden || !view.tagAction.Hidden || !view.delete.Hidden {
-		t.Fatal("unauthorized actions are visible")
+		testutil.ErrorIf(t, true, "%v", "unauthorized actions are visible")
 	}
 }
 
@@ -476,13 +476,13 @@ func TestTagsFormKeepsInvalidSyntaxVisibleAndRetainsInput(t *testing.T) {
 	view.tagOnly.Input.OnSubmitted(invalid)
 	state := presenter.Snapshot()
 	if state.Mode != Tags || state.Form.Tags != "" || view.tagOnly.ValidationError() == nil {
-		t.Fatalf("invalid tags state = %#v", state)
+		testutil.ErrorIf(t, true, "invalid tags state = %#v", state)
 	}
 	testutil.ErrorIsInvalid(t, view.tagOnly.ValidationError())
 	if view.tagOnly.Input.Text != invalid {
-		t.Fatal("invalid pending tag input is not visible")
+		testutil.ErrorIf(t, true, "%v", "invalid pending tag input is not visible")
 	}
 	if len(dialogs.Errors()) != 0 || len(dialogs.Warnings()) != 0 {
-		t.Fatal("inline validation unexpectedly opened a dialog")
+		testutil.ErrorIf(t, true, "%v", "inline validation unexpectedly opened a dialog")
 	}
 }

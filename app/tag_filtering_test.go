@@ -136,7 +136,7 @@ func listUIDs(t *testing.T, f *testutil.Fixture, typ cedar.EntityType, expressio
 		testutil.Ok(t, err)
 		return mapUIDs(page.Items, func(v *ordersmodels.Order) cedar.EntityUID { return v.EntityUID() })
 	default:
-		t.Fatalf("unexpected entity type %s", typ)
+		testutil.ErrorIf(t, true, "unexpected entity type %s", typ)
 		return nil
 	}
 }

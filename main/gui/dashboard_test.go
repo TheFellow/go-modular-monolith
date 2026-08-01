@@ -45,21 +45,21 @@ func TestDashboardPresenterPublishesLoadingLoadedPartialErrorAndRefresh(t *testi
 
 	model.Refresh()
 	if got := model.Snapshot(); got.Status != toolkit.Loading {
-		t.Fatalf("status = %v, want loading", got.Status)
+		testutil.ErrorIf(t, true, "status = %v, want loading", got.Status)
 	}
 	if !executor.RunNext() {
-		t.Fatal("dashboard load was not scheduled")
+		testutil.ErrorIf(t, true, "%v", "dashboard load was not scheduled")
 	}
 	got := model.Snapshot()
 	if got.Status != toolkit.Loaded || got.Data.DrinkCount != 1 || !errors.Is(got.Err, wantErr) {
-		t.Fatalf("partial state = %#v", got)
+		testutil.ErrorIf(t, true, "partial state = %#v", got)
 	}
 
 	model.Refresh()
 	executor.RunNext()
 	got = model.Snapshot()
 	if got.Data.DrinkCount != 2 || got.Err != nil || len(states) != 5 {
-		t.Fatalf("refreshed state = %#v, publications=%d", got, len(states))
+		testutil.ErrorIf(t, true, "refreshed state = %#v, publications=%d", got, len(states))
 	}
 }
 
@@ -77,7 +77,7 @@ func TestDashboardPresenterRejectsStaleOutOfOrderResults(t *testing.T) {
 	executor.Run(1)
 	executor.RunNext()
 	if got := model.Snapshot().Data.DrinkCount; got != 1 {
-		t.Fatalf("published stale dashboard count %d, want 1", got)
+		testutil.ErrorIf(t, true, "published stale dashboard count %d, want 1", got)
 	}
 }
 
@@ -92,11 +92,11 @@ func TestDashboardPresenterCloseInvalidatesQueuedPublication(t *testing.T) {
 	model.Close()
 	dispatcher.Drain()
 	if got := model.Snapshot(); got.Status != toolkit.Loading {
-		t.Fatalf("closed presenter accepted publication: %#v", got)
+		testutil.ErrorIf(t, true, "closed presenter accepted publication: %#v", got)
 	}
 	model.Refresh()
 	if executor.Pending() != 0 {
-		t.Fatal("closed presenter scheduled another load")
+		testutil.ErrorIf(t, true, "%v", "closed presenter scheduled another load")
 	}
 }
 
@@ -114,17 +114,17 @@ func TestDashboardViewUsesSemanticRefreshAndWorkspaceControls(t *testing.T) {
 
 	driver.Tap("dashboard-refresh")
 	if model.Snapshot().Data.DrinkCount != 3 {
-		t.Fatalf("refresh did not publish data: %#v", model.Snapshot())
+		testutil.ErrorIf(t, true, "refresh did not publish data: %#v", model.Snapshot())
 	}
 	for _, want := range []string{"drinks", "ingredients", "inventory", "menus", "orders", "audit", "tags"} {
 		driver.Tap("dashboard-open-" + want)
 		if route != want {
-			t.Fatalf("route = %q, want %q", route, want)
+			testutil.ErrorIf(t, true, "route = %q, want %q", route, want)
 		}
 	}
 	driver.Tap("dashboard-refresh")
 	if model.Snapshot().Data.DrinkCount != 4 {
-		t.Fatal("second widget refresh did not reload")
+		testutil.ErrorIf(t, true, "%v", "second widget refresh did not reload")
 	}
 }
 
@@ -150,19 +150,19 @@ func TestSessionDashboardLoaderMatchesRealApplicationCountsAndAudit(t *testing.T
 
 	data, err := (sessionDashboardLoader{session: f.App}).LoadDashboard()
 	if err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	want, err := f.App.Dashboard()
 	if err != nil {
-		t.Fatal(err)
+		testutil.ErrorIf(t, true, "%v", err)
 	}
 	testutil.Equals(t, data, want)
 	if data.DrinkCount != 1 || data.IngredientCount != 1 || data.InventoryCount != 1 ||
 		data.LowStockCount != 1 || data.MenuCount != 1 || data.PublishedMenus != 1 || data.DraftMenus != 0 ||
 		data.OrderCount != 1 || data.PendingOrders != 1 {
-		t.Fatalf("dashboard counts = %#v", data)
+		testutil.ErrorIf(t, true, "dashboard counts = %#v", data)
 	}
 	if data.AuditCount < 5 || len(data.RecentActivity) == 0 || len(data.RecentActivity) > dashboardRecentMax {
-		t.Fatalf("dashboard audit summary = count %d activity %#v", data.AuditCount, data.RecentActivity)
+		testutil.ErrorIf(t, true, "dashboard audit summary = count %d activity %#v", data.AuditCount, data.RecentActivity)
 	}
 }

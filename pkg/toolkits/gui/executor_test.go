@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -16,7 +17,7 @@ func TestAsyncExecutorCompletesBackgroundWork(t *testing.T) {
 	select {
 	case <-done:
 	case <-time.After(time.Second):
-		t.Fatal("asynchronous work did not complete")
+		testutil.ErrorIf(t, true, "%v", "asynchronous work did not complete")
 	}
 }
 
@@ -30,7 +31,7 @@ func TestManagedExecutorCloseDrainsAcceptedWorkAndRejectsLaterWork(t *testing.T)
 		<-release
 		close(finished)
 	}) {
-		t.Fatal("open executor rejected work")
+		testutil.ErrorIf(t, true, "%v", "open executor rejected work")
 	}
 	<-started
 
@@ -44,11 +45,11 @@ func TestManagedExecutorCloseDrainsAcceptedWorkAndRejectsLaterWork(t *testing.T)
 		// closed admission before we assert the stable post-close behavior.
 	}
 	if executor.TryExecute(func() { t.Error("post-close work ran") }) {
-		t.Fatal("executor accepted work after its admission gate closed")
+		testutil.ErrorIf(t, true, "%v", "executor accepted work after its admission gate closed")
 	}
 	select {
 	case <-closed:
-		t.Fatal("close returned before accepted work completed")
+		testutil.ErrorIf(t, true, "%v", "close returned before accepted work completed")
 	default:
 	}
 	close(release)
@@ -78,6 +79,6 @@ func TestManagedExecutorConcurrentExecuteAndCloseDrainsEveryAcceptedOperation(t 
 	callersDone.Wait()
 	executor.Close()
 	if got, want := completed.Load(), accepted.Load(); got != want {
-		t.Fatalf("completed %d operations, want all %d accepted operations", got, want)
+		testutil.ErrorIf(t, true, "completed %d operations, want all %d accepted operations", got, want)
 	}
 }

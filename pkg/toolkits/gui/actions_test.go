@@ -5,6 +5,7 @@ import (
 
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestRowTableHidesNativeCellSeparators(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
@@ -12,14 +13,14 @@ func TestRowTableHidesNativeCellSeparators(t *testing.T) { //nolint:paralleltest
 		return NewActionCell()
 	}, func(widget.TableCellID, framework.CanvasObject) {})
 	if !table.HideSeparators {
-		t.Fatal("row table should hide native horizontal and vertical cell separators")
+		testutil.ErrorIf(t, true, "%v", "row table should hide native horizontal and vertical cell separators")
 	}
 	cell := NewActionCell()
 	if len(cell.Objects) != 4 {
-		t.Fatalf("row cell objects = %d, want label, actions, pills, and horizontal separator", len(cell.Objects))
+		testutil.ErrorIf(t, true, "row cell objects = %d, want label, actions, pills, and horizontal separator", len(cell.Objects))
 	}
 	if _, ok := cell.Objects[3].(*widget.Separator); !ok {
-		t.Fatalf("row cell trailing object = %T, want *widget.Separator", cell.Objects[3])
+		testutil.ErrorIf(t, true, "row cell trailing object = %T, want *widget.Separator", cell.Objects[3])
 	}
 }
 
@@ -28,19 +29,19 @@ func TestActionCellRecyclesSafelyAcrossTextTagsAndActions(t *testing.T) { //noli
 	cell := NewActionCell()
 	ShowCellTags(cell, `featured,"region=west, coast"`)
 	if CellTagPills(cell).Hidden || len(CellTagPills(cell).Objects) != 2 {
-		t.Fatalf("tag mode hidden=%v pills=%d", CellTagPills(cell).Hidden, len(CellTagPills(cell).Objects))
+		testutil.ErrorIf(t, true, "tag mode hidden=%v pills=%d", CellTagPills(cell).Hidden, len(CellTagPills(cell).Objects))
 	}
 	ShowCellText(cell, "Name", false)
 	if !CellTagPills(cell).Hidden || !cell.Objects[0].Visible() {
-		t.Fatal("text mode retained recycled pill content")
+		testutil.ErrorIf(t, true, "%v", "text mode retained recycled pill content")
 	}
 	ShowCellActions(cell, []RowAction{{Label: "View"}})
 	if !CellTagPills(cell).Hidden || cell.Objects[0].Visible() || ActionSelector(cell).Hidden {
-		t.Fatal("action mode retained recycled text or pill content")
+		testutil.ErrorIf(t, true, "%v", "action mode retained recycled text or pill content")
 	}
 	ShowCellTags(cell, "new")
 	if !ActionSelector(cell).Hidden || len(CellTagPills(cell).Objects) != 1 {
-		t.Fatal("pill mode retained recycled action content")
+		testutil.ErrorIf(t, true, "%v", "pill mode retained recycled action content")
 	}
 }
 
@@ -54,7 +55,7 @@ func TestActionCellRunsSelectedActionAndClearsSelection(t *testing.T) { //nolint
 	selector.SetSelected("View")
 	selector.SetSelected("View")
 	if calls != 2 || selector.Selected != "" {
-		t.Fatalf("calls=%d selected=%q", calls, selector.Selected)
+		testutil.ErrorIf(t, true, "calls=%d selected=%q", calls, selector.Selected)
 	}
 }
 
@@ -63,7 +64,7 @@ func TestActionSelectIgnoresResetEventWithoutRecursing(t *testing.T) { //nolint:
 	calls := 0
 	selector := NewActionSelect([]string{"Remove"}, func(selected string) {
 		if selected != "Remove" {
-			t.Fatalf("action = %q", selected)
+			testutil.ErrorIf(t, true, "action = %q", selected)
 		}
 		calls++
 	})
@@ -71,7 +72,7 @@ func TestActionSelectIgnoresResetEventWithoutRecursing(t *testing.T) { //nolint:
 	selector.SetSelected("Remove")
 	selector.SetSelected("Remove")
 	if calls != 2 || selector.Selected != "" {
-		t.Fatalf("calls=%d selected=%q", calls, selector.Selected)
+		testutil.ErrorIf(t, true, "calls=%d selected=%q", calls, selector.Selected)
 	}
 }
 
@@ -90,7 +91,7 @@ func TestActionSelectIgnoresEmptyUnknownAndReentrantSelections(t *testing.T) { /
 	selector.SelectAction("Unknown")
 	selector.SelectAction("Remove")
 	if calls != 1 || selector.Selected != "" {
-		t.Fatalf("calls=%d selected=%q", calls, selector.Selected)
+		testutil.ErrorIf(t, true, "calls=%d selected=%q", calls, selector.Selected)
 	}
 }
 
@@ -103,7 +104,7 @@ func TestActionSelectRebindIsSilentAndUsesOnlyLatestCallback(t *testing.T) { //n
 	selector.SetSelected("View") // stale recycled-row choice is no longer valid.
 	selector.SelectAction("Remove")
 	if first != 1 || second != 1 {
-		t.Fatalf("first=%d second=%d", first, second)
+		testutil.ErrorIf(t, true, "first=%d second=%d", first, second)
 	}
 }
 
@@ -119,7 +120,7 @@ func TestActionSelectCannotDispatchWhileDisabledOrHidden(t *testing.T) { //nolin
 	selector.Show()
 	selector.SetSelected("Remove")
 	if calls != 1 {
-		t.Fatalf("action dispatched %d times, want only enabled visible selection", calls)
+		testutil.ErrorIf(t, true, "action dispatched %d times, want only enabled visible selection", calls)
 	}
 }
 
@@ -129,7 +130,7 @@ func TestActionSelectRecoversDispatchStateAfterCallbackPanic(t *testing.T) { //n
 	func() {
 		defer func() {
 			if recovered := recover(); recovered != "boom" {
-				t.Fatalf("recovered %v", recovered)
+				testutil.ErrorIf(t, true, "recovered %v", recovered)
 			}
 		}()
 		selector.SetSelected("Run")
@@ -138,7 +139,7 @@ func TestActionSelectRecoversDispatchStateAfterCallbackPanic(t *testing.T) { //n
 	selector.SetActions([]string{"Run"}, func(string) { calls++ })
 	selector.SetSelected("Run")
 	if calls != 1 {
-		t.Fatalf("selector remained dispatch-locked after panic: calls=%d", calls)
+		testutil.ErrorIf(t, true, "selector remained dispatch-locked after panic: calls=%d", calls)
 	}
 }
 
@@ -151,7 +152,7 @@ func TestActionCellRebindDoesNotRetainRecycledRowCallback(t *testing.T) { //noli
 
 	ActionSelector(cell).SetSelected("View")
 	if first != 0 || second != 1 {
-		t.Fatalf("recycled callback targeted wrong row: first=%d second=%d", first, second)
+		testutil.ErrorIf(t, true, "recycled callback targeted wrong row: first=%d second=%d", first, second)
 	}
 }
 
@@ -163,7 +164,7 @@ func TestConfiguredRowTableUsesResizableNativeHeadersAndTogglesSort(t *testing.T
 		directions = append(directions, direction)
 	})
 	if !table.ShowHeaderRow || table.CreateHeader == nil || table.UpdateHeader == nil {
-		t.Fatal("table does not use the native resizable header row")
+		testutil.ErrorIf(t, true, "%v", "table does not use the native resizable header row")
 	}
 	header := table.CreateHeader()
 	table.UpdateHeader(widget.TableCellID{Row: -1, Col: 0}, header)
@@ -171,14 +172,14 @@ func TestConfiguredRowTableUsesResizableNativeHeadersAndTogglesSort(t *testing.T
 	button.OnTapped()
 	button.OnTapped()
 	if len(directions) != 2 || directions[0] != SortAscending || directions[1] != SortDescending {
-		t.Fatalf("sort directions = %v", directions)
+		testutil.ErrorIf(t, true, "sort directions = %v", directions)
 	}
 	table.UpdateHeader(widget.TableCellID{Row: -1, Col: 0}, header)
 	if button.Text != "Name  ↓" {
-		t.Fatalf("sorted header = %q", button.Text)
+		testutil.ErrorIf(t, true, "sorted header = %q", button.Text)
 	}
 	table.UpdateHeader(widget.TableCellID{Row: -1, Col: 1}, header)
 	if !button.Disabled() {
-		t.Fatal("unsupported column should remain visibly non-sortable")
+		testutil.ErrorIf(t, true, "%v", "unsupported column should remain visibly non-sortable")
 	}
 }

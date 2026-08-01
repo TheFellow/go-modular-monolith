@@ -85,11 +85,11 @@ func TestActionsColumnDoesNotImplicitlySelectRow(t *testing.T) {
 
 	v.list.Select(widget.TableCellID{Row: 0, Col: 6})
 	if p.State().Mode != Browsing {
-		t.Fatalf("actions cell implicitly navigated to mode %v", p.State().Mode)
+		testutil.ErrorIf(t, true, "actions cell implicitly navigated to mode %v", p.State().Mode)
 	}
 	v.list.Select(widget.TableCellID{Row: 0, Col: 0})
 	if p.State().Mode == Browsing {
-		t.Fatal("ordinary row cell did not navigate")
+		testutil.ErrorIf(t, true, "%v", "ordinary row cell did not navigate")
 	}
 }
 
@@ -135,7 +135,7 @@ func TestDraftAndPublishedDetailExposeOnlyApplicableCleanActions(t *testing.T) {
 				return
 			}
 		}
-		t.Fatalf("menu %s missing", id)
+		testutil.ErrorIf(t, true, "menu %s missing", id)
 	}
 	selectID(draft.ID)
 	v := NewView(p)
@@ -159,14 +159,14 @@ func TestDuplicateNameCreateRetainsFormAndPresentsTypedConflict(t *testing.T) {
 	form := Form{Name: "Duplicate", Description: "Keep this correction", Tags: "season=summer", ReplaceTags: true}
 	p.SetForm(form)
 	if !p.Save() {
-		t.Fatal("duplicate create was not accepted for execution")
+		testutil.ErrorIf(t, true, "%v", "duplicate create was not accepted for execution")
 	}
 	state := p.State()
 	testutil.Equals(t, state.Mode, Creating)
 	testutil.Equals(t, state.Form.Description, form.Description)
 	testutil.ErrorIsConflict(t, state.Err)
 	if len(dialogs.Warnings()) != 1 || len(dialogs.Errors()) != 0 {
-		t.Fatalf("conflict dialogs: warnings=%#v errors=%#v", dialogs.Warnings(), dialogs.Errors())
+		testutil.ErrorIf(t, true, "conflict dialogs: warnings=%#v errors=%#v", dialogs.Warnings(), dialogs.Errors())
 	}
 }
 
@@ -312,7 +312,7 @@ func TestWidgetCRUDTagsCurationTransitionsAndDelete(t *testing.T) {
 	detail := detailText(menu, p.DrinkName)
 	for _, want := range []string{"Comma, Collins", "Drink ID: " + drink.ID.String(), "unavailable", "N/A"} {
 		if !strings.Contains(detail, want) {
-			t.Fatalf("detail did not preserve %q: %s", want, detail)
+			testutil.ErrorIf(t, true, "detail did not preserve %q: %s", want, detail)
 		}
 	}
 	driver.Tap(ControlPublish)
@@ -438,7 +438,7 @@ func TestWidgetAnalysisValidatesAndRendersCostCurrencyMarginAndAvailability(t *t
 	testutil.StringContains(t, v.analysisStatus.Text, "AVAILABLE")
 	testutil.StringContains(t, v.analysisStatus.Text, "Margin: n/a")
 	if state.Analysis.Items[0].SuggestedPrice == nil || state.Analysis.Items[0].SuggestedPrice.Currency != currency.USD {
-		t.Fatal("analysis did not retain the calculated USD currency")
+		testutil.ErrorIf(t, true, "%v", "analysis did not retain the calculated USD currency")
 	}
 }
 
@@ -513,12 +513,12 @@ func TestWidgetPagesMoreThanOneHundredMenusAndValidatesPageSize(t *testing.T) {
 	driver.Tap(ControlNext)
 	testutil.Equals(t, len(p.State().Items), 25)
 	if p.State().Items[0].ID == first {
-		t.Fatal("next retained first page")
+		testutil.ErrorIf(t, true, "%v", "next retained first page")
 	}
 	driver.Tap(ControlPrevious)
 	testutil.Equals(t, p.State().Items[0].ID, first)
 	if p.SetFilter(Filter{Limit: -1}) {
-		t.Fatal("negative page size accepted")
+		testutil.ErrorIf(t, true, "%v", "negative page size accepted")
 	}
 }
 
@@ -537,7 +537,7 @@ func TestDeniedMutationRetainsFormAndRollsBack(t *testing.T) {
 	testutil.Equals(t, p.State().Mode, Renaming)
 	testutil.Equals(t, p.State().Form.Description, "retain me")
 	if p.State().Err == nil || len(dialogs.Errors()) != 1 {
-		t.Fatal("authorization failure was not retained and presented")
+		testutil.ErrorIf(t, true, "%v", "authorization failure was not retained and presented")
 	}
 	stored, err := f.Menus.Get(f.OwnerContext(), menu.ID)
 	testutil.Ok(t, err)
@@ -561,7 +561,7 @@ func TestAcceptedSubmissionAndConfirmationDisableEveryControl(t *testing.T) {
 	p.Save()
 	for name, disabled := range map[string]bool{"save": v.save.Disabled(), "cancel": v.cancel.Disabled(), "name": v.name.Disabled(), "description": v.description.Disabled()} {
 		if !disabled {
-			t.Fatalf("%s remained enabled during submission", name)
+			testutil.ErrorIf(t, true, "%s remained enabled during submission", name)
 		}
 	}
 	executor.RunNext()
@@ -572,7 +572,7 @@ func TestAcceptedSubmissionAndConfirmationDisableEveryControl(t *testing.T) {
 	p.Delete()
 	for name, disabled := range map[string]bool{"refresh": v.refresh.Disabled(), "create": v.create.Disabled(), "filter status": v.filterStatus.Disabled(), "filter": v.filterExpression.Disabled(), "apply": v.applyFilter.Disabled(), "rename": v.rename.Disabled(), "tags": v.tagAction.Disabled(), "delete": v.delete.Disabled()} {
 		if !disabled {
-			t.Fatalf("%s remained enabled during confirmation", name)
+			testutil.ErrorIf(t, true, "%s remained enabled during confirmation", name)
 		}
 	}
 	dialogs.Confirmations()[0].Respond(false)
@@ -606,7 +606,7 @@ func TestCLIWorkflowAndFyneShareMenuPersistenceContract(t *testing.T) {
 	build.Dir = repo
 	output, err := build.CombinedOutput()
 	if err != nil {
-		t.Fatalf("build CLI: %v\n%s", err, output)
+		testutil.ErrorIf(t, true, "build CLI: %v\n%s", err, output)
 	}
 	run := func(stdin string, args ...string) string {
 		cmd := exec.CommandContext(t.Context(), binary, args...)
@@ -616,7 +616,7 @@ func TestCLIWorkflowAndFyneShareMenuPersistenceContract(t *testing.T) {
 		}
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			t.Fatalf("CLI %v: %v\n%s", args, err, output)
+			testutil.ErrorIf(t, true, "CLI %v: %v\n%s", args, err, output)
 		}
 		return string(output)
 	}

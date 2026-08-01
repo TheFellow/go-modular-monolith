@@ -54,7 +54,7 @@ func TestDomainMutationCommandsShareTagsFlag(t *testing.T) {
 			}
 			testutil.NotNil(t, flag)
 			if previous, exists := seen[flag]; exists {
-				t.Fatalf("%s %s reuses mutable tags flag from %s", noun, mutation, previous)
+				testutil.ErrorIf(t, true, "%s %s reuses mutable tags flag from %s", noun, mutation, previous)
 			}
 			seen[flag] = noun + " " + mutation
 		}
@@ -141,7 +141,7 @@ func TestDomainMutationTagsFilterAcrossEveryOperationalDomain(t *testing.T) {
 	for _, args := range mutations {
 		_, err := runTagsCLI(dbPath, "owner", args...)
 		if err != nil {
-			t.Fatalf("%v: %v", args[:2], err)
+			testutil.ErrorIf(t, true, "%v: %v", args[:2], err)
 		}
 	}
 

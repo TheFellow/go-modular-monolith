@@ -3,6 +3,7 @@ package fynetest
 
 import (
 	"errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"testing"
 )
 
@@ -15,13 +16,13 @@ func TestDialogsRecordConfirmationResponseAndErrors(t *testing.T) {
 
 	confirmations := dialogs.Confirmations()
 	if len(confirmations) != 1 || confirmations[0].Title != "Delete" || confirmations[0].Message != "Delete the drink?" {
-		t.Fatalf("confirmations = %#v", confirmations)
+		testutil.ErrorIf(t, true, "confirmations = %#v", confirmations)
 	}
 	confirmations[0].Respond(true)
 	if !responded {
-		t.Fatal("recorded confirmation did not retain response")
+		testutil.ErrorIf(t, true, "%v", "recorded confirmation did not retain response")
 	}
 	if got := dialogs.Errors(); len(got) != 1 || !errors.Is(got[0], wantErr) {
-		t.Fatalf("errors = %v", got)
+		testutil.ErrorIf(t, true, "errors = %v", got)
 	}
 }

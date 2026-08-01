@@ -7,6 +7,7 @@ import (
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/test"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestTriggerRespectsVisibleEnabledState(t *testing.T) {
@@ -14,23 +15,23 @@ func TestTriggerRespectsVisibleEnabledState(t *testing.T) {
 	called := 0
 	button := NewButton("save", "Save", func() { called++ })
 	if !Trigger(button) || called != 1 {
-		t.Fatalf("enabled trigger = %v calls=%d", Trigger(button), called)
+		testutil.ErrorIf(t, true, "enabled trigger = %v calls=%d", Trigger(button), called)
 	}
 	button.Disable()
 	if Trigger(button) || called != 1 {
-		t.Fatalf("disabled button triggered: calls=%d", called)
+		testutil.ErrorIf(t, true, "disabled button triggered: calls=%d", called)
 	}
 	button.Enable()
 	button.Hide()
 	if Trigger(button) || called != 1 {
-		t.Fatalf("hidden button triggered: calls=%d", called)
+		testutil.ErrorIf(t, true, "hidden button triggered: calls=%d", called)
 	}
 }
 
 func TestTriggerRejectsButtonWithoutAction(t *testing.T) {
 	startTestApp(t)
 	if Trigger(NewButton("placeholder", "Placeholder", nil)) {
-		t.Fatal("button without a command reported a successful trigger")
+		testutil.ErrorIf(t, true, "%v", "button without a command reported a successful trigger")
 	}
 }
 
@@ -50,7 +51,7 @@ func TestSubmitOnEnterUsesGuardedButtonActionExactlyOnce(t *testing.T) {
 	button.Show()
 	entry.OnSubmitted("second")
 	if calls != 2 {
-		t.Fatalf("submitted callback %d times, want 2 enabled visible submissions", calls)
+		testutil.ErrorIf(t, true, "submitted callback %d times, want 2 enabled visible submissions", calls)
 	}
 }
 
@@ -64,11 +65,11 @@ func TestKeyboardFocusTraversesSemanticControlsInBothDirections(t *testing.T) {
 	canvas.Focus(first)
 	canvas.FocusNext()
 	if canvas.Focused() != second {
-		t.Fatalf("FocusNext focused %T, want second entry", canvas.Focused())
+		testutil.ErrorIf(t, true, "FocusNext focused %T, want second entry", canvas.Focused())
 	}
 	canvas.FocusPrevious()
 	if canvas.Focused() != first {
-		t.Fatalf("FocusPrevious focused %T, want first entry", canvas.Focused())
+		testutil.ErrorIf(t, true, "FocusPrevious focused %T, want first entry", canvas.Focused())
 	}
 	canvas.Focus(first)
 	canvas.Focused().TypedKey(&framework.KeyEvent{Name: framework.KeyTab})

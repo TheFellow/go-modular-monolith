@@ -43,15 +43,15 @@ func TestListViewModelTraversesServerPages(t *testing.T) {
 	driver := tuitest.NewDriver(t, program)
 	vm := program.vm
 	if vm.next == "" || !strings.Contains(vm.View(), "Paged") {
-		t.Fatalf("first cursor page not rendered: next=%q", vm.next)
+		testutil.ErrorIf(t, true, "first cursor page not rendered: next=%q", vm.next)
 	}
 	driver.Press("]")
 	if vm.next != "" {
-		t.Fatalf("second page unexpectedly has next=%q", vm.next)
+		testutil.ErrorIf(t, true, "second page unexpectedly has next=%q", vm.next)
 	}
 	driver.Press("[")
 	if vm.next == "" {
-		t.Fatal("previous cursor page was not restored")
+		testutil.ErrorIf(t, true, "%v", "previous cursor page was not restored")
 	}
 }
 
@@ -60,6 +60,6 @@ func TestFilterVMRejectsInvalidPageSize(t *testing.T) {
 	form := newFilterVM(ingredients.ListRequest{Limit: 25})
 	_ = form.limit.SetValue(0)
 	if _, err := form.Request(); err == nil {
-		t.Fatal("zero page size accepted")
+		testutil.ErrorIf(t, true, "%v", "zero page size accepted")
 	}
 }

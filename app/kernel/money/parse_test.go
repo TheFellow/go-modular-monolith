@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func TestParsePriceUserFacingForms(t *testing.T) {
@@ -20,10 +21,10 @@ func TestParsePriceUserFacingForms(t *testing.T) {
 			t.Parallel()
 			got, err := money.ParsePrice(tc.input)
 			if err != nil {
-				t.Fatal(err)
+				testutil.ErrorIf(t, true, "%v", err)
 			}
 			if got.String() != tc.want {
-				t.Fatalf("ParsePrice(%q) = %q, want %q", tc.input, got.String(), tc.want)
+				testutil.ErrorIf(t, true, "ParsePrice(%q) = %q, want %q", tc.input, got.String(), tc.want)
 			}
 		})
 	}
@@ -33,7 +34,7 @@ func TestParsePriceRejectsMissingAndMalformedValues(t *testing.T) {
 	t.Parallel()
 	for _, input := range []string{"", "1.23", "US 1.23", "USD nope", "XYZ 1.23"} {
 		if _, err := money.ParsePrice(input); err == nil {
-			t.Fatalf("ParsePrice(%q) unexpectedly succeeded", input)
+			testutil.ErrorIf(t, true, "ParsePrice(%q) unexpectedly succeeded", input)
 		}
 	}
 }
