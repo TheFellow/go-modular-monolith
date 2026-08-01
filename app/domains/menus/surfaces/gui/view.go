@@ -47,19 +47,6 @@ const (
 	controlDrinkChoicePrefix = "menus.drink.choice."
 )
 
-type semanticSelect struct {
-	widget.Select
-	id string
-}
-
-func newSelect(id string, options []string) *semanticSelect {
-	s := &semanticSelect{id: id}
-	s.Options = options
-	s.ExtendBaseWidget(s)
-	return s
-}
-func (s *semanticSelect) SemanticID() string { return s.id }
-
 type View struct {
 	p                                                              *Presenter
 	root, browse, detail, drinkPanel, analysisPanel, tagsPanel     *framework.Container

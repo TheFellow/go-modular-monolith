@@ -12,6 +12,8 @@ import (
 )
 
 func TestAutoPagingRowTableLoadsOnceWhenFinalRowIsRendered(t *testing.T) {
+	t.Parallel()
+
 	synctest.Test(t, func(t *testing.T) {
 		rows, loads := 25, 0
 		table := gui.NewAutoPagingRowTable(func() (int, int) { return rows, 2 }, func() framework.CanvasObject { return widget.NewLabel("") }, func(widget.TableCellID, framework.CanvasObject) {}, func() { loads++ })
