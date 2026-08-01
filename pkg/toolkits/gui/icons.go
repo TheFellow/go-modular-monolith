@@ -2,6 +2,8 @@ package gui
 
 import (
 	"embed"
+	"fmt"
+	"image/color"
 	"strings"
 	"sync"
 
@@ -21,10 +23,29 @@ func themedIcon(name string) framework.Resource {
 	if err != nil {
 		panic("missing embedded GUI icon: " + name)
 	}
-	// Fyne's themed SVG resource recolors black for the active light/dark theme.
-	data = []byte(strings.ReplaceAll(string(data), "currentColor", "#000000"))
-	resource, _ := iconResources.LoadOrStore(name, theme.NewThemedResource(framework.NewStaticResource(name+".svg", data)))
+	var candidate framework.Resource
+	if strings.HasPrefix(name, "lucide-") {
+		candidate = &strokeThemedResource{name: name + ".svg", data: data}
+	} else {
+		candidate = theme.NewThemedResource(framework.NewStaticResource(name+".svg", data))
+	}
+	resource, _ := iconResources.LoadOrStore(name, candidate)
 	return resource.(framework.Resource)
+}
+
+// strokeThemedResource preserves Lucide's fill="none" line art. Fyne's
+// ThemedResource colorizer is intentionally fill-based and would otherwise
+// turn every closed Lucide outline into a solid shape.
+type strokeThemedResource struct {
+	name string
+	data []byte
+}
+
+func (r *strokeThemedResource) Name() string { return r.name }
+func (r *strokeThemedResource) Content() []byte {
+	foreground := color.NRGBAModel.Convert(theme.Color(theme.ColorNameForeground)).(color.NRGBA)
+	hex := fmt.Sprintf("#%02x%02x%02x", foreground.R, foreground.G, foreground.B)
+	return []byte(strings.ReplaceAll(string(r.data), "currentColor", hex))
 }
 
 // Icon names are presentation vocabulary, deliberately independent of labels
