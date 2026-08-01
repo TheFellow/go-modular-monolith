@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"strings"
 	"testing"
 
 	framework "fyne.io/fyne/v2"
@@ -86,6 +87,14 @@ func TestShellShowsPersistentIdentityAndExplicitRouteIcon(t *testing.T) {
 		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
 	testutil.ErrorIf(t, shell.identity.Text == "", "%v", "identity did not persist")
+}
+
+func TestLucideIconsPreserveStrokeOnlyRendering(t *testing.T) {
+	startTestApp(t)
+	content := string(IconResource(IconDashboard).Content())
+	testutil.ErrorIf(t, !strings.Contains(content, `fill="none"`), "Lucide fill was not preserved: %s", content)
+	testutil.ErrorIf(t, !strings.Contains(content, `stroke="#`), "Lucide stroke was not theme-colored: %s", content)
+	testutil.ErrorIf(t, strings.Contains(content, "currentColor"), "Lucide currentColor was not resolved: %s", content)
 }
 
 func TestShellActivatesInitialViewAndEveryReentryWithoutRebuilding(t *testing.T) {
