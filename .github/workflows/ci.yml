@@ -12,12 +12,12 @@ jobs:
   linux-quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Fyne build dependencies
         run: sudo apt-get update && sudo apt-get install --yes libgl1-mesa-dev libwayland-dev libxkbcommon-dev xorg-dev
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -45,7 +45,7 @@ jobs:
           go build -o Mixology .
           go run fyne.io/tools/cmd/fyne@v1.7.2 package -os linux -release -exe Mixology
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: mixology-linux-unsigned
           path: main/gui/Mixology.tar.xz
@@ -68,9 +68,9 @@ jobs:
             package: main/gui/Mixology.exe
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -103,7 +103,7 @@ jobs:
         working-directory: main/gui
         run: ditto -c -k --sequesterRsrc --keepParent Mixology.app Mixology-macos-unsigned.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.package }}
