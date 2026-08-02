@@ -1,6 +1,9 @@
-# TUI Package
+# TUI entrypoint
 
-Bubble Tea-based terminal UI for Mixology.
+`main/tui` composes Mixology's Bubble Tea executable. Reusable terminal mechanics are documented in
+the [TUI toolkit](../../pkg/toolkits/tui/readme.md); domain-owned view models live under
+`app/domains/*/surfaces/tui`, and Mixology-wide components, styles, keys, and messages live under
+`app/surfaces/tui`.
 
 ## Architecture
 

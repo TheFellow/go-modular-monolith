@@ -1,5 +1,9 @@
 # Fyne Desktop Application
 
+Reusable Fyne mechanics and their public contracts are documented in the
+[GUI toolkit guide](../../pkg/toolkits/gui/readme.md). This document covers the executable's
+composition, interaction model, native prerequisites, packaging, and lifecycle.
+
 This directory composes Mixology's native desktop client. It owns process
 lifecycle, the desktop data directory, the root window, and application-level
 navigation. Domain behavior belongs in `app/domains/*/surfaces/gui` and enters
