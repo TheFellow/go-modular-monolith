@@ -28,12 +28,14 @@ graph TD
 ## Key Concepts
 
 ### App
+
 - Root Bubble Tea model (`main/tui/app.go`).
 - Always starts on the dashboard.
 - Owns navigation, view caching, and global UI state (help, status, title bar).
 - Uses `app.App` as the single source of truth for authentication.
 
 ### ViewModels
+
 - One per domain view (drinks, ingredients, inventory, menus, orders, audit).
 - Import shared styles and keys from `pkg/toolkits/tui/styles` and `pkg/toolkits/tui/keys`.
 - Use `app.Context()` to obtain a fresh `middleware.Context` per command/query.
@@ -41,6 +43,7 @@ graph TD
 - Report input ownership through `Interaction` so the root can route global keys.
 
 ### Shared UI mechanics
+
 - `pkg/toolkits/tui` owns reusable terminal mechanics and presentation adapters.
 - Forms and dialogs own their local input behavior.
 - Domain views choose commands and render domain-specific details; shared helpers
@@ -60,10 +63,12 @@ graph TD
   but are not the primary navigation model.
 
 ### Fresh Context Pattern
+
 - Each operation uses a new context to avoid attribute leakage across actions.
 - Matches CLI semantics and keeps log fields scoped to a single action.
 
 ### Title Bar + Status Bar
+
 - Title bar shows the current view (for example: "Mixology > Dashboard").
 - Status bar shows errors or a short help hint.
 

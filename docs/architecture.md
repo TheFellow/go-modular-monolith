@@ -6,15 +6,15 @@ queries, persistence, Cedar policies, events, and transport adapters. Compositio
 
 ## Context map
 
-| Context | Owns | Synchronous dependencies | Events produced |
-| --- | --- | --- | --- |
-| Ingredients | ingredient catalog | — | created, updated, deleted |
-| Drinks | recipes | Ingredients | created, updated, deleted |
-| Inventory | stock | Ingredients | stock adjusted |
-| Menus | curation and publication | Drinks, Ingredients, Inventory | created, drink added/removed, published, drafted |
-| Orders | order lifecycle | Menus, Drinks, Ingredients, Inventory | placed, completed, cancelled |
-| Audit | append-only activities | — | — |
-| Tagging | polymorphic associations and authorized tag workflow | domain-owned target loaders | — |
+| Context     | Owns                                                 | Synchronous dependencies              | Events produced                                  |
+| ----------- | ---------------------------------------------------- | ------------------------------------- | ------------------------------------------------ |
+| Ingredients | ingredient catalog                                   | —                                     | created, updated, deleted                        |
+| Drinks      | recipes                                              | Ingredients                           | created, updated, deleted                        |
+| Inventory   | stock                                                | Ingredients                           | stock adjusted                                   |
+| Menus       | curation and publication                             | Drinks, Ingredients, Inventory        | created, drink added/removed, published, drafted |
+| Orders      | order lifecycle                                      | Menus, Drinks, Ingredients, Inventory | placed, completed, cancelled                     |
+| Audit       | append-only activities                               | —                                     | —                                                |
+| Tagging     | polymorphic associations and authorized tag workflow | domain-owned target loaders           | —                                                |
 
 Synchronous collaboration uses public query contracts. Reactive collaboration consumes another
 domain's public event; a command may emit only events owned by its own domain. Taggable domains
@@ -75,12 +75,12 @@ policy-owned ABAC without giving tags application-global meaning.
 
 ## Generation
 
-| Generator | Output |
-| --- | --- |
-| `pkg/dispatcher/gen` | event-to-handler type-switch wiring |
-| `pkg/authz/gen` | assembled policies plus domain Cedar models/tests |
-| `app/kernel/entity/gen` | strongly typed prefixed entity IDs |
-| `pkg/errors/gen` | typed constructors and matching test assertions |
+| Generator               | Output                                            |
+| ----------------------- | ------------------------------------------------- |
+| `pkg/dispatcher/gen`    | event-to-handler type-switch wiring               |
+| `pkg/authz/gen`         | assembled policies plus domain Cedar models/tests |
+| `app/kernel/entity/gen` | strongly typed prefixed entity IDs                |
+| `pkg/errors/gen`        | typed constructors and matching test assertions   |
 
 Run `go generate ./...` and commit source and generated output together.
 

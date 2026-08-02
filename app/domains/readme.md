@@ -16,11 +16,11 @@ not executable composition, sibling domains' concrete presentations, or another 
 
 Responsibilities are split as follows:
 
-| Layer | Responsibility |
-| --- | --- |
-| `main/<surface>` | process lifecycle, runtime configuration, routes, cross-domain composition |
+| Layer                                     | Responsibility                                                             |
+| ----------------------------------------- | -------------------------------------------------------------------------- |
+| `main/<surface>`                          | process lifecycle, runtime configuration, routes, cross-domain composition |
 | `app/domains/<domain>/surfaces/<surface>` | domain-aware view models/presenters, validation, view conversion, commands |
-| `pkg/toolkits/<surface>` | reusable framework mechanics with no application knowledge |
+| `pkg/toolkits/<surface>`                  | reusable framework mechanics with no application knowledge                 |
 
 To add a surface operation, expose it from the module first, implement the domain adapter next,
 then wire it at the entrypoint. This keeps every adapter independently testable and prevents the

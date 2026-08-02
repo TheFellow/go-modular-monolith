@@ -47,15 +47,15 @@ authorization, transaction, event, and audit pipelines against an isolated datab
 
 ## Documentation map
 
-| If you want to… | Start here |
-| --- | --- |
-| Understand bounded contexts, pipelines, events, authz, and enforced boundaries | [Architecture](docs/architecture.md) |
-| Use filters, tags, audit history, IDs, or authorization personas | [Application features](docs/features.md) |
-| Work on an executable and its composition layer | [CLI](main/cli/README.md), [TUI](main/tui/README.md), or [GUI](main/gui/README.md) |
-| Reuse or extend presentation mechanics | [Presentation toolkits](pkg/toolkits/readme.md) |
-| Add a domain-owned presentation adapter | [Domain surfaces](app/domains/readme.md#presentation-surfaces) |
-| Change shared domain value types | [Application kernel](app/kernel/readme.md) |
-| Follow the guided build narrative | [Tutorial series](https://github.com/TheFellow/go-modular-monolith/issues/23) |
+| If you want to…                                                                | Start here                                                                         |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Understand bounded contexts, pipelines, events, authz, and enforced boundaries | [Architecture](docs/architecture.md)                                               |
+| Use filters, tags, audit history, IDs, or authorization personas               | [Application features](docs/features.md)                                           |
+| Work on an executable and its composition layer                                | [CLI](main/cli/README.md), [TUI](main/tui/README.md), or [GUI](main/gui/README.md) |
+| Reuse or extend presentation mechanics                                         | [Presentation toolkits](pkg/toolkits/readme.md)                                    |
+| Add a domain-owned presentation adapter                                        | [Domain surfaces](app/domains/readme.md#presentation-surfaces)                     |
+| Change shared domain value types                                               | [Application kernel](app/kernel/readme.md)                                         |
+| Follow the guided build narrative                                              | [Tutorial series](https://github.com/TheFellow/go-modular-monolith/issues/23)      |
 
 ## Repository map
 

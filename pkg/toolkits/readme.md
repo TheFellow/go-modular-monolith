@@ -4,11 +4,11 @@
 toolkit depends on its UI framework and lower-level `pkg` contracts only; architecture checks
 prevent imports of `app`, `main`, sibling toolkits, and mismatched surface types.
 
-| Toolkit | Owns | Used by |
-| --- | --- | --- |
-| [CLI](cli/readme.md) | JSON input/output and reflection-based tables | `main/cli` composition and CLI domain adapters |
-| [TUI](tui/readme.md) | Bubble Tea view contracts, list/detail state, layout, components, forms, dialogs, styles, and keys | `main/tui` and TUI domain view models |
-| [GUI](gui/readme.md) | Fyne shell, standard pages, async publication, dialogs, semantic controls, tags, and validation | `main/gui` and GUI domain presenters/views |
+| Toolkit              | Owns                                                                                               | Used by                                        |
+| -------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| [CLI](cli/readme.md) | JSON input/output and reflection-based tables                                                      | `main/cli` composition and CLI domain adapters |
+| [TUI](tui/readme.md) | Bubble Tea view contracts, list/detail state, layout, components, forms, dialogs, styles, and keys | `main/tui` and TUI domain view models          |
+| [GUI](gui/readme.md) | Fyne shell, standard pages, async publication, dialogs, semantic controls, tags, and validation    | `main/gui` and GUI domain presenters/views     |
 
 The relationship is intentionally one-way:
 
