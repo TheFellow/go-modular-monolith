@@ -11,7 +11,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/main/tui/routes"
-	contracts "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 )
 
@@ -24,7 +24,7 @@ type Dashboard struct {
 	height int
 
 	loading bool
-	spinner contracts.Spinner
+	spinner tui.Spinner
 	data    *app.Dashboard
 	err     error
 }
@@ -47,7 +47,7 @@ func NewDashboard(app *app.Session) *Dashboard {
 		keys:    newDashboardKeys(),
 		loading: true,
 	}
-	d.spinner = contracts.NewSpinner("Loading dashboard...", d.styles.Subtitle)
+	d.spinner = tui.NewSpinner("Loading dashboard...", d.styles.Subtitle)
 	return d
 }
 
@@ -57,10 +57,10 @@ func (d *Dashboard) Init() tea.Cmd {
 	return tea.Batch(d.spinner.Init(), d.loadData())
 }
 
-func (d *Dashboard) Interaction() contracts.Interaction { return contracts.Interaction{} }
+func (d *Dashboard) Interaction() tui.Interaction { return tui.Interaction{} }
 
 // Update implements ViewModel.
-func (d *Dashboard) Update(msg tea.Msg) (contracts.ViewModel, tea.Cmd) {
+func (d *Dashboard) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		d.width = msg.Width

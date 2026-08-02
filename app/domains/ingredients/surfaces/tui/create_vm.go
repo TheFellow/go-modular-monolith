@@ -10,8 +10,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
-	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -76,8 +76,8 @@ func NewCreateIngredientVM(app *app.Session) *CreateIngredientVM {
 	)
 	tagsField := components.NewOptionalTagsField("")
 
-	formStyles := tuistyles.Standard.Form
-	formKeys := tuikeys.Standard.Form
+	formStyles := styles.Standard.Form
+	formKeys := keys.Standard.Form
 	form := forms.New(
 		formStyles,
 		formKeys,

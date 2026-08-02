@@ -12,8 +12,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
-	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -52,8 +52,8 @@ func NewSetInventoryVM(app *app.Session, row InventoryRow) *SetInventoryVM {
 	costField := forms.NewTextField("Cost Per Unit", forms.WithPlaceholder("Optional, e.g. $1.23 or EUR 1.23"))
 	tagsField := components.NewOptionalTagsField(row.Inventory.Tags.Canonical().String())
 
-	formStyles := tuistyles.Standard.Form
-	formKeys := tuikeys.Standard.Form
+	formStyles := styles.Standard.Form
+	formKeys := keys.Standard.Form
 	form := forms.New(
 		formStyles,
 		formKeys,

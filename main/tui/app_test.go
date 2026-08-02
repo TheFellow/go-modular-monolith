@@ -25,7 +25,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
-	views "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -79,7 +79,7 @@ func TestE2E_DashboardAndTagResultTransitionsStayWithinViewport(t *testing.T) {
 
 type tagViewScenario struct {
 	name, nav, title string
-	model            func(testing.TB, *testutil.Fixture) (views.ViewModel, cedar.EntityUID)
+	model            func(testing.TB, *testutil.Fixture) (tui.ViewModel, cedar.EntityUID)
 }
 
 func TestEveryTopLevelViewRendersValidFramesAcrossViewportSizes(t *testing.T) {
@@ -110,7 +110,7 @@ func TestEveryTopLevelViewRendersValidFramesAcrossViewportSizes(t *testing.T) {
 
 func tagViewScenarios() []tagViewScenario {
 	return []tagViewScenario{
-		{name: "drink", nav: "1", title: "Drinks", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+		{name: "drink", nav: "1", title: "Drinks", model: func(t testing.TB, f *testutil.Fixture) (tui.ViewModel, cedar.EntityUID) {
 			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Lime", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz})
 			drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 				Name: "Daiquiri", Category: drinksmodels.DrinkCategoryCocktail,
@@ -118,11 +118,11 @@ func tagViewScenarios() []tagViewScenario {
 			})
 			return tuitest.InitAndLoad(t, drinksui.NewListViewModel(f.App)), drink.EntityUID()
 		}},
-		{name: "ingredient", nav: "2", title: "Ingredients", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+		{name: "ingredient", nav: "2", title: "Ingredients", model: func(t testing.TB, f *testutil.Fixture) (tui.ViewModel, cedar.EntityUID) {
 			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl})
 			return tuitest.InitAndLoad(t, ingredientsui.NewListViewModel(f.App)), ingredient.EntityUID()
 		}},
-		{name: "inventory", nav: "3", title: "Inventory", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+		{name: "inventory", nav: "3", title: "Inventory", model: func(t testing.TB, f *testutil.Fixture) (tui.ViewModel, cedar.EntityUID) {
 			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Gin", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 			item := testutil.SetInventory(t, f, inventorymodels.Update{
 				IngredientID: ingredient.ID, Amount: measurement.MustAmount(5, ingredient.Unit),
@@ -130,11 +130,11 @@ func tagViewScenarios() []tagViewScenario {
 			})
 			return tuitest.InitAndLoad(t, inventoryui.NewListViewModel(f.App)), item.EntityUID()
 		}},
-		{name: "menu", nav: "4", title: "Menus", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+		{name: "menu", nav: "4", title: "Menus", model: func(t testing.TB, f *testutil.Fixture) (tui.ViewModel, cedar.EntityUID) {
 			menu := testutil.CreateMenu(t, f, "Happy Hour")
 			return tuitest.InitAndLoad(t, menusui.NewListViewModel(f.App)), menu.EntityUID()
 		}},
-		{name: "order", nav: "5", title: "Orders", model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+		{name: "order", nav: "5", title: "Orders", model: func(t testing.TB, f *testutil.Fixture) (tui.ViewModel, cedar.EntityUID) {
 			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Rum", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 			drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 				Name: "Rum Sour", Category: drinksmodels.DrinkCategoryCocktail,
@@ -209,7 +209,7 @@ func TestE2E_ListFilterOwnsPrintableShortcutsAndEscape(t *testing.T) {
 	scenarios := tagViewScenarios()
 	scenarios = append(scenarios, tagViewScenario{
 		name: "audit", nav: "6", title: "Audit",
-		model: func(t testing.TB, f *testutil.Fixture) (views.ViewModel, cedar.EntityUID) {
+		model: func(t testing.TB, f *testutil.Fixture) (tui.ViewModel, cedar.EntityUID) {
 			ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
 				Name: "Audited Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
 			})
@@ -378,19 +378,19 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 	type scenario struct {
 		name     string
 		view     routes.View
-		model    func(*testutil.Fixture) views.ViewModel
-		activate func(testing.TB, views.ViewModel) views.ViewModel
+		model    func(*testutil.Fixture) tui.ViewModel
+		activate func(testing.TB, tui.ViewModel) tui.ViewModel
 	}
 
 	scenarios := []scenario{
 		{
 			name: "drinks create error",
 			view: routes.ViewDrinks,
-			model: func(f *testutil.Fixture) views.ViewModel {
+			model: func(f *testutil.Fixture) tui.ViewModel {
 				testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 				return tuitest.InitAndLoad(t, drinksui.NewListViewModel(f.App))
 			},
-			activate: func(t testing.TB, model views.ViewModel) views.ViewModel {
+			activate: func(t testing.TB, model tui.ViewModel) tui.ViewModel {
 				model = updateView(t, model, keyRunes("c"))
 				return updateView(t, model, submitKey())
 			},
@@ -398,10 +398,10 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 		{
 			name: "ingredients create error",
 			view: routes.ViewIngredients,
-			model: func(f *testutil.Fixture) views.ViewModel {
+			model: func(f *testutil.Fixture) tui.ViewModel {
 				return tuitest.InitAndLoad(t, ingredientsui.NewListViewModel(f.App))
 			},
-			activate: func(t testing.TB, model views.ViewModel) views.ViewModel {
+			activate: func(t testing.TB, model tui.ViewModel) tui.ViewModel {
 				model = updateView(t, model, keyRunes("c"))
 				return updateView(t, model, submitKey())
 			},
@@ -409,7 +409,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 		{
 			name: "inventory adjust error",
 			view: routes.ViewInventory,
-			model: func(f *testutil.Fixture) views.ViewModel {
+			model: func(f *testutil.Fixture) tui.ViewModel {
 				ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 				testutil.SetInventory(t, f, inventorymodels.Update{
 					IngredientID: ingredient.ID, Amount: measurement.MustAmount(5, ingredient.Unit),
@@ -417,7 +417,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 				})
 				return tuitest.InitAndLoad(t, inventoryui.NewListViewModel(f.App))
 			},
-			activate: func(t testing.TB, model views.ViewModel) views.ViewModel {
+			activate: func(t testing.TB, model tui.ViewModel) tui.ViewModel {
 				model = updateView(t, model, keyRunes("a"))
 				return updateView(t, model, submitKey())
 			},
@@ -425,10 +425,10 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 		{
 			name: "menus create error",
 			view: routes.ViewMenus,
-			model: func(f *testutil.Fixture) views.ViewModel {
+			model: func(f *testutil.Fixture) tui.ViewModel {
 				return tuitest.InitAndLoad(t, menusui.NewListViewModel(f.App))
 			},
-			activate: func(t testing.TB, model views.ViewModel) views.ViewModel {
+			activate: func(t testing.TB, model tui.ViewModel) tui.ViewModel {
 				model = updateView(t, model, keyRunes("c"))
 				return updateView(t, model, submitKey())
 			},
@@ -436,7 +436,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 		{
 			name: "orders cancel dialog",
 			view: routes.ViewOrders,
-			model: func(f *testutil.Fixture) views.ViewModel {
+			model: func(f *testutil.Fixture) tui.ViewModel {
 				ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 				drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 					Name: "Margarita", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe,
@@ -449,7 +449,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 				})
 				return tuitest.InitAndLoad(t, ordersui.NewListViewModel(f.App))
 			},
-			activate: func(t testing.TB, model views.ViewModel) views.ViewModel {
+			activate: func(t testing.TB, model tui.ViewModel) tui.ViewModel {
 				return updateView(t, model, keyRunes("x"))
 			},
 		},
@@ -488,19 +488,19 @@ func TestBackKey_NavigatesWhenDomainHasNoLocalState(t *testing.T) {
 	scenarios := []struct {
 		name  string
 		view  routes.View
-		model func(*testutil.Fixture) views.ViewModel
+		model func(*testutil.Fixture) tui.ViewModel
 	}{
 		{
 			name: routes.ViewDrinks.String(),
 			view: routes.ViewDrinks,
-			model: func(f *testutil.Fixture) views.ViewModel {
+			model: func(f *testutil.Fixture) tui.ViewModel {
 				return tuitest.InitAndLoad(t, drinksui.NewListViewModel(f.App))
 			},
 		},
 		{
 			name: routes.ViewAudit.String(),
 			view: routes.ViewAudit,
-			model: func(f *testutil.Fixture) views.ViewModel {
+			model: func(f *testutil.Fixture) tui.ViewModel {
 				return tuitest.InitAndLoad(t, auditui.NewListViewModel(f.App))
 			},
 		},
@@ -576,7 +576,7 @@ func updateAppAndRunCmds(t testing.TB, app *App, msg tea.Msg) *App {
 	return updated
 }
 
-func updateView(t testing.TB, model views.ViewModel, msg tea.Msg) views.ViewModel {
+func updateView(t testing.TB, model tui.ViewModel, msg tea.Msg) tui.ViewModel {
 	t.Helper()
 
 	updated, cmd := model.Update(msg)
@@ -590,7 +590,7 @@ func keyRunes(s string) tea.KeyMsg {
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
 }
 
-func typeText(t testing.TB, model views.ViewModel, value string) views.ViewModel {
+func typeText(t testing.TB, model tui.ViewModel, value string) tui.ViewModel {
 	t.Helper()
 	for _, r := range value {
 		model, _ = model.Update(keyRunes(string(r)))
@@ -598,7 +598,7 @@ func typeText(t testing.TB, model views.ViewModel, value string) views.ViewModel
 	return model
 }
 
-func updateViewSettled(t testing.TB, model views.ViewModel, msg tea.Msg) views.ViewModel {
+func updateViewSettled(t testing.TB, model tui.ViewModel, msg tea.Msg) tui.ViewModel {
 	t.Helper()
 	updated, cmd := model.Update(msg)
 	for _, next := range tuitest.RunCmds(cmd) {

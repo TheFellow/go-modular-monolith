@@ -17,8 +17,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keyname"
-	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -86,8 +86,8 @@ type ListViewModel struct {
 func NewListViewModel(app *app.Session) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
-	delegate.Styles.SelectedTitle = tuistyles.Standard.ListView.Selected
-	delegate.Styles.SelectedDesc = tuistyles.Standard.ListView.Selected
+	delegate.Styles.SelectedTitle = styles.Standard.ListView.Selected
+	delegate.Styles.SelectedDesc = styles.Standard.ListView.Selected
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.Title = "Orders"
@@ -99,12 +99,12 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 
 	vm := &ListViewModel{
 		app:          app,
-		styles:       tuistyles.Standard.ListView,
+		styles:       styles.Standard.ListView,
 		keys:         newListViewKeys(),
-		dialogStyles: tuistyles.Standard.Dialog,
-		dialogKeys:   tuikeys.Standard.Dialog,
+		dialogStyles: styles.Standard.Dialog,
+		dialogKeys:   keys.Standard.Dialog,
 		list:         l,
-		detail:       NewDetailViewModel(tuistyles.Standard.ListView, app),
+		detail:       NewDetailViewModel(styles.Standard.ListView, app),
 		loading:      true,
 		request:      orders.ListRequest{Limit: paging.DefaultLimit},
 	}
@@ -398,13 +398,13 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
 	}
 	if m.mode == listModeTagging {
-		return []key.Binding{tuikeys.Standard.Submit, m.keys.Back}
+		return []key.Binding{keys.Standard.Submit, m.keys.Back}
 	}
 	if m.mode == listModeFiltering {
-		return []key.Binding{tuikeys.Standard.Submit, m.keys.Back}
+		return []key.Binding{keys.Standard.Submit, m.keys.Back}
 	}
 	if m.mode == listModePlacing {
-		return []key.Binding{tuikeys.Standard.Submit, m.keys.Back}
+		return []key.Binding{keys.Standard.Submit, m.keys.Back}
 	}
 	return []key.Binding{
 		m.keys.Up, m.keys.Down,
@@ -422,13 +422,13 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 		}
 	}
 	if m.mode == listModeTagging {
-		return [][]key.Binding{{tuikeys.Standard.Submit, m.keys.Back}}
+		return [][]key.Binding{{keys.Standard.Submit, m.keys.Back}}
 	}
 	if m.mode == listModeFiltering {
-		return [][]key.Binding{{tuikeys.Standard.Submit, m.keys.Back}}
+		return [][]key.Binding{{keys.Standard.Submit, m.keys.Back}}
 	}
 	if m.mode == listModePlacing {
-		return [][]key.Binding{{tuikeys.Standard.Submit, m.keys.Back}}
+		return [][]key.Binding{{keys.Standard.Submit, m.keys.Back}}
 	}
 	return [][]key.Binding{
 		{m.keys.Up, m.keys.Down, m.keys.Enter},

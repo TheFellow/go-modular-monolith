@@ -20,8 +20,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
-	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -75,14 +75,14 @@ type ListViewModel struct {
 func NewListViewModel(app *app.Session) *ListViewModel {
 	vm := &ListViewModel{
 		app:          app,
-		styles:       tuistyles.Standard.ListView,
+		styles:       styles.Standard.ListView,
 		keys:         newListViewKeys(),
-		formStyles:   tuistyles.Standard.Form,
-		formKeys:     tuikeys.Standard.Form,
-		dialogStyles: tuistyles.Standard.Dialog,
-		dialogKeys:   tuikeys.Standard.Dialog,
-		shell:        tui.NewListDetail("Ingredients", "Loading ingredients...", tuistyles.Standard.ListView),
-		detail:       NewDetailViewModel(tuistyles.Standard.ListView),
+		formStyles:   styles.Standard.Form,
+		formKeys:     keys.Standard.Form,
+		dialogStyles: styles.Standard.Dialog,
+		dialogKeys:   keys.Standard.Dialog,
+		shell:        tui.NewListDetail("Ingredients", "Loading ingredients...", styles.Standard.ListView),
+		detail:       NewDetailViewModel(styles.Standard.ListView),
 	}
 	vm.shell.SetLocalFiltering(false)
 	vm.shell.SetLocalPagination(false)
