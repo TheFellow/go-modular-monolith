@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
-	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/keys"
-	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"

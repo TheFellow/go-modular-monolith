@@ -5,9 +5,9 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
-	tuikeys "github.com/TheFellow/go-modular-monolith/app/surfaces/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/app/surfaces/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/views"
+	tuikeys "github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"

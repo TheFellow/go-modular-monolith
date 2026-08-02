@@ -5,5 +5,5 @@ editing, submit, clear, and compatibility aliases. Centralizing the literal name
 drift between toolkit defaults, Mixology's shared key map, and bespoke controls.
 
 Use these constants when constructing `key.Binding` values or comparing raw `tea.KeyMsg.String()`
-values. Application-visible key policy belongs in `app/surfaces/tui/keys`; add a constant here only
+values. Application-visible key policy belongs in `app/presentation/tui/keys`; add a constant here only
 when it represents a reusable terminal key name.

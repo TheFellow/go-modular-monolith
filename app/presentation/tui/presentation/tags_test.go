@@ -3,7 +3,7 @@ package presentation_test
 import (
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/presentation"
+	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/presentation"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
