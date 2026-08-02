@@ -12,7 +12,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
-	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/presentation"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -53,7 +52,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + menu.ID.String()),
 		d.styles.Muted.Render("Created: " + formatMenuTime(menu.CreatedAt)),
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
-		d.styles.Subtitle.Render("Tags: ") + presentation.LabelOr(menu.Tags.Canonical().String(), "(none)"),
+		d.styles.Subtitle.Render("Tags: ") + tui.LabelOr(menu.Tags.Canonical().String(), "(none)"),
 	}
 	if publishedAt, ok := menu.PublishedAt.Unwrap(); ok {
 		lines = append(lines, d.styles.Muted.Render("Published: "+formatMenuTime(publishedAt)))
