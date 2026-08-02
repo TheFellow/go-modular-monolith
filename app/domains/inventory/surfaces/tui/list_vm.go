@@ -16,8 +16,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
-	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
@@ -82,16 +82,16 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		table.WithRows(nil),
 		table.WithFocused(true),
 	)
-	model.SetStyles(inventoryTableStyles(tuistyles.Standard.ListView))
+	model.SetStyles(inventoryTableStyles(styles.Standard.ListView))
 
 	vm := &ListViewModel{
 		app:        app,
-		styles:     tuistyles.Standard.ListView,
+		styles:     styles.Standard.ListView,
 		keys:       newListViewKeys(),
-		formStyles: tuistyles.Standard.Form,
-		formKeys:   tuikeys.Standard.Form,
+		formStyles: styles.Standard.Form,
+		formKeys:   keys.Standard.Form,
 		table:      model,
-		detail:     NewDetailViewModel(tuistyles.Standard.ListView),
+		detail:     NewDetailViewModel(styles.Standard.ListView),
 		loading:    true,
 	}
 	vm.spinner = tui.NewSpinner("Loading inventory...", vm.styles.Subtitle)

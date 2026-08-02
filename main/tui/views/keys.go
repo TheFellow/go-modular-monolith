@@ -1,7 +1,7 @@
 package views
 
 import (
-	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
 	"github.com/charmbracelet/bubbles/key"
 )
 
@@ -12,15 +12,15 @@ type dashboardKeys struct {
 
 func newDashboardKeys() dashboardKeys {
 	return dashboardKeys{
-		Nav1:    tuikeys.NewBinding("1", "drinks", "1"),
-		Nav2:    tuikeys.NewBinding("2", "ingredients", "2"),
-		Nav3:    tuikeys.NewBinding("3", "inventory", "3"),
-		Nav4:    tuikeys.NewBinding("4", "menus", "4"),
-		Nav5:    tuikeys.NewBinding("5", "orders", "5"),
-		Nav6:    tuikeys.NewBinding("6", "audit", "6"),
-		Nav7:    tuikeys.NewBinding("7", "tags", "7"),
-		Refresh: tuikeys.Standard.Refresh,
-		Help:    tuikeys.Standard.Help,
-		Quit:    tuikeys.Standard.Quit,
+		Nav1:    keys.NewBinding("1", "drinks", "1"),
+		Nav2:    keys.NewBinding("2", "ingredients", "2"),
+		Nav3:    keys.NewBinding("3", "inventory", "3"),
+		Nav4:    keys.NewBinding("4", "menus", "4"),
+		Nav5:    keys.NewBinding("5", "orders", "5"),
+		Nav6:    keys.NewBinding("6", "audit", "6"),
+		Nav7:    keys.NewBinding("7", "tags", "7"),
+		Refresh: keys.Standard.Refresh,
+		Help:    keys.Standard.Help,
+		Quit:    keys.Standard.Quit,
 	}
 }

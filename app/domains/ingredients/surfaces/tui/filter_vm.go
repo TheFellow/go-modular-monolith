@@ -9,8 +9,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
-	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -37,7 +37,7 @@ func newFilterVM(req ingredients.ListRequest) *filterVM {
 		expression: forms.NewTextField("Expression", forms.WithInitialValue(req.Filter)),
 		limit:      forms.NewNumberField("Page size", forms.WithRequired(), forms.WithMin(1), forms.WithInitialValue(limit)),
 	}
-	v.form = forms.New(tuistyles.Standard.Form, tuikeys.Standard.Form, v.category, v.expression, v.limit)
+	v.form = forms.New(styles.Standard.Form, keys.Standard.Form, v.category, v.expression, v.limit)
 	return v
 }
 func (v *filterVM) Init() tea.Cmd { return v.form.Init() }
@@ -65,4 +65,4 @@ func (v *filterVM) Request() (ingredients.ListRequest, error) {
 	}
 	return ingredients.ListRequest{Category: v.category.Value().(models.Category), Filter: strings.TrimSpace(fmt.Sprint(v.expression.Value())), Limit: limit}, nil
 }
-func filterSubmit(msg tea.KeyMsg) bool { return key.Matches(msg, tuikeys.Standard.Form.Submit) }
+func filterSubmit(msg tea.KeyMsg) bool { return key.Matches(msg, keys.Standard.Form.Submit) }

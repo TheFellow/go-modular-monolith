@@ -10,8 +10,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
-	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -48,11 +48,11 @@ func NewRenameMenuVM(app *app.Session, menu *models.Menu) *RenameMenuVM {
 	name := forms.NewTextField("Name", forms.WithRequired(), forms.WithMaxLength(100), forms.WithInitialValue(menu.Name))
 	description := forms.NewTextField("Description", forms.WithMaxLength(500), forms.WithInitialValue(menu.Description))
 	tags := components.NewOptionalTagsField(menu.Tags.Canonical().String())
-	styles := tuistyles.Standard.Form
-	keys := tuikeys.Standard.Form
+	formStyles := styles.Standard.Form
+	formKeys := keys.Standard.Form
 
 	return &RenameMenuVM{
-		app: app, form: forms.New(styles, keys, name, description, tags), name: name, description: description, tags: tags,
+		app: app, form: forms.New(formStyles, formKeys, name, description, tags), name: name, description: description, tags: tags,
 		menu: menu, styles: styles, keys: keys,
 	}
 }

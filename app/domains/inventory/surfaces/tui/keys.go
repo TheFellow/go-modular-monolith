@@ -1,20 +1,20 @@
 package tui
 
 import (
-	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
 	"github.com/charmbracelet/bubbles/key"
 )
 
 type listViewKeys struct {
-	tuikeys.ListViewKeys
+	keys.ListViewKeys
 	Tags, Adjust, Set key.Binding
 }
 
 func newListViewKeys() listViewKeys {
 	return listViewKeys{
-		ListViewKeys: tuikeys.Standard.ListView,
-		Tags:         tuikeys.NewBinding("t", "manage tags", "t"),
-		Adjust:       tuikeys.NewBinding("a", "adjust", "a"),
-		Set:          tuikeys.NewBinding("s", "set", "s"),
+		ListViewKeys: keys.Standard.ListView,
+		Tags:         keys.NewBinding("t", "manage tags", "t"),
+		Adjust:       keys.NewBinding("a", "adjust", "a"),
+		Set:          keys.NewBinding("s", "set", "s"),
 	}
 }

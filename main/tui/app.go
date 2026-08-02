@@ -18,7 +18,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/main/tui/routes"
 	tuiviews "github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	contracts "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 )
@@ -54,7 +54,7 @@ type App struct {
 	lastError error
 
 	// Child views (lazy initialized)
-	views map[routes.View]contracts.ViewModel
+	views map[routes.View]tui.ViewModel
 }
 
 // NewApp creates a new App with the given application.
@@ -68,7 +68,7 @@ func NewApp(application *app.Session) *App {
 		styles:      styles.Standard,
 		keys:        keys.Standard,
 		help:        helpModel,
-		views:       make(map[routes.View]contracts.ViewModel),
+		views:       make(map[routes.View]tui.ViewModel),
 	}
 }
 
@@ -167,16 +167,16 @@ func (a *App) View() string {
 }
 
 // currentViewModel returns the ViewModel for the current view, lazy initializing if needed.
-func (a *App) currentViewModel() contracts.ViewModel {
+func (a *App) currentViewModel() tui.ViewModel {
 	if a.views == nil {
-		a.views = make(map[routes.View]contracts.ViewModel)
+		a.views = make(map[routes.View]tui.ViewModel)
 	}
 
 	if vm, ok := a.views[a.currentView]; ok {
 		return vm
 	}
 
-	var vm contracts.ViewModel
+	var vm tui.ViewModel
 	switch a.currentView {
 	case routes.ViewDashboard:
 		vm = tuiviews.NewDashboard(a.app)

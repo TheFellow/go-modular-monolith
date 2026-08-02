@@ -9,8 +9,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
-	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -37,7 +37,7 @@ func newFilterVM(req orders.ListRequest) *filterVM {
 		expression: forms.NewTextField("Expression", forms.WithInitialValue(req.Filter)),
 		limit:      forms.NewNumberField("Page size", forms.WithRequired(), forms.WithMin(1), forms.WithInitialValue(limit)),
 	}
-	v.form = forms.New(tuistyles.Standard.Form, tuikeys.Standard.Form, v.status, v.expression, v.limit)
+	v.form = forms.New(styles.Standard.Form, keys.Standard.Form, v.status, v.expression, v.limit)
 	return v
 }
 

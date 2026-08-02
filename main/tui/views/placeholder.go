@@ -5,7 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	contracts "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 )
 
 // Placeholder is a temporary view showing "Coming Soon".
@@ -25,10 +25,10 @@ func (p *Placeholder) Init() tea.Cmd {
 	return nil
 }
 
-func (p *Placeholder) Interaction() contracts.Interaction { return contracts.Interaction{} }
+func (p *Placeholder) Interaction() tui.Interaction { return tui.Interaction{} }
 
 // Update implements tea.Model.
-func (p *Placeholder) Update(msg tea.Msg) (contracts.ViewModel, tea.Cmd) {
+func (p *Placeholder) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	if msg, ok := msg.(tea.WindowSizeMsg); ok {
 		p.width = msg.Width
 		p.height = msg.Height

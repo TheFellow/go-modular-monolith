@@ -9,8 +9,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
-	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -74,8 +74,8 @@ func NewCreateDrinkVM(app *app.Session) *CreateDrinkVM {
 		forms.WithMaxLength(500),
 	)
 	tagsField := components.NewOptionalTagsField("")
-	formStyles := tuistyles.Standard.Form
-	formKeys := tuikeys.Standard.Form
+	formStyles := styles.Standard.Form
+	formKeys := keys.Standard.Form
 	recipeField := NewRecipeEditor(app, formStyles, models.Recipe{})
 	form := forms.New(
 		formStyles,

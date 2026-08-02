@@ -11,8 +11,8 @@ import (
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
-	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,7 +20,7 @@ import (
 
 type ListViewModel struct {
 	app           *app.Session
-	keys          tuikeys.ListViewKeys
+	keys          keys.ListViewKeys
 	formKeys      forms.FormKeys
 	shell         *tui.ListDetail
 	detail        *DetailViewModel
@@ -33,7 +33,7 @@ type ListViewModel struct {
 }
 
 func NewListViewModel(session *app.Session) *ListViewModel {
-	m := &ListViewModel{app: session, keys: tuikeys.Standard.ListView, formKeys: tuikeys.Standard.Form, shell: tui.NewListDetail("Audit", "Loading audit entries...", tuistyles.Standard.ListView), detail: NewDetailViewModel(tuistyles.Standard.ListView), query: auditQuery{scope: scopeAll, limit: paging.DefaultLimit}}
+	m := &ListViewModel{app: session, keys: keys.Standard.ListView, formKeys: keys.Standard.Form, shell: tui.NewListDetail("Audit", "Loading audit entries...", styles.Standard.ListView), detail: NewDetailViewModel(styles.Standard.ListView), query: auditQuery{scope: scopeAll, limit: paging.DefaultLimit}}
 	m.shell.SetLocalFiltering(false)
 	m.shell.SetLocalPagination(false)
 	m.updateTitle()
