@@ -15,8 +15,7 @@ and workflows.
 - `ViewModel` and `Interaction` define the shell-facing contract without knowing application routes.
 - [components](components/readme.md), [keys](keys/readme.md), and [styles](styles/readme.md) provide
   reusable controls and defaults. Tag controls receive parsing and persistence functions, so the
-  toolkit never imports application types. Small display helpers such as `LabelOr` stay at the
-  toolkit root, matching the GUI toolkit's flat presentation-helper vocabulary.
+  toolkit never imports application types.
 - [forms](forms/readme.md), [dialog](dialog/readme.md), and [keyname](keyname/readme.md) provide the
   reusable interaction primitives used by domain workflows.
 

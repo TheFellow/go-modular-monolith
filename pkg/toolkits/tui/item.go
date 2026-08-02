@@ -1,5 +1,7 @@
 package tui
 
+import "cmp"
+
 // ListItem adapts a typed value to bubbles/list.Item.
 type ListItem[T any] struct {
 	Value       T
@@ -10,14 +12,11 @@ type ListItem[T any] struct {
 
 // NewListItem creates a typed list item. An empty filter value uses the title.
 func NewListItem[T any](value T, title, description, filterValue string) ListItem[T] {
-	if filterValue == "" {
-		filterValue = title
-	}
 	return ListItem[T]{
 		Value:       value,
 		title:       title,
 		description: description,
-		filterValue: filterValue,
+		filterValue: cmp.Or(filterValue, title),
 	}
 }
 
