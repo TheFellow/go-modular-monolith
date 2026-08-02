@@ -1,4 +1,4 @@
-package views
+package tui
 
 import (
 	"github.com/charmbracelet/bubbles/key"

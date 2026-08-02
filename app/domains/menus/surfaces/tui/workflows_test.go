@@ -13,13 +13,13 @@ import (
 	menuauthz "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	menustui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type menuProgram struct{ model views.ViewModel }
+type menuProgram struct{ model tui.ViewModel }
 
 func (m menuProgram) Init() tea.Cmd { return m.model.Init() }
 func (m menuProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

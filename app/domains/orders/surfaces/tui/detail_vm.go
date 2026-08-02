@@ -10,11 +10,11 @@ import (
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/presentation"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/presentation"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/govalues/decimal"
 )
@@ -61,7 +61,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + order.ID.String()),
 		d.styles.Subtitle.Render("Menu: ") + menu.Name,
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
-		d.styles.Subtitle.Render("Tags: ") + presentation.TagLabel(order.Tags.Canonical().String()),
+		d.styles.Subtitle.Render("Tags: ") + presentation.LabelOr(order.Tags.Canonical().String(), "(none)"),
 		d.styles.Muted.Render("Created: " + formatTime(order.CreatedAt)),
 	}
 

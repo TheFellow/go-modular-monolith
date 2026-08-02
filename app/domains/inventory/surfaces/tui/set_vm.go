@@ -2,17 +2,18 @@ package tui
 
 import (
 	"errors"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/components"
-	tuikeys "github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -49,10 +50,10 @@ func NewSetInventoryVM(app *app.Session, row InventoryRow) *SetInventoryVM {
 	}
 
 	costField := forms.NewTextField("Cost Per Unit", forms.WithPlaceholder("Optional, e.g. $1.23 or EUR 1.23"))
-	tagsField := components.NewOptionalTagsField(row.Inventory.Tags)
+	tagsField := components.NewOptionalTagsField(row.Inventory.Tags.Canonical().String())
 
-	formStyles := tuistyles.App.Form
-	formKeys := tuikeys.App.Form
+	formStyles := tuistyles.Standard.Form
+	formKeys := tuikeys.Standard.Form
 	form := forms.New(
 		formStyles,
 		formKeys,
@@ -159,7 +160,7 @@ func (m *SetInventoryVM) submit() tea.Cmd {
 		m.err = err
 		return nil
 	}
-	desired, err := components.DesiredTags(m.tags)
+	desired, err := components.DesiredTags(m.tags, tag.ParseCollection)
 	if err != nil {
 		m.err = err
 		return nil

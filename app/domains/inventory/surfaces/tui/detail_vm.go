@@ -4,10 +4,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/components"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/presentation"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/presentation"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -44,7 +44,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Title.Render(row.Ingredient.Name),
 		d.styles.Muted.Render("Ingredient ID: " + row.Ingredient.ID.String()),
 		d.styles.Muted.Render("Inventory ID: " + row.Inventory.ID.String()),
-		d.styles.Subtitle.Render("Tags: ") + presentation.TagLabel(row.Inventory.Tags.Canonical().String()),
+		d.styles.Subtitle.Render("Tags: ") + presentation.LabelOr(row.Inventory.Tags.Canonical().String(), "(none)"),
 		d.styles.Subtitle.Render("Category: ") + string(row.Ingredient.Category),
 		d.styles.Subtitle.Render("Unit: ") + string(row.Ingredient.Unit),
 		"",

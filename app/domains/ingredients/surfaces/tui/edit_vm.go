@@ -2,16 +2,17 @@ package tui
 
 import (
 	"errors"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/components"
-	tuikeys "github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -80,10 +81,10 @@ func NewEditIngredientVM(app *app.Session, ingredient *models.Ingredient) *EditI
 		forms.WithMaxLength(500),
 		forms.WithInitialValue(ingredient.Description),
 	)
-	tagsField := components.NewOptionalTagsField(ingredient.Tags)
+	tagsField := components.NewOptionalTagsField(ingredient.Tags.Canonical().String())
 
-	formStyles := tuistyles.App.Form
-	formKeys := tuikeys.App.Form
+	formStyles := tuistyles.Standard.Form
+	formKeys := tuikeys.Standard.Form
 	form := forms.New(
 		formStyles,
 		formKeys,
@@ -163,7 +164,7 @@ func (m *EditIngredientVM) submit() tea.Cmd {
 		m.err = errors.New("ingredient not loaded")
 		return nil
 	}
-	desired, err := components.DesiredTags(m.tags)
+	desired, err := components.DesiredTags(m.tags, tag.ParseCollection)
 	if err != nil {
 		m.err = err
 		return nil

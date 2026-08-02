@@ -21,12 +21,13 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/components"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
+	"github.com/TheFellow/go-modular-monolith/main/tui/routes"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
+	views "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -158,7 +159,7 @@ func TestTagHotkeyManagesEveryOperationalEntity(t *testing.T) {
 			model = updateView(t, model, keyRunes("t"))
 			testutil.StringContains(t, model.View(), "Manage tags")
 			testutil.StringContains(t, model.View(), "Empty clears all tags")
-			model = updateView(t, model, components.TagsSavedMsg{Target: entity.NewAuditEntryID().EntityUID()})
+			model = updateView(t, model, components.TagsSavedMsg[cedar.EntityUID, tag.Tags]{Target: entity.NewAuditEntryID().EntityUID()})
 			testutil.StringContains(t, model.View(), "Manage tags")
 
 			model = typeText(t, model, "cedar=deep")
@@ -344,7 +345,7 @@ func requirePersistedTags(t testing.TB, f *testutil.Fixture, target cedar.Entity
 func TestStatusBarView_UsesWarningStyleForNotFound(t *testing.T) {
 	t.Parallel()
 
-	app := &App{styles: styles.App}
+	app := &App{styles: styles.Standard}
 	app.lastError = errors.NotFoundf("ingredient missing")
 
 	expected := app.styles.StatusBar.Render(app.styles.WarningText.Render(app.lastError.Error()))
@@ -354,7 +355,7 @@ func TestStatusBarView_UsesWarningStyleForNotFound(t *testing.T) {
 func TestStatusBarView_UsesErrorStyleForInvalid(t *testing.T) {
 	t.Parallel()
 
-	app := &App{styles: styles.App}
+	app := &App{styles: styles.Standard}
 	app.lastError = errors.Invalidf("invalid input")
 
 	expected := app.styles.StatusBar.Render(app.styles.ErrorText.Render(app.lastError.Error()))
@@ -364,7 +365,7 @@ func TestStatusBarView_UsesErrorStyleForInvalid(t *testing.T) {
 func TestStatusBarView_UsesErrorStyleForPermission(t *testing.T) {
 	t.Parallel()
 
-	app := &App{styles: styles.App}
+	app := &App{styles: styles.Standard}
 	app.lastError = errors.Permissionf("permission denied")
 
 	expected := app.styles.StatusBar.Render(app.styles.ErrorText.Render(app.lastError.Error()))
@@ -376,7 +377,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 
 	type scenario struct {
 		name     string
-		view     views.View
+		view     routes.View
 		model    func(*testutil.Fixture) views.ViewModel
 		activate func(testing.TB, views.ViewModel) views.ViewModel
 	}
@@ -384,7 +385,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 	scenarios := []scenario{
 		{
 			name: "drinks create error",
-			view: views.ViewDrinks,
+			view: routes.ViewDrinks,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 				return tuitest.InitAndLoad(t, drinksui.NewListViewModel(f.App))
@@ -396,7 +397,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 		},
 		{
 			name: "ingredients create error",
-			view: views.ViewIngredients,
+			view: routes.ViewIngredients,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				return tuitest.InitAndLoad(t, ingredientsui.NewListViewModel(f.App))
 			},
@@ -407,7 +408,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 		},
 		{
 			name: "inventory adjust error",
-			view: views.ViewInventory,
+			view: routes.ViewInventory,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 				testutil.SetInventory(t, f, inventorymodels.Update{
@@ -423,7 +424,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 		},
 		{
 			name: "menus create error",
-			view: views.ViewMenus,
+			view: routes.ViewMenus,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				return tuitest.InitAndLoad(t, menusui.NewListViewModel(f.App))
 			},
@@ -434,7 +435,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 		},
 		{
 			name: "orders cancel dialog",
-			view: views.ViewOrders,
+			view: routes.ViewOrders,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Tequila", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
 				drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
@@ -467,7 +468,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 
 			app := NewApp(f.App)
 			app.currentView = scenario.view
-			app.prevViews = []views.View{views.ViewDashboard}
+			app.prevViews = []routes.View{routes.ViewDashboard}
 			app.views[scenario.view] = model
 
 			app = updateAppAndRunCmds(t, app, tea.KeyMsg{Type: tea.KeyEsc})
@@ -476,7 +477,7 @@ func TestBackKey_CancelsDomainLocalStateBeforeNavigating(t *testing.T) {
 			testutil.IsFalse(t, app.views[scenario.view].Interaction().HandlesBack)
 
 			app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
-			testutil.Equals(t, app.currentView, views.ViewDashboard)
+			testutil.Equals(t, app.currentView, routes.ViewDashboard)
 		})
 	}
 }
@@ -486,19 +487,19 @@ func TestBackKey_NavigatesWhenDomainHasNoLocalState(t *testing.T) {
 
 	scenarios := []struct {
 		name  string
-		view  views.View
+		view  routes.View
 		model func(*testutil.Fixture) views.ViewModel
 	}{
 		{
-			name: views.ViewDrinks.String(),
-			view: views.ViewDrinks,
+			name: routes.ViewDrinks.String(),
+			view: routes.ViewDrinks,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				return tuitest.InitAndLoad(t, drinksui.NewListViewModel(f.App))
 			},
 		},
 		{
-			name: views.ViewAudit.String(),
-			view: views.ViewAudit,
+			name: routes.ViewAudit.String(),
+			view: routes.ViewAudit,
 			model: func(f *testutil.Fixture) views.ViewModel {
 				return tuitest.InitAndLoad(t, auditui.NewListViewModel(f.App))
 			},
@@ -514,11 +515,11 @@ func TestBackKey_NavigatesWhenDomainHasNoLocalState(t *testing.T) {
 
 			app := NewApp(f.App)
 			app.currentView = scenario.view
-			app.prevViews = []views.View{views.ViewDashboard}
+			app.prevViews = []routes.View{routes.ViewDashboard}
 			app.views[scenario.view] = model
 
 			app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
-			testutil.Equals(t, app.currentView, views.ViewDashboard)
+			testutil.Equals(t, app.currentView, routes.ViewDashboard)
 		})
 	}
 }
@@ -544,7 +545,7 @@ func TestDashboard_NavigatesToTagsShowsHelpAndBack(t *testing.T) {
 	app := NewApp(f.App)
 
 	app = updateAppAndRunCmds(t, app, keyRunes("7"))
-	testutil.Equals(t, app.currentView, views.ViewTags)
+	testutil.Equals(t, app.currentView, routes.ViewTags)
 	testutil.ErrorIf(t, app.currentViewModel().View() == "", "expected tags workspace")
 
 	app = updateAppAndRunCmds(t, app, keyRunes("?"))
@@ -552,9 +553,9 @@ func TestDashboard_NavigatesToTagsShowsHelpAndBack(t *testing.T) {
 	testutil.ErrorIf(t, app.helpHeight() == 0, "expected expanded tags help")
 
 	app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
-	testutil.Equals(t, app.currentView, views.ViewTags)
+	testutil.Equals(t, app.currentView, routes.ViewTags)
 	app = updateAppOnce(t, app, tea.KeyMsg{Type: tea.KeyEsc})
-	testutil.Equals(t, app.currentView, views.ViewDashboard)
+	testutil.Equals(t, app.currentView, routes.ViewDashboard)
 }
 
 func updateAppOnce(t testing.TB, app *App, msg tea.Msg) *App {

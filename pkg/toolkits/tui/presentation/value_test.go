@@ -3,11 +3,11 @@ package presentation_test
 import (
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/presentation"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/presentation"
 )
 
-func TestTagLabelUsesApplicationEmptyState(t *testing.T) {
+func TestLabelOrUsesFallbackForEmptyValue(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range []struct {
@@ -19,8 +19,8 @@ func TestTagLabelUsesApplicationEmptyState(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			{
-				got := presentation.TagLabel(test.value)
-				testutil.ErrorIf(t, got != test.want, "TagLabel(%q) = %q, want %q", test.value, got, test.want)
+				got := presentation.LabelOr(test.value, "(none)")
+				testutil.ErrorIf(t, got != test.want, "LabelOr(%q) = %q, want %q", test.value, got, test.want)
 			}
 		})
 	}

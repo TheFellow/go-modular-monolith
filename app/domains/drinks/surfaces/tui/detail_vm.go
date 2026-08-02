@@ -7,11 +7,11 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/presentation"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/presentation"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -76,7 +76,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + drink.ID.String()),
 		d.styles.Subtitle.Render("Category: ") + string(drink.Category),
 		d.styles.Subtitle.Render("Glass: ") + string(drink.Glass),
-		d.styles.Subtitle.Render("Tags: ") + presentation.TagLabel(drink.Tags.Canonical().String()),
+		d.styles.Subtitle.Render("Tags: ") + presentation.LabelOr(drink.Tags.Canonical().String(), "(none)"),
 	}
 
 	if drink.Description != "" {

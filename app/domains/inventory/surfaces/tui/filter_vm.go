@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -24,7 +24,7 @@ type filterVM struct {
 	err        error
 }
 
-func filterSubmit(msg tea.KeyMsg) bool { return key.Matches(msg, keys.App.Form.Submit) }
+func filterSubmit(msg tea.KeyMsg) bool { return key.Matches(msg, keys.Standard.Form.Submit) }
 
 func newFilterVM(req inventory.ListRequest) *filterVM {
 	threshold := inventory.DefaultLowStockThreshold
@@ -43,7 +43,7 @@ func newFilterVM(req inventory.ListRequest) *filterVM {
 		threshold:  forms.NewNumberField("Low-stock threshold", forms.WithMin(0), forms.WithInitialValue(threshold)),
 		limit:      forms.NewNumberField("Page size", forms.WithRequired(), forms.WithMin(1), forms.WithInitialValue(limit)),
 	}
-	v.form = forms.New(styles.App.Form, keys.App.Form, v.stock, v.expression, v.threshold, v.limit)
+	v.form = forms.New(styles.Standard.Form, keys.Standard.Form, v.stock, v.expression, v.threshold, v.limit)
 	return v
 }
 

@@ -6,5 +6,5 @@ danger styling, keys, and styles.
 
 The enclosing domain view decides what requires confirmation and runs the resulting command; this
 package only owns modal interaction. Prefer `WithDangerous` and `WithFocusCancel` for destructive
-operations. Mixology supplies its shared bindings/styles through `app/presentation/tui/keys` and
-`app/presentation/tui/styles`. See an operational domain's `list_vm.go` for integration.
+operations. Shared bindings and styles live in `pkg/toolkits/tui/keys` and
+`pkg/toolkits/tui/styles`. See an operational domain's `list_vm.go` for integration.

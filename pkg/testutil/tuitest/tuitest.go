@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keyname"
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
@@ -279,7 +279,7 @@ func DefaultListViewKeys[T listViewKeys]() T {
 }
 
 // InitAndLoad runs Init and processes the resulting commands.
-func InitAndLoad(t testing.TB, model views.ViewModel) views.ViewModel {
+func InitAndLoad(t testing.TB, model tui.ViewModel) tui.ViewModel {
 	t.Helper()
 	cmd := model.Init()
 	msgs := RunCmds(cmd)

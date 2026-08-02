@@ -15,11 +15,12 @@ import (
 	inventoryui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/tui"
 	menusui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
 	ordersui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/tui"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
-	contracts "github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
+	"github.com/TheFellow/go-modular-monolith/main/tui/routes"
 	tuiviews "github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	contracts "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 )
 
 const (
@@ -37,8 +38,8 @@ type viewSizeMsg struct {
 // App is the root model for the TUI application.
 type App struct {
 	// Navigation
-	currentView contracts.View
-	prevViews   []contracts.View
+	currentView routes.View
+	prevViews   []routes.View
 
 	// Application layer
 	app *app.Session
@@ -53,7 +54,7 @@ type App struct {
 	lastError error
 
 	// Child views (lazy initialized)
-	views map[contracts.View]contracts.ViewModel
+	views map[routes.View]contracts.ViewModel
 }
 
 // NewApp creates a new App with the given application.
@@ -62,12 +63,12 @@ func NewApp(application *app.Session) *App {
 	helpModel.ShowAll = false
 
 	return &App{
-		currentView: contracts.ViewDashboard,
+		currentView: routes.ViewDashboard,
 		app:         application,
-		styles:      styles.App,
-		keys:        keys.App,
+		styles:      styles.Standard,
+		keys:        keys.Standard,
 		help:        helpModel,
-		views:       make(map[contracts.View]contracts.ViewModel),
+		views:       make(map[routes.View]contracts.ViewModel),
 	}
 }
 
@@ -123,10 +124,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.views[a.currentView] = vm
 		return a, cmd
 
-	case contracts.NavigateMsg:
+	case routes.NavigateMsg:
 		return a, a.navigateTo(msg.To)
 
-	case contracts.ErrorMsg:
+	case routes.ErrorMsg:
 		a.lastError = msg.Err
 		return a, nil
 
@@ -168,7 +169,7 @@ func (a *App) View() string {
 // currentViewModel returns the ViewModel for the current view, lazy initializing if needed.
 func (a *App) currentViewModel() contracts.ViewModel {
 	if a.views == nil {
-		a.views = make(map[contracts.View]contracts.ViewModel)
+		a.views = make(map[routes.View]contracts.ViewModel)
 	}
 
 	if vm, ok := a.views[a.currentView]; ok {
@@ -177,24 +178,24 @@ func (a *App) currentViewModel() contracts.ViewModel {
 
 	var vm contracts.ViewModel
 	switch a.currentView {
-	case contracts.ViewDashboard:
+	case routes.ViewDashboard:
 		vm = tuiviews.NewDashboard(a.app)
-	case contracts.ViewDrinks:
+	case routes.ViewDrinks:
 		vm = drinksui.NewListViewModel(a.app)
-	case contracts.ViewIngredients:
+	case routes.ViewIngredients:
 		vm = ingredientsui.NewListViewModel(a.app)
-	case contracts.ViewInventory:
+	case routes.ViewInventory:
 		vm = inventoryui.NewListViewModel(a.app)
-	case contracts.ViewMenus:
+	case routes.ViewMenus:
 		vm = menusui.NewListViewModel(a.app)
-	case contracts.ViewOrders:
+	case routes.ViewOrders:
 		vm = ordersui.NewListViewModel(a.app)
-	case contracts.ViewAudit:
+	case routes.ViewAudit:
 		vm = auditui.NewListViewModel(a.app)
-	case contracts.ViewTags:
+	case routes.ViewTags:
 		vm = tuiviews.NewTags(a.app)
 	default:
-		a.currentView = contracts.ViewDashboard
+		a.currentView = routes.ViewDashboard
 		vm = tuiviews.NewDashboard(a.app)
 	}
 
@@ -203,7 +204,7 @@ func (a *App) currentViewModel() contracts.ViewModel {
 }
 
 // navigateTo pushes current view to stack and switches to target.
-func (a *App) navigateTo(target contracts.View) tea.Cmd {
+func (a *App) navigateTo(target routes.View) tea.Cmd {
 	if !isValidView(target) || target == a.currentView {
 		return nil
 	}
@@ -211,8 +212,8 @@ func (a *App) navigateTo(target contracts.View) tea.Cmd {
 	a.prevViews = append(a.prevViews, a.currentView)
 	a.currentView = target
 
-	if a.currentView == contracts.ViewDashboard {
-		delete(a.views, contracts.ViewDashboard)
+	if a.currentView == routes.ViewDashboard {
+		delete(a.views, routes.ViewDashboard)
 	}
 
 	if _, ok := a.views[target]; ok {
@@ -225,9 +226,9 @@ func (a *App) navigateTo(target contracts.View) tea.Cmd {
 // navigateBack pops the previous view from the stack.
 func (a *App) navigateBack() tea.Cmd {
 	if len(a.prevViews) == 0 {
-		if a.currentView != contracts.ViewDashboard {
-			a.currentView = contracts.ViewDashboard
-			delete(a.views, contracts.ViewDashboard)
+		if a.currentView != routes.ViewDashboard {
+			a.currentView = routes.ViewDashboard
+			delete(a.views, routes.ViewDashboard)
 			return a.initializeCurrentView()
 		}
 		return nil
@@ -236,8 +237,8 @@ func (a *App) navigateBack() tea.Cmd {
 	idx := len(a.prevViews) - 1
 	a.currentView = a.prevViews[idx]
 	a.prevViews = a.prevViews[:idx]
-	if a.currentView == contracts.ViewDashboard {
-		delete(a.views, contracts.ViewDashboard)
+	if a.currentView == routes.ViewDashboard {
+		delete(a.views, routes.ViewDashboard)
 		return a.initializeCurrentView()
 	}
 	return a.syncWindowCmd()
@@ -332,32 +333,32 @@ func (a *App) renderTooSmallWarning() string {
 	return content
 }
 
-func isValidView(view contracts.View) bool {
+func isValidView(view routes.View) bool {
 	switch view {
-	case contracts.ViewDashboard, contracts.ViewDrinks, contracts.ViewIngredients, contracts.ViewInventory, contracts.ViewMenus, contracts.ViewOrders, contracts.ViewAudit, contracts.ViewTags:
+	case routes.ViewDashboard, routes.ViewDrinks, routes.ViewIngredients, routes.ViewInventory, routes.ViewMenus, routes.ViewOrders, routes.ViewAudit, routes.ViewTags:
 		return true
 	default:
 		return false
 	}
 }
 
-func viewTitle(view contracts.View) string {
+func viewTitle(view routes.View) string {
 	switch view {
-	case contracts.ViewDashboard:
+	case routes.ViewDashboard:
 		return "Dashboard"
-	case contracts.ViewDrinks:
+	case routes.ViewDrinks:
 		return "Drinks"
-	case contracts.ViewIngredients:
+	case routes.ViewIngredients:
 		return "Ingredients"
-	case contracts.ViewInventory:
+	case routes.ViewInventory:
 		return "Inventory"
-	case contracts.ViewMenus:
+	case routes.ViewMenus:
 		return "Menus"
-	case contracts.ViewOrders:
+	case routes.ViewOrders:
 		return "Orders"
-	case contracts.ViewAudit:
+	case routes.ViewAudit:
 		return "Audit"
-	case contracts.ViewTags:
+	case routes.ViewTags:
 		return "Tags"
 	default:
 		return "Unknown"

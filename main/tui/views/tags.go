@@ -24,15 +24,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/presentation"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
-	contracts "github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	contracts "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/presentation"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -130,8 +130,8 @@ type Tags struct {
 func NewTags(application *app.Session) *Tags {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
-	delegate.Styles.SelectedTitle = tagSelectedStyle(styles.App)
-	delegate.Styles.SelectedDesc = tagSelectedStyle(styles.App)
+	delegate.Styles.SelectedTitle = tagSelectedStyle(styles.Standard)
+	delegate.Styles.SelectedDesc = tagSelectedStyle(styles.Standard)
 	operations := list.New(tagOperationItems(), delegate, 0, 0)
 	operations.Title = "Tags"
 	operations.SetShowHelp(false)
@@ -144,13 +144,13 @@ func NewTags(application *app.Session) *Tags {
 	picker.SetFilteringEnabled(true)
 
 	results := table.New(table.WithFocused(true))
-	results.SetStyles(tagTableStyles(styles.App))
+	results.SetStyles(tagTableStyles(styles.Standard))
 
 	value := forms.NewTextField("Tag / key", forms.WithRequired(), forms.WithPlaceholder("key or key=value"))
 	vm := &Tags{
-		app: application, styles: styles.App, keys: keys.App,
+		app: application, styles: styles.Standard, keys: keys.Standard,
 		operations: operations, picker: picker, results: results,
-		value: value, form: forms.New(styles.App.Form, keys.App.Form, value),
+		value: value, form: forms.New(styles.Standard.Form, keys.Standard.Form, value),
 	}
 	vm.spinner = tui.NewSpinner("Working with tags...", vm.styles.Subtitle)
 	return vm
@@ -492,7 +492,7 @@ func (m *Tags) setResultTable(result tagResultMsg) {
 				state = "changed"
 			}
 		}
-		values := presentation.TagLabel(result.tags.Canonical().String())
+		values := presentation.LabelOr(result.tags.Canonical().String(), "(none)")
 		m.replaceResultTable(columns, []table.Row{{string(result.target.ID), values, state}})
 	}
 	m.results.SetCursor(0)

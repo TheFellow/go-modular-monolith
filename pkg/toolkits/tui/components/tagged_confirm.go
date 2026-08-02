@@ -3,36 +3,36 @@ package components
 import (
 	"strings"
 
-	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 // TaggedConfirm adds a compact, optional complete-tag-set step before a
 // destructive or lifecycle confirmation. ctrl+s advances to the confirmation.
-type TaggedConfirm struct {
+type TaggedConfirm[T any] struct {
 	field      *forms.TextField
 	form       *forms.Form
 	dialog     *dialog.ConfirmDialog
 	confirming bool
 	width      int
 	err        error
+	parse      func(string) (T, error)
 }
 
-func NewTaggedConfirm(current tag.Tags, confirm *dialog.ConfirmDialog) *TaggedConfirm {
+func NewTaggedConfirm[T any](current string, parse func(string) (T, error), confirm *dialog.ConfirmDialog) *TaggedConfirm[T] {
 	field := NewOptionalTagsField(current)
-	return &TaggedConfirm{field: field, form: forms.New(styles.App.Form, keys.App.Form, field), dialog: confirm}
+	return &TaggedConfirm[T]{field: field, form: forms.New(styles.Standard.Form, keys.Standard.Form, field), dialog: confirm, parse: parse}
 }
 
-func (m *TaggedConfirm) Init() tea.Cmd { return m.form.Init() }
-func (m *TaggedConfirm) FormEditing() bool {
+func (m *TaggedConfirm[T]) Init() tea.Cmd { return m.form.Init() }
+func (m *TaggedConfirm[T]) FormEditing() bool {
 	return !m.confirming && m.form.IsEditing()
 }
-func (m *TaggedConfirm) Update(msg tea.Msg) (*TaggedConfirm, tea.Cmd) {
+func (m *TaggedConfirm[T]) Update(msg tea.Msg) (*TaggedConfirm[T], tea.Cmd) {
 	if size, ok := msg.(tea.WindowSizeMsg); ok {
 		m.SetWidth(size.Width)
 	}
@@ -42,11 +42,11 @@ func (m *TaggedConfirm) Update(msg tea.Msg) (*TaggedConfirm, tea.Cmd) {
 		return m, cmd
 	}
 	if typed, ok := msg.(tea.KeyMsg); ok {
-		if key.Matches(typed, keys.App.Form.Cancel) {
+		if key.Matches(typed, keys.Standard.Form.Cancel) {
 			return m, func() tea.Msg { return dialog.CancelMsg{} }
 		}
-		if key.Matches(typed, keys.App.Form.Submit) {
-			if _, err := DesiredTags(m.field); err != nil {
+		if key.Matches(typed, keys.Standard.Form.Submit) {
+			if _, err := DesiredTags(m.field, m.parse); err != nil {
 				m.err = err
 				return m, nil
 			}
@@ -60,7 +60,7 @@ func (m *TaggedConfirm) Update(msg tea.Msg) (*TaggedConfirm, tea.Cmd) {
 	m.form, cmd = m.form.Update(msg)
 	return m, cmd
 }
-func (m *TaggedConfirm) View() string {
+func (m *TaggedConfirm[T]) View() string {
 	if m.confirming {
 		return m.dialog.View()
 	}
@@ -70,14 +70,14 @@ func (m *TaggedConfirm) View() string {
 	}
 	return strings.Join(append(parts, "", "ctrl+s continue • esc cancel"), "\n")
 }
-func (m *TaggedConfirm) SetWidth(width int) {
+func (m *TaggedConfirm[T]) SetWidth(width int) {
 	m.width = width
 	m.form.SetWidth(max(width-8, 20))
 	m.dialog.SetWidth(width)
 }
-func (m *TaggedConfirm) DesiredTags() (*tag.Tags, error) {
+func (m *TaggedConfirm[T]) DesiredTags() (*T, error) {
 	if m == nil {
 		return nil, nil
 	}
-	return DesiredTags(m.field)
+	return DesiredTags(m.field, m.parse)
 }
