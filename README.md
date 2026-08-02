@@ -64,7 +64,7 @@ app/
   app.go                 application composition root
   domains/<domain>/      bounded contexts and their surface adapters
   kernel/                shared domain value types
-  surfaces/tui/          Mixology-specific shared TUI vocabulary
+  presentation/tui/      Mixology-specific shared TUI policy
 pkg/
   middleware/            command/query pipelines and unit of work
   authn/, authz/         actors and Cedar integration

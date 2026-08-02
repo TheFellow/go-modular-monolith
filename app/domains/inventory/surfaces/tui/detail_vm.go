@@ -4,8 +4,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/components"
-	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/presentation"
+	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/components"
+	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/presentation"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/charmbracelet/lipgloss"

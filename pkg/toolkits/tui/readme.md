@@ -15,7 +15,7 @@ and workflows.
 - [forms](forms/readme.md), [dialog](dialog/readme.md), and [keyname](keyname/readme.md) provide the
   reusable interaction primitives used by domain workflows.
 
-`app/surfaces/tui` is the next layer up: it owns Mixology-specific styles, keys, components, and
+`app/presentation/tui` is the next layer up: it owns Mixology-specific styles, keys, components, and
 navigation messages. Do not move those into this toolkit unless the concept is domain-neutral and
 useful across applications.
 

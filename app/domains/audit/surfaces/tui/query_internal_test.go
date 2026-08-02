@@ -12,7 +12,7 @@ import (
 	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	ingredientmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/views"
+	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"

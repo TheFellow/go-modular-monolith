@@ -7,8 +7,8 @@ import (
 
 	menus "github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	tuikeys "github.com/TheFellow/go-modular-monolith/app/surfaces/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/app/surfaces/tui/styles"
+	tuikeys "github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	tea "github.com/charmbracelet/bubbletea"

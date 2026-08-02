@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/app/surfaces/tui/views"
+	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keyname"
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
