@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"cmp"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
@@ -41,7 +42,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + ingredient.ID.String()),
 		d.styles.Subtitle.Render("Category: ") + string(ingredient.Category),
 		d.styles.Subtitle.Render("Unit: ") + string(ingredient.Unit),
-		d.styles.Subtitle.Render("Tags: ") + tui.LabelOr(ingredient.Tags.Canonical().String(), "(none)"),
+		d.styles.Subtitle.Render("Tags: ") + cmp.Or(ingredient.Tags.Canonical().String(), "(none)"),
 	}
 
 	if strings.TrimSpace(ingredient.Description) != "" {

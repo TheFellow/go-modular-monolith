@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"cmp"
 	"fmt"
 	"sort"
 	"strings"
@@ -52,7 +53,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + menu.ID.String()),
 		d.styles.Muted.Render("Created: " + formatMenuTime(menu.CreatedAt)),
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
-		d.styles.Subtitle.Render("Tags: ") + tui.LabelOr(menu.Tags.Canonical().String(), "(none)"),
+		d.styles.Subtitle.Render("Tags: ") + cmp.Or(menu.Tags.Canonical().String(), "(none)"),
 	}
 	if publishedAt, ok := menu.PublishedAt.Unwrap(); ok {
 		lines = append(lines, d.styles.Muted.Render("Published: "+formatMenuTime(publishedAt)))

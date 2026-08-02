@@ -1,6 +1,7 @@
 package views
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
@@ -490,7 +491,7 @@ func (m *Tags) setResultTable(result tagResultMsg) {
 				state = "changed"
 			}
 		}
-		values := tui.LabelOr(result.tags.Canonical().String(), "(none)")
+		values := cmp.Or(result.tags.Canonical().String(), "(none)")
 		m.replaceResultTable(columns, []table.Row{{string(result.target.ID), values, state}})
 	}
 	m.results.SetCursor(0)

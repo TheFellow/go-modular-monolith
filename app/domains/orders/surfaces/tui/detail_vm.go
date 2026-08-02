@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"cmp"
 	"fmt"
 	"sort"
 	"strings"
@@ -60,7 +61,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + order.ID.String()),
 		d.styles.Subtitle.Render("Menu: ") + menu.Name,
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
-		d.styles.Subtitle.Render("Tags: ") + tui.LabelOr(order.Tags.Canonical().String(), "(none)"),
+		d.styles.Subtitle.Render("Tags: ") + cmp.Or(order.Tags.Canonical().String(), "(none)"),
 		d.styles.Muted.Render("Created: " + formatTime(order.CreatedAt)),
 	}
 

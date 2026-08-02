@@ -1,8 +1,8 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
-	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
@@ -10,6 +10,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	clitable "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli/table"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/urfave/cli/v3"
@@ -196,10 +197,7 @@ func printTagMutation(cmd *cli.Command, result tagging.Result) error {
 }
 
 func printTagState(cmd *cli.Command, out tagsOutput, state string) error {
-	values := out.Tags.String()
-	if values == "" {
-		values = "(none)"
-	}
+	values := cmp.Or(out.Tags.String(), "(none)")
 	if state == "" {
 		_, err := fmt.Fprintf(cmd.Writer, "%s: %s\n", out.EntityID, values)
 		return err

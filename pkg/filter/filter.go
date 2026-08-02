@@ -5,6 +5,7 @@
 package filter
 
 import (
+	"cmp"
 	"fmt"
 	"reflect"
 	"slices"
@@ -56,9 +57,7 @@ func collectFields(t reflect.Type, prefix string) []Field {
 		if name == "-" || !f.IsExported() {
 			continue
 		}
-		if name == "" {
-			name = f.Name
-		}
+		name = cmp.Or(name, f.Name)
 		path := name
 		if prefix != "" {
 			path = prefix + "." + name

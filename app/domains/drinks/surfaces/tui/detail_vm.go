@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
@@ -75,7 +76,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + drink.ID.String()),
 		d.styles.Subtitle.Render("Category: ") + string(drink.Category),
 		d.styles.Subtitle.Render("Glass: ") + string(drink.Glass),
-		d.styles.Subtitle.Render("Tags: ") + tui.LabelOr(drink.Tags.Canonical().String(), "(none)"),
+		d.styles.Subtitle.Render("Tags: ") + cmp.Or(drink.Tags.Canonical().String(), "(none)"),
 	}
 
 	if drink.Description != "" {
