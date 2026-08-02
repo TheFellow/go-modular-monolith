@@ -53,7 +53,7 @@ func NewRenameMenuVM(app *app.Session, menu *models.Menu) *RenameMenuVM {
 
 	return &RenameMenuVM{
 		app: app, form: forms.New(formStyles, formKeys, name, description, tags), name: name, description: description, tags: tags,
-		menu: menu, styles: styles, keys: keys,
+		menu: menu, styles: formStyles, keys: formKeys,
 	}
 }
 
