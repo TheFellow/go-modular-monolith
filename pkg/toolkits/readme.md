@@ -24,3 +24,16 @@ Start with the README for the surface you are changing, then inspect one represe
 ingredients is a compact CRUD example; menus is a useful stateful-workflow example. Keep business
 rules in the domain module, route and composition details in `main/<surface>`, and framework
 mechanics here only after more than one adapter needs them.
+
+## Why the package shapes differ
+
+Package symmetry is useful when it reflects the same ownership boundary, but the UI runtimes do
+not produce identical seams. TUI forms and dialogs are autonomous Bubble Tea models with their own
+state, messages, keys, styles, and tests, so they are useful subpackages. CLI tables are likewise an
+independent renderer. The GUI shell, standard pages, semantic controls, tables, tags, dialogs, and
+async publication types are currently consumed together and share framework-native contracts;
+splitting them would add sibling imports without creating independent ownership.
+
+Extract a GUI subpackage when a cluster gains a narrow API, can avoid importing the GUI toolkit
+root, and has a useful consumer or lifecycle of its own. Do not add matching directories solely to
+make the trees look alike.
