@@ -2,18 +2,17 @@ package tui
 
 import (
 	"fmt"
-
-	"github.com/TheFellow/go-modular-monolith/app"
-	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
-	tuikeys "github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+
+	"github.com/TheFellow/go-modular-monolith/app"
+	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -34,17 +33,17 @@ type ListViewModel struct {
 }
 
 func NewListViewModel(session *app.Session) *ListViewModel {
-	m := &ListViewModel{app: session, keys: tuikeys.App.ListView, formKeys: tuikeys.App.Form, shell: tui.NewListDetail("Audit", "Loading audit entries...", tuistyles.App.ListView), detail: NewDetailViewModel(tuistyles.App.ListView), query: auditQuery{scope: scopeAll, limit: paging.DefaultLimit}}
+	m := &ListViewModel{app: session, keys: tuikeys.Standard.ListView, formKeys: tuikeys.Standard.Form, shell: tui.NewListDetail("Audit", "Loading audit entries...", tuistyles.Standard.ListView), detail: NewDetailViewModel(tuistyles.Standard.ListView), query: auditQuery{scope: scopeAll, limit: paging.DefaultLimit}}
 	m.shell.SetLocalFiltering(false)
 	m.shell.SetLocalPagination(false)
 	m.updateTitle()
 	return m
 }
 func (m *ListViewModel) Init() tea.Cmd { return tea.Batch(m.shell.BeginLoading(), m.loadEntries()) }
-func (m *ListViewModel) Interaction() views.Interaction {
-	return views.Interaction{CapturesText: m.filter != nil, HandlesBack: m.filter != nil}
+func (m *ListViewModel) Interaction() tui.Interaction {
+	return tui.Interaction{CapturesText: m.filter != nil, HandlesBack: m.filter != nil}
 }
-func (m *ListViewModel) Update(message tea.Msg) (views.ViewModel, tea.Cmd) {
+func (m *ListViewModel) Update(message tea.Msg) (tui.ViewModel, tea.Cmd) {
 	switch msg := message.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)

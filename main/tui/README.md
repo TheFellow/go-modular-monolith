@@ -2,8 +2,7 @@
 
 `main/tui` composes Mixology's Bubble Tea executable. Reusable terminal mechanics are documented in
 the [TUI toolkit](../../pkg/toolkits/tui/readme.md); domain-owned view models live under
-`app/domains/*/surfaces/tui`, and Mixology-wide components, styles, keys, and messages live under
-`app/presentation/tui`.
+`app/domains/*/surfaces/tui`, and Mixology route identity stays in `main/tui/routes`.
 
 ## Architecture
 
@@ -36,7 +35,7 @@ graph TD
 
 ### ViewModels
 - One per domain view (drinks, ingredients, inventory, menus, orders, audit).
-- Import shared styles and keys from `app/presentation/tui/styles` and `app/presentation/tui/keys`.
+- Import shared styles and keys from `pkg/toolkits/tui/styles` and `pkg/toolkits/tui/keys`.
 - Use `app.Context()` to obtain a fresh `middleware.Context` per command/query.
 - Own domain-specific workflow state and adapt typed domain values for display.
 - Report input ownership through `Interaction` so the root can route global keys.
@@ -74,15 +73,14 @@ graph TD
 - `main/tui/app.go`: Root model, navigation, title/status bars, layout.
 - `main/tui/views/dashboard.go`: Dashboard view model.
 - `app/domains/*/surfaces/tui/`: Domain list/detail/create/edit view models.
-- `app/presentation/tui/`: Shared Mixology TUI contracts, components, styles, and key bindings.
-- `app/presentation/tui/views/messages.go`: Shared TUI navigation and view contracts.
+- `main/tui/routes/`: Mixology navigation identities and messages.
 
 ## Adding a New View
 
 1. Create a new view model in the target domain under `app/domains/<domain>/surfaces/tui/`.
-2. Add a new `View` constant in `app/presentation/tui/views/messages.go` and use it directly from the shell and view.
+2. Add a new `View` constant in `main/tui/routes/routes.go` and use it from the shell.
 3. Wire the view into `main/tui/app.go` `currentViewModel()` and navigation.
-4. Use shared styles/keys from `app/presentation/tui/styles` and `app/presentation/tui/keys`.
+4. Use shared styles/keys from `pkg/toolkits/tui/styles` and `pkg/toolkits/tui/keys`.
 5. For data access, call `app.Context()` per operation.
 
 ## Notes

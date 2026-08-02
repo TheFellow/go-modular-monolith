@@ -1,15 +1,16 @@
 package tui
 
 import (
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/components"
-	tuikeys "github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -50,10 +51,10 @@ func NewCreateMenuVM(app *app.Session) *CreateMenuVM {
 		forms.WithMaxLength(500),
 		forms.WithPlaceholder("Optional description"),
 	)
-	tagsField := components.NewOptionalTagsField(nil)
+	tagsField := components.NewOptionalTagsField("")
 
-	formStyles := tuistyles.App.Form
-	formKeys := tuikeys.App.Form
+	formStyles := tuistyles.Standard.Form
+	formKeys := tuikeys.Standard.Form
 	form := forms.New(
 		formStyles,
 		formKeys,
@@ -128,7 +129,7 @@ func (m *CreateMenuVM) submit() tea.Cmd {
 		m.err = err
 		return nil
 	}
-	desired, err := components.DesiredTags(m.tags)
+	desired, err := components.DesiredTags(m.tags, tag.ParseCollection)
 	if err != nil {
 		m.err = err
 		return nil

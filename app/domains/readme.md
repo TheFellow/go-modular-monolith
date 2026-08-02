@@ -20,13 +20,8 @@ Responsibilities are split as follows:
 | --- | --- |
 | `main/<surface>` | process lifecycle, runtime configuration, routes, cross-domain composition |
 | `app/domains/<domain>/surfaces/<surface>` | domain-aware view models/presenters, validation, view conversion, commands |
-| `app/presentation/<surface>` | optional Mixology-wide presentation policy shared by domain adapters |
 | `pkg/toolkits/<surface>` | reusable framework mechanics with no application knowledge |
 
 To add a surface operation, expose it from the module first, implement the domain adapter next,
 then wire it at the entrypoint. This keeps every adapter independently testable and prevents the
 executable from accumulating domain behavior.
-
-The shared TUI layer is documented at [app/presentation/tui](../presentation/tui/readme.md). It is
-application presentation policy, not another surface adapter: the adapters remain beside their
-owning domains.

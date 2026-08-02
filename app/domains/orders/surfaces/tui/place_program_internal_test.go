@@ -2,6 +2,7 @@
 package tui
 
 import (
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"io"
 	"testing"
 
@@ -15,8 +16,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/dialog"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -65,7 +66,7 @@ func TestPlaceOrderRunsThroughRealBubbleTeaProgram(t *testing.T) {
 	testutil.AuditTouches(t, fix.LatestAuditEntry(authz.ActionPlace), stored.EntityUID())
 	listVM := NewListViewModel(fix.App)
 	listVM.completeTarget = stored
-	listVM.dialog = components.NewTaggedConfirm(stored.Tags, dialog.NewConfirmDialog("Complete", "Complete?"))
+	listVM.dialog = components.NewTaggedConfirm(stored.Tags.Canonical().String(), tag.ParseCollection, dialog.NewConfirmDialog("Complete", "Complete?"))
 	_ = listVM.dialog.Init()
 	_, _ = listVM.dialog.Update(tea.KeyMsg{Type: tea.KeyCtrlU})
 	_, _ = listVM.dialog.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("served")})

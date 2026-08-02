@@ -2,6 +2,9 @@ package tui
 
 import (
 	"fmt"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
@@ -10,16 +13,14 @@ import (
 	menus "github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/components"
-	tuikeys "github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/paginator"
@@ -42,7 +43,7 @@ const (
 type ListViewModel struct {
 	app    *app.Session
 	styles tui.ListViewStyles
-	keys   tuikeys.ListViewKeys
+	keys   listViewKeys
 
 	formStyles   forms.FormStyles
 	formKeys     forms.FormKeys
@@ -54,7 +55,7 @@ type ListViewModel struct {
 	mode      listMode
 	create    *CreateDrinkVM
 	edit      *EditDrinkVM
-	tags      *components.TagEditor
+	tags      *components.TagEditor[cedar.EntityUID, tag.Tags]
 	dialog    *dialog.ConfirmDialog
 	spinner   tui.Spinner
 	loading   bool
@@ -77,8 +78,8 @@ type ListViewModel struct {
 func NewListViewModel(app *app.Session) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
-	delegate.Styles.SelectedTitle = tuistyles.App.ListView.Selected
-	delegate.Styles.SelectedDesc = tuistyles.App.ListView.Selected
+	delegate.Styles.SelectedTitle = tuistyles.Standard.ListView.Selected
+	delegate.Styles.SelectedDesc = tuistyles.Standard.ListView.Selected
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.Title = "Drinks"
@@ -90,14 +91,14 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 
 	vm := &ListViewModel{
 		app:          app,
-		styles:       tuistyles.App.ListView,
-		keys:         tuikeys.App.ListView,
-		formStyles:   tuistyles.App.Form,
-		formKeys:     tuikeys.App.Form,
-		dialogStyles: tuistyles.App.Dialog,
-		dialogKeys:   tuikeys.App.Dialog,
+		styles:       tuistyles.Standard.ListView,
+		keys:         newListViewKeys(),
+		formStyles:   tuistyles.Standard.Form,
+		formKeys:     tuikeys.Standard.Form,
+		dialogStyles: tuistyles.Standard.Dialog,
+		dialogKeys:   tuikeys.Standard.Dialog,
 		list:         l,
-		detail:       NewDetailViewModel(tuistyles.App.ListView, app),
+		detail:       NewDetailViewModel(tuistyles.Standard.ListView, app),
 		loading:      true,
 	}
 	vm.spinner = tui.NewSpinner("Loading drinks...", vm.styles.Subtitle)
@@ -109,14 +110,14 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadDrinks(""))
 }
 
-func (m *ListViewModel) Interaction() views.Interaction {
-	return views.Interaction{
+func (m *ListViewModel) Interaction() tui.Interaction {
+	return tui.Interaction{
 		HandlesBack:  m.mode != listModeBrowsing,
 		CapturesText: m.mode == listModeFiltering || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging,
 	}
 }
 
-func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
+func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
@@ -146,7 +147,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadDrinks(m.request.Cursor))
-	case components.TagsSavedMsg:
+	case components.TagsSavedMsg[cedar.EntityUID, tag.Tags]:
 		if m.mode != listModeTagging || m.tags == nil || !m.tags.Owns(msg.Target) {
 			return m, nil
 		}
@@ -336,7 +337,7 @@ func (m *ListViewModel) View() string {
 	if m.err != nil {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
 	}
-	listView = m.styles.ListPane.Width(views.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
+	listView = m.styles.ListPane.Width(tui.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
 	detailView := m.detail.View()
 	switch m.mode {
@@ -348,7 +349,7 @@ func (m *ListViewModel) View() string {
 		detailView = m.edit.View()
 	case listModeFiltering:
 	}
-	detailView = m.styles.DetailPane.Width(views.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
+	detailView = m.styles.DetailPane.Width(tui.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 }
@@ -563,7 +564,7 @@ func (m *ListViewModel) startTags() tea.Cmd {
 		return nil
 	}
 	m.mode = listModeTagging
-	m.tags = components.NewTagEditor(m.app, drink.EntityUID(), drink.Name, drink.Tags)
+	m.tags = components.NewTagEditor(m.app.ReplaceTags, tag.ParseCollection, drink.EntityUID(), drink.Name, drink.Tags.Canonical().String())
 	m.tags.SetWidth(m.width)
 	return m.tags.Init()
 }
@@ -606,9 +607,9 @@ func (m *ListViewModel) setSize(width, height int) {
 		return
 	}
 
-	listWidth, detailWidth := views.SplitListDetailWidths(width)
-	listWidth = views.PaneContentWidth(m.styles.ListPane, listWidth)
-	detailWidth = views.PaneContentWidth(m.styles.DetailPane, detailWidth)
+	listWidth, detailWidth := tui.SplitListDetailWidths(width)
+	listWidth = tui.PaneContentWidth(m.styles.ListPane, listWidth)
+	detailWidth = tui.PaneContentWidth(m.styles.DetailPane, detailWidth)
 
 	m.list.SetSize(listWidth, height)
 	m.detail.SetSize(detailWidth, height)

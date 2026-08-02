@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
-	tuikeys "github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -60,7 +60,7 @@ func newFilterVM(q auditQuery) *filterVM {
 		expression: forms.NewTextField("Expression", forms.WithInitialValue(q.expression)),
 		limit:      forms.NewNumberField("Page size", forms.WithRequired(), forms.WithMin(1), forms.WithInitialValue(q.limit)),
 	}
-	v.form = forms.New(tuistyles.App.Form, tuikeys.App.Form, v.scope, v.entity, v.principal, v.action, v.from, v.to, v.expression, v.limit)
+	v.form = forms.New(tuistyles.Standard.Form, tuikeys.Standard.Form, v.scope, v.entity, v.principal, v.action, v.from, v.to, v.expression, v.limit)
 	v.viewport = viewport.New(0, 0)
 	v.configureForm(q.scope)
 	return v
@@ -87,7 +87,7 @@ func (v *filterVM) configureForm(scope auditScope) {
 		fields = append(fields, v.entity, v.principal, v.action)
 	}
 	fields = append(fields, v.from, v.to, v.expression, v.limit)
-	v.form = forms.New(tuistyles.App.Form, tuikeys.App.Form, fields...)
+	v.form = forms.New(tuistyles.Standard.Form, tuikeys.Standard.Form, fields...)
 	if v.viewport.Width > 0 {
 		v.form.SetWidth(max(v.viewport.Width-2, 1))
 	}

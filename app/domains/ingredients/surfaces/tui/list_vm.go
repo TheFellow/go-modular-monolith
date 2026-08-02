@@ -2,6 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"slices"
 	"strings"
 
@@ -11,17 +15,14 @@ import (
 	ingredients "github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/components"
-	tuikeys "github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -43,7 +44,7 @@ const (
 type ListViewModel struct {
 	app    *app.Session
 	styles tui.ListViewStyles
-	keys   tuikeys.ListViewKeys
+	keys   listViewKeys
 
 	formStyles   forms.FormStyles
 	formKeys     forms.FormKeys
@@ -55,7 +56,7 @@ type ListViewModel struct {
 	mode      listMode
 	create    *CreateIngredientVM
 	edit      *EditIngredientVM
-	tags      *components.TagEditor
+	tags      *components.TagEditor[cedar.EntityUID, tag.Tags]
 	dialog    *dialog.ConfirmDialog
 	filter    *filterVM
 	request   ingredients.ListRequest
@@ -74,14 +75,14 @@ type ListViewModel struct {
 func NewListViewModel(app *app.Session) *ListViewModel {
 	vm := &ListViewModel{
 		app:          app,
-		styles:       tuistyles.App.ListView,
-		keys:         tuikeys.App.ListView,
-		formStyles:   tuistyles.App.Form,
-		formKeys:     tuikeys.App.Form,
-		dialogStyles: tuistyles.App.Dialog,
-		dialogKeys:   tuikeys.App.Dialog,
-		shell:        tui.NewListDetail("Ingredients", "Loading ingredients...", tuistyles.App.ListView),
-		detail:       NewDetailViewModel(tuistyles.App.ListView),
+		styles:       tuistyles.Standard.ListView,
+		keys:         newListViewKeys(),
+		formStyles:   tuistyles.Standard.Form,
+		formKeys:     tuikeys.Standard.Form,
+		dialogStyles: tuistyles.Standard.Dialog,
+		dialogKeys:   tuikeys.Standard.Dialog,
+		shell:        tui.NewListDetail("Ingredients", "Loading ingredients...", tuistyles.Standard.ListView),
+		detail:       NewDetailViewModel(tuistyles.Standard.ListView),
 	}
 	vm.shell.SetLocalFiltering(false)
 	vm.shell.SetLocalPagination(false)
@@ -92,14 +93,14 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.shell.BeginLoading(), m.loadIngredients(""))
 }
 
-func (m *ListViewModel) Interaction() views.Interaction {
-	return views.Interaction{
+func (m *ListViewModel) Interaction() tui.Interaction {
+	return tui.Interaction{
 		HandlesBack:  m.mode != listModeBrowsing,
 		CapturesText: m.mode == listModeFiltering || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging,
 	}
 }
 
-func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
+func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
@@ -125,7 +126,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.mode = listModeBrowsing
 		m.edit = nil
 		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(m.request.Cursor))
-	case components.TagsSavedMsg:
+	case components.TagsSavedMsg[cedar.EntityUID, tag.Tags]:
 		if m.mode != listModeTagging || m.tags == nil || !m.tags.Owns(msg.Target) {
 			return m, nil
 		}
@@ -505,7 +506,7 @@ func (m *ListViewModel) startTags() tea.Cmd {
 		return nil
 	}
 	m.mode = listModeTagging
-	m.tags = components.NewTagEditor(m.app, ingredient.EntityUID(), ingredient.Name, ingredient.Tags)
+	m.tags = components.NewTagEditor(m.app.ReplaceTags, tag.ParseCollection, ingredient.EntityUID(), ingredient.Name, ingredient.Tags.Canonical().String())
 	m.tags.SetWidth(m.width)
 	return m.tags.Init()
 }

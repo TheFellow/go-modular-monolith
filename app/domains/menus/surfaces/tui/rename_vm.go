@@ -2,15 +2,16 @@ package tui
 
 import (
 	"errors"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/components"
-	tuikeys "github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -46,9 +47,9 @@ func NewRenameMenuVM(app *app.Session, menu *models.Menu) *RenameMenuVM {
 	}
 	name := forms.NewTextField("Name", forms.WithRequired(), forms.WithMaxLength(100), forms.WithInitialValue(menu.Name))
 	description := forms.NewTextField("Description", forms.WithMaxLength(500), forms.WithInitialValue(menu.Description))
-	tags := components.NewOptionalTagsField(menu.Tags)
-	styles := tuistyles.App.Form
-	keys := tuikeys.App.Form
+	tags := components.NewOptionalTagsField(menu.Tags.Canonical().String())
+	styles := tuistyles.Standard.Form
+	keys := tuikeys.Standard.Form
 
 	return &RenameMenuVM{
 		app: app, form: forms.New(styles, keys, name, description, tags), name: name, description: description, tags: tags,
@@ -119,7 +120,7 @@ func (m *RenameMenuVM) submit() tea.Cmd {
 		m.err = errors.New("menu not loaded")
 		return nil
 	}
-	desired, err := components.DesiredTags(m.tags)
+	desired, err := components.DesiredTags(m.tags, tag.ParseCollection)
 	if err != nil {
 		m.err = err
 		return nil

@@ -60,8 +60,8 @@ type Styles struct {
 	Dashboard DashboardStyles
 }
 
-// App is the shared application style set.
-var App = newStyles()
+// Standard is the reusable default style set.
+var Standard = newStyles()
 
 // DashboardStyles contains the lipgloss styles used by the dashboard.
 type DashboardStyles struct {

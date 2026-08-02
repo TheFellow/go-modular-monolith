@@ -12,12 +12,15 @@ and workflows.
 - `ListItem[T]` adapts a typed value to Bubbles' `list.Item` while retaining the typed value.
 - Layout helpers calculate pane widths without duplicating Lip Gloss border/padding arithmetic.
 - `Spinner` and the small message/type contracts cover shared loading behavior.
+- `ViewModel` and `Interaction` define the shell-facing contract without knowing application routes.
+- [components](components/readme.md), [keys](keys/readme.md), [styles](styles/readme.md), and
+  [presentation](presentation/readme.md) provide reusable controls and defaults. Tag controls receive
+  parsing and persistence functions, so the toolkit never imports application types.
 - [forms](forms/readme.md), [dialog](dialog/readme.md), and [keyname](keyname/readme.md) provide the
   reusable interaction primitives used by domain workflows.
 
-`app/presentation/tui` is the next layer up: it owns Mixology-specific styles, keys, components, and
-navigation messages. Do not move those into this toolkit unless the concept is domain-neutral and
-useful across applications.
+Mixology route identity and navigation messages live in `main/tui/routes`; domain adapters own
+domain-specific labels and behavior. The toolkit has no imports of `app` or `main`.
 
 ## Fast path
 

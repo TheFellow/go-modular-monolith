@@ -4,14 +4,13 @@ package components
 import (
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/dialog"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestTaggedConfirmAdvancesFromTagChoiceToDomainConfirmation(t *testing.T) {
-	component := NewTaggedConfirm(tag.Tags{{Key: "region", Value: "west"}}, dialog.NewConfirmDialog("Complete order", "Complete it?"))
+	component := NewTaggedConfirm("region=west", parseTestTags, dialog.NewConfirmDialog("Complete order", "Complete it?"))
 	testutil.StringContains(t, component.View(), "Complete tags (optional)")
 
 	component, _ = component.Update(tea.KeyMsg{Type: tea.KeyCtrlS})

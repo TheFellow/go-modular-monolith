@@ -1,15 +1,16 @@
 package tui
 
 import (
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/components"
-	tuikeys "github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -72,9 +73,9 @@ func NewCreateDrinkVM(app *app.Session) *CreateDrinkVM {
 		"Description",
 		forms.WithMaxLength(500),
 	)
-	tagsField := components.NewOptionalTagsField(nil)
-	formStyles := tuistyles.App.Form
-	formKeys := tuikeys.App.Form
+	tagsField := components.NewOptionalTagsField("")
+	formStyles := tuistyles.Standard.Form
+	formKeys := tuikeys.Standard.Form
 	recipeField := NewRecipeEditor(app, formStyles, models.Recipe{})
 	form := forms.New(
 		formStyles,
@@ -180,7 +181,7 @@ func (m *CreateDrinkVM) submit() tea.Cmd {
 		return nil
 	}
 	recipe := m.recipe.Value().(models.Recipe)
-	desired, err := components.DesiredTags(m.tags)
+	desired, err := components.DesiredTags(m.tags, tag.ParseCollection)
 	if err != nil {
 		m.err = err
 		return nil

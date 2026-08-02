@@ -10,9 +10,9 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -154,7 +154,7 @@ func TestListViewModel_ColumnWidths_FitWithinWidth(t *testing.T) {
 	for _, width := range widths {
 		model, _ = model.Update(tea.WindowSizeMsg{Width: width, Height: 20})
 		view := model.View()
-		listWidth, _ := views.SplitListDetailWidths(width)
+		listWidth, _ := tui.SplitListDetailWidths(width)
 		header := listLine(view, listWidth)
 		ingredientHeader := strings.Contains(header, "Ingr") || strings.Contains(header, "In\u2026")
 		testutil.ErrorIf(
@@ -176,7 +176,7 @@ func TestListViewModel_ColumnWidths_AccountForPadding(t *testing.T) {
 	width := 70
 	model, _ = model.Update(tea.WindowSizeMsg{Width: width, Height: 20})
 	view := model.View()
-	listWidth, _ := views.SplitListDetailWidths(width)
+	listWidth, _ := tui.SplitListDetailWidths(width)
 	header := listLine(view, listWidth)
 	testutil.ErrorIf(
 		t,

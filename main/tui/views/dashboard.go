@@ -10,22 +10,21 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/TheFellow/go-modular-monolith/app"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
-	contracts "github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
-	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/main/tui/routes"
+	contracts "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 )
 
 // Dashboard is the main navigation hub of the TUI.
 type Dashboard struct {
 	app    *app.Session
 	styles styles.DashboardStyles
-	keys   keys.DashboardKeys
+	keys   dashboardKeys
 	width  int
 	height int
 
 	loading bool
-	spinner tui.Spinner
+	spinner contracts.Spinner
 	data    *app.Dashboard
 	err     error
 }
@@ -44,11 +43,11 @@ type DashboardLoadedMsg struct {
 func NewDashboard(app *app.Session) *Dashboard {
 	d := &Dashboard{
 		app:     app,
-		styles:  styles.App.Dashboard,
-		keys:    keys.App.Dashboard,
+		styles:  styles.Standard.Dashboard,
+		keys:    newDashboardKeys(),
 		loading: true,
 	}
-	d.spinner = tui.NewSpinner("Loading dashboard...", d.styles.Subtitle)
+	d.spinner = contracts.NewSpinner("Loading dashboard...", d.styles.Subtitle)
 	return d
 }
 
@@ -69,19 +68,19 @@ func (d *Dashboard) Update(msg tea.Msg) (contracts.ViewModel, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, d.keys.Nav1):
-			return d, navigateTo(contracts.ViewDrinks)
+			return d, navigateTo(routes.ViewDrinks)
 		case key.Matches(msg, d.keys.Nav2):
-			return d, navigateTo(contracts.ViewIngredients)
+			return d, navigateTo(routes.ViewIngredients)
 		case key.Matches(msg, d.keys.Nav3):
-			return d, navigateTo(contracts.ViewInventory)
+			return d, navigateTo(routes.ViewInventory)
 		case key.Matches(msg, d.keys.Nav4):
-			return d, navigateTo(contracts.ViewMenus)
+			return d, navigateTo(routes.ViewMenus)
 		case key.Matches(msg, d.keys.Nav5):
-			return d, navigateTo(contracts.ViewOrders)
+			return d, navigateTo(routes.ViewOrders)
 		case key.Matches(msg, d.keys.Nav6):
-			return d, navigateTo(contracts.ViewAudit)
+			return d, navigateTo(routes.ViewAudit)
 		case key.Matches(msg, d.keys.Nav7):
-			return d, navigateTo(contracts.ViewTags)
+			return d, navigateTo(routes.ViewTags)
 		case key.Matches(msg, d.keys.Refresh):
 			d.loading = true
 			d.err = nil
@@ -348,8 +347,8 @@ func formatCount(count int) string {
 	return strconv.Itoa(count)
 }
 
-func navigateTo(view contracts.View) tea.Cmd {
+func navigateTo(view routes.View) tea.Cmd {
 	return func() tea.Msg {
-		return contracts.NavigateMsg{To: view}
+		return routes.NavigateMsg{To: view}
 	}
 }

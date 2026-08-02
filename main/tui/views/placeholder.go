@@ -5,7 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	contracts "github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
+	contracts "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 )
 
 // Placeholder is a temporary view showing "Coming Soon".

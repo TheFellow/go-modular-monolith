@@ -2,23 +2,24 @@ package tui
 
 import (
 	"fmt"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	orders "github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/components"
-	tuikeys "github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/dialog"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keyname"
+	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/paginator"
@@ -51,7 +52,7 @@ func (m listMode) isConfirming() bool {
 type ListViewModel struct {
 	app    *app.Session
 	styles tui.ListViewStyles
-	keys   tuikeys.ListViewKeys
+	keys   listViewKeys
 
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
@@ -59,8 +60,8 @@ type ListViewModel struct {
 	list     list.Model
 	detail   *DetailViewModel
 	mode     listMode
-	dialog   *components.TaggedConfirm
-	tags     *components.TagEditor
+	dialog   *components.TaggedConfirm[tag.Tags]
+	tags     *components.TagEditor[cedar.EntityUID, tag.Tags]
 	filter   *filterVM
 	place    *placeVM
 	workflow uint64
@@ -85,8 +86,8 @@ type ListViewModel struct {
 func NewListViewModel(app *app.Session) *ListViewModel {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = true
-	delegate.Styles.SelectedTitle = tuistyles.App.ListView.Selected
-	delegate.Styles.SelectedDesc = tuistyles.App.ListView.Selected
+	delegate.Styles.SelectedTitle = tuistyles.Standard.ListView.Selected
+	delegate.Styles.SelectedDesc = tuistyles.Standard.ListView.Selected
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.Title = "Orders"
@@ -98,12 +99,12 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 
 	vm := &ListViewModel{
 		app:          app,
-		styles:       tuistyles.App.ListView,
-		keys:         tuikeys.App.ListView,
-		dialogStyles: tuistyles.App.Dialog,
-		dialogKeys:   tuikeys.App.Dialog,
+		styles:       tuistyles.Standard.ListView,
+		keys:         newListViewKeys(),
+		dialogStyles: tuistyles.Standard.Dialog,
+		dialogKeys:   tuikeys.Standard.Dialog,
 		list:         l,
-		detail:       NewDetailViewModel(tuistyles.App.ListView, app),
+		detail:       NewDetailViewModel(tuistyles.Standard.ListView, app),
 		loading:      true,
 		request:      orders.ListRequest{Limit: paging.DefaultLimit},
 	}
@@ -116,14 +117,14 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadOrders())
 }
 
-func (m *ListViewModel) Interaction() views.Interaction {
-	return views.Interaction{
+func (m *ListViewModel) Interaction() tui.Interaction {
+	return tui.Interaction{
 		HandlesBack:  m.mutating || m.mode != listModeBrowsing || m.list.SettingFilter(),
 		CapturesText: m.mutating || m.list.SettingFilter() || m.mode == listModeTagging || m.mode == listModeFiltering || m.mode == listModePlacing,
 	}
 }
 
-func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
+func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
@@ -149,7 +150,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadOrders())
-	case components.TagsSavedMsg:
+	case components.TagsSavedMsg[cedar.EntityUID, tag.Tags]:
 		if m.mode != listModeTagging || m.tags == nil || !m.tags.Owns(msg.Target) {
 			return m, nil
 		}
@@ -278,7 +279,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 			return m, tea.Batch(m.spinner.Init(), m.loadOrders())
 		case key.Matches(msg, m.keys.Complete):
 			return m, m.startComplete()
-		case key.Matches(msg, m.keys.CancelOrder):
+		case key.Matches(msg, m.keys.Cancel):
 			return m, m.startCancel()
 		case key.Matches(msg, m.keys.Tags):
 			return m, m.startTags()
@@ -384,10 +385,10 @@ func (m *ListViewModel) View() string {
 	if m.err != nil {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
 	}
-	listView = m.styles.ListPane.Width(views.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
+	listView = m.styles.ListPane.Width(tui.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
 	detailView := m.detail.View()
-	detailView = m.styles.DetailPane.Width(views.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
+	detailView = m.styles.DetailPane.Width(tui.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 }
@@ -397,18 +398,18 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
 	}
 	if m.mode == listModeTagging {
-		return []key.Binding{tuikeys.App.Submit, m.keys.Back}
+		return []key.Binding{tuikeys.Standard.Submit, m.keys.Back}
 	}
 	if m.mode == listModeFiltering {
-		return []key.Binding{tuikeys.App.Submit, m.keys.Back}
+		return []key.Binding{tuikeys.Standard.Submit, m.keys.Back}
 	}
 	if m.mode == listModePlacing {
-		return []key.Binding{tuikeys.App.Submit, m.keys.Back}
+		return []key.Binding{tuikeys.Standard.Submit, m.keys.Back}
 	}
 	return []key.Binding{
 		m.keys.Up, m.keys.Down,
 		m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
-		m.keys.Create, m.keys.Complete, m.keys.CancelOrder, m.keys.Tags,
+		m.keys.Create, m.keys.Complete, m.keys.Cancel, m.keys.Tags,
 		m.keys.Refresh, m.keys.Back,
 	}
 }
@@ -421,18 +422,18 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 		}
 	}
 	if m.mode == listModeTagging {
-		return [][]key.Binding{{tuikeys.App.Submit, m.keys.Back}}
+		return [][]key.Binding{{tuikeys.Standard.Submit, m.keys.Back}}
 	}
 	if m.mode == listModeFiltering {
-		return [][]key.Binding{{tuikeys.App.Submit, m.keys.Back}}
+		return [][]key.Binding{{tuikeys.Standard.Submit, m.keys.Back}}
 	}
 	if m.mode == listModePlacing {
-		return [][]key.Binding{{tuikeys.App.Submit, m.keys.Back}}
+		return [][]key.Binding{{tuikeys.Standard.Submit, m.keys.Back}}
 	}
 	return [][]key.Binding{
 		{m.keys.Up, m.keys.Down, m.keys.Enter},
 		{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
-		{m.keys.Create, m.keys.Complete, m.keys.CancelOrder, m.keys.Tags},
+		{m.keys.Create, m.keys.Complete, m.keys.Cancel, m.keys.Tags},
 		{m.keys.Refresh, m.keys.Back},
 	}
 }
@@ -476,12 +477,12 @@ func (m *ListViewModel) restoreSelection() {
 }
 
 type showCompleteDialogMsg struct {
-	dialog *components.TaggedConfirm
+	dialog *components.TaggedConfirm[tag.Tags]
 	target ordersmodels.Order
 }
 
 type showCancelDialogMsg struct {
-	dialog *components.TaggedConfirm
+	dialog *components.TaggedConfirm[tag.Tags]
 	target ordersmodels.Order
 }
 
@@ -517,7 +518,7 @@ func (m *ListViewModel) showCompleteConfirm(order *ordersmodels.Order) tea.Cmd {
 			dialog.WithStyles(m.dialogStyles),
 			dialog.WithKeys(m.dialogKeys),
 		)
-		return showCompleteDialogMsg{dialog: components.NewTaggedConfirm(order.Tags, confirm), target: *order}
+		return showCompleteDialogMsg{dialog: components.NewTaggedConfirm(order.Tags.Canonical().String(), tag.ParseCollection, confirm), target: *order}
 	}
 }
 
@@ -572,7 +573,7 @@ func (m *ListViewModel) showCancelConfirm(order *ordersmodels.Order) tea.Cmd {
 			dialog.WithStyles(m.dialogStyles),
 			dialog.WithKeys(m.dialogKeys),
 		)
-		return showCancelDialogMsg{dialog: components.NewTaggedConfirm(order.Tags, confirm), target: *order}
+		return showCancelDialogMsg{dialog: components.NewTaggedConfirm(order.Tags.Canonical().String(), tag.ParseCollection, confirm), target: *order}
 	}
 }
 
@@ -608,7 +609,7 @@ func (m *ListViewModel) startTags() tea.Cmd {
 		return nil
 	}
 	m.mode = listModeTagging
-	m.tags = components.NewTagEditor(m.app, order.EntityUID(), order.ID.String(), order.Tags)
+	m.tags = components.NewTagEditor(m.app.ReplaceTags, tag.ParseCollection, order.EntityUID(), order.ID.String(), order.Tags.Canonical().String())
 	m.tags.SetWidth(m.width)
 	return m.tags.Init()
 }
@@ -629,9 +630,9 @@ func (m *ListViewModel) setSize(width, height int) {
 		return
 	}
 
-	listWidth, detailWidth := views.SplitListDetailWidths(width)
-	listWidth = views.PaneContentWidth(m.styles.ListPane, listWidth)
-	detailWidth = views.PaneContentWidth(m.styles.DetailPane, detailWidth)
+	listWidth, detailWidth := tui.SplitListDetailWidths(width)
+	listWidth = tui.PaneContentWidth(m.styles.ListPane, listWidth)
+	detailWidth = tui.PaneContentWidth(m.styles.DetailPane, detailWidth)
 
 	m.list.SetSize(listWidth, height)
 	m.detail.SetSize(detailWidth, height)

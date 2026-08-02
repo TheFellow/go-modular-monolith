@@ -2,22 +2,23 @@ package tui
 
 import (
 	"fmt"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventory "github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/components"
-	tuikeys "github.com/TheFellow/go-modular-monolith/app/presentation/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/views"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	tuikeys "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	tuistyles "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -48,7 +49,7 @@ const (
 type ListViewModel struct {
 	app    *app.Session
 	styles tui.ListViewStyles
-	keys   tuikeys.ListViewKeys
+	keys   listViewKeys
 
 	formStyles forms.FormStyles
 	formKeys   forms.FormKeys
@@ -59,7 +60,7 @@ type ListViewModel struct {
 	mode        listMode
 	adjust      *AdjustInventoryVM
 	set         *SetInventoryVM
-	tags        *components.TagEditor
+	tags        *components.TagEditor[cedar.EntityUID, tag.Tags]
 	filter      *filterVM
 	request     inventory.ListRequest
 	next        paging.Cursor
@@ -81,16 +82,16 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		table.WithRows(nil),
 		table.WithFocused(true),
 	)
-	model.SetStyles(inventoryTableStyles(tuistyles.App.ListView))
+	model.SetStyles(inventoryTableStyles(tuistyles.Standard.ListView))
 
 	vm := &ListViewModel{
 		app:        app,
-		styles:     tuistyles.App.ListView,
-		keys:       tuikeys.App.ListView,
-		formStyles: tuistyles.App.Form,
-		formKeys:   tuikeys.App.Form,
+		styles:     tuistyles.Standard.ListView,
+		keys:       newListViewKeys(),
+		formStyles: tuistyles.Standard.Form,
+		formKeys:   tuikeys.Standard.Form,
 		table:      model,
-		detail:     NewDetailViewModel(tuistyles.App.ListView),
+		detail:     NewDetailViewModel(tuistyles.Standard.ListView),
 		loading:    true,
 	}
 	vm.spinner = tui.NewSpinner("Loading inventory...", vm.styles.Subtitle)
@@ -102,14 +103,14 @@ func (m *ListViewModel) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Init(), m.loadInventory())
 }
 
-func (m *ListViewModel) Interaction() views.Interaction {
-	return views.Interaction{
+func (m *ListViewModel) Interaction() tui.Interaction {
+	return tui.Interaction{
 		HandlesBack:  m.mode != listModeBrowsing,
 		CapturesText: m.mode == listModeAdjusting || m.mode == listModeSetting || m.mode == listModeTagging || m.mode == listModeFiltering,
 	}
 }
 
-func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
+func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
@@ -137,7 +138,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
-	case components.TagsSavedMsg:
+	case components.TagsSavedMsg[cedar.EntityUID, tag.Tags]:
 		if m.mode != listModeTagging || m.tags == nil || !m.tags.Owns(msg.Target) {
 			return m, nil
 		}
@@ -271,7 +272,7 @@ func (m *ListViewModel) View() string {
 	if m.err != nil {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
 	}
-	listView = m.styles.ListPane.Width(views.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
+	listView = m.styles.ListPane.Width(tui.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
 	detailView := m.detail.View()
 	switch m.mode {
@@ -283,7 +284,7 @@ func (m *ListViewModel) View() string {
 		detailView = m.set.View()
 	case listModeFiltering:
 	}
-	detailView = m.styles.DetailPane.Width(views.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
+	detailView = m.styles.DetailPane.Width(tui.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 }
@@ -458,7 +459,7 @@ func (m *ListViewModel) startTags() tea.Cmd {
 		return nil
 	}
 	m.mode = listModeTagging
-	m.tags = components.NewTagEditor(m.app, row.Inventory.EntityUID(), row.Ingredient.Name, row.Inventory.Tags)
+	m.tags = components.NewTagEditor(m.app.ReplaceTags, tag.ParseCollection, row.Inventory.EntityUID(), row.Ingredient.Name, row.Inventory.Tags.Canonical().String())
 	m.tags.SetWidth(m.width)
 	return m.tags.Init()
 }
@@ -479,9 +480,9 @@ func (m *ListViewModel) setSize(width, height int) {
 		return
 	}
 
-	listWidth, detailWidth := views.SplitListDetailWidths(width)
-	innerListWidth := views.PaneContentWidth(m.styles.ListPane, listWidth)
-	detailWidth = views.PaneContentWidth(m.styles.DetailPane, detailWidth)
+	listWidth, detailWidth := tui.SplitListDetailWidths(width)
+	innerListWidth := tui.PaneContentWidth(m.styles.ListPane, listWidth)
+	detailWidth = tui.PaneContentWidth(m.styles.DetailPane, detailWidth)
 	m.table.SetColumns(inventoryColumns(innerListWidth))
 	m.table.SetWidth(innerListWidth)
 	tableHeight := height

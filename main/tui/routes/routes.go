@@ -1,4 +1,4 @@
-package views
+package routes
 
 // NavigateMsg requests navigation to a different view.
 type NavigateMsg struct {

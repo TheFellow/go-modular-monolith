@@ -12,8 +12,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	"github.com/TheFellow/go-modular-monolith/app/presentation/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -71,7 +71,7 @@ func requireValidANSI(t testing.TB, rendered string) {
 
 func TestTagSelectedStyleDoesNotUseBackgroundColor(t *testing.T) {
 	t.Parallel()
-	selected := tagSelectedStyle(styles.App)
+	selected := tagSelectedStyle(styles.Standard)
 	testutil.Equals(t, selected.GetBackground(), lipgloss.TerminalColor(lipgloss.NoColor{}))
 	testutil.ErrorIf(t, !selected.GetBold(), "expected selected tag rows to be bold")
 	testutil.ErrorIf(t, !selected.GetUnderline(), "expected selected tag rows to be underlined")
