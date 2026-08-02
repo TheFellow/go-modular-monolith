@@ -30,7 +30,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
-	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/presentation"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -491,7 +490,7 @@ func (m *Tags) setResultTable(result tagResultMsg) {
 				state = "changed"
 			}
 		}
-		values := presentation.LabelOr(result.tags.Canonical().String(), "(none)")
+		values := tui.LabelOr(result.tags.Canonical().String(), "(none)")
 		m.replaceResultTable(columns, []table.Row{{string(result.target.ID), values, state}})
 	}
 	m.results.SetCursor(0)

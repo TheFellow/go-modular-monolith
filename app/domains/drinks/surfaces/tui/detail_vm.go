@@ -11,7 +11,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
-	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/presentation"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -76,7 +75,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + drink.ID.String()),
 		d.styles.Subtitle.Render("Category: ") + string(drink.Category),
 		d.styles.Subtitle.Render("Glass: ") + string(drink.Glass),
-		d.styles.Subtitle.Render("Tags: ") + presentation.LabelOr(drink.Tags.Canonical().String(), "(none)"),
+		d.styles.Subtitle.Render("Tags: ") + tui.LabelOr(drink.Tags.Canonical().String(), "(none)"),
 	}
 
 	if drink.Description != "" {
