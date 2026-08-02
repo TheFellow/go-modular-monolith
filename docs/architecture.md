@@ -58,9 +58,13 @@ Handlers receive `*middleware.HandlerContext`, which deliberately has no `AddEve
 and mutate their own domain and call `TouchEntity`, but cannot emit another event. This makes every
 event fan-out a bounded leaf operation.
 
-When several handlers consume one event, optional `PreparingHandler.Handling` methods all run
-before any `Handle`. Handler instances are fresh per event, so preparation can capture event-local
-state needed after another handler mutates shared transaction state.
+When several handlers consume one event, their order must be treated as nondeterministic. The
+dispatcher therefore runs every optional `PreparingHandler.Handling` method before it runs any
+`Handle` method. During this preparation phase, each handler can read and retain the state as it
+existed when the original event was raised. Its later `Handle` call can use that snapshot even if
+another handler has since changed related state in the shared transaction. This two-phase protocol
+preserves the information that might otherwise require a follow-up, cascading event, without making
+correctness depend on handler order.
 
 ## Authorization
 
