@@ -61,11 +61,11 @@ before the process exits.
 
 The default desktop log locations are:
 
-| Platform | Directory |
-| --- | --- |
-| macOS | `~/Library/Application Support/Mixology` |
-| Windows | `%AppData%\Mixology` |
-| Linux | `$XDG_CONFIG_HOME/Mixology`, or `~/.config/Mixology` when unset |
+| Platform | Directory                                                       |
+| -------- | --------------------------------------------------------------- |
+| macOS    | `~/Library/Application Support/Mixology`                        |
+| Windows  | `%AppData%\Mixology`                                            |
+| Linux    | `$XDG_CONFIG_HOME/Mixology`, or `~/.config/Mixology` when unset |
 
 Close every Mixology surface before moving or removing `data/mixology.db`,
 because the embedded database permits only one process to own it at a time.
@@ -78,14 +78,14 @@ closed.
 Mixology exposes native menu equivalents for its application commands. On
 macOS, `Primary` means Command; on Windows and Linux it means Control.
 
-| Action | Shortcut |
-| --- | --- |
-| Refresh the current workspace | Primary+R |
-| Start a new item, where supported | Primary+N |
-| Save or submit the active editor | Primary+S |
-| Cancel or go back | Escape |
-| Navigate Dashboard through Tags | Alt+1 through Alt+8 |
-| Quit | Primary+Q |
+| Action                            | Shortcut            |
+| --------------------------------- | ------------------- |
+| Refresh the current workspace     | Primary+R           |
+| Start a new item, where supported | Primary+N           |
+| Save or submit the active editor  | Primary+S           |
+| Cancel or go back                 | Escape              |
+| Navigate Dashboard through Tags   | Alt+1 through Alt+8 |
+| Quit                              | Primary+Q           |
 
 Shortcuts use the same enabled controls as pointer input. They do nothing when
 an action is hidden, disabled, submitting, confirming, or invalid for the
