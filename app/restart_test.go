@@ -44,7 +44,7 @@ func restartTestMenuAvailability(t *testing.T, menu *menusmodels.Menu, drinkID e
 			return item.Availability
 		}
 	}
-	t.Fatalf("drink %s missing from menu %s", drinkID, menu.ID)
+	testutil.Fail(t, "drink %s missing from menu %s", drinkID, menu.ID)
 	return ""
 }
 

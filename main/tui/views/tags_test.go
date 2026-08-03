@@ -1,119 +1,226 @@
 package views
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
-func TestTagsWorkspace_InspectAddReplaceNoOpAndRemove(t *testing.T) {
+func TestTagsResultTableSupportsEveryShapeTransition(t *testing.T) {
+	t.Parallel()
+
+	results := []struct {
+		name   string
+		result tagResultMsg
+	}{
+		{name: "entity", result: tagResultMsg{
+			operation: tagOperationInspect,
+			target:    entity.NewIngredientID().EntityUID(),
+			tags:      tag.Tags{{Key: "featured"}},
+		}},
+		{name: "references", result: tagResultMsg{
+			operation: tagOperationShow,
+			references: []tagging.Reference{{
+				EntityType: "Ingredient", EntityID: entity.NewIngredientID().String(), Tag: "featured",
+			}},
+		}},
+		{name: "summary", result: tagResultMsg{
+			operation: tagOperationSummary,
+			summaries: []tagging.Summary{{Tag: "featured", Total: 1, Ingredients: 1}},
+		}},
+	}
+
+	for _, from := range results {
+		for _, to := range results {
+			for _, width := range []int{80, 100, 120} {
+				t.Run(fmt.Sprintf("%s_to_%s_at_%d", from.name, to.name, width), func(t *testing.T) {
+					t.Parallel()
+					vm := NewTags(nil)
+					vm.setSize(width, 30)
+					vm.setResultTable(from.result)
+					requireValidANSI(t, vm.results.View())
+					vm.setResultTable(to.result)
+					requireValidANSI(t, vm.results.View())
+				})
+			}
+		}
+	}
+}
+
+func requireValidANSI(t testing.TB, rendered string) {
+	t.Helper()
+	{
+		fragment := regexp.MustCompile(`\[(?:[0-9]+;)*[0-9]+m`).FindString(ansi.Strip(rendered))
+		testutil.ErrorIf(t, fragment != "", "rendered table contains malformed ANSI fragment %q:\n%s", fragment, rendered)
+	}
+}
+
+func TestTagSelectedStyleDoesNotUseBackgroundColor(t *testing.T) {
+	t.Parallel()
+	selected := tagSelectedStyle(styles.Standard)
+	testutil.Equals(t, selected.GetBackground(), lipgloss.TerminalColor(lipgloss.NoColor{}))
+	testutil.ErrorIf(t, !selected.GetBold(), "expected selected tag rows to be bold")
+	testutil.ErrorIf(t, !selected.GetUnderline(), "expected selected tag rows to be underlined")
+}
+
+func TestTagsIgnoresResultsFromSupersededRequests(t *testing.T) {
+	t.Parallel()
+	vm := NewTags(nil)
+	vm.mode = tagsModeLoading
+	vm.requestID = 2
+
+	updated, _ := vm.Update(tagResultMsg{requestID: 1, operation: tagOperationSummary})
+	vm = testutil.Cast[*Tags](t, updated)
+	testutil.Equals(t, vm.mode, tagsModeLoading)
+	testutil.Equals(t, vm.result, (*tagResultMsg)(nil))
+
+	updated, _ = vm.Update(tagEntitiesLoadedMsg{requestID: 1, items: []list.Item{
+		tagEntityItem{name: "stale"},
+	}})
+	vm = testutil.Cast[*Tags](t, updated)
+	testutil.Equals(t, vm.mode, tagsModeLoading)
+	testutil.Equals(t, len(vm.picker.Items()), 0)
+}
+
+func TestTagsOperationCommandCapturesRequestState(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
-		Name: "Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
+		Name: "Captured Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
+	})
+	_, err := f.App.Tags.Upsert(f.OwnerContext(), ingredient.EntityUID(), tag.Tag{Key: "captured"})
+	testutil.Ok(t, err)
+
+	vm := NewTags(f.App)
+	vm.operation, vm.target = tagOperationInspect, ingredient.EntityUID()
+	cmd := vm.runOperation(tag.Tag{})
+	requestID := vm.requestID
+	vm.operation, vm.target = tagOperationSummary, entity.NewDrinkID().EntityUID()
+
+	msg := testutil.Cast[tagResultMsg](t, cmd())
+	testutil.Equals(t, msg.requestID, requestID)
+	testutil.Equals(t, msg.operation, tagOperationInspect)
+	testutil.Equals(t, msg.target, ingredient.EntityUID())
+	testutil.Equals(t, msg.tags, tag.Tags{{Key: "captured"}})
+}
+
+func TestTagsBackInvalidatesLoadingRequest(t *testing.T) {
+	t.Parallel()
+	vm := NewTags(nil)
+	vm.mode, vm.requestID = tagsModeLoading, 7
+	vm.back()
+	testutil.Equals(t, vm.mode, tagsModeBrowsing)
+	testutil.Equals(t, vm.requestID, uint64(8))
+}
+
+func TestTagsWorkspaceUsesOperationListAndEntityPicker(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Picker Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
 	})
 	vm := initializedTags(t, f.App)
-	setTagForm(t, vm, ingredient.ID.String(), tagOperationAdd, "seasonal")
-	vm = submitTags(t, vm)
-	assertTagResult(t, vm, true, "seasonal", "changed")
+	view := vm.View()
+	for _, expected := range []string{"Tags", "Inspect entity tags", "Add or replace a tag", "Tag usage summary"} {
+		testutil.StringContains(t, view, expected)
+	}
+	testutil.ErrorIf(t, strings.Contains(view, "Entity ID"), "workspace should not prompt for an entity ID:\n%s", view)
 
-	setTagForm(t, vm, ingredient.ID.String(), tagOperationAdd, "region=west")
-	vm = submitTags(t, vm)
-	assertTagResult(t, vm, true, "region=west,seasonal", "changed")
+	vm.operations.Select(1) // Add or replace.
+	vm = updateTags(t, vm, tea.KeyMsg{Type: tea.KeyEnter})
+	testutil.Equals(t, vm.mode, tagsModePickingType)
+	testutil.StringContains(t, vm.View(), "Select entity type")
 
-	setTagForm(t, vm, ingredient.ID.String(), tagOperationAdd, "region=east")
-	vm = submitTags(t, vm)
-	assertTagResult(t, vm, true, "region=east,seasonal", "changed")
+	vm.picker.Select(1) // Ingredients.
+	vm = updateTags(t, vm, tea.KeyMsg{Type: tea.KeyEnter})
+	testutil.Equals(t, vm.mode, tagsModePickingEntity)
+	testutil.StringContains(t, vm.View(), ingredient.Name)
+	testutil.StringContains(t, vm.View(), ingredient.ID.String())
 
-	vm = submitTags(t, vm)
-	assertTagResult(t, vm, false, "region=east,seasonal", "unchanged")
-
-	setTagForm(t, vm, ingredient.ID.String(), tagOperationInspect, "")
-	vm = submitTags(t, vm)
-	assertTagResult(t, vm, false, "region=east,seasonal", "inspected")
-
-	setTagForm(t, vm, ingredient.ID.String(), tagOperationRemove, "region")
-	vm = submitTags(t, vm)
-	assertTagResult(t, vm, true, "seasonal", "changed")
-
-	setTagForm(t, vm, ingredient.ID.String(), tagOperationRemove, "missing")
-	vm = submitTags(t, vm)
-	assertTagResult(t, vm, false, "seasonal", "unchanged")
+	vm = updateTags(t, vm, tea.KeyMsg{Type: tea.KeyEnter})
+	testutil.Equals(t, vm.mode, tagsModeEnteringValue)
+	testutil.Ok(t, vm.value.SetValue("region=west"))
+	vm = updateTags(t, vm, tea.KeyMsg{Type: tea.KeyCtrlS})
+	testutil.Equals(t, vm.mode, tagsModeResults)
+	testutil.StringContains(t, vm.View(), "region=west")
 
 	values, err := f.App.Tags.List(f.OwnerContext(), ingredient.EntityUID())
 	testutil.Ok(t, err)
-	testutil.Equals(t, values, tag.Tags{{Key: "seasonal"}})
+	testutil.Equals(t, values, tag.Tags{{Key: "region", Value: "west"}})
+
+	vm = updateTags(t, vm, tea.KeyMsg{Type: tea.KeyEsc})
+	testutil.Equals(t, vm.mode, tagsModeBrowsing)
 }
 
-func TestTagsWorkspace_ReportsValidationNotFoundAndPermissionErrors(t *testing.T) {
+func TestTagsWorkspaceDiscoveryTablesAndBackNavigation(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
-		Name: "Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
+		Name: "Discovery Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
 	})
+	_, err := f.App.Tags.Upsert(f.OwnerContext(), ingredient.EntityUID(), tag.Tag{Key: "region", Value: "west"})
+	testutil.Ok(t, err)
 
 	vm := initializedTags(t, f.App)
-	setTagForm(t, vm, "not-an-id", tagOperationInspect, "")
-	vm = submitTags(t, vm)
-	testutil.ErrorIsInvalid(t, vm.err)
+	vm.operations.Select(3) // Show exact.
+	vm = updateTags(t, vm, tea.KeyMsg{Type: tea.KeyEnter})
+	testutil.Ok(t, vm.value.SetValue("region=west"))
+	vm = updateTags(t, vm, tea.KeyMsg{Type: tea.KeyCtrlS})
+	testutil.Equals(t, vm.mode, tagsModeResults)
+	for _, expected := range []string{"ENTITY TYPE", "ENTITY ID", "TAG", "Ingredient", ingredient.ID.String(), "region=west", "esc back"} {
+		testutil.StringContains(t, vm.View(), expected)
+	}
+	vm = updateTags(t, vm, tea.KeyMsg{Type: tea.KeyEsc})
+	testutil.Equals(t, vm.mode, tagsModeBrowsing)
 
-	setTagForm(t, vm, ingredient.ID.String(), tagOperationAdd, "=bad")
-	vm = submitTags(t, vm)
-	testutil.ErrorIsInvalid(t, vm.err)
-
-	missing := entity.NewIngredientID().String()
-	setTagForm(t, vm, missing, tagOperationInspect, "")
-	vm = submitTags(t, vm)
-	testutil.ErrorIsNotFound(t, vm.err)
-
-	deniedSession := app.NewSession(f.ActorContext("bartender"), f.App.App)
-	vm = initializedTags(t, deniedSession)
-	setTagForm(t, vm, ingredient.ID.String(), tagOperationAdd, "restricted")
-	vm = submitTags(t, vm)
-	testutil.ErrorIsPermission(t, vm.err)
-	testutil.ErrorIf(t, !strings.Contains(vm.View(), "Error:"), "expected rendered error, got:\n%s", vm.View())
+	vm.operations.Select(5) // Summary.
+	vm = updateTags(t, vm, tea.KeyMsg{Type: tea.KeyEnter})
+	testutil.Equals(t, vm.mode, tagsModeResults)
+	for _, expected := range []string{"TOTAL", "DRINKS", "INGREDIENTS", "INVENTORY", "MENUS", "ORDERS", "region=west"} {
+		testutil.StringContains(t, vm.View(), expected)
+	}
 }
 
-func TestTagsWorkspace_HelpDescribesFormWorkflow(t *testing.T) {
+func TestTagsWorkspaceDiscoveryPermissionErrorReturnsToMenu(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	vm := initializedTags(t, f.App)
-	testutil.Equals(t, len(vm.ShortHelp()), 4)
-	testutil.Equals(t, len(vm.FullHelp()), 2)
-	view := vm.View()
-	for _, expected := range []string{"Entity Tags", "Entity ID", "Operation", "Tag / key", "ctrl+s"} {
-		testutil.ErrorIf(t, !strings.Contains(view, expected), "expected %q in view, got:\n%s", expected, view)
-	}
+	vm := initializedTags(t, app.NewSession(f.ActorContext("bartender"), f.App.App))
+	vm.operations.Select(5)
+	vm = updateTags(t, vm, tea.KeyMsg{Type: tea.KeyEnter})
+	testutil.Equals(t, vm.mode, tagsModeResults)
+	testutil.ErrorIsPermission(t, vm.err)
+	testutil.StringContains(t, vm.View(), "Error:")
+	vm = updateTags(t, vm, tea.KeyMsg{Type: tea.KeyEsc})
+	testutil.Equals(t, vm.mode, tagsModeBrowsing)
 }
 
 func initializedTags(t testing.TB, application *app.Session) *Tags {
 	t.Helper()
 	vm := NewTags(application)
-	_ = vm.Init()
-	updated, _ := vm.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	updated, _ := vm.Update(tea.WindowSizeMsg{Width: 120, Height: 35})
 	return testutil.Cast[*Tags](t, updated)
 }
 
-func setTagForm(t testing.TB, vm *Tags, entityID string, operation tagOperation, value string) {
+func updateTags(t testing.TB, vm *Tags, msg tea.Msg) *Tags {
 	t.Helper()
-	testutil.Ok(t, vm.entityID.SetValue(entityID))
-	testutil.Ok(t, vm.operation.SetValue(operation))
-	testutil.Ok(t, vm.value.SetValue(value))
-}
-
-func submitTags(t testing.TB, vm *Tags) *Tags {
-	t.Helper()
-	updated, cmd := vm.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	updated, cmd := vm.Update(msg)
 	vm = testutil.Cast[*Tags](t, updated)
-	for _, msg := range runTagCmds(cmd) {
-		updated, followup := vm.Update(msg)
+	for _, next := range runTagCmds(cmd) {
+		updated, followup := vm.Update(next)
 		vm = testutil.Cast[*Tags](t, updated)
 		_ = runTagCmds(followup)
 	}
@@ -137,14 +244,4 @@ func runTagCmds(cmd tea.Cmd) []tea.Msg {
 		messages = append(messages, runTagCmds(nested)...)
 	}
 	return messages
-}
-
-func assertTagResult(t testing.TB, vm *Tags, changed bool, tags, state string) {
-	t.Helper()
-	testutil.Ok(t, vm.err)
-	testutil.IsTrue(t, vm.result != nil)
-	testutil.Equals(t, vm.result.Changed, changed)
-	view := vm.View()
-	testutil.ErrorIf(t, !strings.Contains(view, "Tags: "+tags), "expected tags in view, got:\n%s", view)
-	testutil.ErrorIf(t, !strings.Contains(view, "Result: "+state), "expected result state in view, got:\n%s", view)
 }

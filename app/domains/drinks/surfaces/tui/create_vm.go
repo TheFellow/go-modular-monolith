@@ -1,17 +1,16 @@
 package tui
 
 import (
-	"errors"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	ingredients "github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -28,6 +27,9 @@ type CreateDrinkVM struct {
 	category    *forms.SelectField
 	glass       *forms.SelectField
 	description *forms.TextField
+	tags        *forms.TextField
+	recipe      *RecipeEditor
+	viewport    formViewport
 }
 
 // DrinkCreatedMsg is sent when the drink has been created.
@@ -71,9 +73,10 @@ func NewCreateDrinkVM(app *app.Session) *CreateDrinkVM {
 		"Description",
 		forms.WithMaxLength(500),
 	)
-
-	formStyles := tuistyles.App.Form
-	formKeys := tuikeys.App.Form
+	tagsField := components.NewOptionalTagsField("")
+	formStyles := styles.Standard.Form
+	formKeys := keys.Standard.Form
+	recipeField := NewRecipeEditor(app, formStyles, models.Recipe{})
 	form := forms.New(
 		formStyles,
 		formKeys,
@@ -81,6 +84,8 @@ func NewCreateDrinkVM(app *app.Session) *CreateDrinkVM {
 		categoryField,
 		glassField,
 		descriptionField,
+		recipeField,
+		tagsField,
 	)
 
 	return &CreateDrinkVM{
@@ -92,6 +97,9 @@ func NewCreateDrinkVM(app *app.Session) *CreateDrinkVM {
 		category:    categoryField,
 		glass:       glassField,
 		description: descriptionField,
+		tags:        tagsField,
+		recipe:      recipeField,
+		viewport:    newFormViewport(),
 	}
 }
 
@@ -102,6 +110,12 @@ func (m *CreateDrinkVM) Init() tea.Cmd {
 
 // Update handles messages for the form.
 func (m *CreateDrinkVM) Update(msg tea.Msg) (*CreateDrinkVM, tea.Cmd) {
+	if size, ok := msg.(tea.WindowSizeMsg); ok {
+		m.SetSize(size.Width, size.Height)
+	}
+	if loaded, ok := msg.(ingredientCatalogLoadedMsg); ok && m.recipe.AcceptCatalog(loaded) {
+		return m, nil
+	}
 	switch typed := msg.(type) {
 	case CreateErrorMsg:
 		m.submitting = false
@@ -125,22 +139,38 @@ func (m *CreateDrinkVM) Update(msg tea.Msg) (*CreateDrinkVM, tea.Cmd) {
 // View renders the form.
 func (m *CreateDrinkVM) View() string {
 	view := m.form.View()
+	errorView := ""
 	if m.err != nil {
-		errText := m.styles.Error.Render("Error: " + m.err.Error())
-		return strings.Join([]string{errText, "", view}, "\n")
+		errorView = m.styles.Error.Render("Error: " + m.err.Error())
+		view = strings.Join([]string{errorView, "", view}, "\n")
 	}
-	return view
+	footer := ""
+	if m.recipe.IsFocused() {
+		footer = m.styles.Help.Render(recipeNavigationHelp)
+	}
+	offset := recipeFieldOffset(errorView, m.nameField, m.category, m.glass, m.description)
+	return m.viewport.View(view, recipeFocusLine(offset, m.recipe), footer)
 }
 
 // SetWidth sets the width of the form.
 func (m *CreateDrinkVM) SetWidth(w int) {
 	m.form.SetWidth(w)
+	m.viewport.SetSize(w, m.viewport.height)
+}
+
+// SetSize sets the form viewport dimensions.
+func (m *CreateDrinkVM) SetSize(width, height int) {
+	m.form.SetWidth(width)
+	m.viewport.SetSize(width, height)
 }
 
 // IsDirty reports whether the form has been modified.
 func (m *CreateDrinkVM) IsDirty() bool {
 	return m.form.IsDirty()
 }
+
+// Submitting reports whether a mutation is in flight.
+func (m *CreateDrinkVM) Submitting() bool { return m.submitting }
 
 func (m *CreateDrinkVM) submit() tea.Cmd {
 	if m.submitting {
@@ -150,7 +180,8 @@ func (m *CreateDrinkVM) submit() tea.Cmd {
 		m.err = err
 		return nil
 	}
-	recipe, err := m.defaultRecipe()
+	recipe := m.recipe.Value().(models.Recipe)
+	desired, err := components.DesiredTags(m.tags, tag.ParseCollection)
 	if err != nil {
 		m.err = err
 		return nil
@@ -167,33 +198,14 @@ func (m *CreateDrinkVM) submit() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		created, err := m.app.Drinks.Create(m.context(), drink)
+		created, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Drink, error) {
+			return m.app.Drinks.Create(ctx, drink)
+		})
 		if err != nil {
 			return CreateErrorMsg{Err: err}
 		}
 		return DrinkCreatedMsg{Drink: created}
 	}
-}
-
-func (m *CreateDrinkVM) defaultRecipe() (models.Recipe, error) {
-	ingredients, err := m.app.Ingredients.List(m.context(), ingredients.ListRequest{})
-	if err != nil {
-		return models.Recipe{}, err
-	}
-	if len(ingredients.Items) == 0 {
-		return models.Recipe{}, errors.New("at least one ingredient is required to create a drink")
-	}
-	first := ingredients.Items[0]
-	amount, err := measurement.NewAmount(1, first.Unit)
-	if err != nil {
-		return models.Recipe{}, err
-	}
-	return models.Recipe{
-		Ingredients: []models.RecipeIngredient{
-			{IngredientID: first.ID, Amount: amount},
-		},
-		Steps: []string{"Add ingredients and serve."},
-	}, nil
 }
 
 func (m *CreateDrinkVM) context() *middleware.Context {

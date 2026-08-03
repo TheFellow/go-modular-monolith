@@ -3,6 +3,7 @@ package tui_test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
@@ -14,7 +15,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 )
 
 func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
@@ -51,6 +52,7 @@ func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
 	testutil.ErrorIf(t, !strings.Contains(view, row.Cost), "expected cost in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "LOW"), "expected status in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Tags: counted,zone=bar"), "expected canonical tags in view, got:\n%s", view)
+	testutil.ErrorIf(t, !strings.Contains(view, "Last updated: "+inv.LastUpdated.Format(time.RFC3339)), "expected exact last-updated value in view, got:\n%s", view)
 }
 
 func TestDetailViewModel_NilRow(t *testing.T) {

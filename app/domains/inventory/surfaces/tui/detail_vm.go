@@ -1,11 +1,13 @@
 package tui
 
 import (
+	"cmp"
 	"strings"
+	"time"
 
-	"github.com/TheFellow/go-modular-monolith/main/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -42,13 +44,14 @@ func (d *DetailViewModel) View() string {
 		d.styles.Title.Render(row.Ingredient.Name),
 		d.styles.Muted.Render("Ingredient ID: " + row.Ingredient.ID.String()),
 		d.styles.Muted.Render("Inventory ID: " + row.Inventory.ID.String()),
-		d.styles.Subtitle.Render("Tags: ") + tagLabel(row.Inventory.Tags.Canonical().String()),
+		d.styles.Subtitle.Render("Tags: ") + cmp.Or(row.Inventory.Tags.Canonical().String(), "(none)"),
 		d.styles.Subtitle.Render("Category: ") + string(row.Ingredient.Category),
 		d.styles.Subtitle.Render("Unit: ") + string(row.Ingredient.Unit),
 		"",
 		d.styles.Subtitle.Render("Quantity: ") + row.Quantity,
 		d.styles.Subtitle.Render("Cost per unit: ") + row.Cost,
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
+		d.styles.Subtitle.Render("Last updated: ") + formatInventoryTime(row.Inventory.LastUpdated),
 	}
 
 	content := strings.Join(lines, "\n")
@@ -58,11 +61,11 @@ func (d *DetailViewModel) View() string {
 	return content
 }
 
-func tagLabel(value string) string {
-	if value == "" {
-		return "(none)"
+func formatInventoryTime(value time.Time) string {
+	if value.IsZero() {
+		return ""
 	}
-	return value
+	return value.Format(time.RFC3339)
 }
 
 func (d *DetailViewModel) statusBadge(status string) string {

@@ -1,4 +1,4 @@
-package tui
+package main
 
 import (
 	"fmt"
@@ -15,10 +15,12 @@ import (
 	inventoryui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/tui"
 	menusui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
 	ordersui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/tui"
-	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
-	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/main/tui/views"
-	perrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/main/tui/routes"
+	tuiviews "github.com/TheFellow/go-modular-monolith/main/tui/views"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 )
 
 const (
@@ -36,8 +38,8 @@ type viewSizeMsg struct {
 // App is the root model for the TUI application.
 type App struct {
 	// Navigation
-	currentView View
-	prevViews   []View
+	currentView routes.View
+	prevViews   []routes.View
 
 	// Application layer
 	app *app.Session
@@ -52,7 +54,7 @@ type App struct {
 	lastError error
 
 	// Child views (lazy initialized)
-	views map[View]views.ViewModel
+	views map[routes.View]tui.ViewModel
 }
 
 // NewApp creates a new App with the given application.
@@ -61,12 +63,12 @@ func NewApp(application *app.Session) *App {
 	helpModel.ShowAll = false
 
 	return &App{
-		currentView: ViewDashboard,
+		currentView: routes.ViewDashboard,
 		app:         application,
-		styles:      styles.App,
-		keys:        keys.App,
+		styles:      styles.Standard,
+		keys:        keys.Standard,
 		help:        helpModel,
-		views:       make(map[View]views.ViewModel),
+		views:       make(map[routes.View]tui.ViewModel),
 	}
 }
 
@@ -79,16 +81,32 @@ func (a *App) Init() tea.Cmd {
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if key.Matches(msg, a.keys.Quit) {
-			return a, tea.Quit
-		}
-		if key.Matches(msg, a.keys.Help) {
-			a.showHelp = !a.showHelp
-			return a, a.syncWindowCmd()
+		vm := a.currentViewModel()
+		interaction := vm.Interaction()
+		if msg.Type != tea.KeyRunes || !interaction.CapturesText {
+			if key.Matches(msg, a.keys.Quit) {
+				return a, tea.Quit
+			}
+			if key.Matches(msg, a.keys.Help) {
+				a.showHelp = !a.showHelp
+				vm, cmd := vm.Update(tea.WindowSizeMsg{
+					Width: a.width, Height: a.availableHeight(),
+				})
+				a.views[a.currentView] = vm
+				return a, cmd
+			}
 		}
 		if key.Matches(msg, a.keys.Back) {
-			if handler, ok := a.currentViewModel().(views.BackKeyHandler); ok && handler.HandleBackKey() {
-				vm, cmd := a.currentViewModel().Update(msg)
+			if a.showHelp {
+				a.showHelp = false
+				vm, cmd := vm.Update(tea.WindowSizeMsg{
+					Width: a.width, Height: a.availableHeight(),
+				})
+				a.views[a.currentView] = vm
+				return a, cmd
+			}
+			if interaction.HandlesBack {
+				vm, cmd := vm.Update(msg)
 				a.views[a.currentView] = vm
 				return a, cmd
 			}
@@ -106,10 +124,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.views[a.currentView] = vm
 		return a, cmd
 
-	case NavigateMsg:
+	case routes.NavigateMsg:
 		return a, a.navigateTo(msg.To)
 
-	case ErrorMsg:
+	case routes.ErrorMsg:
 		a.lastError = msg.Err
 		return a, nil
 
@@ -149,36 +167,36 @@ func (a *App) View() string {
 }
 
 // currentViewModel returns the ViewModel for the current view, lazy initializing if needed.
-func (a *App) currentViewModel() views.ViewModel {
+func (a *App) currentViewModel() tui.ViewModel {
 	if a.views == nil {
-		a.views = make(map[View]views.ViewModel)
+		a.views = make(map[routes.View]tui.ViewModel)
 	}
 
 	if vm, ok := a.views[a.currentView]; ok {
 		return vm
 	}
 
-	var vm views.ViewModel
+	var vm tui.ViewModel
 	switch a.currentView {
-	case ViewDashboard:
-		vm = views.NewDashboard(a.app)
-	case ViewDrinks:
+	case routes.ViewDashboard:
+		vm = tuiviews.NewDashboard(a.app)
+	case routes.ViewDrinks:
 		vm = drinksui.NewListViewModel(a.app)
-	case ViewIngredients:
+	case routes.ViewIngredients:
 		vm = ingredientsui.NewListViewModel(a.app)
-	case ViewInventory:
+	case routes.ViewInventory:
 		vm = inventoryui.NewListViewModel(a.app)
-	case ViewMenus:
+	case routes.ViewMenus:
 		vm = menusui.NewListViewModel(a.app)
-	case ViewOrders:
+	case routes.ViewOrders:
 		vm = ordersui.NewListViewModel(a.app)
-	case ViewAudit:
+	case routes.ViewAudit:
 		vm = auditui.NewListViewModel(a.app)
-	case ViewTags:
-		vm = views.NewTags(a.app)
+	case routes.ViewTags:
+		vm = tuiviews.NewTags(a.app)
 	default:
-		a.currentView = ViewDashboard
-		vm = views.NewDashboard(a.app)
+		a.currentView = routes.ViewDashboard
+		vm = tuiviews.NewDashboard(a.app)
 	}
 
 	a.views[a.currentView] = vm
@@ -186,7 +204,7 @@ func (a *App) currentViewModel() views.ViewModel {
 }
 
 // navigateTo pushes current view to stack and switches to target.
-func (a *App) navigateTo(target View) tea.Cmd {
+func (a *App) navigateTo(target routes.View) tea.Cmd {
 	if !isValidView(target) || target == a.currentView {
 		return nil
 	}
@@ -194,26 +212,24 @@ func (a *App) navigateTo(target View) tea.Cmd {
 	a.prevViews = append(a.prevViews, a.currentView)
 	a.currentView = target
 
-	if a.currentView == ViewDashboard {
-		delete(a.views, ViewDashboard)
+	if a.currentView == routes.ViewDashboard {
+		delete(a.views, routes.ViewDashboard)
 	}
 
 	if _, ok := a.views[target]; ok {
 		return a.syncWindowCmd()
 	}
 
-	initCmd := a.currentViewModel().Init()
-	return tea.Batch(initCmd, a.syncWindowCmd())
+	return a.initializeCurrentView()
 }
 
 // navigateBack pops the previous view from the stack.
 func (a *App) navigateBack() tea.Cmd {
 	if len(a.prevViews) == 0 {
-		if a.currentView != ViewDashboard {
-			a.currentView = ViewDashboard
-			delete(a.views, ViewDashboard)
-			initCmd := a.currentViewModel().Init()
-			return tea.Batch(initCmd, a.syncWindowCmd())
+		if a.currentView != routes.ViewDashboard {
+			a.currentView = routes.ViewDashboard
+			delete(a.views, routes.ViewDashboard)
+			return a.initializeCurrentView()
 		}
 		return nil
 	}
@@ -221,12 +237,24 @@ func (a *App) navigateBack() tea.Cmd {
 	idx := len(a.prevViews) - 1
 	a.currentView = a.prevViews[idx]
 	a.prevViews = a.prevViews[:idx]
-	if a.currentView == ViewDashboard {
-		delete(a.views, ViewDashboard)
-		initCmd := a.currentViewModel().Init()
-		return tea.Batch(initCmd, a.syncWindowCmd())
+	if a.currentView == routes.ViewDashboard {
+		delete(a.views, routes.ViewDashboard)
+		return a.initializeCurrentView()
 	}
 	return a.syncWindowCmd()
+}
+
+// initializeCurrentView sizes a newly created child before its Init command can
+// produce a renderable result. A resize command batched with Init may arrive
+// later, briefly exposing an unbounded frame to Bubble Tea's renderer.
+func (a *App) initializeCurrentView() tea.Cmd {
+	vm := a.currentViewModel()
+	var sizeCmd tea.Cmd
+	if a.width > 0 || a.height > 0 {
+		vm, sizeCmd = vm.Update(tea.WindowSizeMsg{Width: a.width, Height: a.availableHeight()})
+		a.views[a.currentView] = vm
+	}
+	return tea.Batch(sizeCmd, vm.Init())
 }
 
 func (a *App) syncWindowCmd() tea.Cmd {
@@ -267,14 +295,14 @@ func (a *App) helpHeight() int {
 func (a *App) statusBarView() string {
 	var content string
 	if a.lastError != nil {
-		tuiErr := perrors.ToTUIError(a.lastError)
+		tuiErr := errors.ToTUIError(a.lastError)
 		var style lipgloss.Style
 		switch tuiErr.Style {
-		case perrors.TUIStyleWarning:
+		case errors.TUIStyleWarning:
 			style = a.styles.WarningText
-		case perrors.TUIStyleInfo:
+		case errors.TUIStyleInfo:
 			style = a.styles.InfoText
-		case perrors.TUIStyleError:
+		case errors.TUIStyleError:
 			style = a.styles.ErrorText
 		default:
 			style = a.styles.ErrorText
@@ -305,32 +333,32 @@ func (a *App) renderTooSmallWarning() string {
 	return content
 }
 
-func isValidView(view View) bool {
+func isValidView(view routes.View) bool {
 	switch view {
-	case ViewDashboard, ViewDrinks, ViewIngredients, ViewInventory, ViewMenus, ViewOrders, ViewAudit, ViewTags:
+	case routes.ViewDashboard, routes.ViewDrinks, routes.ViewIngredients, routes.ViewInventory, routes.ViewMenus, routes.ViewOrders, routes.ViewAudit, routes.ViewTags:
 		return true
 	default:
 		return false
 	}
 }
 
-func viewTitle(view View) string {
+func viewTitle(view routes.View) string {
 	switch view {
-	case ViewDashboard:
+	case routes.ViewDashboard:
 		return "Dashboard"
-	case ViewDrinks:
+	case routes.ViewDrinks:
 		return "Drinks"
-	case ViewIngredients:
+	case routes.ViewIngredients:
 		return "Ingredients"
-	case ViewInventory:
+	case routes.ViewInventory:
 		return "Inventory"
-	case ViewMenus:
+	case routes.ViewMenus:
 		return "Menus"
-	case ViewOrders:
+	case routes.ViewOrders:
 		return "Orders"
-	case ViewAudit:
+	case routes.ViewAudit:
 		return "Audit"
-	case ViewTags:
+	case routes.ViewTags:
 		return "Tags"
 	default:
 		return "Unknown"

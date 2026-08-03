@@ -13,7 +13,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 )
 
 func TestDetailViewModel_ShowsOrderData(t *testing.T) {
@@ -77,9 +77,11 @@ func TestDetailViewModel_ShowsLineItems(t *testing.T) {
 	menu := testutil.CreateMenu(t, f, "Dinner", testutil.WithDrink(drink), testutil.Published())
 	order := testutil.PlaceOrder(t, f, ordersmodels.Order{
 		MenuID: menu.ID,
+		Notes:  "Window table\nBirthday",
 		Items: []ordersmodels.OrderItem{{
 			DrinkID:  drink.ID,
 			Quantity: 2,
+			Notes:    "Less ice\nLemon twist",
 		}},
 	})
 
@@ -93,6 +95,8 @@ func TestDetailViewModel_ShowsLineItems(t *testing.T) {
 	view := detail.View()
 	testutil.ErrorIf(t, !strings.Contains(view, "Margarita"), "expected drink name in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "qty: 2"), "expected quantity in view, got:\n%s", view)
+	testutil.ErrorIf(t, !strings.Contains(view, "Notes: Less ice") || !strings.Contains(view, "Lemon twist"), "expected multiline item notes in view, got:\n%s", view)
+	testutil.ErrorIf(t, !strings.Contains(view, "Window table") || !strings.Contains(view, "Birthday"), "expected multiline order notes in view, got:\n%s", view)
 }
 
 func TestDetailViewModel_ShowsTotal(t *testing.T) {

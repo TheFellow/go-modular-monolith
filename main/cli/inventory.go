@@ -2,20 +2,22 @@ package main
 
 import (
 	"fmt"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"strconv"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	inventorycli "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/cli"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
-	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	clitable "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli/table"
 	"github.com/urfave/cli/v3"
 )
 
@@ -28,7 +30,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List stock levels",
 				Flags: appendFilterFlags(append([]cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.Float64Flag{
 						Name:  "low-stock",
 						Usage: "Show items with amount <= threshold (per item unit)",
@@ -50,7 +52,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, paging.Page[inventorycli.InventoryRow]{
+						return clitoolkit.WriteJSON(cmd.Writer, paging.Page[inventorycli.InventoryRow]{
 							Items: inventorycli.ToInventoryRows(res.Items), Next: res.Next,
 						})
 					}
@@ -65,7 +67,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Name:  "get",
 				Usage: "Get stock for an ingredient",
 				Flags: []cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "ingredient-id", Usage: "Ingredient ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -79,7 +81,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, inventorycli.ToInventoryRow(res))
+						return clitoolkit.WriteJSON(cmd.Writer, inventorycli.ToInventoryRow(res))
 					}
 
 					return clitable.PrintDetail(cmd.Writer, inventorycli.ToInventoryRow(res))
@@ -89,10 +91,10 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Name:  "adjust",
 				Usage: "Patch stock quantity and/or cost",
 				Flags: appendTagsFlag([]cli.Flag{
-					JSONFlag,
-					TemplateFlag,
-					StdinFlag,
-					FileFlag,
+					clitoolkit.JSONFlag,
+					clitoolkit.TemplateFlag,
+					clitoolkit.StdinFlag,
+					clitoolkit.FileFlag,
 					&cli.StringFlag{Name: "ingredient-id", Usage: "Ingredient ID"},
 					&cli.StringFlag{Name: "delta", Usage: "Delta (+/-) in ingredient unit"},
 					&cli.StringFlag{
@@ -115,12 +117,12 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
-						return writeJSON(cmd.Writer, inventorycli.TemplateAdjust())
+						return clitoolkit.WriteJSON(cmd.Writer, inventorycli.TemplateAdjust())
 					}
 
 					var patch *inventorymodels.Patch
 					if cmd.Bool("stdin") || strings.TrimSpace(cmd.String("file")) != "" {
-						input, err := readJSONInput[inventorycli.InventoryPatch](cmd)
+						input, err := clitoolkit.ReadJSONInput[inventorycli.InventoryPatch](cmd)
 						if err != nil {
 							return err
 						}
@@ -214,6 +216,9 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						if reason == "" {
 							return errors.Invalidf("reason is required (or use --stdin/--file)")
 						}
+						if delta.IsNone() && cost.IsNone() {
+							return errors.Invalidf("at least one of delta or cost-per-unit is required (or use --stdin/--file)")
+						}
 
 						patch = &inventorymodels.Patch{
 							IngredientID: parsedIngredientID,
@@ -231,7 +236,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, res)
+						return clitoolkit.WriteJSON(cmd.Writer, res)
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, res.IngredientID.String())
@@ -242,10 +247,10 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Name:  "set",
 				Usage: "Set stock quantity",
 				Flags: appendTagsFlag([]cli.Flag{
-					JSONFlag,
-					TemplateFlag,
-					StdinFlag,
-					FileFlag,
+					clitoolkit.JSONFlag,
+					clitoolkit.TemplateFlag,
+					clitoolkit.StdinFlag,
+					clitoolkit.FileFlag,
 					&cli.StringFlag{Name: "ingredient-id", Usage: "Ingredient ID"},
 					&cli.Float64Flag{Name: "quantity", Usage: "Quantity in ingredient unit"},
 					&cli.StringFlag{
@@ -255,12 +260,12 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
-						return writeJSON(cmd.Writer, inventorycli.TemplateSet())
+						return clitoolkit.WriteJSON(cmd.Writer, inventorycli.TemplateSet())
 					}
 
 					var update *inventorymodels.Update
 					if cmd.Bool("stdin") || strings.TrimSpace(cmd.String("file")) != "" {
-						input, err := readJSONInput[inventorycli.InventoryInput](cmd)
+						input, err := clitoolkit.ReadJSONInput[inventorycli.InventoryInput](cmd)
 						if err != nil {
 							return err
 						}
@@ -269,9 +274,6 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						}
 						if input.Quantity == nil {
 							return errors.Invalidf("quantity is required")
-						}
-						if strings.TrimSpace(input.CostPerUnit) == "" {
-							return errors.Invalidf("cost_per_unit is required")
 						}
 						parsedIngredientID, err := entity.ParseIngredientID(input.IngredientID)
 						if err != nil {
@@ -291,7 +293,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 							return err
 						}
 
-						cost, err := parsePrice(input.CostPerUnit)
+						cost, err := c.inventorySetCost(ctx, parsedIngredientID, input.CostPerUnit)
 						if err != nil {
 							return err
 						}
@@ -313,12 +315,12 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						if err != nil {
 							return err
 						}
+						if !cmd.IsSet("quantity") {
+							return errors.Invalidf("quantity is required (or use --stdin/--file)")
+						}
 						qty := cmd.Float64("quantity")
 
-						if strings.TrimSpace(cmd.String("cost-per-unit")) == "" {
-							return errors.Invalidf("cost-per-unit is required (or use --stdin/--file)")
-						}
-						cost, err := parsePrice(cmd.String("cost-per-unit"))
+						cost, err := c.inventorySetCost(ctx, parsedIngredientID, cmd.String("cost-per-unit"))
 						if err != nil {
 							return err
 						}
@@ -342,7 +344,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, res)
+						return clitoolkit.WriteJSON(cmd.Writer, res)
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, res.IngredientID.String())
@@ -351,4 +353,21 @@ func (c *CLI) inventoryCommands() *cli.Command {
 			},
 		},
 	}
+}
+
+func (c *CLI) inventorySetCost(ctx *middleware.Context, ingredientID entity.IngredientID, raw string) (money.Price, error) {
+	if strings.TrimSpace(raw) != "" {
+		return parsePrice(raw)
+	}
+	stock, err := c.app.Inventory.Get(ctx, ingredientID)
+	if err == nil {
+		if price, ok := stock.CostPerUnit.Unwrap(); ok {
+			return price, nil
+		}
+		return money.NewPriceFromCents(0, currency.USD), nil
+	}
+	if errors.IsNotFound(err) {
+		return money.NewPriceFromCents(0, currency.USD), nil
+	}
+	return money.Price{}, err
 }

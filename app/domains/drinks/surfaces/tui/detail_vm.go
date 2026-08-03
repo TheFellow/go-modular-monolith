@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
@@ -10,7 +11,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -75,7 +76,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + drink.ID.String()),
 		d.styles.Subtitle.Render("Category: ") + string(drink.Category),
 		d.styles.Subtitle.Render("Glass: ") + string(drink.Glass),
-		d.styles.Subtitle.Render("Tags: ") + tagLabel(drink.Tags.Canonical().String()),
+		d.styles.Subtitle.Render("Tags: ") + cmp.Or(drink.Tags.Canonical().String(), "(none)"),
 	}
 
 	if drink.Description != "" {
@@ -110,13 +111,6 @@ func (d *DetailViewModel) View() string {
 		content = lipgloss.NewStyle().Width(d.width).Render(content)
 	}
 	return content
-}
-
-func tagLabel(value string) string {
-	if value == "" {
-		return "(none)"
-	}
-	return value
 }
 
 func (d *DetailViewModel) renderIngredients(items []models.RecipeIngredient) ([]string, error) {

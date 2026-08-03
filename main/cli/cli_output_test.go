@@ -41,7 +41,7 @@ func TestCommandNouns(t *testing.T) {
 		names = append(names, command.Name)
 	}
 
-	want := []string{"drinks", "ingredients", "inventory", "menus", "orders", "tags", "audit"}
+	want := []string{"status", "drinks", "ingredients", "inventory", "menus", "orders", "tags", "audit"}
 	testutil.Equals(t, names, want)
 }
 

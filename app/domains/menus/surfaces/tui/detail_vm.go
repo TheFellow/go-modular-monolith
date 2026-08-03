@@ -1,16 +1,18 @@
 package tui
 
 import (
+	"cmp"
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -49,8 +51,12 @@ func (d *DetailViewModel) View() string {
 	lines := []string{
 		d.styles.Title.Render(menu.Name),
 		d.styles.Muted.Render("ID: " + menu.ID.String()),
+		d.styles.Muted.Render("Created: " + formatMenuTime(menu.CreatedAt)),
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
-		d.styles.Subtitle.Render("Tags: ") + tagLabel(menu.Tags.Canonical().String()),
+		d.styles.Subtitle.Render("Tags: ") + cmp.Or(menu.Tags.Canonical().String(), "(none)"),
+	}
+	if publishedAt, ok := menu.PublishedAt.Unwrap(); ok {
+		lines = append(lines, d.styles.Muted.Render("Published: "+formatMenuTime(publishedAt)))
 	}
 
 	if strings.TrimSpace(menu.Description) != "" {
@@ -72,13 +78,6 @@ func (d *DetailViewModel) View() string {
 		content = lipgloss.NewStyle().Width(d.width).Render(content)
 	}
 	return content
-}
-
-func tagLabel(value string) string {
-	if value == "" {
-		return "(none)"
-	}
-	return value
 }
 
 func (d *DetailViewModel) renderItems(items []models.MenuItem) ([]string, error) {
@@ -107,7 +106,7 @@ func (d *DetailViewModel) itemLine(item models.MenuItem) (string, error) {
 		return "", err
 	}
 
-	parts := []string{name, menuAvailabilityLabel(item.Availability)}
+	parts := []string{name, "Drink ID: " + item.DrinkID.String(), fmt.Sprintf("Sort order: %d", item.SortOrder), menuAvailabilityLabel(item.Availability)}
 	if price, ok := item.Price.Unwrap(); ok {
 		parts = append(parts, price.String())
 	} else {
@@ -117,6 +116,13 @@ func (d *DetailViewModel) itemLine(item models.MenuItem) (string, error) {
 		parts = append(parts, "featured")
 	}
 	return "- " + strings.Join(parts, " | "), nil
+}
+
+func formatMenuTime(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+	return value.Format(time.RFC3339)
 }
 
 func (d *DetailViewModel) itemName(item models.MenuItem) (string, error) {

@@ -1,22 +1,38 @@
 package views
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/TheFellow/go-modular-monolith/app"
+	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
+	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
+	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
+	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	"github.com/TheFellow/go-modular-monolith/main/tui/components"
-	"github.com/TheFellow/go-modular-monolith/main/tui/keys"
-	"github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type tagOperation string
@@ -25,183 +41,563 @@ const (
 	tagOperationInspect tagOperation = "inspect"
 	tagOperationAdd     tagOperation = "add"
 	tagOperationRemove  tagOperation = "remove"
+	tagOperationShow    tagOperation = "show"
+	tagOperationShowKey tagOperation = "show-key"
+	tagOperationSummary tagOperation = "summary"
 )
 
-// TagsLoadedMsg carries the result of an authorized tag operation.
-type TagsLoadedMsg struct {
-	EntityID  string
-	Tags      tag.Tags
-	Operation tagOperation
-	Changed   bool
-	Err       error
+type tagsMode int
+
+const (
+	tagsModeBrowsing tagsMode = iota
+	tagsModePickingType
+	tagsModePickingEntity
+	tagsModeEnteringValue
+	tagsModeLoading
+	tagsModeResults
+)
+
+type tagOperationItem struct {
+	operation tagOperation
+	title     string
+	desc      string
 }
 
-// Tags is the cross-domain workspace for inspecting and mutating entity tags.
+func (i tagOperationItem) Title() string       { return i.title }
+func (i tagOperationItem) Description() string { return i.desc }
+func (i tagOperationItem) FilterValue() string { return i.title }
+
+type tagTypeItem struct {
+	typeID cedar.EntityType
+	label  string
+}
+
+func (i tagTypeItem) Title() string       { return i.label }
+func (i tagTypeItem) Description() string { return "Select active " + strings.ToLower(i.label) }
+func (i tagTypeItem) FilterValue() string { return i.label }
+
+type tagEntityItem struct {
+	uid  cedar.EntityUID
+	name string
+	desc string
+}
+
+func (i tagEntityItem) Title() string       { return i.name }
+func (i tagEntityItem) Description() string { return i.desc }
+func (i tagEntityItem) FilterValue() string { return i.name + " " + string(i.uid.ID) }
+
+type tagEntitiesLoadedMsg struct {
+	requestID uint64
+	items     []list.Item
+	err       error
+}
+
+type tagResultMsg struct {
+	requestID  uint64
+	operation  tagOperation
+	target     cedar.EntityUID
+	tags       tag.Tags
+	changed    bool
+	references []tagging.Reference
+	summaries  []tagging.Summary
+	err        error
+}
+
+// Tags is the cross-domain workspace for entity tag operations and discovery.
 type Tags struct {
-	app       *app.Session
-	styles    styles.Styles
-	keys      keys.KeyMap
-	form      *forms.Form
-	entityID  *forms.TextField
-	operation *forms.SelectField
-	value     *forms.TextField
-	spinner   components.Spinner
-	loading   bool
-	result    *TagsLoadedMsg
+	app    *app.Session
+	styles styles.Styles
+	keys   keys.KeyMap
+
+	operations list.Model
+	picker     list.Model
+	results    table.Model
+	form       *forms.Form
+	value      *forms.TextField
+	spinner    tui.Spinner
+
+	mode      tagsMode
+	operation tagOperation
+	target    cedar.EntityUID
+	result    *tagResultMsg
 	err       error
 	width     int
 	height    int
+	requestID uint64
 }
 
 func NewTags(application *app.Session) *Tags {
-	entityID := forms.NewTextField("Entity ID", forms.WithRequired(), forms.WithPlaceholder("e.g., drk-..."))
-	operation := forms.NewSelectField("Operation", []forms.SelectOption{
-		{Label: "Inspect", Value: tagOperationInspect},
-		{Label: "Add or replace", Value: tagOperationAdd},
-		{Label: "Remove", Value: tagOperationRemove},
-	}, forms.WithRequired())
-	value := forms.NewTextField("Tag / key", forms.WithPlaceholder("Add: key or key=value • Remove: key"))
+	delegate := list.NewDefaultDelegate()
+	delegate.ShowDescription = true
+	delegate.Styles.SelectedTitle = tagSelectedStyle(styles.Standard)
+	delegate.Styles.SelectedDesc = tagSelectedStyle(styles.Standard)
+	operations := list.New(tagOperationItems(), delegate, 0, 0)
+	operations.Title = "Tags"
+	operations.SetShowHelp(false)
+	operations.SetShowStatusBar(false)
+	operations.SetFilteringEnabled(false)
+
+	picker := list.New(nil, delegate, 0, 0)
+	picker.SetShowHelp(false)
+	picker.SetShowStatusBar(false)
+	picker.SetFilteringEnabled(true)
+
+	results := table.New(table.WithFocused(true))
+	results.SetStyles(tagTableStyles(styles.Standard))
+
+	value := forms.NewTextField("Tag / key", forms.WithRequired(), forms.WithPlaceholder("key or key=value"))
 	vm := &Tags{
-		app: application, styles: styles.App, keys: keys.App,
-		entityID: entityID, operation: operation, value: value,
-		form: forms.New(styles.App.Form, keys.App.Form, entityID, operation, value),
+		app: application, styles: styles.Standard, keys: keys.Standard,
+		operations: operations, picker: picker, results: results,
+		value: value, form: forms.New(styles.Standard.Form, keys.Standard.Form, value),
 	}
-	vm.spinner = components.NewSpinner("Updating tags...", vm.styles.Subtitle)
+	vm.spinner = tui.NewSpinner("Working with tags...", vm.styles.Subtitle)
 	return vm
 }
 
-func (m *Tags) Init() tea.Cmd { return m.form.Init() }
+func tagOperationItems() []list.Item {
+	return []list.Item{
+		tagOperationItem{tagOperationInspect, "Inspect entity tags", "Choose an entity and view its tags"},
+		tagOperationItem{tagOperationAdd, "Add or replace a tag", "Choose an entity, then enter key or key=value"},
+		tagOperationItem{tagOperationRemove, "Remove a tag", "Choose an entity, then enter the key"},
+		tagOperationItem{tagOperationShow, "Show exact tag", "List active entities carrying key or key=value"},
+		tagOperationItem{tagOperationShowKey, "Show all values for key", "List active entities carrying any value for a key"},
+		tagOperationItem{tagOperationSummary, "Tag usage summary", "Count active tag usage by entity type"},
+	}
+}
 
-func (m *Tags) Update(msg tea.Msg) (ViewModel, tea.Cmd) {
+func (m *Tags) Init() tea.Cmd { return nil }
+
+func (m *Tags) Interaction() tui.Interaction {
+	return tui.Interaction{
+		HandlesBack: m.mode != tagsModeBrowsing,
+		CapturesText: m.mode == tagsModeEnteringValue ||
+			(m.mode == tagsModePickingType || m.mode == tagsModePickingEntity) && m.picker.SettingFilter(),
+	}
+}
+
+func (m *Tags) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	switch typed := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width, m.height = typed.Width, typed.Height
-		m.form.SetWidth(max(typed.Width-8, 20))
+		m.setSize(typed.Width, typed.Height)
 		return m, nil
-	case TagsLoadedMsg:
-		m.loading = false
-		m.err = typed.Err
-		if typed.Err == nil {
-			result := typed
-			m.result = &result
+	case tagEntitiesLoadedMsg:
+		if typed.requestID != m.requestID {
 			return m, nil
 		}
-		return m, func() tea.Msg { return ErrorMsg{Err: typed.Err} }
+		if typed.err != nil {
+			m.mode, m.err = tagsModePickingType, typed.err
+			return m, nil
+		}
+		m.picker.Title = "Select entity"
+		m.picker.SetItems(typed.items)
+		m.picker.ResetSelected()
+		m.mode, m.err = tagsModePickingEntity, nil
+		return m, nil
+	case tagResultMsg:
+		if typed.requestID != m.requestID {
+			return m, nil
+		}
+		m.mode = tagsModeResults
+		m.err = typed.err
+		if typed.err == nil {
+			result := typed
+			m.result = &result
+			m.setResultTable(result)
+		}
+		return m, nil
 	case tea.KeyMsg:
-		if key.Matches(typed, m.keys.Submit) {
-			return m, m.submit()
+		if (m.mode == tagsModePickingType || m.mode == tagsModePickingEntity) && m.picker.SettingFilter() {
+			var cmd tea.Cmd
+			m.picker, cmd = m.picker.Update(typed)
+			return m, cmd
+		}
+		if key.Matches(typed, m.keys.Back) && m.mode != tagsModeBrowsing {
+			m.back()
+			return m, nil
+		}
+		if key.Matches(typed, m.keys.Enter) {
+			switch m.mode {
+			case tagsModeBrowsing:
+				return m, m.selectOperation()
+			case tagsModePickingType:
+				return m, m.selectType()
+			case tagsModePickingEntity:
+				return m, m.selectEntity()
+			case tagsModeEnteringValue, tagsModeLoading, tagsModeResults:
+			}
+		}
+		if key.Matches(typed, m.keys.Submit) && m.mode == tagsModeEnteringValue {
+			return m, m.submitValue()
 		}
 	}
-	if m.loading {
+
+	switch m.mode {
+	case tagsModeBrowsing:
+		var cmd tea.Cmd
+		m.operations, cmd = m.operations.Update(msg)
+		return m, cmd
+	case tagsModePickingType, tagsModePickingEntity:
+		var cmd tea.Cmd
+		m.picker, cmd = m.picker.Update(msg)
+		return m, cmd
+	case tagsModeEnteringValue:
+		var cmd tea.Cmd
+		m.form, cmd = m.form.Update(msg)
+		return m, cmd
+	case tagsModeLoading:
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
+	case tagsModeResults:
+		var cmd tea.Cmd
+		m.results, cmd = m.results.Update(msg)
+		return m, cmd
 	}
-	var cmd tea.Cmd
-	m.form, cmd = m.form.Update(msg)
-	return m, cmd
+	return m, nil
 }
 
 func (m *Tags) View() string {
-	header := m.styles.Title.Render("Entity Tags")
-	subtitle := m.styles.Subtitle.Render("Inspect, add, replace, or remove user-authored tags on any operational entity")
-	parts := []string{header, subtitle, "", m.form.View(), "", m.styles.InfoText.Render("Submit with ctrl+s • Tags use key or key=value • Removal uses key")}
-	if m.loading {
-		parts = append(parts, "", m.spinner.View())
-	} else if m.err != nil {
-		parts = append(parts, "", m.styles.ErrorText.Render("Error: "+m.err.Error()))
-	} else if m.result != nil {
-		parts = append(parts, "", m.renderResult())
+	var content string
+	switch m.mode {
+	case tagsModeBrowsing:
+		content = m.operations.View()
+	case tagsModePickingType, tagsModePickingEntity:
+		content = m.styles.DialogModal.Render(m.picker.View())
+	case tagsModeEnteringValue:
+		content = m.styles.DialogModal.Render(lipgloss.JoinVertical(lipgloss.Left,
+			m.styles.DialogTitle.Render(operationTitle(m.operation)), "", m.form.View(), "",
+			m.styles.HelpDesc.Render("ctrl+s submit • esc cancel")))
+	case tagsModeLoading:
+		content = m.spinner.View()
+	case tagsModeResults:
+		title := m.styles.Title.Render(operationTitle(m.operation))
+		if m.err != nil {
+			content = lipgloss.JoinVertical(lipgloss.Left, title, "", m.styles.ErrorText.Render("Error: "+m.err.Error()), "", m.styles.HelpDesc.Render("esc back"))
+		} else {
+			content = lipgloss.JoinVertical(lipgloss.Left, title, "", m.results.View(), "", m.styles.HelpDesc.Render("↑/↓ navigate • esc back"))
+		}
 	}
-	body := lipgloss.JoinVertical(lipgloss.Left, parts...)
-	if m.width > 0 && m.height > 0 {
-		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, body)
+	if m.width > 0 && m.height > 0 && m.mode != tagsModeBrowsing {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 	}
-	return body
+	return content
 }
 
 func (m *Tags) ShortHelp() []key.Binding {
-	return []key.Binding{m.keys.NextField, m.keys.PrevField, m.keys.Submit, m.keys.Back}
-}
-
-func (m *Tags) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{m.keys.NextField, m.keys.PrevField, m.keys.Submit},
-		{m.keys.Back, m.keys.Help, m.keys.Quit},
+	if m.mode == tagsModeEnteringValue {
+		return []key.Binding{m.keys.Submit, m.keys.Back}
 	}
+	if m.mode == tagsModeBrowsing {
+		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Enter, m.keys.Back}
+	}
+	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Enter, m.keys.Back}
 }
 
-func (m *Tags) submit() tea.Cmd {
-	if m.loading {
+func (m *Tags) FullHelp() [][]key.Binding { return [][]key.Binding{m.ShortHelp()} }
+
+func (m *Tags) selectOperation() tea.Cmd {
+	selected, ok := m.operations.SelectedItem().(tagOperationItem)
+	if !ok {
 		return nil
 	}
+	m.operation, m.err, m.result = selected.operation, nil, nil
+	switch selected.operation {
+	case tagOperationInspect, tagOperationAdd, tagOperationRemove:
+		m.picker.Title = "Select entity type"
+		m.picker.SetItems(entityTypeItems())
+		m.picker.ResetSelected()
+		m.mode = tagsModePickingType
+		return nil
+	case tagOperationShow, tagOperationShowKey:
+		if err := m.value.SetValue(""); err != nil {
+			m.err = err
+			return nil
+		}
+		m.mode = tagsModeEnteringValue
+		return m.form.Init()
+	case tagOperationSummary:
+		m.mode = tagsModeLoading
+		return tea.Batch(m.spinner.Init(), m.runOperation(tag.Tag{}))
+	}
+	return nil
+}
+
+func entityTypeItems() []list.Item {
+	return []list.Item{
+		tagTypeItem{entity.TypeDrink, "Drinks"}, tagTypeItem{entity.TypeIngredient, "Ingredients"},
+		tagTypeItem{entity.TypeInventory, "Inventory"}, tagTypeItem{entity.TypeMenu, "Menus"},
+		tagTypeItem{entity.TypeOrder, "Orders"},
+	}
+}
+
+func (m *Tags) selectType() tea.Cmd {
+	selected, ok := m.picker.SelectedItem().(tagTypeItem)
+	if !ok {
+		return nil
+	}
+	m.mode = tagsModeLoading
+	return tea.Batch(m.spinner.Init(), m.loadEntities(selected.typeID))
+}
+
+func (m *Tags) selectEntity() tea.Cmd {
+	selected, ok := m.picker.SelectedItem().(tagEntityItem)
+	if !ok {
+		return nil
+	}
+	m.target = selected.uid
+	if m.operation == tagOperationInspect {
+		m.mode = tagsModeLoading
+		return tea.Batch(m.spinner.Init(), m.runOperation(tag.Tag{}))
+	}
+	if err := m.value.SetValue(""); err != nil {
+		m.err = err
+		return nil
+	}
+	m.mode = tagsModeEnteringValue
+	return m.form.Init()
+}
+
+func (m *Tags) submitValue() tea.Cmd {
 	if err := m.form.Validate(); err != nil {
 		m.err = errors.Invalidf("%v", err)
 		return nil
 	}
-	rawID := strings.TrimSpace(stringValue(m.entityID.Value()))
-	target, err := entity.ParseID(rawID)
-	if err != nil {
-		m.err = err
-		return nil
-	}
-	operation, ok := m.operation.Value().(tagOperation)
-	if !ok {
-		m.err = errors.Invalidf("operation is required")
-		return nil
-	}
-	rawValue := strings.TrimSpace(stringValue(m.value.Value()))
+	raw, _ := m.value.Value().(string)
 	var parsed tag.Tag
-	switch operation {
-	case tagOperationInspect:
-	case tagOperationAdd:
-		parsed, err = tag.Parse(rawValue)
-	case tagOperationRemove:
-		parsed, err = tag.New(rawValue, "")
-	default:
-		err = errors.Invalidf("unsupported tag operation: %s", operation)
+	var err error
+	if m.operation == tagOperationRemove || m.operation == tagOperationShowKey {
+		parsed, err = tag.New(strings.TrimSpace(raw), "")
+	} else {
+		parsed, err = tag.Parse(strings.TrimSpace(raw))
 	}
 	if err != nil {
 		m.err = err
 		return nil
 	}
-	m.loading = true
-	m.err = nil
-	m.result = nil
-	return tea.Batch(m.spinner.Init(), func() tea.Msg {
-		msg := TagsLoadedMsg{EntityID: rawID, Operation: operation}
-		switch operation {
-		case tagOperationInspect:
-			msg.Tags, msg.Err = m.app.Tags.List(m.context(), target)
-		case tagOperationAdd:
-			result, runErr := m.app.Tags.Upsert(m.context(), target, parsed)
-			msg.Tags, msg.Changed, msg.Err = result.Tags, result.Changed, runErr
-		case tagOperationRemove:
-			result, runErr := m.app.Tags.Remove(m.context(), target, parsed.Key)
-			msg.Tags, msg.Changed, msg.Err = result.Tags, result.Changed, runErr
-		}
-		return msg
-	})
+	m.mode, m.err = tagsModeLoading, nil
+	return tea.Batch(m.spinner.Init(), m.runOperation(parsed))
 }
 
-func (m *Tags) renderResult() string {
-	values := m.result.Tags.Canonical().String()
-	if values == "" {
-		values = "(none)"
+func (m *Tags) runOperation(value tag.Tag) tea.Cmd {
+	m.requestID++
+	requestID, operation, target := m.requestID, m.operation, m.target
+	ctx := m.context()
+	return func() tea.Msg {
+		msg := tagResultMsg{requestID: requestID, operation: operation, target: target}
+		switch operation {
+		case tagOperationInspect:
+			msg.tags, msg.err = m.app.Tags.List(ctx, target)
+		case tagOperationAdd:
+			result, err := m.app.Tags.Upsert(ctx, target, value)
+			msg.tags, msg.changed, msg.err = result.Tags, result.Changed, err
+		case tagOperationRemove:
+			result, err := m.app.Tags.Remove(ctx, target, value.Key)
+			msg.tags, msg.changed, msg.err = result.Tags, result.Changed, err
+		case tagOperationShow:
+			msg.references, msg.err = m.app.Tags.Show(ctx, value, true)
+		case tagOperationShowKey:
+			msg.references, msg.err = m.app.Tags.Show(ctx, value, false)
+		case tagOperationSummary:
+			msg.summaries, msg.err = m.app.Tags.Summary(ctx)
+		}
+		return msg
 	}
-	state := "inspected"
-	if m.result.Operation != tagOperationInspect {
-		state = "unchanged"
-		if m.result.Changed {
-			state = "changed"
+}
+
+func (m *Tags) loadEntities(entityType cedar.EntityType) tea.Cmd {
+	m.requestID++
+	requestID := m.requestID
+	ctx := m.context()
+	return func() tea.Msg {
+		items := []list.Item{}
+		switch entityType {
+		case entity.TypeDrink:
+			values, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*drinksmodels.Drink], error) {
+				return m.app.Drinks.List(ctx, drinks.ListRequest{Cursor: cursor})
+			})
+			if err != nil {
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
+			}
+			for _, v := range values {
+				items = append(items, tagEntityItem{v.EntityUID(), v.Name, fmt.Sprintf("%s • %s", v.Category, v.ID)})
+			}
+		case entity.TypeIngredient:
+			values, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*ingredientsmodels.Ingredient], error) {
+				return m.app.Ingredients.List(ctx, ingredients.ListRequest{Cursor: cursor})
+			})
+			if err != nil {
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
+			}
+			for _, v := range values {
+				items = append(items, tagEntityItem{v.EntityUID(), v.Name, fmt.Sprintf("%s • %s", v.Category, v.ID)})
+			}
+		case entity.TypeInventory:
+			values, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*inventorymodels.Inventory], error) {
+				return m.app.Inventory.List(ctx, inventory.ListRequest{Cursor: cursor})
+			})
+			if err != nil {
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
+			}
+			for _, v := range values {
+				items = append(items, tagEntityItem{v.EntityUID(), v.ID.String(), "Ingredient " + v.IngredientID.String()})
+			}
+		case entity.TypeMenu:
+			values, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*menusmodels.Menu], error) {
+				return m.app.Menus.List(ctx, menus.ListRequest{Cursor: cursor})
+			})
+			if err != nil {
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
+			}
+			for _, v := range values {
+				items = append(items, tagEntityItem{v.EntityUID(), v.Name, fmt.Sprintf("%s • %s", v.Status, v.ID)})
+			}
+		case entity.TypeOrder:
+			values, err := paging.Collect(func(cursor paging.Cursor) (paging.Page[*ordersmodels.Order], error) {
+				return m.app.Orders.List(ctx, orders.ListRequest{Cursor: cursor})
+			})
+			if err != nil {
+				return tagEntitiesLoadedMsg{requestID: requestID, err: err}
+			}
+			for _, v := range values {
+				items = append(items, tagEntityItem{v.EntityUID(), v.ID.String(), fmt.Sprintf("%s • menu %s", v.Status, v.MenuID)})
+			}
+		}
+		return tagEntitiesLoadedMsg{requestID: requestID, items: items}
+	}
+}
+
+func (m *Tags) setResultTable(result tagResultMsg) {
+	tableWidth := tagTableWidth(m.width)
+	switch result.operation {
+	case tagOperationSummary:
+		rows := make([]table.Row, 0, len(result.summaries))
+		for _, v := range result.summaries {
+			rows = append(rows, table.Row{v.Tag, fmt.Sprint(v.Total), fmt.Sprint(v.Drinks), fmt.Sprint(v.Ingredients), fmt.Sprint(v.Inventory), fmt.Sprint(v.Menus), fmt.Sprint(v.Orders)})
+		}
+		m.replaceResultTable(summaryColumns(tableWidth), rows)
+	case tagOperationShow, tagOperationShowKey:
+		rows := make([]table.Row, 0, len(result.references))
+		for _, v := range result.references {
+			rows = append(rows, table.Row{v.EntityType, v.EntityID, v.Tag})
+		}
+		m.replaceResultTable(referenceColumns(tableWidth), rows)
+	case tagOperationInspect, tagOperationAdd, tagOperationRemove:
+		columns := entityColumns(tableWidth)
+		state := "inspected"
+		if result.operation != tagOperationInspect {
+			state = "unchanged"
+			if result.changed {
+				state = "changed"
+			}
+		}
+		values := cmp.Or(result.tags.Canonical().String(), "(none)")
+		m.replaceResultTable(columns, []table.Row{{string(result.target.ID), values, state}})
+	}
+	m.results.SetCursor(0)
+}
+
+// replaceResultTable safely changes a Bubble Tea table's schema. SetColumns
+// eagerly renders the existing viewport, so rows from the previous schema
+// must be removed before changing the column count.
+func (m *Tags) replaceResultTable(columns []table.Column, rows []table.Row) {
+	m.results.SetRows(nil)
+	m.results.SetColumns(columns)
+	m.results.SetRows(rows)
+}
+
+func tagTableWidth(viewWidth int) int {
+	return max(viewWidth-4, 40)
+}
+
+func entityColumns(width int) []table.Column {
+	const entityWidth, resultWidth = 34, 10
+	return []table.Column{
+		{Title: "ENTITY", Width: entityWidth},
+		{Title: "TAGS", Width: flexibleTagColumn(width, entityWidth+resultWidth, 3)},
+		{Title: "RESULT", Width: resultWidth},
+	}
+}
+
+func referenceColumns(width int) []table.Column {
+	const entityTypeWidth, entityIDWidth = 14, 34
+	return []table.Column{
+		{Title: "ENTITY TYPE", Width: entityTypeWidth},
+		{Title: "ENTITY ID", Width: entityIDWidth},
+		{Title: "TAG", Width: flexibleTagColumn(width, entityTypeWidth+entityIDWidth, 3)},
+	}
+}
+
+func summaryColumns(width int) []table.Column {
+	const fixedWidth = 54
+	tagWidth := flexibleTagColumn(width, fixedWidth, 7)
+	return []table.Column{{Title: "TAG", Width: tagWidth}, {Title: "TOTAL", Width: 7}, {Title: "DRINKS", Width: 8}, {Title: "INGREDIENTS", Width: 13}, {Title: "INVENTORY", Width: 11}, {Title: "MENUS", Width: 7}, {Title: "ORDERS", Width: 8}}
+}
+
+// flexibleTagColumn accounts for the horizontal padding applied to every
+// table cell so styled rows fit before the viewport truncates them.
+func flexibleTagColumn(width, fixedWidth, columnCount int) int {
+	const cellPadding = 2
+	return max(width-fixedWidth-(cellPadding*columnCount), 1)
+}
+
+func tagTableStyles(s styles.Styles) table.Styles {
+	result := table.DefaultStyles()
+	result.Header = s.ListView.Title.Padding(0, 1)
+	result.Cell = s.ListView.Muted.Padding(0, 1)
+	result.Selected = tagSelectedStyle(s)
+	return result
+}
+
+// tagSelectedStyle avoids a filled selection background. Some terminal color
+// profiles resolve adaptive foreground and background colors independently,
+// which can otherwise produce light text on a light background.
+func tagSelectedStyle(s styles.Styles) lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Underline(true).Foreground(s.Primary)
+}
+
+func (m *Tags) setSize(width, height int) {
+	m.width, m.height = width, height
+	contentWidth, contentHeight := tagTableWidth(width), max(height-4, 10)
+	m.operations.SetSize(contentWidth, contentHeight)
+	m.picker.SetSize(min(contentWidth, 72), min(contentHeight, 24))
+	m.form.SetWidth(min(contentWidth, 72))
+	m.results.SetWidth(contentWidth)
+	m.results.SetHeight(max(contentHeight-5, 5))
+	if m.result != nil {
+		m.setResultTable(*m.result)
+	}
+}
+
+func (m *Tags) back() {
+	if m.mode == tagsModeLoading {
+		m.requestID++
+	}
+	switch m.mode {
+	case tagsModeBrowsing, tagsModePickingType, tagsModeLoading, tagsModeResults:
+		m.mode = tagsModeBrowsing
+	case tagsModePickingEntity:
+		m.picker.Title = "Select entity type"
+		m.picker.SetItems(entityTypeItems())
+		m.mode = tagsModePickingType
+	case tagsModeEnteringValue:
+		if !m.target.IsZero() {
+			m.mode = tagsModePickingEntity
+		} else {
+			m.mode = tagsModeBrowsing
 		}
 	}
-	return m.styles.Card.Render(fmt.Sprintf("%s\nTags: %s\nResult: %s", m.result.EntityID, values, state))
+	m.err, m.result = nil, nil
+}
+
+func operationTitle(value tagOperation) string {
+	for _, item := range tagOperationItems() {
+		operation := item.(tagOperationItem)
+		if operation.operation == value {
+			return operation.title
+		}
+	}
+	return "Tags"
 }
 
 func (m *Tags) context() *middleware.Context { return m.app.Context() }
-
-func stringValue(value any) string {
-	text, _ := value.(string)
-	return text
-}

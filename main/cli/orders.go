@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"strconv"
 	"strings"
 
@@ -9,10 +10,10 @@ import (
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	orderscli "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
-	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	clitable "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli/table"
 	"github.com/urfave/cli/v3"
 )
 
@@ -28,20 +29,20 @@ func (c *CLI) ordersCommands() *cli.Command {
 					&cli.StringArgs{Name: "items", UsageText: "<drink-id>:<qty> [<drink-id>:<qty>...]", Max: -1},
 				},
 				Flags: appendTagsFlag([]cli.Flag{
-					JSONFlag,
-					TemplateFlag,
-					StdinFlag,
-					FileFlag,
+					clitoolkit.JSONFlag,
+					clitoolkit.TemplateFlag,
+					clitoolkit.StdinFlag,
+					clitoolkit.FileFlag,
 					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID"},
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
-						return writeJSON(cmd.Writer, orderscli.TemplatePlace())
+						return clitoolkit.WriteJSON(cmd.Writer, orderscli.TemplatePlace())
 					}
 
 					var input *ordersmodels.Order
 					if cmd.Bool("stdin") || strings.TrimSpace(cmd.String("file")) != "" {
-						doc, err := readJSONInput[orderscli.OrderInput](cmd)
+						doc, err := clitoolkit.ReadJSONInput[orderscli.OrderInput](cmd)
 						if err != nil {
 							return err
 						}
@@ -97,7 +98,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, orderscli.ToOrderView(created))
+						return clitoolkit.WriteJSON(cmd.Writer, orderscli.ToOrderView(created))
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, created.ID.String())
@@ -108,7 +109,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List orders",
 				Flags: appendFilterFlags(append([]cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{
 						Name:  "status",
 						Usage: "Filter by status (pending|completed|cancelled)",
@@ -133,7 +134,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, paging.Page[orderscli.OrderRow]{
+						return clitoolkit.WriteJSON(cmd.Writer, paging.Page[orderscli.OrderRow]{
 							Items: orderscli.ToOrderRows(res.Items), Next: res.Next,
 						})
 					}
@@ -147,7 +148,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "get",
 				Usage: "Get an order",
 				Flags: []cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -160,7 +161,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, orderscli.ToOrderView(res))
+						return clitoolkit.WriteJSON(cmd.Writer, orderscli.ToOrderView(res))
 					}
 					if err := clitable.PrintDetail(cmd.Writer, orderscli.ToOrderDetail(res)); err != nil {
 						return err
@@ -176,7 +177,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "complete",
 				Usage: "Complete an order",
 				Flags: appendTagsFlag([]cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -191,7 +192,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, orderscli.ToOrderView(updated))
+						return clitoolkit.WriteJSON(cmd.Writer, orderscli.ToOrderView(updated))
 					}
 					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
 					return err
@@ -201,7 +202,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "cancel",
 				Usage: "Cancel an order",
 				Flags: appendTagsFlag([]cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -216,7 +217,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, orderscli.ToOrderView(updated))
+						return clitoolkit.WriteJSON(cmd.Writer, orderscli.ToOrderView(updated))
 					}
 					_, err = fmt.Fprintln(cmd.Writer, updated.ID.String())
 					return err

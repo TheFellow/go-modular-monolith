@@ -2,28 +2,32 @@ package tui
 
 import (
 	"errors"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// RenameMenuVM renders an inline rename form.
+// RenameMenuVM renders an inline menu update form.
 type RenameMenuVM struct {
-	app        *app.Session
-	input      textinput.Model
-	menu       *models.Menu
-	styles     forms.FormStyles
-	keys       forms.FormKeys
-	err        error
-	submitting bool
+	app         *app.Session
+	form        *forms.Form
+	name        *forms.TextField
+	description *forms.TextField
+	tags        *forms.TextField
+	menu        *models.Menu
+	styles      forms.FormStyles
+	keys        forms.FormKeys
+	err         error
+	submitting  bool
 }
 
 // MenuRenamedMsg is sent when the menu has been renamed.
@@ -41,24 +45,21 @@ func NewRenameMenuVM(app *app.Session, menu *models.Menu) *RenameMenuVM {
 	if menu == nil {
 		menu = &models.Menu{}
 	}
-	input := textinput.New()
-	input.Prompt = ""
-	input.CharLimit = 100
-	input.SetValue(menu.Name)
-	input.Focus()
+	name := forms.NewTextField("Name", forms.WithRequired(), forms.WithMaxLength(100), forms.WithInitialValue(menu.Name))
+	description := forms.NewTextField("Description", forms.WithMaxLength(500), forms.WithInitialValue(menu.Description))
+	tags := components.NewOptionalTagsField(menu.Tags.Canonical().String())
+	formStyles := styles.Standard.Form
+	formKeys := keys.Standard.Form
 
 	return &RenameMenuVM{
-		app:    app,
-		input:  input,
-		menu:   menu,
-		styles: tuistyles.App.Form,
-		keys:   tuikeys.App.Form,
+		app: app, form: forms.New(formStyles, formKeys, name, description, tags), name: name, description: description, tags: tags,
+		menu: menu, styles: formStyles, keys: formKeys,
 	}
 }
 
 // Init initializes the input.
 func (m *RenameMenuVM) Init() tea.Cmd {
-	return nil
+	return m.form.Init()
 }
 
 // Update handles messages for the rename form.
@@ -79,20 +80,13 @@ func (m *RenameMenuVM) Update(msg tea.Msg) (*RenameMenuVM, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
+	m.form, cmd = m.form.Update(msg)
 	return m, cmd
 }
 
 // View renders the rename form.
 func (m *RenameMenuVM) View() string {
-	label := m.styles.Label.Render("Name")
-	inputView := m.input.View()
-	if m.input.Focused() {
-		inputView = m.styles.InputFocused.Render(inputView)
-	} else {
-		inputView = m.styles.Input.Render(inputView)
-	}
-	view := strings.Join([]string{"Rename Menu", "", label, inputView}, "\n")
+	view := strings.Join([]string{"Edit Menu", "", m.form.View(), "", "Leave description blank to preserve it."}, "\n")
 	if m.err != nil {
 		errText := m.styles.Error.Render("Error: " + m.err.Error())
 		return strings.Join([]string{errText, "", view}, "\n")
@@ -105,19 +99,19 @@ func (m *RenameMenuVM) SetWidth(w int) {
 	if w <= 0 {
 		return
 	}
-	m.input.Width = w
+	m.form.SetWidth(w)
 }
 
 // IsDirty reports whether the input has been modified.
 func (m *RenameMenuVM) IsDirty() bool {
-	return strings.TrimSpace(m.input.Value()) != strings.TrimSpace(m.menu.Name)
+	return m.form.IsDirty()
 }
 
 func (m *RenameMenuVM) submit() tea.Cmd {
 	if m.submitting {
 		return nil
 	}
-	name := strings.TrimSpace(m.input.Value())
+	name := strings.TrimSpace(toString(m.name.Value()))
 	if name == "" {
 		m.err = errors.New("name is required")
 		return nil
@@ -126,16 +120,24 @@ func (m *RenameMenuVM) submit() tea.Cmd {
 		m.err = errors.New("menu not loaded")
 		return nil
 	}
+	desired, err := components.DesiredTags(m.tags, tag.ParseCollection)
+	if err != nil {
+		m.err = err
+		return nil
+	}
 	m.err = nil
 	m.submitting = true
 
 	updated := &models.Menu{
-		ID:   m.menu.ID,
-		Name: name,
+		ID:          m.menu.ID,
+		Name:        name,
+		Description: strings.TrimSpace(toString(m.description.Value())),
 	}
 
 	return func() tea.Msg {
-		menu, err := m.app.Menus.Update(m.context(), updated)
+		menu, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Menu, error) {
+			return m.app.Menus.Update(ctx, updated)
+		})
 		if err != nil {
 			return RenameErrorMsg{Err: err}
 		}

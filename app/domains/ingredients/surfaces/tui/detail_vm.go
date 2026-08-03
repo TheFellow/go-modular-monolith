@@ -1,11 +1,12 @@
 package tui
 
 import (
+	"cmp"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -41,7 +42,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + ingredient.ID.String()),
 		d.styles.Subtitle.Render("Category: ") + string(ingredient.Category),
 		d.styles.Subtitle.Render("Unit: ") + string(ingredient.Unit),
-		d.styles.Subtitle.Render("Tags: ") + tagLabel(ingredient.Tags.Canonical().String()),
+		d.styles.Subtitle.Render("Tags: ") + cmp.Or(ingredient.Tags.Canonical().String(), "(none)"),
 	}
 
 	if strings.TrimSpace(ingredient.Description) != "" {
@@ -53,11 +54,4 @@ func (d *DetailViewModel) View() string {
 		content = lipgloss.NewStyle().Width(d.width).Render(content)
 	}
 	return content
-}
-
-func tagLabel(value string) string {
-	if value == "" {
-		return "(none)"
-	}
-	return value
 }

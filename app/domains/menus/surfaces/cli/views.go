@@ -93,6 +93,14 @@ func TemplateCreate() MenuRow {
 	}
 }
 
+func TemplateUpdate() MenuRow {
+	return MenuRow{
+		ID:   "mnu-...",
+		Name: "Summer Cocktails",
+		Desc: "Refreshing drinks for warm weather",
+	}
+}
+
 func DecodeCreate(r io.Reader) (*models.Menu, error) {
 	var row MenuRow
 	if err := json.NewDecoder(r).Decode(&row); err != nil {

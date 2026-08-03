@@ -2,18 +2,18 @@ package tui
 
 import (
 	"errors"
-	"strconv"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
-	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -28,7 +28,8 @@ type SetInventoryVM struct {
 	err        error
 	submitting bool
 	quantity   *forms.NumberField
-	cost       *forms.NumberField
+	cost       *forms.TextField
+	tags       *forms.TextField
 }
 
 // SetErrorMsg is sent when setting inventory fails.
@@ -48,25 +49,17 @@ func NewSetInventoryVM(app *app.Session, row InventoryRow) *SetInventoryVM {
 		_ = quantityField.SetValue(row.Inventory.Amount.Value())
 	}
 
-	costOpts := []forms.FieldOption{
-		forms.WithPrecision(2),
-		forms.WithMin(0),
-		forms.WithPlaceholder("Optional"),
-	}
-	if price, ok := row.Inventory.CostPerUnit.Unwrap(); ok {
-		if cents, err := price.Cents(); err == nil {
-			costOpts = append(costOpts, forms.WithInitialValue(float64(cents)/100))
-		}
-	}
-	costField := forms.NewNumberField("Cost Per Unit", costOpts...)
+	costField := forms.NewTextField("Cost Per Unit", forms.WithPlaceholder("Optional, e.g. $1.23 or EUR 1.23"))
+	tagsField := components.NewOptionalTagsField(row.Inventory.Tags.Canonical().String())
 
-	formStyles := tuistyles.App.Form
-	formKeys := tuikeys.App.Form
+	formStyles := styles.Standard.Form
+	formKeys := keys.Standard.Form
 	form := forms.New(
 		formStyles,
 		formKeys,
 		quantityField,
 		costField,
+		tagsField,
 	)
 
 	return &SetInventoryVM{
@@ -77,6 +70,7 @@ func NewSetInventoryVM(app *app.Session, row InventoryRow) *SetInventoryVM {
 		keys:     formKeys,
 		quantity: quantityField,
 		cost:     costField,
+		tags:     tagsField,
 	}
 }
 
@@ -166,6 +160,11 @@ func (m *SetInventoryVM) submit() tea.Cmd {
 		m.err = err
 		return nil
 	}
+	desired, err := components.DesiredTags(m.tags, tag.ParseCollection)
+	if err != nil {
+		m.err = err
+		return nil
+	}
 
 	update := &models.Update{
 		IngredientID: m.row.Ingredient.ID,
@@ -176,7 +175,9 @@ func (m *SetInventoryVM) submit() tea.Cmd {
 	m.submitting = true
 
 	return func() tea.Msg {
-		updated, err := m.app.Inventory.Set(m.context(), update)
+		updated, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Inventory, error) {
+			return m.app.Inventory.Set(ctx, update)
+		})
 		if err != nil {
 			return SetErrorMsg{Err: err}
 		}
@@ -189,18 +190,12 @@ func (m *SetInventoryVM) context() *middleware.Context {
 }
 
 func (m *SetInventoryVM) parseCost() (money.Price, error) {
-	value, ok := toFloat(m.cost.Value())
-	if !ok {
+	value := strings.TrimSpace(m.cost.Value().(string))
+	if value == "" {
 		if price, ok := m.row.Inventory.CostPerUnit.Unwrap(); ok {
 			return price, nil
 		}
-		return money.NewPriceFromCents(0, currency.USD), nil
+		return money.ParsePrice("USD 0.00")
 	}
-
-	curr := currency.USD
-	if price, ok := m.row.Inventory.CostPerUnit.Unwrap(); ok {
-		curr = price.Currency
-	}
-	amount := strconv.FormatFloat(value, 'f', 2, 64)
-	return money.NewPrice(amount, curr)
+	return money.ParsePrice(value)
 }

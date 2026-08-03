@@ -2,196 +2,186 @@ package tui
 
 import (
 	"fmt"
-
-	"github.com/TheFellow/go-modular-monolith/app"
-	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
-	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
-	"github.com/TheFellow/go-modular-monolith/main/tui/components"
-	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
-	"github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+
+	"github.com/TheFellow/go-modular-monolith/app"
+	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/paginator"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
-const auditDefaultLimit = 50
-
-// ListViewModel renders the audit list and detail panes.
 type ListViewModel struct {
-	app    *app.Session
-	styles tui.ListViewStyles
-	keys   tui.ListViewKeys
-
-	list    list.Model
-	detail  *DetailViewModel
-	spinner components.Spinner
-	loading bool
-	err     error
-
-	width       int
-	height      int
-	listWidth   int
-	detailWidth int
+	app           *app.Session
+	keys          keys.ListViewKeys
+	formKeys      forms.FormKeys
+	shell         *tui.ListDetail
+	detail        *DetailViewModel
+	query         auditQuery
+	next          paging.Cursor
+	history       []paging.Cursor
+	filter        *filterVM
+	loadToken     uint64
+	width, height int
 }
 
-func NewListViewModel(app *app.Session) *ListViewModel {
-	delegate := list.NewDefaultDelegate()
-	delegate.ShowDescription = true
-	delegate.Styles.SelectedTitle = tuistyles.App.ListView.Selected
-	delegate.Styles.SelectedDesc = tuistyles.App.ListView.Selected
-
-	l := list.New([]list.Item{}, delegate, 0, 0)
-	l.Title = "Audit"
-	l.SetShowHelp(false)
-	l.SetShowStatusBar(false)
-	l.SetShowPagination(true)
-	l.Paginator.Type = paginator.Arabic
-	l.SetFilteringEnabled(true)
-
-	vm := &ListViewModel{
-		app:     app,
-		styles:  tuistyles.App.ListView,
-		keys:    tuikeys.App.ListView,
-		list:    l,
-		detail:  NewDetailViewModel(tuistyles.App.ListView),
-		loading: true,
-	}
-	vm.spinner = components.NewSpinner("Loading audit entries...", vm.styles.Subtitle)
-	return vm
+func NewListViewModel(session *app.Session) *ListViewModel {
+	m := &ListViewModel{app: session, keys: keys.Standard.ListView, formKeys: keys.Standard.Form, shell: tui.NewListDetail("Audit", "Loading audit entries...", styles.Standard.ListView), detail: NewDetailViewModel(styles.Standard.ListView), query: auditQuery{scope: scopeAll, limit: paging.DefaultLimit}}
+	m.shell.SetLocalFiltering(false)
+	m.shell.SetLocalPagination(false)
+	m.updateTitle()
+	return m
 }
-
-func (m *ListViewModel) Init() tea.Cmd {
-	m.loading = true
-	return tea.Batch(m.spinner.Init(), m.loadEntries())
+func (m *ListViewModel) Init() tea.Cmd { return tea.Batch(m.shell.BeginLoading(), m.loadEntries()) }
+func (m *ListViewModel) Interaction() tui.Interaction {
+	return tui.Interaction{CapturesText: m.filter != nil, HandlesBack: m.filter != nil}
 }
-
-func (m *ListViewModel) Update(msg tea.Msg) (views.ViewModel, tea.Cmd) {
-	switch msg := msg.(type) {
+func (m *ListViewModel) Update(message tea.Msg) (tui.ViewModel, tea.Cmd) {
+	switch msg := message.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
+		if m.filter != nil {
+			m.filter.SetSize(msg.Width, msg.Height)
+		}
 		return m, nil
 	case tea.KeyMsg:
-		if key.Matches(msg, m.keys.Refresh) {
-			m.loading = true
-			m.err = nil
-			return m, tea.Batch(m.spinner.Init(), m.loadEntries())
+		if m.filter != nil {
+			if key.Matches(msg, m.keys.Back) && !m.filter.form.IsEditing() {
+				m.filter = nil
+				return m, nil
+			}
+			if key.Matches(msg, m.formKeys.Submit) {
+				q, _, err := m.filter.Query()
+				if err != nil {
+					return m, nil
+				}
+				m.query = q
+				m.next = ""
+				m.history = nil
+				m.filter = nil
+				m.updateTitle()
+				return m, tea.Batch(m.shell.BeginLoading(), m.loadEntries())
+			}
+			return m, m.filter.Update(msg)
+		}
+		switch {
+		case key.Matches(msg, m.keys.Refresh):
+			return m, tea.Batch(m.shell.BeginLoading(), m.loadEntries())
+		case msg.String() == "f":
+			m.filter = newFilterVM(m.query)
+			m.filter.SetSize(m.width, m.height)
+			return m, m.filter.Init()
+		case msg.String() == "]" && m.next != "":
+			m.history = append(m.history, m.query.cursor)
+			m.query.cursor = m.next
+			return m, tea.Batch(m.shell.BeginLoading(), m.loadEntries())
+		case msg.String() == "[" && len(m.history) > 0:
+			i := len(m.history) - 1
+			m.query.cursor = m.history[i]
+			m.history = m.history[:i]
+			return m, tea.Batch(m.shell.BeginLoading(), m.loadEntries())
 		}
 	case AuditLoadedMsg:
-		m.loading = false
-		m.err = msg.Err
+		if msg.Token != m.loadToken {
+			return m, nil
+		}
+		if msg.Err != nil {
+			// A failed refresh must not destroy the last successful result or its
+			// selection. This matches the other list surfaces and keeps the error
+			// recoverable with another refresh.
+			m.shell.SetResult(m.shell.Items(), msg.Err)
+			return m, nil
+		}
+		selected := selectedAuditID(m.shell.SelectedItem())
 		items := make([]list.Item, 0, len(msg.Entries))
 		for _, entry := range msg.Entries {
 			items = append(items, newAuditItem(entry))
 		}
-		m.list.SetItems(items)
+		m.next = msg.Next
+		m.shell.SetResult(items, msg.Err)
+		selectAuditID(m.shell, selected)
 		m.syncDetail()
+		m.updateTitle()
 		return m, nil
 	}
-
-	if m.loading {
-		var cmd tea.Cmd
-		m.spinner, cmd = m.spinner.Update(msg)
-		return m, cmd
-	}
-
-	var cmd tea.Cmd
-	m.list, cmd = m.list.Update(msg)
+	cmd := m.shell.Update(message)
 	m.syncDetail()
 	return m, cmd
 }
-
 func (m *ListViewModel) View() string {
-	if m.loading {
-		return m.renderLoading()
+	if m.filter != nil {
+		return m.filter.View()
 	}
-
-	listView := m.list.View()
-	if m.err != nil {
-		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
-	}
-	listView = m.styles.ListPane.Width(m.listWidth).Render(listView)
-
-	detailView := m.detail.View()
-	detailView = m.styles.DetailPane.Width(m.detailWidth).Render(detailView)
-
-	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
+	return m.shell.View(m.detail.View())
 }
-
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	return []key.Binding{
-		m.keys.Up, m.keys.Down,
-		m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
-		m.keys.Refresh, m.keys.Back,
-	}
+	return []key.Binding{m.keys.Up, m.keys.Down, m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage, m.keys.Refresh, m.keys.Back}
 }
-
 func (m *ListViewModel) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{m.keys.Up, m.keys.Down, m.keys.Enter},
-		{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
-		{m.keys.Refresh, m.keys.Back},
-	}
+	return [][]key.Binding{{m.keys.Up, m.keys.Down, m.keys.Enter}, {m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage}, {m.keys.Refresh, m.keys.Back}}
 }
-
 func (m *ListViewModel) loadEntries() tea.Cmd {
+	m.loadToken++
+	token := m.loadToken
+	q := m.query
 	return func() tea.Msg {
-		entries, err := m.app.Audit.List(m.context(), audit.ListRequest{Limit: auditDefaultLimit})
+		req, err := q.Request()
 		if err != nil {
-			return AuditLoadedMsg{Err: err}
+			return AuditLoadedMsg{Err: err, Token: token}
 		}
-
-		rows := make([]auditmodels.AuditEntry, 0, len(entries.Items))
-		for i, entry := range entries.Items {
+		page, err := m.app.Audit.List(m.context(), req)
+		if err != nil {
+			return AuditLoadedMsg{Err: err, Token: token}
+		}
+		rows := make([]auditmodels.AuditEntry, 0, len(page.Items))
+		for i, entry := range page.Items {
 			if entry == nil {
-				return AuditLoadedMsg{Err: errors.Internalf("audit entry %d missing", i)}
+				return AuditLoadedMsg{Err: errors.Internalf("audit entry %d missing", i), Token: token}
 			}
 			rows = append(rows, *entry)
 		}
-
-		return AuditLoadedMsg{Entries: rows}
+		return AuditLoadedMsg{Entries: rows, Next: page.Next, Token: token}
 	}
 }
-
-func (m *ListViewModel) renderLoading() string {
-	content := m.spinner.View()
-	if m.width <= 0 || m.height <= 0 {
-		return content
-	}
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
-}
-
 func (m *ListViewModel) setSize(width, height int) {
-	m.width = width
-	m.height = height
-
-	if width <= 0 {
-		return
-	}
-
-	listWidth, detailWidth := views.SplitListDetailWidths(width)
-
-	m.list.SetSize(listWidth, height)
+	m.width, m.height = width, height
+	_, detailWidth := m.shell.SetSize(width, height)
 	m.detail.SetSize(detailWidth, height)
-	m.listWidth = listWidth
-	m.detailWidth = detailWidth
 }
-
 func (m *ListViewModel) syncDetail() {
-	item, ok := m.list.SelectedItem().(auditItem)
+	item, ok := m.shell.SelectedItem().(auditItem)
 	if !ok {
 		m.detail.SetEntry(optional.None[auditmodels.AuditEntry]())
 		return
 	}
-	m.detail.SetEntry(optional.Some(item.entry))
+	m.detail.SetEntry(optional.Some(item.Value))
 }
-
-func (m *ListViewModel) context() *middleware.Context {
-	return m.app.Context()
+func (m *ListViewModel) context() *middleware.Context { return m.app.Context() }
+func (m *ListViewModel) updateTitle() {
+	title := fmt.Sprintf("Audit · %s · page %d", m.query.scope, len(m.history)+1)
+	m.shell.SetTitle(title)
+}
+func selectedAuditID(item list.Item) string {
+	if row, ok := item.(auditItem); ok {
+		return row.Value.ID.String()
+	}
+	return ""
+}
+func selectAuditID(shell *tui.ListDetail, id string) {
+	if id == "" {
+		return
+	}
+	for i, item := range shell.Items() {
+		if selectedAuditID(item) == id {
+			shell.Select(i)
+			return
+		}
+	}
 }

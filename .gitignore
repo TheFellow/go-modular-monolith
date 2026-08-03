@@ -39,3 +39,8 @@ go.work.sum
 /.ai/
 /.idea/
 /data/*
+
+# Native desktop packaging outputs (source assets remain tracked).
+/main/gui/Mixology
+/main/gui/Mixology.app/
+/main/gui/Mixology.tar.xz

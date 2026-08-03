@@ -8,6 +8,7 @@ import (
 	inventoryauthz "github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	menusauthz "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	ordersauthz "github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
+	taggingauthz "github.com/TheFellow/go-modular-monolith/app/domains/tagging/authz"
 )
 
 func policyDocuments() []PolicyDocument {
@@ -19,5 +20,6 @@ func policyDocuments() []PolicyDocument {
 		{Name: "app/domains/inventory/authz/policies.cedar", Text: inventoryauthz.Policies},
 		{Name: "app/domains/menus/authz/policies.cedar", Text: menusauthz.Policies},
 		{Name: "app/domains/orders/authz/policies.cedar", Text: ordersauthz.Policies},
+		{Name: "app/domains/tagging/authz/policies.cedar", Text: taggingauthz.Policies},
 	}
 }

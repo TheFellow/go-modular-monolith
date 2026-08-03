@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
+	clitable "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli/table"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/urfave/cli/v3"
 )
@@ -24,6 +27,60 @@ func (c *CLI) tagsCommands() *cli.Command {
 		Name:  "tags",
 		Usage: "Manage entity tags",
 		Commands: []*cli.Command{
+			{
+				Name:      "show",
+				Usage:     "Show active entities referencing a tag",
+				UsageText: "mixology tags show [--json] <key[=value]>\n   or: mixology tags show [--json] --key <key>",
+				Arguments: []cli.Argument{&cli.StringArg{Name: "tag", UsageText: "<key[=value]>"}},
+				Flags: []cli.Flag{
+					clitoolkit.JSONFlag,
+					&cli.StringFlag{Name: "key", Usage: "Match every value for this tag key"},
+				},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					rawTag := strings.TrimSpace(cmd.StringArg("tag"))
+					rawKey := strings.TrimSpace(cmd.String("key"))
+					if rawTag == "" && rawKey == "" {
+						return cli.Exit("tag argument or --key is required", errors.ExitUsage)
+					}
+					if rawTag != "" && rawKey != "" {
+						return cli.Exit("tag argument and --key cannot be used together", errors.ExitUsage)
+					}
+					exact := rawTag != ""
+					var value tag.Tag
+					var err error
+					if exact {
+						value, err = tag.Parse(rawTag)
+					} else {
+						value, err = tag.New(rawKey, "")
+					}
+					if err != nil {
+						return err
+					}
+					rows, err := c.app.Tags.Show(ctx, value, exact)
+					if err != nil {
+						return err
+					}
+					if cmd.Bool("json") {
+						return clitoolkit.WriteJSON(cmd.Writer, rows)
+					}
+					return clitable.PrintTable(cmd.Writer, rows)
+				}),
+			},
+			{
+				Name:  "summary",
+				Usage: "Summarize active tag usage",
+				Flags: []cli.Flag{clitoolkit.JSONFlag},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					rows, err := c.app.Tags.Summary(ctx)
+					if err != nil {
+						return err
+					}
+					if cmd.Bool("json") {
+						return clitoolkit.WriteJSON(cmd.Writer, rows)
+					}
+					return clitable.PrintTable(cmd.Writer, rows)
+				}),
+			},
 			{
 				Name:      "add",
 				Usage:     "Add or replace a tag",
@@ -97,7 +154,7 @@ func (c *CLI) tagsCommands() *cli.Command {
 					}
 					out := tagsOutput{EntityID: string(target.ID), Tags: values.Canonical()}
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, out)
+						return clitoolkit.WriteJSON(cmd.Writer, out)
 					}
 					return printTagState(cmd, out, "")
 				}),
@@ -130,7 +187,7 @@ func printTagMutation(cmd *cli.Command, result tagging.Result) error {
 		Changed:  &changed,
 	}
 	if cmd.Bool("json") {
-		return writeJSON(cmd.Writer, out)
+		return clitoolkit.WriteJSON(cmd.Writer, out)
 	}
 	state := "unchanged"
 	if changed {
@@ -140,10 +197,7 @@ func printTagMutation(cmd *cli.Command, result tagging.Result) error {
 }
 
 func printTagState(cmd *cli.Command, out tagsOutput, state string) error {
-	values := out.Tags.String()
-	if values == "" {
-		values = "(none)"
-	}
+	values := cmp.Or(out.Tags.String(), "(none)")
 	if state == "" {
 		_, err := fmt.Fprintf(cmd.Writer, "%s: %s\n", out.EntityID, values)
 		return err

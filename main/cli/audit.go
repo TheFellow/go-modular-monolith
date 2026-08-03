@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"io"
 	"strings"
 	"time"
@@ -9,9 +10,9 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	auditcli "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/cli"
-	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	clitable "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli/table"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/urfave/cli/v3"
 )
@@ -83,7 +84,7 @@ func (c *CLI) auditCommands() *cli.Command {
 
 func auditListFlags() []cli.Flag {
 	return append([]cli.Flag{
-		JSONFlag,
+		clitoolkit.JSONFlag,
 		&cli.StringFlag{
 			Name:  "entity",
 			Usage: "Filter by entity (Type::id)",
@@ -126,7 +127,7 @@ func (c *CLI) printAuditList(ctx *middleware.Context, cmd *cli.Command, req audi
 		return err
 	}
 	if cmd.Bool("json") {
-		return writeJSON(cmd.Writer, page)
+		return clitoolkit.WriteJSON(cmd.Writer, page)
 	}
 	if err := printAuditEntries(cmd.Writer, page.Items); err != nil {
 		return err

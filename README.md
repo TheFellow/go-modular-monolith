@@ -2,559 +2,81 @@
 
 [![CI](https://github.com/TheFellow/go-modular-monolith/actions/workflows/ci.yml/badge.svg)](https://github.com/TheFellow/go-modular-monolith/actions/workflows/ci.yml)
 
-A modular monolith sample that models a cocktail bar domain with explicit bounded contexts,
-middleware pipelines, Cedar-based authorization, and event-driven coordination. It ships with
-a CLI and a Bubble Tea TUI, both backed by an embedded bstore (bbolt) database.
+A working Go modular-monolith example built around a cocktail bar. Seven bounded contexts share
+one process and embedded database while keeping their commands, queries, persistence, policies,
+events, and presentation adapters explicit. The same application is exposed as a CLI, Bubble Tea
+TUI, and Fyne desktop client.
 
-For a guided architectural walkthrough, see the [tutorial series](https://github.com/TheFellow/go-modular-monolith/issues/23).
+## Five-minute start
 
-## Development
+Go `1.26.5` or newer is required. From the repository root:
 
-### Prerequisites
-
-- Go `1.26.5` or newer (see `go.mod`)
-- No root `Makefile` or wrapper scripts are required; the repo uses plain `go` commands, `arch-lint` runs via `go tool`, and Go linting runs through the pinned `golangci-lint` command shown below.
-
-### Common Local Workflow
-
-```bash
-# Regenerate generated code (dispatcher wiring, authz policies, entity IDs, error types)
-go generate ./...
-
-# Build
-go build ./...
-
-# Architecture boundaries
-go tool arch-lint -config=.arch-lint.yaml
-
-# Tests
-go test ./...
-```
-
-### Run the App
-
-The CLI binary is `mixology` (`main/cli`), and the TUI is launched through the same binary with
-`--tui`. Both use `data/mixology.db` by default.
-
-```bash
-# Seed a local database with sample ingredients, drinks, inventory, and a published menu
+```sh
 go run ./main/seed
-
-# CLI examples
 go run ./main/cli ingredients list
-go run ./main/cli ingredients list --limit 20
-# Continue any list command with the cursor printed by its previous page.
-go run ./main/cli ingredients list --limit 20 --cursor ing-...
-go run ./main/cli menus list
-go run ./main/cli audit list --limit 20
-# Continue with the cursor printed by the previous command.
-go run ./main/cli audit list --limit 20 --cursor aud-...
-
-# Discover the fields and examples supported by a list command.
-go run ./main/cli ingredients list --filter-help
-# Filters support parentheses, comparisons, membership, and symbolic or word-based logic.
-go run ./main/cli ingredients list --filter 'category == "spirit" && name.contains("gin")'
-go run ./main/cli audit list --filter '!success or started_at >= date("2026-07-01T00:00:00Z")'
-
-# Attach a label or key/value tag to any operational entity.
-go run ./main/cli tags add drk-abc123 featured
-go run ./main/cli tags add drk-abc123 audience=sommelier
-go run ./main/cli tags list drk-abc123
-
-# Test authorization boundaries with different roles
-go run ./main/cli --actor bartender menus list
-go run ./main/cli --as anonymous drinks list
-
-# Launch the TUI
-go run ./main/cli --tui
+go run ./main/tui
+# Close the TUI before starting the desktop client: the embedded database has one writer.
+go run ./main/gui
 ```
 
-Set `MIXOLOGY_DB=path/to/other.db` to override the database path used by `go run ./main/seed`.
-The CLI hardcodes `data/mixology.db`.
+All entrypoints use `data/mixology.db` by default. Override it with `--db` or `MIXOLOGY_DB`.
+They also share actor, logging, and metrics options; run any entrypoint with `--help` for the full
+set. The desktop client has additional [native prerequisites](main/gui/README.md#run-from-source).
 
-### Filtering Lists
-
-Every list command accepts a reusable `--filter` expression. Run that command with
-`--filter-help` to print its concrete filter fields, field types, supported syntax, and examples
-without opening the database. Filter schemas are defined alongside each domain's public models,
-so the help remains synchronized with the fields accepted by the application.
-
-Filters support `==`, `!=`, `<`, `<=`, `>`, `>=`, `in`, `not in`, parentheses, and Boolean logic.
-Both symbolic and word-based operators are accepted: `&&`/`and`, `||`/`or`, and `!`/`not`.
-String predicates accept the canonical dot syntax (`name.contains("gin")`, `startsWith`,
-`endsWith`, and `matches`) as well as Expr's infix spelling (`name contains "gin"`). Expressions
-are type-checked against the command's schema before the query runs.
-
-The parser also produces an application-owned expression tree, keeping the filter contract
-independent of CLI parsing and reusable by the TUI or a future gRPC surface. Conjunctive
-comparisons on mapped fields are pushed into native bstore filters; the complete expression is
-still evaluated as a residual predicate so `or`, `not`, nested fields, and string operations keep
-their exact semantics.
-
-```bash
-go run ./main/cli drinks list --filter-help
-go run ./main/cli drinks list \
-  --filter '(category == "cocktail" || category == "tiki") && name.contains("rum")'
-go run ./main/cli inventory list --filter 'quantity <= 5 && unit in ["ml", "oz"]'
-go run ./main/cli audit list \
-  --filter 'started_at >= date("2026-07-01T00:00:00Z") && !success'
-```
-
-The five operational lists also expose their hydrated tags as the `tags` field. Match one
-canonical label or `key=value` spelling exactly, rather than the whole CSV collection:
-
-```bash
-go run ./main/cli ingredients list --filter 'tags contains "seasonal"'
-go run ./main/cli drinks list --filter 'tags contains "audience=sommelier"'
-go run ./main/cli inventory list \
-  --filter 'tags contains "low-stock" || tags contains "location=cellar"'
-go run ./main/cli menus list --filter 'tags contains "service=dinner"'
-go run ./main/cli orders list --filter 'tags contains "priority"'
-```
-
-### Cross-Domain Tags
-
-Drinks, ingredients, inventory, menus, and orders can all carry user-authored tags. Audit entries
-cannot be tagged: the audit log remains an append-only record rather than another operational
-entity. Tags have either a label form (`featured`) or a key/value form (`region=west`). Outer
-whitespace is trimmed on input, spelling and case are otherwise preserved, keys are limited to 64
-Unicode characters, and values to 256. Keys and filters are case-sensitive. Keys cannot contain
-`=` or control characters; the first `=` separates the key from its optional value.
-
-Tags are cross-cutting user metadata. The application reserves no keys or values and gives none
-of them special meaning; a policy or other consumer may choose how to interpret them. A collection
-is one CSV record whose fields are canonical tags, using Go's standard-library CSV quoting. Spaces
-after separators are accepted, and quoted fields represent commas and quotes inside a tag.
-Canonical output sorts by key, so collections round-trip semantically and their canonical spelling
-is stable. An empty value is the label form: `terraform=` canonicalizes to `terraform`.
+For a useful first code trace, start at one executable, follow its domain surface adapter, then
+follow the public domain module into a query or command:
 
 ```text
-region=east, env=dev, terraform=
-=> env=dev,region=east,terraform
-
-"place=east, coast","note=said ""hello""",equation=a=b
-=> equation=a=b,"note=said ""hello""","place=east, coast"
+main/<surface> -> app/domains/<domain>/surfaces/<surface>
+               -> app/domains/<domain>/module.go
+               -> queries/ or internal/commands/
 ```
 
-An entity has at most one value for a key. Adding the same key replaces its value, adding the
-already-current value is a successful no-op, and removing a missing key is also successful. Remove
-by key regardless of its current value:
+## Development loop
 
-```bash
-mixology tags add drk-abc123 featured
-mixology tags add drk-abc123 region=west
-mixology tags list drk-abc123
-mixology tags remove drk-abc123 featured
-mixology tags remove drk-abc123 region
-```
-
-Add, remove, and list infer the domain from the entity ID prefix. Add and remove report whether
-the state changed, while all ordinary operational list tables and entity detail output include
-the current, key-sorted tags. Add `--json` to any tag command for structured output; JSON keeps
-collections as arrays of canonical tag strings, not as CSV text.
-
-Every applicable non-delete mutation under `drinks`, `ingredients`, `inventory`, `menus`, and
-`orders` also accepts the same `--tags` flag. It replaces the entity's complete tag set. Omitting
-the flag preserves the current tags, while an explicit `--tags=` clears them. For example, a drink
-update still reads its required JSON document from a file (or stdin), with tags supplied alongside
-that input:
-
-```bash
-mixology drinks update --file ./drink.json -tags="region=east, env=dev, terraform="
-mixology inventory adjust --ingredient-id ing-abc123 --delta -0.5 --reason used \
-  --tags='location=cellar,low-stock'
-mixology menus publish --id mnu-abc123 --tags='service=dinner'
-mixology orders complete --id ord-abc123 --tags=
-```
-
-The domain mutation and complete-set replacement commit atomically: invalid tag input or denied tag
-authorization also rolls back the domain change. Replacement checks the owning domain's tag and/or
-untag permissions for its delta and records one auditable replacement command. The top-level
-`tags add`, `tags remove`, and `tags list` commands remain available when an incremental change is
-more convenient.
-
-Tag persistence is a central polymorphic association keyed by Cedar entity type, entity ID, and
-tag key; domain rows do not duplicate that storage. Each domain still owns loading its entities.
-Its DAO fetches associations for the query's candidate rows in one type-scoped query, inside the
-same read transaction as the domain rows, then applies tag-dependent residual filters. This
-preserves a consistent snapshot and avoids an N+1 query per item. Soft-deleted domain rows retain their tags;
-the one hard-delete path, inventory cleanup after an ingredient deletion, removes the inventory
-associations in the same unit-of-work transaction.
-
-Application bootstrap connects these responsibilities with a tag-target registry. Each owning
-domain registers a loader for its complete entity state and its own `get`, `tag`, and `untag`
-actions, so the tagging application service can orchestrate a uniform workflow without importing
-another domain's private persistence. Tag and untag permissions intentionally match that domain's
-ordinary mutation permissions. Both operations use the normal command pipeline and therefore
-produce audit activities (including successful idempotent operations).
-
-Tags also flow into every taggable entity's native Cedar `String` tags. Policies can test a label
-with `resource.hasTag("featured")` or safely read a value with `resource.hasTag("audience") &&
-resource.getTag("audience") == "sommelier"`. The drinks policy demonstrates ABAC by granting a
-sommelier read access when an end user attaches `audience=sommelier`; the meaning belongs entirely
-to that Cedar policy. The application itself reserves no tag keys or values.
-
-### Run CI Checks Locally
-
-```bash
+```sh
 go generate ./...
-git diff --exit-code
 go build ./...
+go test ./...
 go tool arch-lint -config=.arch-lint.yaml
-go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
-go test -race -shuffle=on -count=1 -timeout=5m ./...
 ```
 
-### Application Test Fixtures
+Before opening a PR, run the complete [local CI sequence](docs/development.md#full-ci-check).
+Application tests should normally begin with `testutil.NewFixture(t)` so they exercise the real
+authorization, transaction, event, and audit pipelines against an isolated database.
 
-Application tests should start with `f := testutil.NewFixture(t)`. Each fixture creates an
-isolated embedded database that is closed from `t.Cleanup`, so tests can run in parallel while
-every command still uses the production unit-of-work transaction and a fresh event boundary.
-Calls travel through the real authorization, event-dispatch, and audit pipeline. The bootstrap
-and builder helpers keep cross-domain setup concise:
+## Documentation map
 
-```go
-f := testutil.NewFixture(t)
-b := f.Bootstrap()
-lime := b.WithIngredient("Fresh Lime", measurement.UnitOz)
-drink := f.CreateDrink("Daiquiri").WithIngredient(lime, 1).Build()
-menu := b.AddDrinks(b.WithMenu("Classics"), drink)
-```
+| If you want to…                                                                | Start here                                                                         |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Understand bounded contexts, pipelines, events, authz, and enforced boundaries | [Architecture](docs/architecture.md)                                               |
+| Use filters, tags, audit history, IDs, or authorization personas               | [Application features](docs/features.md)                                           |
+| Work on an executable and its composition layer                                | [CLI](main/cli/README.md), [TUI](main/tui/README.md), or [GUI](main/gui/README.md) |
+| Reuse or extend presentation mechanics                                         | [Presentation toolkits](pkg/toolkits/readme.md)                                    |
+| Add a domain-owned presentation adapter                                        | [Domain surfaces](app/domains/readme.md#presentation-surfaces)                     |
+| Change shared domain value types                                               | [Application kernel](app/kernel/readme.md)                                         |
+| Follow the guided build narrative                                              | [Tutorial series](https://github.com/TheFellow/go-modular-monolith/issues/23)      |
 
-Use `b.WithPublishedMenu` when publication is part of setup. Handler tests can use
-`f.LatestAuditEntry` and `testutil.AuditTouches` to assert the exact set of entities attributed to
-the originating command.
+## Repository map
 
-## Project Layout
-
-```
+```text
 app/
-  kernel/          Shared value types (entity IDs, tags, money, measurement, currency, quality)
-  domains/         One package per bounded context
-    <ctx>/
-      module.go        Public API (commands + queries)
-      events/          Domain events (public contracts)
-      models/          Read models
-      queries/         Read-only query handlers
-      handlers/        Cross-domain event handlers (not all domains have these)
-      authz/           Cedar policy definitions for this context
-      surfaces/
-        cli/           urfave/cli command builders
-        tui/           Bubble Tea view models
-      internal/
-        commands/      Write logic (not importable by other domains)
-        dao/           bstore persistence
-    tagging/        Cross-domain tag associations, registry, and authorized application service
+  app.go                 application composition root
+  domains/<domain>/      bounded contexts and their surface adapters
+  kernel/                shared domain value types
 pkg/
-  middleware/      Operation pipelines (logging, metrics, authz, UoW, activity)
-  authz/           Cedar policy engine integration
-  authn/           Actor definitions (owner, manager, sommelier, bartender, anonymous)
-  dispatcher/      Generated event -> handler routing
-  filter/          Typed Expr schemas, transport-neutral trees, bstore translation
-  store/           bstore wrapper with metrics & transactions
-  telemetry/       Prometheus metrics
-  log/             Structured slog logging
-  errors/          Typed domain errors with mapped exit codes & TUI styles
-  optional/        Minimal generic Value[T] optional type (Some/None/IsSome/Unwrap)
-  tui/             Shared Bubble Tea components (forms, dialogs, styles, keys)
-  testutil/        Isolated app fixtures, domain builders, audit helpers, assertion utilities
+  middleware/            command/query pipelines and unit of work
+  authn/, authz/         actors and Cedar integration
+  dispatcher/            generated event-to-handler routing
+  filter/, store/        transport-neutral filtering and persistence
+  toolkits/              application-independent CLI/TUI/GUI mechanics
+  testutil/              production-shaped fixtures and surface drivers
 main/
-  cli/             CLI + TUI entry point (--tui flag launches the TUI)
-  seed/            Database seeder
+  cli/, tui/, gui/       executable composition and process lifecycle
+  seed/                  sample-data seeder
+architecture/            executable architecture assertions
 ```
 
-The store is a required app-bootstrap dependency. As each bounded context is constructed, it
-registers its own internal bstore model with that store. Persistence types stay behind their
-domain boundary, invalid registration panics immediately as a programming error, and importing a
-package has no database-registration side effects.
-
-Entry points configure logging, metrics, and the authenticated principal on a `context.Context`,
-then construct the application with `app.New(ctx, app.Config{Store: s})`. The application does not
-retain request context or identity. CLI calls create a middleware context from the current request;
-the TUI uses an explicit `app.Session` to bind its persistent login to the application.
-
-## Bounded Contexts Overview
-
-```mermaid
-graph LR
-    subgraph Mixology Domain
-        Ingredients[Ingredients<br/>Master Data]
-        Drinks[Drinks<br/>Recipes]
-        Inventory[Inventory<br/>Stock]
-        Menu[Menu<br/>Curation]
-        Orders[Orders<br/>Consumption]
-        Audit[Audit<br/>Activity Log]
-        Tags[Tagging<br/>Cross-Cutting Metadata]
-
-        Ingredients --> Drinks
-        Inventory --> Menu
-        Drinks --> Menu
-        Menu --> Orders
-        Tags -.-> Ingredients
-        Tags -.-> Drinks
-        Tags -.-> Inventory
-        Tags -.-> Menu
-        Tags -.-> Orders
-    end
-```
-
-## Event Flow (No Cascading)
-
-Handlers receive `*middleware.HandlerContext` instead of the full `*middleware.Context`.
-`HandlerContext` deliberately omits `AddEvent()`, so handlers **cannot emit new events at
-compile time** — this is how the no-cascading invariant is enforced. Handlers can still
-read and mutate state within their own domain; the restriction is on event emission, not
-all writes.
-
-```mermaid
-flowchart TD
-    C[Command] --> E[Events emitted]
-    E --> D[Dispatcher]
-    D --> H1[Handler<br/>leaf]
-    D --> H2[Handler<br/>leaf]
-
-    style H1 fill:#e1f5fe
-    style H2 fill:#e1f5fe
-```
-
-When multiple handlers subscribe to the same event, the dispatcher supports a two-phase
-protocol. Handlers implementing the `PreparingHandler` interface define a `Handling()` method
-that is called for **all** handlers before any `Handle()` runs. Handlers are intentionally
-constructed fresh for each event dispatch, so `Handling()` may query and store event-local
-state on the handler receiver for the later `Handle()` call. This lets handlers inspect
-affected entities before mutations begin — used, for example, when `IngredientDeleted` is
-handled by both the Drinks and Menus domains.
-
-The command mutation, every dispatched handler mutation, and the resulting audit entry execute
-inside the same unit-of-work transaction. A failure in any handler rolls the complete operation
-back rather than leaving its domain verticals out of sync.
-
-## Middleware Pipelines
-
-### Write Pipeline (Commands)
-
-Commands use the shared operation pipeline with Logging, Metrics, TrackActivity, UnitOfWork,
-and DispatchEvents. After `RunCommand` loads the current entity inside the unit of work, the
-typed `AuthorizeCommand` middleware authorizes the loaded state, calls the handler, and then
-authorizes the resulting state. This dual check lets policies consider both the pre-mutation
-state (e.g., "can this user modify a Draft menu?") and the post-mutation result (e.g., "is the
-resulting entity in a state this user can create?").
-
-Both the input and output types must satisfy the `CedarEntity` interface, which requires them to
-represent themselves as Cedar entities for policy evaluation.
-
-```mermaid
-flowchart LR
-    subgraph Command Pipeline
-        L[Logging] --> M[Metrics]
-        M --> A[TrackActivity]
-        A --> U[UnitOfWork]
-        U --> LD[Load]
-        LD --> AI[Authorize input]
-        AI --> E[Execute]
-        E --> AO[Authorize output]
-        AO --> EV[Events]
-        EV --> H[Handlers]
-        H --> R[Audit Writer]
-        R --> AU[Audit Log]
-    end
-
-    U -.->|commit| DB[(Database)]
-```
-
-### Read Pipelines (Queries)
-
-Queries share the Logging and Metrics pipeline, then use a result-aware authorization wrapper.
-`RunEntityQuery` loads one entity and authorizes its `CedarEntity` before returning it. Lookup
-errors, including not found, are returned unchanged because there is no entity to authorize.
-`RunListQuery` loads candidate entities, authorizes each one, and silently elides permission
-denials; authorization evaluation and infrastructure errors still fail the query. Counts are
-derived from the filtered list so they cannot reveal hidden entities.
-
-```mermaid
-flowchart LR
-    subgraph Query Pipeline
-        L[Logging] --> M[Metrics]
-        M --> E[Execute]
-        E --> G[Get: authorize entity]
-        E --> LS[List: authorize each entity]
-        LS --> F[Return visible entities]
-    end
-```
-
-## Authorization
-
-Authorization uses [Cedar](https://www.cedarpolicy.com/) for RBAC policy evaluation. Each domain
-defines its own Cedar policies (in `<domain>/authz/`), and generated Go code assembles them
-into a single `PolicySet` at startup.
-
-**Roles** (defined in `pkg/authn`):
-
-| Actor | Access |
-|-------|--------|
-| owner | Full access to all domains |
-| manager | Operational commands and full catalog visibility |
-| sommelier | Wine drinks plus permitted menu and ingredient operations |
-| bartender | Non-wine drinks, orders, and permitted read-only views |
-| anonymous | Public read-only views |
-
-Gets and commands return a typed permission error when their entity is denied. Lists treat
-denied entities as normal filtering and return only the visible subset.
-
-## Context Responsibilities
-
-| Context | Owns | Queries From | Produces Events |
-|---------|------|--------------|-----------------|
-| Ingredients | Ingredient catalog | - | IngredientCreated, IngredientUpdated, IngredientDeleted |
-| Drinks | Drink recipes | Ingredients | DrinkCreated, DrinkUpdated, DrinkDeleted |
-| Inventory | Stock levels | Ingredients | StockAdjusted |
-| Menu | Published menus | Drinks, Inventory | MenuCreated, DrinkAddedToMenu, DrinkRemovedFromMenu, MenuPublished, MenuDrafted |
-| Orders | Customer orders | Menu, Drinks, Inventory | OrderPlaced, OrderCompleted, OrderCancelled |
-| Audit | Activity log, audit entries (not taggable) | - | - |
-| Tagging | Polymorphic tag associations and tag workflow | Domain-owned target loaders | - |
-
-## Code Generation
-
-Four `go:generate` programs follow the same pattern: a `gen/` subdirectory with a Go program
-invoked by `//go:generate go run ./gen` in the parent package.
-
-| Generator | Scans | Produces |
-|-----------|-------|----------|
-| `pkg/dispatcher/gen` | `*/events/*.go` for event structs, `*/handlers/*.go` for handler methods (AST) | `dispatcher_gen.go` — type-switch `Dispatch()` wiring all event-to-handler relationships |
-| `pkg/authz/gen` | `*/authz/` Cedar schemas and policies | `policies_gen.go` plus per-domain Cedar action/entity models and tests, including native `String` entity tags |
-| `app/kernel/entity/gen` | `Entities` slice in `entities.go` | Strongly-typed IDs (`DrinkID`, `MenuID`, etc.) with parse/validate/format methods |
-| `pkg/errors/gen` | `AllKinds()` taxonomy in `kind.go` | Per-kind error constructors (`Invalidf`, `NotFoundf`, etc.) and matching `testutil` assertion helpers |
-
-## Architecture Enforcement
-
-Seven `arch-lint` rules (`.arch-lint.yaml`) enforce module boundaries at CI time:
-
-| Rule | Prevents |
-|------|----------|
-| shared-no-domains | Shared app packages importing domain code |
-| no-cross-domain-internal | Domain A reaching into Domain B's internals |
-| handlers-no-commands | Event handlers importing command implementations |
-| events-no-internal | Event packages depending on internal packages |
-| queries-no-commands | Queries importing write-side code |
-| models-no-internal | Domain models depending on internal packages |
-| handlers-no-modules | Handlers accessing module roots (must use queries/events/models) |
-
-Additional compile-time guarantees: `golangci-lint` runs its standard checks plus wrapped-error,
-enum exhaustiveness, modernization, and project style checks, while `arch-lint` enforces module
-boundaries.
-
-## Cross-Transport Error Types
-
-Each immutable `Kind` specification in `pkg/errors` maps one error category to an HTTP status,
-gRPC code, CLI exit code, and TUI display style. Generated typed wrappers share a common error
-payload that separates diagnostic detail from presentation-safe text. The generator also creates
-matching `pkg/testutil` assertion helpers (`ErrorIsNotFound`, `ErrorIsPermission`, etc.). This
-keeps the domain surface-agnostic while preventing internal errors from leaking through a user
-surface.
-
-## Terminal UI
-
-The TUI (`go run ./main/cli --tui`) provides seven dashboard workspaces: the five operational
-domains, audit, and tags. Press `[7]` from the Dashboard to open the Tags workspace, enter any
-supported entity ID, and choose Inspect, Add or replace, or Remove. Adds accept `key` or
-`key=value`; removals accept the key. Operational entity detail views also display their current
-tags.
-
-Every domain surface supports list/detail navigation, with write workflows where the domain
-has useful TUI operations: drinks and ingredients support create/edit/delete, inventory supports
-adjust/set, menus support create/rename/delete/publish/draft, and orders support complete/cancel.
-The TUI runs queries and commands through the same middleware pipelines as the CLI, so
-authorization, logging, metrics, and write-command audit tracking apply consistently across
-surfaces. Forms include validation, and destructive or state-changing actions use confirmation
-dialogs with danger styling.
-
-## Activity Tracking & Audit
-
-Every write command executed through `RunCommand` is tracked as an **Activity** and persisted to
-the audit log through an explicit audit writer callback. Domain events continue through the
-dispatcher; audit activity recording is separate from that event flow. Audit reads remain on the
-public audit module, while the writer is private to application bootstrap. Successful activity
-records are written inside the command unit of work, so an audit failure rolls back the command
-and its handlers. Failed commands roll back first, then record their failed activity in a separate
-transaction so the rejected attempt remains visible without preserving partial domain writes.
-
-```mermaid
-sequenceDiagram
-    participant C as Command
-    participant TA as TrackActivity
-    participant UoW as UnitOfWork
-    participant H as Handlers
-    participant AR as Audit Writer
-    participant DB as Database
-
-    C->>TA: Execute
-    TA->>TA: Create Activity
-    TA->>UoW: Execute (with Activity in context)
-    UoW->>H: Dispatch domain events
-    H->>H: ctx.TouchEntity() for affected entities
-    H-->>UoW: Done
-    alt command succeeds
-        UoW->>AR: Record successful Activity
-        AR->>DB: Persist with domain writes
-        UoW-->>TA: Commit
-    else command fails
-        UoW-->>TA: Roll back
-        TA->>AR: Record failed Activity
-        AR->>DB: Persist failed attempt separately
-    end
-```
-
-### Touch Recording
-
-Handlers call `ctx.TouchEntity(uid)` to record entities they affect:
-
-```go
-func (h *DrinkDeleted) Handle(ctx *middleware.HandlerContext, e drinksevents.DrinkDeleted) error {
-    menus, err := h.dao.ListByDrink(ctx, e.Drink.ID)
-    if err != nil {
-        return err
-    }
-    for _, menu := range menus {
-        // Remove deleted drink from menu items...
-        if err := h.dao.Update(ctx, *menu); err != nil {
-            return err
-        }
-        ctx.TouchEntity(menu.ID.EntityUID())
-    }
-    return nil
-}
-```
-
-### Audit Queries
-
-```bash
-# List recent audit entries
-mixology audit list --limit 20
-mixology audit list --limit 20 --cursor aud-...
-
-# Filter by principal
-mixology audit list --principal owner
-
-# Filter by entity
-mixology audit list --entity Mixology::Drink::drk-abc123
-
-# Compose the same fields with the shared expression language
-mixology audit list --filter 'principal.contains("owner") && success'
-
-# View entity history
-mixology audit history Mixology::Drink::drk-abc123
-```
-
-## CLI Usage Notes
-
-- IDs are typed and must include the entity prefix: drinks use `drk-`, ingredients `ing-`, menus `mnu-`, orders `ord-` (inventory uses `inv-` and audit entries use `aud-`). The cross-domain tag commands infer the entity type from this prefix and accept the five operational prefixes; `aud-` is explicitly unsupported.
-- Commands that accept IDs use `--id` for the command's primary entity and `--<entity>-id` for cross-entity references (for example, `--menu-id`, `--drink-id`, `--ingredient-id`). Malformed IDs return an "invalid <entity> id prefix" error with exit code 10.
-
-```bash
-mixology drinks get --id drk-abc123
-mixology ingredients get --id ing-abc123
-mixology menus show --id mnu-abc123
-mixology menus add-drink --menu-id mnu-abc123 --drink-id drk-abc123
-mixology orders place --menu-id mnu-abc123 drk-abc123:2 drk-xyz789:1
-mixology inventory adjust --ingredient-id ing-abc123 --delta -0.5 --reason used
-```
+Domain roots are public composition boundaries. Public `models`, `queries`, and `events` are the
+deliberate cross-domain contracts; `internal` packages remain private. See the
+[architecture guide](docs/architecture.md) before changing dependency direction.

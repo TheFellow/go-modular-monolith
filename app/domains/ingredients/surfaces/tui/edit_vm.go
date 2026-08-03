@@ -2,15 +2,17 @@ package tui
 
 import (
 	"errors"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -28,6 +30,7 @@ type EditIngredientVM struct {
 	category    *forms.SelectField
 	unit        *forms.SelectField
 	description *forms.TextField
+	tags        *forms.TextField
 }
 
 // IngredientUpdatedMsg is sent when the ingredient has been updated.
@@ -78,9 +81,10 @@ func NewEditIngredientVM(app *app.Session, ingredient *models.Ingredient) *EditI
 		forms.WithMaxLength(500),
 		forms.WithInitialValue(ingredient.Description),
 	)
+	tagsField := components.NewOptionalTagsField(ingredient.Tags.Canonical().String())
 
-	formStyles := tuistyles.App.Form
-	formKeys := tuikeys.App.Form
+	formStyles := styles.Standard.Form
+	formKeys := keys.Standard.Form
 	form := forms.New(
 		formStyles,
 		formKeys,
@@ -88,6 +92,7 @@ func NewEditIngredientVM(app *app.Session, ingredient *models.Ingredient) *EditI
 		categoryField,
 		unitField,
 		descriptionField,
+		tagsField,
 	)
 
 	return &EditIngredientVM{
@@ -100,6 +105,7 @@ func NewEditIngredientVM(app *app.Session, ingredient *models.Ingredient) *EditI
 		category:    categoryField,
 		unit:        unitField,
 		description: descriptionField,
+		tags:        tagsField,
 	}
 }
 
@@ -158,6 +164,11 @@ func (m *EditIngredientVM) submit() tea.Cmd {
 		m.err = errors.New("ingredient not loaded")
 		return nil
 	}
+	desired, err := components.DesiredTags(m.tags, tag.ParseCollection)
+	if err != nil {
+		m.err = err
+		return nil
+	}
 	m.err = nil
 	m.submitting = true
 
@@ -170,7 +181,9 @@ func (m *EditIngredientVM) submit() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		ingredient, err := m.app.Ingredients.Update(m.context(), updated)
+		ingredient, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Ingredient, error) {
+			return m.app.Ingredients.Update(ctx, updated)
+		})
 		if err != nil {
 			return UpdateErrorMsg{Err: err}
 		}

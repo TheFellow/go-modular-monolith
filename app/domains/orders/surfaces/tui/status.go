@@ -5,8 +5,8 @@ import (
 	"unicode"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
-	"github.com/TheFellow/go-modular-monolith/main/tui/components"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/charmbracelet/lipgloss"
 )
 

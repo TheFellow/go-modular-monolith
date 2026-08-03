@@ -18,11 +18,14 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/runtimeconfig"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 //go:embed data/ingredients.json
@@ -34,22 +37,25 @@ var drinksJSON []byte
 // JSON structures for parsing seed data
 
 type seedIngredient struct {
-	Key         string `json:"key"`
-	Name        string `json:"name"`
-	Category    string `json:"category"`
-	Unit        string `json:"unit"`
-	Description string `json:"description"`
+	Key         string   `json:"key"`
+	Name        string   `json:"name"`
+	Category    string   `json:"category"`
+	Unit        string   `json:"unit"`
+	Description string   `json:"description"`
+	Tags        []string `json:"tags"`
 	Stock       struct {
-		Quantity float64 `json:"quantity"`
-		Cost     string  `json:"cost"`
+		Quantity float64  `json:"quantity"`
+		Cost     string   `json:"cost"`
+		Tags     []string `json:"tags"`
 	} `json:"stock"`
 }
 
 type seedDrink struct {
-	Name        string `json:"name"`
-	Category    string `json:"category"`
-	Glass       string `json:"glass"`
-	Description string `json:"description"`
+	Name        string   `json:"name"`
+	Category    string   `json:"category"`
+	Glass       string   `json:"glass"`
+	Description string   `json:"description"`
+	Tags        []string `json:"tags"`
 	Recipe      struct {
 		Ingredients []struct {
 			Key    string  `json:"key"`
@@ -73,8 +79,8 @@ func run() error {
 	fmt.Println()
 
 	// Open store
-	dbPath := "data/mixology.db"
-	if p := os.Getenv("MIXOLOGY_DB"); p != "" {
+	dbPath := runtimeconfig.DefaultDatabasePath
+	if p := os.Getenv(runtimeconfig.EnvDatabasePath); p != "" {
 		dbPath = p
 	}
 
@@ -123,6 +129,9 @@ func run() error {
 		}
 
 		ingredientIDs[ing.Key] = created.ID
+		if err := replaceTags(a, ctx, created.EntityUID(), ing.Tags); err != nil {
+			return fmt.Errorf("tag ingredient %q: %w", ing.Name, err)
+		}
 		fmt.Printf("  %s: %s\n", created.Name, created.ID)
 	}
 	fmt.Printf("  Created %d ingredients\n", len(ingredients))
@@ -149,8 +158,12 @@ func run() error {
 			CostPerUnit:  cost,
 		}
 
-		if _, err := a.Inventory.Set(ctx, update); err != nil {
+		stock, err := a.Inventory.Set(ctx, update)
+		if err != nil {
 			return fmt.Errorf("set inventory for %q: %w", ing.Name, err)
+		}
+		if err := replaceTags(a, ctx, stock.EntityUID(), ing.Stock.Tags); err != nil {
+			return fmt.Errorf("tag inventory for %q: %w", ing.Name, err)
 		}
 	}
 	fmt.Println("  Inventory stocked")
@@ -197,6 +210,9 @@ func run() error {
 		}
 
 		drinkIDs = append(drinkIDs, created.ID)
+		if err := replaceTags(a, ctx, created.EntityUID(), d.Tags); err != nil {
+			return fmt.Errorf("tag drink %q: %w", d.Name, err)
+		}
 		fmt.Printf("  %s: %s\n", created.Name, created.ID)
 	}
 
@@ -210,6 +226,9 @@ func run() error {
 	createdMenu, err := a.Menus.Create(ctx, menu)
 	if err != nil {
 		return fmt.Errorf("create menu: %w", err)
+	}
+	if err := replaceTags(a, ctx, createdMenu.EntityUID(), []string{"collection=classics", "service=all-day"}); err != nil {
+		return fmt.Errorf("tag menu: %w", err)
 	}
 	fmt.Printf("  Menu: %s\n", createdMenu.ID)
 
@@ -249,6 +268,22 @@ func run() error {
 	fmt.Println("  mixology inventory list")
 
 	return nil
+}
+
+func replaceTags(a *app.App, ctx *middleware.Context, target cedar.EntityUID, values []string) error {
+	if len(values) == 0 {
+		return nil
+	}
+	tags := make(tag.Tags, 0, len(values))
+	for _, value := range values {
+		parsed, err := tag.Parse(value)
+		if err != nil {
+			return err
+		}
+		tags = append(tags, parsed)
+	}
+	_, err := a.Tags.Replace(ctx, target, tags)
+	return err
 }
 
 // parseCost parses a cost string like "$28.00" into a Price

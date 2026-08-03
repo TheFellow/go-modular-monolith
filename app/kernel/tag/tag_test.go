@@ -177,6 +177,15 @@ func TestParseCollectionCanonicalizesTags(t *testing.T) {
 	}
 }
 
+func TestUpsertCollectionValidatesAndReplacesByKey(t *testing.T) {
+	t.Parallel()
+	value, err := tag.UpsertCollection("featured,region=west", " region=east ")
+	testutil.Ok(t, err)
+	testutil.Equals(t, value, "featured,region=east")
+	_, err = tag.UpsertCollection(value, "=missing")
+	testutil.ErrorIsInvalid(t, err)
+}
+
 func TestParseCollectionRejectsInvalidInput(t *testing.T) {
 	t.Parallel()
 

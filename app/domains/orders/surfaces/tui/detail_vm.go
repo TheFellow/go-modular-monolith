@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"cmp"
 	"fmt"
 	"sort"
 	"strings"
@@ -13,7 +14,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/govalues/decimal"
 )
@@ -60,7 +61,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + order.ID.String()),
 		d.styles.Subtitle.Render("Menu: ") + menu.Name,
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
-		d.styles.Subtitle.Render("Tags: ") + tagLabel(order.Tags.Canonical().String()),
+		d.styles.Subtitle.Render("Tags: ") + cmp.Or(order.Tags.Canonical().String(), "(none)"),
 		d.styles.Muted.Render("Created: " + formatTime(order.CreatedAt)),
 	}
 
@@ -86,13 +87,6 @@ func (d *DetailViewModel) View() string {
 		content = lipgloss.NewStyle().Width(d.width).Render(content)
 	}
 	return content
-}
-
-func tagLabel(value string) string {
-	if value == "" {
-		return "(none)"
-	}
-	return value
 }
 
 func (d *DetailViewModel) renderItems(items []models.OrderItem, menu *menusmodels.Menu) ([]string, string, error) {
@@ -151,7 +145,11 @@ func (d *DetailViewModel) renderItems(items []models.OrderItem, menu *menusmodel
 			totalAvailable = false
 		}
 
-		lines = append(lines, fmt.Sprintf("- %s | qty: %d | total: %s", name, item.Quantity, lineTotal))
+		line := fmt.Sprintf("- %s | qty: %d | total: %s", name, item.Quantity, lineTotal)
+		if notes := strings.TrimSpace(item.Notes); notes != "" {
+			line += "\n  Notes: " + strings.ReplaceAll(notes, "\n", "\n  ")
+		}
+		lines = append(lines, line)
 	}
 
 	totalStr := "N/A"

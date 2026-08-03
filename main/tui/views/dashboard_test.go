@@ -1,9 +1,15 @@
+//nolint:paralleltest // terminal program lifecycle assertions intentionally run serially.
 package views
 
 import (
+	"fmt"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+	"github.com/charmbracelet/lipgloss"
 )
 
 func TestDashboardLayoutConfig(t *testing.T) {
@@ -32,4 +38,39 @@ func TestDashboardLayoutConfig(t *testing.T) {
 			testutil.Equals(t, columns, tc.expectedCols)
 		})
 	}
+}
+
+func TestDashboardRecentActivityFitsAssignedHeight(t *testing.T) {
+	t.Parallel()
+
+	recent := make([]app.DashboardActivity, 10)
+	for i := range recent {
+		recent[i] = app.DashboardActivity{
+			Timestamp: time.Date(2026, 1, 1, 12, i, 0, 0, time.UTC),
+			Actor:     "owner",
+			Action:    fmt.Sprintf("activity-%02d", i),
+		}
+	}
+	d := &Dashboard{
+		width:  100,
+		height: 21, // Minimum application height after title and status bars.
+		data:   &app.Dashboard{RecentActivity: recent},
+	}
+
+	view := d.View()
+	testutil.ErrorIf(t, lipgloss.Height(view) > d.height,
+		"dashboard height %d exceeded assigned height %d:\n%s", lipgloss.Height(view), d.height, view)
+	testutil.StringContains(t, view, "activity-00")
+	testutil.ErrorIf(t, strings.Contains(view, "activity-09"),
+		"expected recent activity to be truncated to available height:\n%s", view)
+}
+
+func TestDashboardLoadsExactApplicationData(t *testing.T) {
+	f := testutil.NewFixture(t)
+	want, err := f.App.Dashboard()
+	testutil.Ok(t, err)
+	d := NewDashboard(f.App)
+	msg := d.loadData()().(DashboardLoadedMsg)
+	testutil.Ok(t, msg.Err)
+	testutil.Equals(t, *msg.Data, want)
 }

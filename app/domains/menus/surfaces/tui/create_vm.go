@@ -1,14 +1,16 @@
 package tui
 
 import (
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	tuikeys "github.com/TheFellow/go-modular-monolith/main/tui/keys"
-	tuistyles "github.com/TheFellow/go-modular-monolith/main/tui/styles"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -23,6 +25,7 @@ type CreateMenuVM struct {
 	submitting  bool
 	nameField   *forms.TextField
 	description *forms.TextField
+	tags        *forms.TextField
 }
 
 // MenuCreatedMsg is sent when the menu has been created.
@@ -48,14 +51,16 @@ func NewCreateMenuVM(app *app.Session) *CreateMenuVM {
 		forms.WithMaxLength(500),
 		forms.WithPlaceholder("Optional description"),
 	)
+	tagsField := components.NewOptionalTagsField("")
 
-	formStyles := tuistyles.App.Form
-	formKeys := tuikeys.App.Form
+	formStyles := styles.Standard.Form
+	formKeys := keys.Standard.Form
 	form := forms.New(
 		formStyles,
 		formKeys,
 		nameField,
 		descriptionField,
+		tagsField,
 	)
 
 	return &CreateMenuVM{
@@ -65,6 +70,7 @@ func NewCreateMenuVM(app *app.Session) *CreateMenuVM {
 		keys:        formKeys,
 		nameField:   nameField,
 		description: descriptionField,
+		tags:        tagsField,
 	}
 }
 
@@ -123,6 +129,11 @@ func (m *CreateMenuVM) submit() tea.Cmd {
 		m.err = err
 		return nil
 	}
+	desired, err := components.DesiredTags(m.tags, tag.ParseCollection)
+	if err != nil {
+		m.err = err
+		return nil
+	}
 	m.err = nil
 	m.submitting = true
 
@@ -132,7 +143,9 @@ func (m *CreateMenuVM) submit() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		created, err := m.app.Menus.Create(m.context(), menu)
+		created, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Menu, error) {
+			return m.app.Menus.Create(ctx, menu)
+		})
 		if err != nil {
 			return CreateErrorMsg{Err: err}
 		}

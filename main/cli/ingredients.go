@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
@@ -9,10 +10,10 @@ import (
 	ingredientscli "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	clitable "github.com/TheFellow/go-modular-monolith/main/cli/table"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	clitable "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli/table"
 	"github.com/urfave/cli/v3"
 )
 
@@ -25,7 +26,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List ingredients",
 				Flags: appendFilterFlags(append([]cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{
 						Name:      "category",
 						Aliases:   []string{"c"},
@@ -46,7 +47,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, paging.Page[ingredientscli.IngredientRow]{
+						return clitoolkit.WriteJSON(cmd.Writer, paging.Page[ingredientscli.IngredientRow]{
 							Items: ingredientscli.ToIngredientRows(res.Items), Next: res.Next,
 						})
 					}
@@ -61,7 +62,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Name:  "get",
 				Usage: "Get an ingredient by ID",
 				Flags: []cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Ingredient ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -75,7 +76,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, ingredientscli.ToIngredientRow(res))
+						return clitoolkit.WriteJSON(cmd.Writer, ingredientscli.ToIngredientRow(res))
 					}
 
 					return clitable.PrintDetail(cmd.Writer, ingredientscli.ToIngredientRow(res))
@@ -88,10 +89,10 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					&cli.StringArgs{Name: "name", UsageText: "Ingredient name", Max: 1},
 				},
 				Flags: appendTagsFlag([]cli.Flag{
-					JSONFlag,
-					TemplateFlag,
-					StdinFlag,
-					FileFlag,
+					clitoolkit.JSONFlag,
+					clitoolkit.TemplateFlag,
+					clitoolkit.StdinFlag,
+					clitoolkit.FileFlag,
 					&cli.StringFlag{
 						Name:      "category",
 						Aliases:   []string{"c"},
@@ -112,12 +113,12 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
-						return writeJSON(cmd.Writer, ingredientscli.TemplateCreate())
+						return clitoolkit.WriteJSON(cmd.Writer, ingredientscli.TemplateCreate())
 					}
 
 					var input *models.Ingredient
 					if cmd.Bool("stdin") || strings.TrimSpace(cmd.String("file")) != "" {
-						row, err := readJSONInput[ingredientscli.IngredientRow](cmd)
+						row, err := clitoolkit.ReadJSONInput[ingredientscli.IngredientRow](cmd)
 						if err != nil {
 							return err
 						}
@@ -156,7 +157,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, res)
+						return clitoolkit.WriteJSON(cmd.Writer, res)
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, res.ID.String())
@@ -167,10 +168,10 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Name:  "update",
 				Usage: "Update an ingredient",
 				Flags: appendTagsFlag([]cli.Flag{
-					JSONFlag,
-					TemplateFlag,
-					StdinFlag,
-					FileFlag,
+					clitoolkit.JSONFlag,
+					clitoolkit.TemplateFlag,
+					clitoolkit.StdinFlag,
+					clitoolkit.FileFlag,
 					&cli.StringFlag{Name: "id", Usage: "Ingredient ID"},
 					&cli.StringFlag{
 						Name:    "name",
@@ -197,12 +198,12 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
-						return writeJSON(cmd.Writer, ingredientscli.TemplateUpdate())
+						return clitoolkit.WriteJSON(cmd.Writer, ingredientscli.TemplateUpdate())
 					}
 
 					var input *models.Ingredient
 					if cmd.Bool("stdin") || strings.TrimSpace(cmd.String("file")) != "" {
-						row, err := readJSONInput[ingredientscli.IngredientRow](cmd)
+						row, err := clitoolkit.ReadJSONInput[ingredientscli.IngredientRow](cmd)
 						if err != nil {
 							return err
 						}
@@ -246,7 +247,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, res)
+						return clitoolkit.WriteJSON(cmd.Writer, res)
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, res.ID.String())
@@ -257,7 +258,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Name:  "delete",
 				Usage: "Delete an ingredient by ID",
 				Flags: []cli.Flag{
-					JSONFlag,
+					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Ingredient ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -271,7 +272,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					}
 
 					if cmd.Bool("json") {
-						return writeJSON(cmd.Writer, res)
+						return clitoolkit.WriteJSON(cmd.Writer, res)
 					}
 
 					_, err = fmt.Fprintln(cmd.Writer, res.ID.String())
