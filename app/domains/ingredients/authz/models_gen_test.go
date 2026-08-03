@@ -8,6 +8,8 @@ import (
 	moduleauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/cedar-policy/cedar-go/x/exp/schema"
+	"github.com/cedar-policy/cedar-go/x/exp/schema/validate"
 )
 
 func TestIngredientCedarEntity(t *testing.T) {
@@ -37,4 +39,9 @@ func TestIngredientCedarEntity(t *testing.T) {
 	}
 
 	testutil.Equals(t, got, want)
+	var parsed schema.Schema
+	testutil.Ok(t, parsed.UnmarshalCedar([]byte(moduleauthz.Schema)))
+	resolved, err := parsed.Resolve()
+	testutil.Ok(t, err)
+	testutil.Ok(t, validate.New(resolved).Entity(got))
 }

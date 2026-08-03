@@ -8,6 +8,8 @@ import (
 	moduleauthz "github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/cedar-policy/cedar-go/x/exp/schema"
+	"github.com/cedar-policy/cedar-go/x/exp/schema/validate"
 )
 
 func TestInventoryCedarEntity(t *testing.T) {
@@ -16,7 +18,7 @@ func TestInventoryCedarEntity(t *testing.T) {
 	model := moduleauthz.Inventory{
 		UID:          cedar.NewEntityUID("Wrong::Type", "test-id"),
 		Tags:         map[string]string{"audience": "members", "featured": ""},
-		IngredientID: cedar.NewEntityUID("Test::Reference", "test-ingredientid"),
+		IngredientID: cedar.NewEntityUID("Mixology::Ingredient", "test-ingredientid"),
 		Unit:         "test-unit",
 	}
 
@@ -25,7 +27,7 @@ func TestInventoryCedarEntity(t *testing.T) {
 		UID:     cedar.NewEntityUID(moduleauthz.InventoryType, "test-id"),
 		Parents: cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(cedar.RecordMap{
-			moduleauthz.InventoryIngredientIDAttr: cedar.NewEntityUID("Test::Reference", "test-ingredientid"),
+			moduleauthz.InventoryIngredientIDAttr: cedar.NewEntityUID("Mixology::Ingredient", "test-ingredientid"),
 			moduleauthz.InventoryUnitAttr:         cedar.String("test-unit"),
 		}),
 		Tags: cedar.NewRecord(cedar.RecordMap{
@@ -35,4 +37,9 @@ func TestInventoryCedarEntity(t *testing.T) {
 	}
 
 	testutil.Equals(t, got, want)
+	var parsed schema.Schema
+	testutil.Ok(t, parsed.UnmarshalCedar([]byte(moduleauthz.Schema)))
+	resolved, err := parsed.Resolve()
+	testutil.Ok(t, err)
+	testutil.Ok(t, validate.New(resolved).Entity(got))
 }
