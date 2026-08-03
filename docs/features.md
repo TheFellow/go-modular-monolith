@@ -86,4 +86,5 @@ mixology audit history Mixology::Drink::drk-abc123
 CLI, TUI, GUI, and seeder default to `data/mixology.db`; only one process can own the embedded file.
 Interactive entrypoints share `--db`, `--actor`, `--log-level`, `--log-format`, `--log-file`, and
 `--metrics`, with corresponding `MIXOLOGY_*` variables. The GUI adds `--data-dir`. Command-line
-options override environment values.
+options override environment values. The [telemetry guide](../pkg/telemetry/README.md) documents
+the metrics backends, Prometheus lifecycle, emitted instruments, and testing support.

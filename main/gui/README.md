@@ -216,8 +216,8 @@ window. They exercise real widgets, navigation, persistence startup, and clean
 shutdown without opening a platform window or requiring a display server.
 Asynchronous view models receive both `pkg/toolkits/gui.Executor` and
 `pkg/toolkits/gui.Dispatcher`; production uses background goroutines followed by the
-Fyne event loop. Tests use deterministic FIFO or out-of-order execution and
-semantic controls from `pkg/testutil/fynetest` while interacting with real
+Fyne event loop. Tests use deterministic FIFO or out-of-order execution and semantic controls from
+[`pkg/testutil/fynetest`](../../pkg/testutil/README.md#fyne-tests) while interacting with real
 widgets.
 
 ```sh

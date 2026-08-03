@@ -58,9 +58,10 @@ Most application code should use the middleware helpers rather than call the eva
 - `middleware.RunCommand` authorizes the loaded and resulting resource states so policies can
   constrain transitions.
 
-Those behaviors live in [`pkg/middleware`](../middleware/run.go). Presentation code may call
-`AuthorizeWithEntity` to decide whether to expose an action, but the command/query pipeline remains
-the enforcement point.
+Those behaviors are documented in the
+[`pkg/middleware` guide](../middleware/README.md#typed-operation-helpers). Presentation code may
+call `AuthorizeWithEntity` to decide whether to expose an action, but the command/query pipeline
+remains the enforcement point.
 
 The lower-level call looks like this:
 

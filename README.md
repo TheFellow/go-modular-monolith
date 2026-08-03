@@ -60,6 +60,8 @@ authorization, transaction, event, and audit pipelines against an isolated datab
 Shared infrastructure has focused guides for [authorization](pkg/authz/README.md), the
 [event dispatcher](pkg/dispatcher/README.md), [application errors](pkg/errors/README.md),
 [typed filters](pkg/filter/README.md), and the [persistence store](pkg/store/README.md).
+The [middleware pipeline](pkg/middleware/README.md), [telemetry](pkg/telemetry/README.md), and
+[test utilities](pkg/testutil/README.md) have their own extension and testing guides.
 
 ## Repository map
 

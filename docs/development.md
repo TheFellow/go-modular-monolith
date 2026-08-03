@@ -43,15 +43,28 @@ which checks native integration.
 
 Start application tests with `f := testutil.NewFixture(t)`. A fixture owns an isolated embedded
 database and cleanup while using the production unit of work, authorization, event, and audit
-pipelines. Its bootstrap/builders keep cross-domain setup compact:
+pipelines. Its domain helpers keep cross-domain setup compact:
 
 ```go
 f := testutil.NewFixture(t)
-b := f.Bootstrap()
-lime := b.WithIngredient("Fresh Lime", measurement.UnitOz)
-drink := f.CreateDrink("Daiquiri").WithIngredient(lime, 1).Build()
-menu := b.AddDrinks(b.WithMenu("Classics"), drink)
+lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+	Name: "Fresh Lime", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz,
+})
+drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
+	Name: "Daiquiri", Category: drinksmodels.DrinkCategoryCocktail,
+	Glass: drinksmodels.GlassTypeCoupe,
+	Recipe: drinksmodels.Recipe{
+		Ingredients: []drinksmodels.RecipeIngredient{{
+			IngredientID: lime.ID,
+			Amount:       measurement.MustAmount(1, lime.Unit),
+		}},
+		Steps: []string{"Shake"},
+	},
+})
+menu := testutil.CreateMenu(t, f, "Classics", testutil.WithDrink(drink), testutil.Published())
 ```
 
-Use `WithPublishedMenu` when publication matters. Handler tests can use `LatestAuditEntry` and
-`AuditTouches` to verify attribution.
+Pass `testutil.Published()` to `CreateMenu` when publication matters. Handler tests can use
+`LatestAuditEntry` and `AuditTouches` to verify attribution. The
+[test utility guide](../pkg/testutil/README.md) covers actor contexts, metrics assertions, GUI/TUI
+drivers, and the complete helper map.
