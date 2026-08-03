@@ -86,12 +86,12 @@ func (r *Repository) Insert(ctx store.Context, row widgetRow) error {
 
 This distinction is intentional:
 
-| API                          | Role                                                                                 |
-| ---------------------------- | ------------------------------------------------------------------------------------ |
-| `(*Store).Read`              | Always opens a managed read transaction and records its duration.                    |
-| `(*Store).ReadContext`       | Reuses the context transaction when present; otherwise delegates to `Read`.          |
-| `(*Store).Write`             | Opens and owns a managed write transaction and records its duration.                 |
-| `store.Write`                | Requires and reuses the context transaction; a missing transaction is an error.      |
+| API                           | Role                                                                                |
+| ----------------------------- | ----------------------------------------------------------------------------------- |
+| `(*Store).Read`               | Always opens a managed read transaction and records its duration.                   |
+| `(*Store).ReadContext`        | Reuses the context transaction when present; otherwise delegates to `Read`.         |
+| `(*Store).Write`              | Opens and owns a managed write transaction and records its duration.                |
+| `store.Write`                 | Requires and reuses the context transaction; a missing transaction is an error.     |
 | `Begin` + `Commit`/`Rollback` | Supports an explicitly caller-owned transaction spanning several application calls. |
 
 The [command pipeline](../middleware/README.md#default-pipelines) normally supplies the write

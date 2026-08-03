@@ -42,12 +42,12 @@ application-owned instruments so names and label keys stay stable.
 
 ## Backends
 
-| Constructor | Intended use | Behavior |
-| ----------- | ------------ | -------- |
-| `Nop()` | Metrics-disabled processes and safe defaults | Discards every observation. |
-| `Memory()` | Deterministic tests | Thread-safe counters, histograms, and gauges with counter-value and histogram-count inspection. |
-| `OTEL(meter)` | An externally configured OpenTelemetry SDK | Caches instruments by name and label declaration and records through the supplied meter. |
-| `NewPrometheus()` | Built-in local Prometheus endpoint | Creates an OTEL Prometheus reader and returns metrics, an HTTP handler, and provider shutdown. |
+| Constructor       | Intended use                                 | Behavior                                                                                        |
+| ----------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `Nop()`           | Metrics-disabled processes and safe defaults | Discards every observation.                                                                     |
+| `Memory()`        | Deterministic tests                          | Thread-safe counters, histograms, and gauges with counter-value and histogram-count inspection. |
+| `OTEL(meter)`     | An externally configured OpenTelemetry SDK   | Caches instruments by name and label declaration and records through the supplied meter.        |
+| `NewPrometheus()` | Built-in local Prometheus endpoint           | Creates an OTEL Prometheus reader and returns metrics, an HTTP handler, and provider shutdown.  |
 
 The OTEL gauge adapter uses an up/down counter and remembers the last value per label set so `Set`
 can emit a delta. Instrument creation failures degrade that instrument to the no-op implementation.

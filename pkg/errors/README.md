@@ -7,14 +7,14 @@ available for logs and wrapping, while presentation adapters use safe user-facin
 
 ## Error kinds
 
-| Kind                 | Default message        | HTTP | gRPC                 | CLI | TUI style |
-| -------------------- | ---------------------- | ---: | -------------------- | --: | --------- |
-| `Invalid`            | `invalid`              |  400 | `InvalidArgument`    |  10 | error     |
-| `NotFound`           | `not found`            |  404 | `NotFound`           |  20 | warning   |
-| `Permission`         | `permission denied`    |  403 | `PermissionDenied`   |  30 | error     |
-| `Conflict`           | `conflict`             |  409 | `AlreadyExists`      |  40 | warning   |
-| `FailedPrecondition` | `failed precondition`  |  412 | `FailedPrecondition` |  45 | warning   |
-| `Internal`           | `internal error`       |  500 | `Internal`           |  50 | error     |
+| Kind                 | Default message       | HTTP | gRPC                 | CLI | TUI style |
+| -------------------- | --------------------- | ---: | -------------------- | --: | --------- |
+| `Invalid`            | `invalid`             |  400 | `InvalidArgument`    |  10 | error     |
+| `NotFound`           | `not found`           |  404 | `NotFound`           |  20 | warning   |
+| `Permission`         | `permission denied`   |  403 | `PermissionDenied`   |  30 | error     |
+| `Conflict`           | `conflict`            |  409 | `AlreadyExists`      |  40 | warning   |
+| `FailedPrecondition` | `failed precondition` |  412 | `FailedPrecondition` |  45 | warning   |
+| `Internal`           | `internal error`      |  500 | `Internal`           |  50 | error     |
 
 `Kind`, `SpecFor`, and `AllKinds` expose this mapping. `SpecFor` returns a copy, and an unknown kind
 falls back to the internal-error specification. HTTP and gRPC values are metadata; this package
