@@ -250,3 +250,86 @@ namespace Mixology::Drink {
 	testutil.ErrorIf(t, err == nil, "expected unsupported action context error")
 	testutil.ErrorIf(t, !strings.Contains(err.Error(), "non-empty action contexts are not supported"), "unexpected error: %v", err)
 }
+
+func TestRenderModuleModelsRejectsReservedAttributeNames(t *testing.T) {
+	t.Parallel()
+
+	for _, attr := range []string{`"uID"`, `tags`, `cedarEntity`} {
+		t.Run(attr, func(t *testing.T) {
+			t.Parallel()
+			src := `
+namespace Mixology {
+    entity Actor;
+    entity Drink { ` + attr + `: String };
+}
+namespace Mixology::Drink {
+    action get appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::Drink,
+        context: {}
+    };
+}`
+
+			var parsed schema.Schema
+			testutil.Ok(t, parsed.UnmarshalCedar([]byte(src)))
+			_, err := parsed.Resolve()
+			testutil.Ok(t, err)
+
+			_, err = renderModuleModels(parsed.AST(), "drinks")
+			testutil.ErrorIf(t, err == nil, "expected reserved attribute name error")
+			testutil.ErrorIf(t, !strings.Contains(err.Error(), "conflicts with the generated"), "unexpected error: %v", err)
+		})
+	}
+}
+
+func TestRenderModuleModelsRejectsActionNameCollisions(t *testing.T) {
+	t.Parallel()
+
+	const src = `
+namespace Mixology {
+    entity Actor;
+    entity Drink;
+}
+namespace Mixology::Drink {
+    action "add-ice", add_ice appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::Drink,
+        context: {}
+    };
+}`
+
+	var parsed schema.Schema
+	testutil.Ok(t, parsed.UnmarshalCedar([]byte(src)))
+	_, err := parsed.Resolve()
+	testutil.Ok(t, err)
+
+	_, err = renderModuleModels(parsed.AST(), "drinks")
+	testutil.ErrorIf(t, err == nil, "expected normalized action name collision")
+	testutil.ErrorIf(t, !strings.Contains(err.Error(), `both normalize to variable name "ActionAddIce"`), "unexpected error: %v", err)
+}
+
+func TestRenderModuleModelsRejectsNormalizedNameCollisions(t *testing.T) {
+	t.Parallel()
+
+	const src = `
+namespace Mixology {
+    entity Actor;
+    entity Drink { "foo-bar": String, foo_bar: Long };
+}
+namespace Mixology::Drink {
+    action "add-ice", add_ice appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::Drink,
+        context: {}
+    };
+}`
+
+	var parsed schema.Schema
+	testutil.Ok(t, parsed.UnmarshalCedar([]byte(src)))
+	_, err := parsed.Resolve()
+	testutil.Ok(t, err)
+
+	_, err = renderModuleModels(parsed.AST(), "drinks")
+	testutil.ErrorIf(t, err == nil, "expected normalized name collision")
+	testutil.ErrorIf(t, !strings.Contains(err.Error(), `both normalize to field name "FooBar"`), "unexpected error: %v", err)
+}

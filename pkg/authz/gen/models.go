@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
+	"go/token"
 	"os"
 	"path/filepath"
 	"slices"
@@ -50,6 +51,9 @@ func renderModuleModels(tree *ast.Schema, moduleName string) ([]byte, error) {
 	}
 	entityNS, entityName, entityDef, err := moduleEntity(tree, actionNS, actions)
 	if err != nil {
+		return nil, fmt.Errorf("%s schema: %w", moduleName, err)
+	}
+	if err := validateGeneratedNames(entityName, entityDef.Shape, actions); err != nil {
 		return nil, fmt.Errorf("%s schema: %w", moduleName, err)
 	}
 
@@ -127,6 +131,53 @@ func renderModuleModels(tree *ast.Schema, moduleName string) ([]byte, error) {
 	b.WriteString("\t}\n}\n")
 
 	return format.Source(b.Bytes())
+}
+
+func validateGeneratedNames(entityName types.Ident, shape ast.RecordType, actions ast.Actions) error {
+	goEntity := exportedName(string(entityName))
+	if !token.IsIdentifier(goEntity) {
+		return fmt.Errorf("entity name %q does not normalize to a Go identifier", entityName)
+	}
+	if goEntity == "Action" {
+		return fmt.Errorf("entity name %q conflicts with the generated Action type", entityName)
+	}
+
+	fields := map[string]types.String{}
+	for _, attr := range sortedFields(shape) {
+		name := exportedName(string(attr))
+		if !token.IsIdentifier(name) {
+			return fmt.Errorf("attribute %q does not normalize to a Go identifier", attr)
+		}
+		switch name {
+		case "UID", "Tags", "CedarEntity":
+			return fmt.Errorf("attribute %q conflicts with the generated %s member", attr, name)
+		}
+		if previous, ok := fields[name]; ok {
+			return fmt.Errorf("attributes %q and %q both normalize to field name %q", previous, attr, name)
+		}
+		fields[name] = attr
+	}
+
+	actionVars := map[string]types.String{}
+	actionNames := make([]string, 0, len(actions))
+	for action := range actions {
+		actionNames = append(actionNames, string(action))
+	}
+	slices.Sort(actionNames)
+	for _, action := range actionNames {
+		name := "Action" + exportedName(action)
+		if !token.IsIdentifier(name) {
+			return fmt.Errorf("action %q does not normalize to a Go identifier", action)
+		}
+		if name == "ActionType" {
+			return fmt.Errorf("action %q conflicts with the generated ActionType constant", action)
+		}
+		if previous, ok := actionVars[name]; ok {
+			return fmt.Errorf("actions %q and %q both normalize to variable name %q", previous, action, name)
+		}
+		actionVars[name] = types.String(action)
+	}
+	return nil
 }
 
 func entityHasStringTags(tree *ast.Schema, ns types.Path, entity ast.Entity) (bool, error) {
