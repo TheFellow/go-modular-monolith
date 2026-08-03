@@ -6,6 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
@@ -68,13 +69,12 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[IngredientRo
 		q = q.FilterEqual("Name", filter.Name)
 	}
 	if len(filter.IDs) > 0 {
-		idSet := make(map[string]struct{}, len(filter.IDs))
+		var idSet set.Set[string]
 		for _, id := range filter.IDs {
-			idSet[id.String()] = struct{}{}
+			idSet.Add(id.String())
 		}
 		q = q.FilterFn(func(r IngredientRow) bool {
-			_, ok := idSet[r.ID]
-			return ok
+			return idSet.Contains(r.ID)
 		})
 	}
 	if filter.BeforeID != "" {

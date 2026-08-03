@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 )
 
 //go:embed dispatcher.go.tpl
@@ -121,16 +123,16 @@ func main() {
 			alias = "pkg"
 		}
 
-		used := map[string]struct{}{}
+		var used set.Set[string]
 		for _, a := range importAlias {
-			used[a] = struct{}{}
+			used.Add(a)
 		}
 
-		if _, ok := used[alias]; ok {
+		if used.Contains(alias) {
 			base := alias
 			for i := 2; ; i++ {
 				candidate := base + strconv.Itoa(i)
-				if _, ok := used[candidate]; !ok {
+				if !used.Contains(candidate) {
 					alias = candidate
 					break
 				}

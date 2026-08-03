@@ -16,6 +16,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -260,13 +261,13 @@ func loadDrinkChoices(session *app.Session, menu models.Menu, removing bool, wor
 		if err != nil {
 			return drinkChoicesLoadedMsg{workflowID: workflowID, err: err}
 		}
-		included := make(map[entity.DrinkID]bool, len(menu.Items))
+		var included set.Set[entity.DrinkID]
 		for _, item := range menu.Items {
-			included[item.DrinkID] = true
+			included.Add(item.DrinkID)
 		}
 		choices := make([]drinkChoice, 0, len(all))
 		for _, drink := range all {
-			if drink != nil && !included[drink.ID] {
+			if drink != nil && !included.Contains(drink.ID) {
 				choices = append(choices, drinkChoice{id: drink.ID, name: drink.Name})
 			}
 		}

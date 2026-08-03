@@ -9,6 +9,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
@@ -39,16 +40,16 @@ func TestListFilter_IDs(t *testing.T) {
 		IDs: []entity.IngredientID{ing1.ID, ing3.ID},
 	})
 
-	found := make(map[string]bool)
+	var found set.Set[string]
 	for ingredient, err := range list {
 		testutil.Ok(t, err)
 		if ingredient == nil {
 			continue
 		}
-		found[ingredient.ID.String()] = true
+		found.Add(ingredient.ID.String())
 	}
 
-	testutil.ErrorIf(t, !found[ing1.ID.String()], "expected ingredient %s in list", ing1.ID.String())
-	testutil.ErrorIf(t, !found[ing3.ID.String()], "expected ingredient %s in list", ing3.ID.String())
-	testutil.ErrorIf(t, found[ing2.ID.String()], "did not expect ingredient %s in list", ing2.ID.String())
+	testutil.ErrorIf(t, !found.Contains(ing1.ID.String()), "expected ingredient %s in list", ing1.ID.String())
+	testutil.ErrorIf(t, !found.Contains(ing3.ID.String()), "expected ingredient %s in list", ing3.ID.String())
+	testutil.ErrorIf(t, found.Contains(ing2.ID.String()), "did not expect ingredient %s in list", ing2.ID.String())
 }

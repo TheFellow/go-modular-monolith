@@ -1,13 +1,14 @@
 package dao
 
 import (
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
 
-func (d *DAO) ActiveIDs(ctx store.Context, ids []cedar.String) (map[cedar.String]struct{}, error) {
-	result := make(map[cedar.String]struct{})
+func (d *DAO) ActiveIDs(ctx store.Context, ids []cedar.String) (set.Set[cedar.String], error) {
+	var result set.Set[cedar.String]
 	if len(ids) == 0 {
 		return result, nil
 	}
@@ -21,12 +22,12 @@ func (d *DAO) ActiveIDs(ctx store.Context, ids []cedar.String) (map[cedar.String
 			return err
 		}
 		for _, row := range rows {
-			result[cedar.String(row.InventoryID)] = struct{}{}
+			result.Add(cedar.String(row.InventoryID))
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, store.MapError(err, "list active inventory")
+		return set.Set[cedar.String]{}, store.MapError(err, "list active inventory")
 	}
 	return result, nil
 }

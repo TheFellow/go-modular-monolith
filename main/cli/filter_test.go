@@ -13,6 +13,7 @@ import (
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/filter"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/urfave/cli/v3"
 )
@@ -116,11 +117,11 @@ func TestEveryListCommandHasFilterFlags(t *testing.T) {
 			if command.Name != "list" {
 				continue
 			}
-			names := map[string]bool{}
+			var names set.Set[string]
 			for _, flag := range command.Flags {
-				names[flag.Names()[0]] = true
+				names.Add(flag.Names()[0])
 			}
-			testutil.ErrorIf(t, !names["filter"] || !names["filter-help"], "%s list filter flags = %v", noun.Name, names)
+			testutil.ErrorIf(t, !names.Contains("filter") || !names.Contains("filter-help"), "%s list filter flags = %v", noun.Name, names.Slice())
 		}
 	}
 }

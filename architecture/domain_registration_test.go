@@ -1,7 +1,6 @@
 package architecture_test
 
 import (
-	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -9,6 +8,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 // TestEveryDomainIsComposed catches the easy-to-miss case where a new domain
@@ -58,7 +60,7 @@ func TestEveryDomainIsComposed(t *testing.T) {
 			t.Errorf("domain %q is not exposed as a *%s.Module field on App", domain, alias)
 			continue
 		}
-		if !initializedFields[field] {
+		if !initializedFields.Contains(field) {
 			t.Errorf("domain %q App field %q is not initialized by New", domain, field)
 		}
 	}
@@ -113,9 +115,9 @@ func appModuleFields(t *testing.T, file *ast.File) map[string]string {
 	return nil
 }
 
-func initializedAppFields(t *testing.T, file *ast.File) map[string]bool {
+func initializedAppFields(t *testing.T, file *ast.File) set.Set[string] {
 	t.Helper()
-	fields := make(map[string]bool)
+	var fields set.Set[string]
 	ast.Inspect(file, func(node ast.Node) bool {
 		literal, ok := node.(*ast.CompositeLit)
 		if !ok {
@@ -135,11 +137,11 @@ func initializedAppFields(t *testing.T, file *ast.File) map[string]bool {
 				continue
 			}
 			if value, nilValue := pair.Value.(*ast.Ident); !nilValue || value.Name != "nil" {
-				fields[key.Name] = true
+				fields.Add(key.Name)
 			}
 		}
 		return true
 	})
-	testutil.ErrorIf(t, len(fields) == 0, "%v", "initialized App literal not found")
+	testutil.ErrorIf(t, fields.Len() == 0, "%v", "initialized App literal not found")
 	return fields
 }

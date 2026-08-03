@@ -15,6 +15,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -436,12 +437,12 @@ func (v *View) rebuildRecipe(state State) {
 		optional.SetChecked(row.Optional)
 		substituteBox := container.NewVBox()
 		substitutes := make(map[entity.IngredientID]*semanticCheck)
-		selected := make(map[entity.IngredientID]bool)
+		var selected set.Set[entity.IngredientID]
 		for _, id := range row.Substitutes {
-			selected[id] = true
+			selected.Add(id)
 		}
 		for _, option := range state.Ingredients {
-			if !selected[option.ID] {
+			if !selected.Contains(option.ID) {
 				continue
 			}
 			check := newCheck(ingredientSubstituteControl(i, option.ID), option.Name)

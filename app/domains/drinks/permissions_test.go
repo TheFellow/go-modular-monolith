@@ -9,6 +9,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
@@ -64,12 +65,12 @@ func TestPermissions_Drinks(t *testing.T) {
 
 			listed, err := a.Drinks.List(ctx, drinks.ListRequest{})
 			testutil.Ok(t, err)
-			visible := make(map[entity.DrinkID]bool, len(listed.Items))
+			var visible set.Set[entity.DrinkID]
 			for _, drink := range listed.Items {
-				visible[drink.ID] = true
+				visible.Add(drink.ID)
 			}
-			testutil.ErrorIf(t, visible[wineExisting.ID] != tc.canReadWine, "unexpected wine visibility")
-			testutil.ErrorIf(t, visible[nonWineExisting.ID] != tc.canReadNonWine, "unexpected non-wine visibility")
+			testutil.ErrorIf(t, visible.Contains(wineExisting.ID) != tc.canReadWine, "unexpected wine visibility")
+			testutil.ErrorIf(t, visible.Contains(nonWineExisting.ID) != tc.canReadNonWine, "unexpected non-wine visibility")
 
 			count, err := a.Drinks.Count(ctx, drinks.ListRequest{})
 			testutil.Ok(t, err)

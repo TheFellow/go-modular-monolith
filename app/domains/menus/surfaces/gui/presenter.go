@@ -25,6 +25,7 @@ import (
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -355,14 +356,14 @@ func (p *Presenter) SearchDrinks(query string) {
 		if err != nil {
 			return nil, err
 		}
-		included := make(map[entity.DrinkID]bool)
+		var included set.Set[entity.DrinkID]
 		for _, item := range menu.Items {
-			included[item.DrinkID] = true
+			included.Add(item.DrinkID)
 		}
 		needle := strings.ToLower(strings.TrimSpace(query))
 		out := make([]DrinkOption, 0, len(all))
 		for _, drink := range all {
-			if drink != nil && !included[drink.ID] && (needle == "" || strings.Contains(strings.ToLower(drink.Name), needle)) {
+			if drink != nil && !included.Contains(drink.ID) && (needle == "" || strings.Contains(strings.ToLower(drink.Name), needle)) {
 				out = append(out, DrinkOption{ID: drink.ID, Name: drink.Name})
 			}
 		}

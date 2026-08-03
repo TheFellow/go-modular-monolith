@@ -17,6 +17,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/cedar-policy/cedar-go"
 )
@@ -48,10 +49,10 @@ func TestAudit_ListPageUsesCursorWithoutDuplicates(t *testing.T) {
 	}
 
 	testutil.Equals(t, len(got), 5)
-	seen := map[string]bool{}
+	var seen set.Set[string]
 	for _, id := range got {
-		testutil.IsFalse(t, seen[id])
-		seen[id] = true
+		testutil.IsFalse(t, seen.Contains(id))
+		seen.Add(id)
 	}
 }
 

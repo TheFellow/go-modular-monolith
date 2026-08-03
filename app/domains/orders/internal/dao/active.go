@@ -1,13 +1,14 @@
 package dao
 
 import (
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/mjl-/bstore"
 )
 
-func (d *DAO) ActiveIDs(ctx store.Context, ids []cedar.String) (map[cedar.String]struct{}, error) {
-	result := make(map[cedar.String]struct{})
+func (d *DAO) ActiveIDs(ctx store.Context, ids []cedar.String) (set.Set[cedar.String], error) {
+	var result set.Set[cedar.String]
 	if len(ids) == 0 {
 		return result, nil
 	}
@@ -19,26 +20,26 @@ func (d *DAO) ActiveIDs(ctx store.Context, ids []cedar.String) (map[cedar.String
 		}
 		for _, row := range rows {
 			if row.DeletedAt == nil {
-				result[cedar.String(row.ID)] = struct{}{}
+				result.Add(cedar.String(row.ID))
 			}
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, store.MapError(err, "list active orders")
+		return set.Set[cedar.String]{}, store.MapError(err, "list active orders")
 	}
 	return result, nil
 }
 
 func activeIDValues(ids []cedar.String) []string {
 	values := make([]string, 0, len(ids))
-	seen := make(map[string]struct{}, len(ids))
+	var seen set.Set[string]
 	for _, id := range ids {
 		value := string(id)
-		if _, ok := seen[value]; ok {
+		if seen.Contains(value) {
 			continue
 		}
-		seen[value] = struct{}{}
+		seen.Add(value)
 		values = append(values, value)
 	}
 	return values

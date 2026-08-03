@@ -17,6 +17,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -68,12 +69,12 @@ func TestTagFilteredPagingFillsPagesWithoutDuplicates(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(second.Items), 1)
 	testutil.Equals(t, second.Next, paging.Cursor(""))
-	seen := map[entity.IngredientID]bool{}
+	var seen set.Set[entity.IngredientID]
 	for _, item := range append(first.Items, second.Items...) {
-		testutil.ErrorIf(t, seen[item.ID], "duplicate ingredient %s", item.ID)
-		seen[item.ID] = true
+		testutil.ErrorIf(t, seen.Contains(item.ID), "duplicate ingredient %s", item.ID)
+		seen.Add(item.ID)
 	}
-	testutil.Equals(t, len(seen), 3)
+	testutil.Equals(t, seen.Len(), 3)
 }
 
 func TestTagFilteringPrecedesAuthorizationElision(t *testing.T) {

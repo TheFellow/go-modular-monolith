@@ -14,6 +14,8 @@ import (
 	"github.com/cedar-policy/cedar-go/types"
 	"github.com/cedar-policy/cedar-go/x/exp/schema"
 	"github.com/cedar-policy/cedar-go/x/exp/schema/ast"
+
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 )
 
 const schemaFile = "schema.cedarschema"
@@ -290,10 +292,10 @@ func moduleEntity(tree *ast.Schema, actionNS types.Path, actions ast.Actions) (t
 }
 
 func cedarType(tree *ast.Schema, ns types.Path, typ ast.IsType) (goType, converter string, err error) {
-	return resolveCedarType(tree, ns, typ, map[types.Path]bool{})
+	return resolveCedarType(tree, ns, typ, set.Set[types.Path]{})
 }
 
-func resolveCedarType(tree *ast.Schema, ns types.Path, typ ast.IsType, resolving map[types.Path]bool) (goType, converter string, err error) {
+func resolveCedarType(tree *ast.Schema, ns types.Path, typ ast.IsType, resolving set.Set[types.Path]) (goType, converter string, err error) {
 	switch typ := typ.(type) {
 	case ast.StringType:
 		return "string", "cedar.String", nil
@@ -317,12 +319,12 @@ func resolveCedarType(tree *ast.Schema, ns types.Path, typ ast.IsType, resolving
 		}
 		for _, path := range refCandidates(ns, string(typ)) {
 			if common, commonNS, ok := schemaCommonType(tree, path); ok {
-				if resolving[path] {
+				if resolving.Contains(path) {
 					return "", "", fmt.Errorf("common type cycle at %s", path)
 				}
-				resolving[path] = true
+				resolving.Add(path)
 				goType, converter, err := resolveCedarType(tree, commonNS, common.Type, resolving)
-				delete(resolving, path)
+				resolving.Remove(path)
 				return goType, converter, err
 			}
 			if schemaDeclaresEntityType(tree, path) {

@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -270,15 +271,15 @@ func (m *Module) Summary(ctx *middleware.Context) ([]Summary, error) {
 
 func (m *Module) activeAssociations(ctx store.Context, associations []association) ([]association, error) {
 	idsByType := make(map[cedar.EntityType][]cedar.String)
-	seen := make(map[cedar.EntityUID]struct{})
+	var seen set.Set[cedar.EntityUID]
 	for _, association := range associations {
-		if _, ok := seen[association.target]; ok {
+		if seen.Contains(association.target) {
 			continue
 		}
-		seen[association.target] = struct{}{}
+		seen.Add(association.target)
 		idsByType[association.target.Type] = append(idsByType[association.target.Type], association.target.ID)
 	}
-	activeByType := make(map[cedar.EntityType]map[cedar.String]struct{}, len(idsByType))
+	activeByType := make(map[cedar.EntityType]set.Set[cedar.String], len(idsByType))
 	for entityType, ids := range idsByType {
 		registration, err := m.registry.resolve(entityType)
 		if err != nil {
@@ -292,7 +293,7 @@ func (m *Module) activeAssociations(ctx store.Context, associations []associatio
 	}
 	result := make([]association, 0, len(associations))
 	for _, association := range associations {
-		if _, active := activeByType[association.target.Type][association.target.ID]; active {
+		if activeByType[association.target.Type].Contains(association.target.ID) {
 			result = append(result, association)
 		}
 	}

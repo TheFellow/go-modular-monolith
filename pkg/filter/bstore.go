@@ -3,6 +3,7 @@ package filter
 import (
 	"reflect"
 
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/mjl-/bstore"
 )
 
@@ -219,9 +220,9 @@ func disjunctionPushdowns(left, right []pushdown) []pushdown {
 		}
 	}
 
-	seenColumns := map[string]bool{}
+	var seenColumns set.Set[string]
 	for _, lp := range left {
-		if lp.operator != "==" || seenColumns[lp.column] {
+		if lp.operator != "==" || seenColumns.Contains(lp.column) {
 			continue
 		}
 		leftValues, leftOK := equalityValues(left, lp.column)
@@ -231,7 +232,7 @@ func disjunctionPushdowns(left, right []pushdown) []pushdown {
 		}
 		values := appendUniqueValues(leftValues, rightValues...)
 		out = appendUniquePushdown(out, pushdown{column: lp.column, operator: "==", values: values})
-		seenColumns[lp.column] = true
+		seenColumns.Add(lp.column)
 	}
 	return out
 }

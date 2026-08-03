@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
 	tea "github.com/charmbracelet/bubbletea"
@@ -44,14 +45,14 @@ func TestListViewModelTraversesServerPagesWithoutDuplicates(t *testing.T) {
 	driver := tuitest.NewDriver(t, program)
 	vm := program.vm
 	testutil.ErrorIf(t, len(vm.list.Items()) != 100 || vm.next == "", "first page = %d next=%q", len(vm.list.Items()), vm.next)
-	seen := map[string]bool{}
+	var seen set.Set[string]
 	for _, item := range vm.list.Items() {
-		seen[item.(drinkItem).Value.ID.String()] = true
+		seen.Add(item.(drinkItem).Value.ID.String())
 	}
 	driver.Press("]")
 	testutil.ErrorIf(t, len(vm.list.Items()) != 1, "second page = %d", len(vm.list.Items()))
 	id := vm.list.Items()[0].(drinkItem).Value.ID.String()
-	testutil.ErrorIf(t, seen[id], "duplicate %s across cursor pages", id)
+	testutil.ErrorIf(t, seen.Contains(id), "duplicate %s across cursor pages", id)
 	driver.Press("[")
 	testutil.ErrorIf(t, len(vm.list.Items()) != 100, "previous page = %d", len(vm.list.Items()))
 }
