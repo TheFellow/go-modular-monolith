@@ -38,11 +38,11 @@ the [toolkits](../pkg/toolkits/readme.md); process and cross-domain composition 
 
 ## Operation pipelines
 
-Commands pass through logging, metrics, activity tracking, unit of work, authorization, execution,
-event dispatch, and audit recording. Authorization evaluates both the loaded input and resulting
-state, allowing policies to constrain transitions. Domain mutation, leaf handlers, and successful
-audit entry share one transaction. On failure that transaction rolls back, then the failed attempt
-is audited separately.
+The shared [middleware pipeline](../pkg/middleware/README.md) sends commands through logging,
+metrics, activity tracking, unit of work, authorization, execution, event dispatch, and audit
+recording. Authorization evaluates both the loaded input and resulting state, allowing policies to
+constrain transitions. Domain mutation, leaf handlers, and successful audit entry share one
+transaction. On failure that transaction rolls back, then the failed attempt is audited separately.
 
 Queries share logging and metrics. A get authorizes its returned Cedar entity. A list authorizes
 each result and silently removes permission denials; evaluation/infrastructure failures still fail

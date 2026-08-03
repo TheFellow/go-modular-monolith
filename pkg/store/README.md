@@ -94,12 +94,13 @@ This distinction is intentional:
 | `store.Write`                | Requires and reuses the context transaction; a missing transaction is an error.      |
 | `Begin` + `Commit`/`Rollback` | Supports an explicitly caller-owned transaction spanning several application calls. |
 
-The command pipeline normally supplies the write transaction. Requiring one in `store.Write`
-prevents a DAO mutation from silently escaping the unit of work that also contains event handlers
-and the successful audit entry. See the [dispatcher guide](../dispatcher/README.md#dispatch-path)
-for that atomic event path. Application-level composition that truly needs to create a unit of work
-should use `(*Store).Write` and pass a transaction-bearing derived middleware context to every
-nested operation, as [`app.RunTaggedMutation`](../../app/tagged_mutation.go) does.
+The [command pipeline](../middleware/README.md#default-pipelines) normally supplies the write
+transaction. Requiring one in `store.Write` prevents a DAO mutation from silently escaping the unit
+of work that also contains event handlers and the successful audit entry. See the
+[dispatcher guide](../dispatcher/README.md#dispatch-path) for that atomic event path.
+Application-level composition that truly needs to create a unit of work should use
+`(*Store).Write` and pass a transaction-bearing derived middleware context to every nested
+operation, as [`app.RunTaggedMutation`](../../app/tagged_mutation.go) does.
 
 ## Error mapping
 
@@ -147,9 +148,10 @@ pushdowns described by [`pkg/filter`](../filter/README.md) before evaluating any
 expression.
 
 Managed `Store.Read` and `Store.Write` calls observe `mixology_store_read_duration_seconds` and
-`mixology_store_write_duration_seconds` through the metrics attached to the context. When an
-existing transaction came from `Store.Write`, work that reuses it is included in that outer
-operation's duration.
+`mixology_store_write_duration_seconds` through the metrics attached to the context. The
+[telemetry guide](../telemetry/README.md) covers backends and metric lifecycle. When an existing
+transaction came from `Store.Write`, work that reuses it is included in that outer operation's
+duration.
 
 Use `testutil.NewFixture(t)` for application behavior so tests exercise real authorization,
 transactions, event dispatch, audit recording, and an isolated temporary database. Direct store or

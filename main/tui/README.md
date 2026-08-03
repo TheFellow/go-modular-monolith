@@ -88,6 +88,9 @@ graph TD
 4. Use shared styles/keys from `pkg/toolkits/tui/styles` and `pkg/toolkits/tui/keys`.
 5. For data access, call `app.Context()` per operation.
 
+Use the deterministic [`pkg/testutil/tuitest`](../../pkg/testutil/README.md#bubble-tea-tests) driver
+for complete-model keyboard, command, render, viewport, and ANSI behavior.
+
 ## Notes
 
 - The dashboard is reloaded on refresh (`r`) and when returning to it.

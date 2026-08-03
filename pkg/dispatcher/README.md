@@ -24,7 +24,8 @@ domain command -> middleware.Context.AddEvent
 Dispatch happens inside the command's unit of work. Domain mutation, handler writes, touched
 entities, and the successful audit activity therefore commit together; a handler error aborts the
 remaining dispatch and rolls the transaction back. Events are dispatched sequentially in the order
-the command added them.
+the command added them. The [middleware guide](../middleware/README.md#default-pipelines) explains
+the surrounding transaction and failure-audit ordering.
 
 Handlers receive `*middleware.HandlerContext`, which exposes the current transaction, principal,
 and `TouchEntity`, but deliberately has no `AddEvent`. A handler is a leaf operation and cannot
