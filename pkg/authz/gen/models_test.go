@@ -141,3 +141,59 @@ namespace Mixology::Drink {
 	testutil.ErrorIf(t, err == nil, "expected unsupported tag type error")
 	testutil.ErrorIf(t, !strings.Contains(err.Error(), "only String is supported"), "unexpected error: %v", err)
 }
+
+func TestRenderModuleModelsResolvesCommonTypeAliases(t *testing.T) {
+	t.Parallel()
+
+	const src = `
+namespace Mixology {
+    type Label = String;
+    entity Actor;
+    entity Drink { Name: Label };
+}
+namespace Mixology::Drink {
+    action get appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::Drink,
+        context: {}
+    };
+}`
+
+	var parsed schema.Schema
+	testutil.Ok(t, parsed.UnmarshalCedar([]byte(src)))
+	_, err := parsed.Resolve()
+	testutil.Ok(t, err)
+
+	got, err := renderModuleModels(parsed.AST(), "drinks")
+	testutil.Ok(t, err)
+	normalized := strings.Join(strings.Fields(string(got)), " ")
+	testutil.ErrorIf(t, !strings.Contains(normalized, `Name string`),
+		"common String alias generated the wrong field type:\n%s", got)
+}
+
+func TestRenderModuleModelsRejectsUnsupportedCommonTypes(t *testing.T) {
+	t.Parallel()
+
+	const src = `
+namespace Mixology {
+    type Details = { note: String };
+    entity Actor;
+    entity Drink { Details: Details };
+}
+namespace Mixology::Drink {
+    action get appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::Drink,
+        context: {}
+    };
+}`
+
+	var parsed schema.Schema
+	testutil.Ok(t, parsed.UnmarshalCedar([]byte(src)))
+	_, err := parsed.Resolve()
+	testutil.Ok(t, err)
+
+	_, err = renderModuleModels(parsed.AST(), "drinks")
+	testutil.ErrorIf(t, err == nil, "expected unsupported common type error")
+	testutil.ErrorIf(t, !strings.Contains(err.Error(), "unsupported Cedar type"), "unexpected error: %v", err)
+}

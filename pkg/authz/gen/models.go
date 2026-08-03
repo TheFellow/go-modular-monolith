@@ -57,7 +57,7 @@ func renderModuleModels(tree *ast.Schema, moduleName string) ([]byte, error) {
 	entityType := qualifyPath(entityNS, string(entityName))
 	actionType := qualifyPath(actionNS, "Action")
 	attrs := sortedFields(entityDef.Shape)
-	hasTags, err := entityHasStringTags(entityDef)
+	hasTags, err := entityHasStringTags(tree, entityNS, entityDef)
 	if err != nil {
 		return nil, fmt.Errorf("entity %s: %w", entityType, err)
 	}
@@ -94,7 +94,7 @@ func renderModuleModels(tree *ast.Schema, moduleName string) ([]byte, error) {
 		if field.Optional {
 			return nil, fmt.Errorf("entity %s attribute %s: optional attributes are not supported", entityType, attr)
 		}
-		goType, _, err := cedarType(field.Type)
+		goType, _, err := cedarType(tree, entityNS, field.Type)
 		if err != nil {
 			return nil, fmt.Errorf("entity %s attribute %s: %w", entityType, attr, err)
 		}
@@ -111,7 +111,7 @@ func renderModuleModels(tree *ast.Schema, moduleName string) ([]byte, error) {
 	fmt.Fprintf(&b, "\treturn cedar.Entity{\n\t\tUID: cedar.NewEntityUID(%sType, m.UID.ID),\n", goEntity)
 	b.WriteString("\t\tParents: cedar.NewEntityUIDSet(),\n\t\tAttributes: cedar.NewRecord(cedar.RecordMap{\n")
 	for _, attr := range attrs {
-		_, converter, err := cedarType(entityDef.Shape[attr].Type)
+		_, converter, err := cedarType(tree, entityNS, entityDef.Shape[attr].Type)
 		if err != nil {
 			return nil, err
 		}
@@ -129,11 +129,11 @@ func renderModuleModels(tree *ast.Schema, moduleName string) ([]byte, error) {
 	return format.Source(b.Bytes())
 }
 
-func entityHasStringTags(entity ast.Entity) (bool, error) {
+func entityHasStringTags(tree *ast.Schema, ns types.Path, entity ast.Entity) (bool, error) {
 	if entity.Tags == nil {
 		return false, nil
 	}
-	goType, _, err := cedarType(entity.Tags)
+	goType, _, err := cedarType(tree, ns, entity.Tags)
 	if err != nil {
 		return false, fmt.Errorf("tags: %w", err)
 	}
@@ -198,7 +198,11 @@ func moduleEntity(tree *ast.Schema, actionNS types.Path, actions ast.Actions) (t
 	return ns, name, def, nil
 }
 
-func cedarType(typ ast.IsType) (goType, converter string, err error) {
+func cedarType(tree *ast.Schema, ns types.Path, typ ast.IsType) (goType, converter string, err error) {
+	return resolveCedarType(tree, ns, typ, map[types.Path]bool{})
+}
+
+func resolveCedarType(tree *ast.Schema, ns types.Path, typ ast.IsType, resolving map[types.Path]bool) (goType, converter string, err error) {
 	switch typ := typ.(type) {
 	case ast.StringType:
 		return "string", "cedar.String", nil
@@ -207,6 +211,9 @@ func cedarType(typ ast.IsType) (goType, converter string, err error) {
 	case ast.BoolType:
 		return "bool", "cedar.Boolean", nil
 	case ast.EntityTypeRef:
+		if _, err := resolveEntityType(tree, ns, string(typ)); err != nil {
+			return "", "", err
+		}
 		return "cedar.EntityUID", "cedar.EntityUID", nil
 	case ast.TypeRef:
 		switch string(typ) {
@@ -216,12 +223,76 @@ func cedarType(typ ast.IsType) (goType, converter string, err error) {
 			return "int64", "cedar.Long", nil
 		case "Bool", "__cedar::Bool":
 			return "bool", "cedar.Boolean", nil
-		default:
-			return "cedar.EntityUID", "cedar.EntityUID", nil
 		}
+		for _, path := range refCandidates(ns, string(typ)) {
+			if common, commonNS, ok := schemaCommonType(tree, path); ok {
+				if resolving[path] {
+					return "", "", fmt.Errorf("common type cycle at %s", path)
+				}
+				resolving[path] = true
+				goType, converter, err := resolveCedarType(tree, commonNS, common.Type, resolving)
+				delete(resolving, path)
+				return goType, converter, err
+			}
+			if schemaDeclaresEntityType(tree, path) {
+				return "cedar.EntityUID", "cedar.EntityUID", nil
+			}
+		}
+		return "", "", fmt.Errorf("undefined Cedar type %q", typ)
 	default:
 		return "", "", fmt.Errorf("unsupported Cedar type %T", typ)
 	}
+}
+
+func resolveEntityType(tree *ast.Schema, ns types.Path, ref string) (types.Path, error) {
+	for _, path := range refCandidates(ns, ref) {
+		if schemaDeclaresEntityType(tree, path) {
+			return path, nil
+		}
+	}
+	return "", fmt.Errorf("entity type %q is not declared", ref)
+}
+
+func refCandidates(ns types.Path, ref string) []types.Path {
+	if ns != "" && !strings.Contains(ref, "::") {
+		return []types.Path{types.Path(string(ns) + "::" + ref), types.Path(ref)}
+	}
+	return []types.Path{types.Path(ref)}
+}
+
+func schemaCommonType(tree *ast.Schema, path types.Path) (ast.CommonType, types.Path, bool) {
+	text := string(path)
+	idx := strings.LastIndex(text, "::")
+	if idx < 0 {
+		common, ok := tree.CommonTypes[types.Ident(text)]
+		return common, "", ok
+	}
+	ns, name := types.Path(text[:idx]), types.Ident(text[idx+2:])
+	declarations, ok := tree.Namespaces[ns]
+	if !ok {
+		return ast.CommonType{}, "", false
+	}
+	common, ok := declarations.CommonTypes[name]
+	return common, ns, ok
+}
+
+func schemaDeclaresEntityType(tree *ast.Schema, path types.Path) bool {
+	text := string(path)
+	idx := strings.LastIndex(text, "::")
+	if idx < 0 {
+		name := types.Ident(text)
+		_, entityOK := tree.Entities[name]
+		_, enumOK := tree.Enums[name]
+		return entityOK || enumOK
+	}
+	ns, name := types.Path(text[:idx]), types.Ident(text[idx+2:])
+	declarations, ok := tree.Namespaces[ns]
+	if !ok {
+		return false
+	}
+	_, entityOK := declarations.Entities[name]
+	_, enumOK := declarations.Enums[name]
+	return entityOK || enumOK
 }
 
 func sortedFields(record ast.RecordType) []types.String {
