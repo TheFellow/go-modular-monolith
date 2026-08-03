@@ -5,10 +5,10 @@ All CLI examples assume `go run ./main/seed` has created `data/mixology.db`. Sub
 
 ## Filtering and paging
 
-Every list accepts `--filter`; `--filter-help` prints its concrete fields, types, syntax, and
-examples without opening the database. Expressions support comparisons, `in`/`not in`, parentheses,
-`&&`/`and`, `||`/`or`, `!`/`not`, and string predicates such as `contains`, `startsWith`,
-`endsWith`, and `matches`.
+Every list uses the shared [typed filter package](../pkg/filter/README.md) and accepts `--filter`;
+`--filter-help` prints its concrete fields, types, syntax, and examples without opening the
+database. Expressions support comparisons, `in`/`not in`, parentheses, `&&`/`and`, `||`/`or`,
+`!`/`not`, and string predicates such as `contains`, `startsWith`, `endsWith`, and `matches`.
 
 ```sh
 mixology drinks list --filter-help

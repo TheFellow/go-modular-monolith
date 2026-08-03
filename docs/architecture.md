@@ -28,9 +28,9 @@ events in `events`. Write logic and DAOs are private under `internal`; handlers 
 events but cannot import peer command implementations. Audit and tagging use smaller explicit
 profiles appropriate to their responsibilities.
 
-The store is a required bootstrap dependency. Each context registers its private bstore models
-during construction; imports have no database-registration side effects. Invalid registration
-fails immediately.
+The shared [store](../pkg/store/README.md) is a required bootstrap dependency. Each context
+registers its private bstore models during construction; imports have no database-registration side
+effects. Invalid registration fails immediately.
 
 Presentation follows a second set of vertical boundaries documented under
 [domain surfaces](../app/domains/readme.md#presentation-surfaces). Reusable framework code lives in
@@ -54,7 +54,9 @@ sessions bind one selected actor while still creating fresh operation contexts.
 
 ## Events do not cascade
 
-Handlers receive `*middleware.HandlerContext`, which deliberately has no `AddEvent`. They may query
+The generated [domain event dispatcher](../pkg/dispatcher/README.md) connects public events to
+their handlers without making bounded contexts depend directly on their consumers. Handlers
+receive `*middleware.HandlerContext`, which deliberately has no `AddEvent`. They may query
 and mutate their own domain and call `TouchEntity`, but cannot emit another event. This makes every
 event fan-out a bounded leaf operation.
 
@@ -68,10 +70,11 @@ correctness depend on handler order.
 
 ## Authorization
 
-Each domain owns a Cedar schema and policies; generation assembles them into one policy set. Public
-actors are owner, manager, sommelier, bartender, and anonymous. Gets/commands return typed permission
-errors; lists elide denied entities. Taggable entities expose native Cedar string tags, enabling
-policy-owned ABAC without giving tags application-global meaning.
+Each domain owns a Cedar schema and policies; the shared
+[authorization package](../pkg/authz/README.md) validates and assembles them into one policy set.
+Public actors are owner, manager, sommelier, bartender, and anonymous. Gets/commands return typed
+permission errors; lists elide denied entities. Taggable entities expose native Cedar string tags,
+enabling policy-owned ABAC without giving tags application-global meaning.
 
 ## Generation
 
