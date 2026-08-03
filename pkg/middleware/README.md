@@ -75,11 +75,11 @@ no-cascading rule at compile time.
 
 Domain modules normally enter the pipeline through one of three helpers:
 
-| Helper           | Contract |
-| ---------------- | -------- |
-| `RunEntityQuery` | Execute a get, then authorize the loaded result before returning it. |
+| Helper           | Contract                                                                                                                                     |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RunEntityQuery` | Execute a get, then authorize the loaded result before returning it.                                                                         |
 | `RunPageQuery`   | Consume an ordered sequence until a full page of authorized items is available; permission denials are omitted while other errors propagate. |
-| `RunCommand`     | Load current state, authorize it, handle the mutation, then authorize resulting state before side effects commit. |
+| `RunCommand`     | Load current state, authorize it, handle the mutation, then authorize resulting state before side effects commit.                            |
 
 All returned entity types satisfy `CedarEntity`. `RunCommand` uses `CommandSpec.Action` for
 authorization unless `AuthorizationActions` derives a complete action set from the loaded input.

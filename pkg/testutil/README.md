@@ -6,12 +6,12 @@ exercising the real authorization, middleware, event, transaction, telemetry, an
 
 ## Package map
 
-| Package | Use it for |
-| ------- | ---------- |
-| `pkg/testutil` | Isolated application fixtures, domain data helpers, audit/metric assertions, and general assertions. |
-| `pkg/testutil/fynetest` | Semantic Fyne interaction, controlled async completion, and recorded dialogs. |
-| `pkg/testutil/tuitest` | Deterministic Bubble Tea command draining, keyboard input, rendering, viewport, and ANSI assertions. |
-| `pkg/testutil/assert` | One dependency-free assertion for low-level packages that would create an import cycle through root `testutil`. |
+| Package                 | Use it for                                                                                                      |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `pkg/testutil`          | Isolated application fixtures, domain data helpers, audit/metric assertions, and general assertions.            |
+| `pkg/testutil/fynetest` | Semantic Fyne interaction, controlled async completion, and recorded dialogs.                                   |
+| `pkg/testutil/tuitest`  | Deterministic Bubble Tea command draining, keyboard input, rendering, viewport, and ANSI assertions.            |
+| `pkg/testutil/assert`   | One dependency-free assertion for low-level packages that would create an import cycle through root `testutil`. |
 
 Application and surface tests should normally import the root package. The smaller `assert`
 subpackage is an import-cycle escape hatch, not a second general assertion library.
