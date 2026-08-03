@@ -158,6 +158,21 @@ func moduleActions(tree *ast.Schema) (types.Path, ast.Actions, error) {
 	if found == nil {
 		return "", nil, fmt.Errorf("no actions declared")
 	}
+	actionNames := make([]string, 0, len(found))
+	for name := range found {
+		actionNames = append(actionNames, string(name))
+	}
+	slices.Sort(actionNames)
+	for _, name := range actionNames {
+		action := found[types.String(name)]
+		if action.AppliesTo == nil {
+			continue
+		}
+		context, ok := action.AppliesTo.Context.(ast.RecordType)
+		if !ok || len(context) != 0 {
+			return "", nil, fmt.Errorf("action %s: non-empty action contexts are not supported", name)
+		}
+	}
 	return foundNS, found, nil
 }
 
@@ -184,6 +199,9 @@ func moduleEntity(tree *ast.Schema, actionNS types.Path, actions ast.Actions) (t
 		if !ok {
 			return "", "", ast.Entity{}, fmt.Errorf("resource entity %s is not declared", path)
 		}
+		if len(def.ParentTypes) != 0 {
+			return "", "", ast.Entity{}, fmt.Errorf("resource entity %s: parent types are not supported", path)
+		}
 		return "", types.Ident(path), def, nil
 	}
 	ns, name := types.Path(path[:idx]), types.Ident(path[idx+2:])
@@ -194,6 +212,9 @@ func moduleEntity(tree *ast.Schema, actionNS types.Path, actions ast.Actions) (t
 	def, ok := declarations.Entities[name]
 	if !ok {
 		return "", "", ast.Entity{}, fmt.Errorf("resource entity %s is not declared", path)
+	}
+	if len(def.ParentTypes) != 0 {
+		return "", "", ast.Entity{}, fmt.Errorf("resource entity %s: parent types are not supported", path)
 	}
 	return ns, name, def, nil
 }

@@ -197,3 +197,56 @@ namespace Mixology::Drink {
 	testutil.ErrorIf(t, err == nil, "expected unsupported common type error")
 	testutil.ErrorIf(t, !strings.Contains(err.Error(), "unsupported Cedar type"), "unexpected error: %v", err)
 }
+
+func TestRenderModuleModelsRejectsParentTypes(t *testing.T) {
+	t.Parallel()
+
+	const src = `
+namespace Mixology {
+    entity Actor;
+    entity Catalog;
+    entity Drink in [Catalog];
+}
+namespace Mixology::Drink {
+    action get appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::Drink,
+        context: {}
+    };
+}`
+
+	var parsed schema.Schema
+	testutil.Ok(t, parsed.UnmarshalCedar([]byte(src)))
+	_, err := parsed.Resolve()
+	testutil.Ok(t, err)
+
+	_, err = renderModuleModels(parsed.AST(), "drinks")
+	testutil.ErrorIf(t, err == nil, "expected unsupported parent type error")
+	testutil.ErrorIf(t, !strings.Contains(err.Error(), "parent types are not supported"), "unexpected error: %v", err)
+}
+
+func TestRenderModuleModelsRejectsActionContexts(t *testing.T) {
+	t.Parallel()
+
+	const src = `
+namespace Mixology {
+    entity Actor;
+    entity Drink;
+}
+namespace Mixology::Drink {
+    action get appliesTo {
+        principal: Mixology::Actor,
+        resource: Mixology::Drink,
+        context: { source: String }
+    };
+}`
+
+	var parsed schema.Schema
+	testutil.Ok(t, parsed.UnmarshalCedar([]byte(src)))
+	_, err := parsed.Resolve()
+	testutil.Ok(t, err)
+
+	_, err = renderModuleModels(parsed.AST(), "drinks")
+	testutil.ErrorIf(t, err == nil, "expected unsupported action context error")
+	testutil.ErrorIf(t, !strings.Contains(err.Error(), "non-empty action contexts are not supported"), "unexpected error: %v", err)
+}
