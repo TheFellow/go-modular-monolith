@@ -15,6 +15,7 @@ import (
 	inventoryauthz "github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	inventorygui "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces/gui"
 	tagginggui "github.com/TheFellow/go-modular-monolith/app/domains/tagging/surfaces/gui"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 )
@@ -73,19 +74,19 @@ func TestCLIAndComposedDesktopShareIngredientInventoryAuditAndTagContracts(t *te
 	driver.Tap(auditgui.ControlRefresh)
 	audit := desktop.presenters["audit"].(*auditgui.Presenter).State()
 	testutil.ErrorIf(t, audit.Err != nil, "Fyne did not observe CLI audit history: %#v", audit)
-	wantActions := map[string]bool{
-		ingredientauthz.ActionCreate.String(): false,
-		inventoryauthz.ActionSet.String():     false,
-		ingredientauthz.ActionTag.String():    false,
-	}
+	wantActions := set.New(
+		ingredientauthz.ActionCreate.String(),
+		inventoryauthz.ActionSet.String(),
+		ingredientauthz.ActionTag.String(),
+	)
+	var foundActions set.Set[string]
 	for _, row := range audit.Rows {
-		if _, wanted := wantActions[row.Entry.Action]; wanted && row.Entry.Success {
-			wantActions[row.Entry.Action] = true
+		if wantActions.Contains(row.Entry.Action) && row.Entry.Success {
+			foundActions.Add(row.Entry.Action)
 		}
 	}
-	for action, found := range wantActions {
-		testutil.ErrorIf(t, !found, "Fyne audit did not contain successful CLI action %s: %#v", action, audit.Rows)
-	}
+	missing := wantActions.Difference(foundActions)
+	testutil.ErrorIf(t, missing.Len() != 0, "Fyne audit did not contain successful CLI actions %v: %#v", missing.Slice(), audit.Rows)
 
 	{
 		err := desktop.shell.Navigate("tags")

@@ -47,6 +47,5 @@ func TestActiveIDsFiltersAndDeduplicatesRequestedIDs(t *testing.T) {
 		"query ID values = %v, want unique values in request order", values)
 	got, err := New(s, nil).ActiveIDs(ctx, requested)
 	testutil.ErrorIf(t, err != nil, "active IDs: %v", err)
-	_, hasActive := got["active"]
-	testutil.ErrorIf(t, len(got) != 1 || !hasActive, "active IDs = %v, want only active", got)
+	testutil.ErrorIf(t, got.Len() != 1 || !got.Contains("active"), "active IDs = %v, want only active", got.Slice())
 }

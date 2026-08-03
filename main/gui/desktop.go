@@ -34,6 +34,7 @@ import (
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/runtimeconfig"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
@@ -153,8 +154,8 @@ type desktopDependencies struct {
 // visibleWorkspaces probes the same authorized read paths used by each
 // workspace. Permission denials remove a workspace; operational failures leave
 // it visible so its surface can report the underlying problem.
-func visibleWorkspaces(session *application.Session) map[workspace]bool {
-	visible := map[workspace]bool{workspaceDashboard: true}
+func visibleWorkspaces(session *application.Session) set.Set[workspace] {
+	visible := set.New(workspaceDashboard)
 	checks := []struct {
 		id   workspace
 		read func() error
@@ -187,7 +188,7 @@ func visibleWorkspaces(session *application.Session) map[workspace]bool {
 	}
 	for _, check := range checks {
 		if err := check.read(); err == nil || !apperrors.IsPermission(err) {
-			visible[check.id] = true
+			visible.Add(check.id)
 		}
 	}
 	return visible
@@ -342,7 +343,7 @@ func openDesktopWithDependencies(ctx context.Context, fyneApp framework.App, con
 	}
 	filtered := routes[:0]
 	for _, route := range routes {
-		if visible[workspace(route.ID)] {
+		if visible.Contains(workspace(route.ID)) {
 			filtered = append(filtered, route)
 		}
 	}

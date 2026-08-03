@@ -11,6 +11,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 )
 
 func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.Order, error) {
@@ -35,9 +36,9 @@ func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.
 		return nil, errors.FailedPreconditionf("menu %q must be published, got %q", menu.ID.String(), menu.Status)
 	}
 
-	menuDrinkIDs := make(map[string]struct{}, len(menu.Items))
+	var menuDrinkIDs set.Set[string]
 	for _, item := range menu.Items {
-		menuDrinkIDs[item.DrinkID.String()] = struct{}{}
+		menuDrinkIDs.Add(item.DrinkID.String())
 	}
 
 	for i := range order.Items {
@@ -45,7 +46,7 @@ func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.
 		if err := order.Items[i].Validate(); err != nil {
 			return nil, errors.Invalidf("item %d: %w", i, err)
 		}
-		if _, ok := menuDrinkIDs[order.Items[i].DrinkID.String()]; !ok {
+		if !menuDrinkIDs.Contains(order.Items[i].DrinkID.String()) {
 			return nil, errors.NotFoundf("drink %q not found on menu %q", order.Items[i].DrinkID.String(), menu.ID.String())
 		}
 		if _, err := c.drinks.Get(ctx, order.Items[i].DrinkID); err != nil {

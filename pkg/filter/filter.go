@@ -16,6 +16,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 )
 
 // Field describes one user-visible field in a filter schema.
@@ -160,14 +161,14 @@ func (dotPredicatePatcher) Visit(node *ast.Node) {
 }
 
 type collectionContainsPatcher struct {
-	fields map[string]struct{}
+	fields set.Set[string]
 }
 
-func collectionFields[T any](schema Schema[T]) map[string]struct{} {
-	fields := make(map[string]struct{})
+func collectionFields[T any](schema Schema[T]) set.Set[string] {
+	var fields set.Set[string]
 	for _, field := range schema.fields {
 		if field.Type.Kind() == reflect.Slice || field.Type.Kind() == reflect.Array {
-			fields[field.Name] = struct{}{}
+			fields.Add(field.Name)
 		}
 	}
 	return fields
@@ -185,7 +186,7 @@ func (p collectionContainsPatcher) Visit(node *ast.Node) {
 	if !ok {
 		return
 	}
-	if _, ok := p.fields[name]; !ok {
+	if !p.fields.Contains(name) {
 		return
 	}
 	ast.Patch(node, &ast.BinaryNode{Operator: "in", Left: binary.Right, Right: binary.Left})

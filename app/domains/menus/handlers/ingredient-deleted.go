@@ -9,6 +9,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
@@ -17,7 +18,7 @@ type IngredientDeleted struct {
 	drinks *drinksq.Queries
 
 	affectedMenus []*models.Menu
-	removeDrinkID map[string]struct{}
+	removeDrinkID set.Set[string]
 }
 
 func NewIngredientDeleted(s *store.Store, tags tag.Repository) *IngredientDeleted {
@@ -36,11 +37,11 @@ func (h *IngredientDeleted) Handling(ctx *middleware.HandlerContext, e ingredien
 		return nil
 	}
 
-	remove := make(map[string]struct{}, len(drinks))
+	var remove set.Set[string]
 	menuByID := map[string]*models.Menu{}
 
 	for _, drink := range drinks {
-		remove[drink.ID.String()] = struct{}{}
+		remove.Add(drink.ID.String())
 
 		menus, err := h.dao.ListByDrink(ctx, drink.ID)
 		if err != nil {
@@ -68,7 +69,7 @@ func (h *IngredientDeleted) Handling(ctx *middleware.HandlerContext, e ingredien
 }
 
 func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, _ ingredientsevents.IngredientDeleted) error {
-	if len(h.affectedMenus) == 0 || len(h.removeDrinkID) == 0 {
+	if len(h.affectedMenus) == 0 || h.removeDrinkID.Len() == 0 {
 		return nil
 	}
 
@@ -77,7 +78,7 @@ func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, _ ingredients
 
 		filtered := make([]models.MenuItem, 0, len(updated.Items))
 		for _, item := range updated.Items {
-			if _, ok := h.removeDrinkID[item.DrinkID.String()]; ok {
+			if h.removeDrinkID.Contains(item.DrinkID.String()) {
 				continue
 			}
 			filtered = append(filtered, item)

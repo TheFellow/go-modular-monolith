@@ -13,6 +13,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
@@ -229,14 +230,14 @@ func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drin
 		qualityImpact: ingredientsmodels.QualityEquivalent,
 	})
 
-	seen := map[string]struct{}{req.IngredientID.String(): {}}
+	seen := set.New(req.IngredientID.String())
 
 	addCandidate := func(id entity.IngredientID, ratio float64, quality ingredientsmodels.Quality) {
 		key := id.String()
-		if _, ok := seen[key]; ok {
+		if seen.Contains(key) {
 			return
 		}
-		seen[key] = struct{}{}
+		seen.Add(key)
 		candidates = append(candidates, candidate{
 			id:            id,
 			required:      req.Amount.Mul(ratio),

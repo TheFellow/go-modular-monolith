@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	application "github.com/TheFellow/go-modular-monolith/app"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -141,7 +142,8 @@ type dashboardView struct {
 	cards    *framework.Container
 	activity *framework.Container
 	navigate func(string) error
-	visible  map[workspace]bool
+	visible  set.Set[workspace]
+	filtered bool
 }
 
 type dashboardCard struct {
@@ -159,13 +161,14 @@ var dashboardCards = []dashboardCard{
 	{workspaceTags, "Tags", "Tag any entity"},
 }
 
-func newDashboardView(model *dashboardViewModel, navigate func(string) error, visible ...map[workspace]bool) *dashboardView {
+func newDashboardView(model *dashboardViewModel, navigate func(string) error, visible ...set.Set[workspace]) *dashboardView {
 	v := &dashboardView{
 		model: model, status: widget.NewLabel(""),
 		cards: container.NewAdaptiveGrid(3), activity: container.NewVBox(), navigate: navigate,
 	}
 	if len(visible) != 0 {
 		v.visible = visible[0]
+		v.filtered = true
 	}
 	refresh := gui.NewButton(controlDashboardRefresh, "Refresh", model.Refresh)
 	v.content = gui.StandardPage(
@@ -200,7 +203,7 @@ func (v *dashboardView) render(state dashboardState) {
 
 	v.cards.RemoveAll()
 	for _, definition := range dashboardCards {
-		if v.visible != nil && !v.visible[definition.route] {
+		if v.filtered && !v.visible.Contains(definition.route) {
 			continue
 		}
 		count, detail := dashboardCardText(definition.route, state.Data)

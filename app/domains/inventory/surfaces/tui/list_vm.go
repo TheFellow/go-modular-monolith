@@ -6,6 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
@@ -333,7 +334,7 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 			return InventoryLoadedMsg{Err: err, Token: token}
 		}
 
-		ingredientIDs := make(map[entity.IngredientID]struct{}, len(inventoryList.Items))
+		var ingredientIDs set.Set[entity.IngredientID]
 		for i, item := range inventoryList.Items {
 			if item == nil {
 				return InventoryLoadedMsg{Err: errors.Internalf("inventory %d missing", i), Token: token}
@@ -341,15 +342,10 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 			if item.IngredientID.IsZero() {
 				return InventoryLoadedMsg{Err: errors.Internalf("inventory %s missing ingredient", item.ID.String()), Token: token}
 			}
-			ingredientIDs[item.IngredientID] = struct{}{}
+			ingredientIDs.Add(item.IngredientID)
 		}
 
-		ids := make([]entity.IngredientID, 0, len(ingredientIDs))
-		for id := range ingredientIDs {
-			ids = append(ids, id)
-		}
-
-		ingredientByID, err := m.loadIngredients(ids)
+		ingredientByID, err := m.loadIngredients(ingredientIDs.Slice())
 		if err != nil {
 			return InventoryLoadedMsg{Err: errors.Internalf("load ingredients: %w", err), Token: token}
 		}

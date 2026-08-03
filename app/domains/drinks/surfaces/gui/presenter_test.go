@@ -27,6 +27,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
@@ -477,17 +478,17 @@ func TestRefreshExposesEveryPage(t *testing.T) {
 	p.Refresh()
 	testutil.Equals(t, len(p.State().Items), appgui.PageLimit)
 	testutil.ErrorIf(t, p.State().Next == "", "expected a cursor for the remaining drink")
-	firstPage := make(map[entity.DrinkID]bool, appgui.PageLimit)
+	var firstPage set.Set[entity.DrinkID]
 	for _, drink := range p.State().Items {
-		firstPage[drink.ID] = true
+		firstPage.Add(drink.ID)
 	}
 	p.NextPage()
 	testutil.Equals(t, len(p.State().Items), appgui.PageLimit*2)
-	testutil.ErrorIf(t, firstPage[p.State().Items[appgui.PageLimit].ID], "second page repeated a first-page drink")
+	testutil.ErrorIf(t, firstPage.Contains(p.State().Items[appgui.PageLimit].ID), "second page repeated a first-page drink")
 	p.PreviousPage()
 	testutil.Equals(t, len(p.State().Items), appgui.PageLimit)
 	for _, drink := range p.State().Items {
-		testutil.ErrorIf(t, !firstPage[drink.ID], "previous page did not restore the initial result set")
+		testutil.ErrorIf(t, !firstPage.Contains(drink.ID), "previous page did not restore the initial result set")
 	}
 }
 
@@ -518,11 +519,11 @@ func TestStructuredRecipeWidgetsUseNamesAndConstrainedChoices(t *testing.T) {
 	v.readForm()
 	selected := p.State().Form.Recipe[0].Substitutes
 	testutil.Equals(t, len(selected), 2)
-	seen := map[entity.IngredientID]bool{}
+	var seen set.Set[entity.IngredientID]
 	for _, id := range selected {
-		seen[id] = true
+		seen.Add(id)
 	}
-	testutil.Equals(t, seen[sub.ID] && seen[sub2.ID], true)
+	testutil.Equals(t, seen.Contains(sub.ID) && seen.Contains(sub2.ID), true)
 	v.recipe[0].substitutes[sub.ID].SetChecked(false)
 	v.readForm()
 	testutil.Equals(t, p.State().Form.Recipe[0].Substitutes, []entity.IngredientID{sub2.ID})

@@ -6,6 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
@@ -30,7 +31,7 @@ func (h *IngredientUpdated) Handle(ctx *middleware.HandlerContext, e ingredients
 		return nil
 	}
 
-	seen := make(map[string]struct{})
+	var seen set.Set[string]
 	for _, drink := range drinks {
 		menus, err := h.dao.ListByDrink(ctx, drink.ID)
 		if err != nil {
@@ -38,10 +39,10 @@ func (h *IngredientUpdated) Handle(ctx *middleware.HandlerContext, e ingredients
 		}
 		for _, menu := range menus {
 			id := menu.ID.String()
-			if _, ok := seen[id]; ok {
+			if seen.Contains(id) {
 				continue
 			}
-			seen[id] = struct{}{}
+			seen.Add(id)
 			ctx.TouchEntity(menu.ID.EntityUID())
 		}
 	}

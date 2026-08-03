@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -17,7 +18,7 @@ type LoadTarget func(store.Context, cedar.String) (TargetState, error)
 // ActiveTargets returns the subset of ids whose entities are currently
 // active. Implementations query their owning domain in bulk and do not
 // perform authorization.
-type ActiveTargets func(store.Context, []cedar.String) (map[cedar.String]struct{}, error)
+type ActiveTargets func(store.Context, []cedar.String) (set.Set[cedar.String], error)
 
 // TargetState is the complete domain-owned state needed by tag orchestration.
 type TargetState struct {

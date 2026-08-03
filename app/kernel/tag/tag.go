@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 )
 
 const (
@@ -174,15 +175,15 @@ func formatFields(fields []string) string {
 
 // Validate checks every tag and rejects duplicate keys.
 func (tags Tags) Validate() error {
-	seen := make(map[string]struct{}, len(tags))
+	var seen set.Set[string]
 	for _, t := range tags {
 		if err := t.Validate(); err != nil {
 			return err
 		}
-		if _, ok := seen[t.Key]; ok {
+		if seen.Contains(t.Key) {
 			return errors.Invalidf("duplicate tag key: %s", t.Key)
 		}
-		seen[t.Key] = struct{}{}
+		seen.Add(t.Key)
 	}
 	return nil
 }

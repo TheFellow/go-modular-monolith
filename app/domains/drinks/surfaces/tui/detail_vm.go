@@ -11,6 +11,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -187,22 +188,17 @@ func collectIngredientIDs(items []models.RecipeIngredient) []entity.IngredientID
 		return nil
 	}
 
-	unique := make(map[entity.IngredientID]struct{}, len(items))
+	var unique set.Set[entity.IngredientID]
 	for _, item := range items {
 		if !item.IngredientID.IsZero() {
-			unique[item.IngredientID] = struct{}{}
+			unique.Add(item.IngredientID)
 		}
 		for _, sub := range item.Substitutes {
 			if sub.IsZero() {
 				continue
 			}
-			unique[sub] = struct{}{}
+			unique.Add(sub)
 		}
 	}
-
-	ids := make([]entity.IngredientID, 0, len(unique))
-	for id := range unique {
-		ids = append(ids, id)
-	}
-	return ids
+	return unique.Slice()
 }
