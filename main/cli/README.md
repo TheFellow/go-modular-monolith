@@ -2,8 +2,9 @@
 
 `main/cli` composes the `mixology` executable. It owns process/runtime configuration, the root
 urfave/cli command tree, selection between JSON and human output, and conversion of returned errors
-to process exit behavior. Business rules remain in domain modules; reusable input and rendering
-mechanics remain in the [CLI toolkit](../../pkg/toolkits/cli/readme.md).
+to process exit behavior through the shared [application error mapping](../../pkg/errors/README.md).
+Business rules remain in domain modules; reusable input and rendering mechanics remain in the
+[CLI toolkit](../../pkg/toolkits/cli/readme.md).
 
 ## Request path
 

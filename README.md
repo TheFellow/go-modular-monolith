@@ -57,6 +57,10 @@ authorization, transaction, event, and audit pipelines against an isolated datab
 | Change shared domain value types                                               | [Application kernel](app/kernel/readme.md)                                         |
 | Follow the guided build narrative                                              | [Tutorial series](https://github.com/TheFellow/go-modular-monolith/issues/23)      |
 
+Shared infrastructure has focused guides for [authorization](pkg/authz/README.md), the
+[event dispatcher](pkg/dispatcher/README.md), [application errors](pkg/errors/README.md),
+[typed filters](pkg/filter/README.md), and the [persistence store](pkg/store/README.md).
+
 ## Repository map
 
 ```text
