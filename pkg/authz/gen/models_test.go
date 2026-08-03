@@ -51,8 +51,10 @@ namespace Mixology::Drink {
 		`func TestDrinkCedarEntity(t *testing.T)`,
 		`UID: cedar.NewEntityUID("Wrong::Type", "test-id")`,
 		`UID: cedar.NewEntityUID(moduleauthz.DrinkType, "test-id")`,
+		`Owner: cedar.NewEntityUID("Mixology::Actor", "test-owner")`,
 		`moduleauthz.DrinkNameAttr: cedar.String("test-name")`,
 		`testutil.Equals(t, got, want)`,
+		`validate.New(resolved).Entity(got)`,
 	} {
 		testutil.ErrorIf(t, !strings.Contains(testSource, want), "generated test source missing %q:\n%s", want, generatedTests)
 	}
