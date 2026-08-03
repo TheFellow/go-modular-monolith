@@ -171,9 +171,10 @@ func (e *Expression[T]) pushdown(node Node, negated bool) (pushdown, bool) {
 		}
 		values[i] = converted
 	}
-	if op == "in" {
+	switch op {
+	case "in":
 		op = "=="
-	} else if op == "not in" {
+	case "not in":
 		op = "!="
 	}
 	if op == "==" || op == "!=" {

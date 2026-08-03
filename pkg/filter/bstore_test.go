@@ -162,7 +162,6 @@ func TestApplyBstorePushdownsMappedBooleanFields(t *testing.T) {
 		{source: `!deleted`, want: []string{"visible"}},
 		{source: `!!deleted`, want: []string{"deleted"}},
 	} {
-		test := test
 		t.Run(test.source, func(t *testing.T) {
 			t.Parallel()
 			got := pushdownCandidateNames(t, rows, test.source)
@@ -193,7 +192,6 @@ func TestApplyBstorePushdownsNegatedComparisons(t *testing.T) {
 		{source: `!(category in ["spirit", "mixer"])`, want: []string{"three"}},
 		{source: `!(category not in ["spirit", "mixer"])`, want: []string{"one", "two"}},
 	} {
-		test := test
 		t.Run(test.source, func(t *testing.T) {
 			t.Parallel()
 			got := pushdownCandidateNames(t, rows, test.source)
@@ -241,7 +239,6 @@ func TestApplyBstorePushdownsAcrossBooleanGroups(t *testing.T) {
 			want:   []string{"gin", "beer", "cherry"},
 		},
 	} {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			got := pushdownCandidateNames(t, rows, test.source)
