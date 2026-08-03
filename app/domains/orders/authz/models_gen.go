@@ -4,8 +4,12 @@ package authz
 
 import (
 	_ "embed"
+	"sync"
 
 	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/cedar-policy/cedar-go/x/exp/schema"
+	"github.com/cedar-policy/cedar-go/x/exp/schema/resolved"
+	"github.com/cedar-policy/cedar-go/x/exp/schema/validate"
 )
 
 //go:embed schema.cedarschema
@@ -13,10 +17,33 @@ var Schema string
 
 const (
 	OrderType       cedar.EntityType = "Mixology::Order"
+	ResourceType    cedar.EntityType = OrderType
 	ActionType      cedar.EntityType = "Mixology::Order::Action"
 	OrderMenuIDAttr                  = "MenuID"
 	OrderStatusAttr                  = "Status"
 )
+
+var (
+	schemaOnce     sync.Once
+	resolvedSchema *resolved.Schema
+	schemaErr      error
+)
+
+// ValidateEntity validates entity against the module's Cedar schema.
+func ValidateEntity(entity cedar.Entity) error {
+	schemaOnce.Do(func() {
+		var parsed schema.Schema
+		parsed.SetFilename("schema.cedarschema")
+		if schemaErr = parsed.UnmarshalCedar([]byte(Schema)); schemaErr != nil {
+			return
+		}
+		resolvedSchema, schemaErr = parsed.Resolve()
+	})
+	if schemaErr != nil {
+		return schemaErr
+	}
+	return validate.New(resolvedSchema).Entity(entity)
+}
 
 var (
 	ActionCancel   = cedar.NewEntityUID(ActionType, "cancel")
@@ -47,7 +74,7 @@ func (m Order) CedarEntity() cedar.Entity {
 		UID:     cedar.NewEntityUID(OrderType, m.UID.ID),
 		Parents: cedar.NewEntityUIDSet(),
 		Attributes: cedar.NewRecord(cedar.RecordMap{
-			OrderMenuIDAttr: cedar.EntityUID(m.MenuID),
+			OrderMenuIDAttr: cedar.NewEntityUID("Mixology::Menu", m.MenuID.ID),
 			OrderStatusAttr: cedar.String(m.Status),
 		}),
 		Tags: cedar.NewRecord(tags),

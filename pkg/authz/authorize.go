@@ -88,6 +88,15 @@ func Authorize(principal cedar.EntityUID, action cedar.EntityUID) error {
 // This is a pure function with no logging or telemetry side effects.
 // Observability should be handled by middleware wrapping this call.
 func AuthorizeWithEntity(principal cedar.EntityUID, action cedar.EntityUID, resource cedar.Entity) error {
+	validator, ok := entityValidator(resource.UID.Type)
+	if !ok {
+		return errors.Internalf("authz resource type %q has no registered schema", resource.UID.Type)
+	}
+	if err := validator(resource); err != nil {
+		return errors.Internalf("authz resource %s::%q does not conform to its schema: %v",
+			resource.UID.Type, resource.UID.ID, err)
+	}
+
 	ps, err := getPolicySet()
 	if err != nil {
 		return err

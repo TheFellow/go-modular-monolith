@@ -33,4 +33,5 @@ func TestAuditEntryCedarEntity(t *testing.T) {
 	resolved, err := parsed.Resolve()
 	testutil.Ok(t, err)
 	testutil.Ok(t, validate.New(resolved).Entity(got))
+	testutil.Ok(t, moduleauthz.ValidateEntity(got))
 }
