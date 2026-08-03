@@ -22,7 +22,7 @@ func renderModuleModelTests(tree *ast.Schema, moduleName, importPath string) ([]
 
 	goEntity := exportedName(string(entityName))
 	attrs := sortedFields(entityDef.Shape)
-	hasTags, err := entityHasStringTags(entityDef)
+	hasTags, err := entityHasStringTags(tree, entityNS, entityDef)
 	if err != nil {
 		return nil, fmt.Errorf("%s schema tests: entity %s: %w", moduleName, entityName, err)
 	}
@@ -80,7 +80,7 @@ func renderModuleModelTests(tree *ast.Schema, moduleName, importPath string) ([]
 }
 
 func testValues(tree *ast.Schema, ns types.Path, typ ast.IsType, attr string) (model, cedarValue string, err error) {
-	goType, _, err := cedarType(typ)
+	goType, _, err := cedarType(tree, ns, typ)
 	if err != nil {
 		return "", "", err
 	}
@@ -112,39 +112,12 @@ func resolveTestEntityType(tree *ast.Schema, ns types.Path, typ ast.IsType) (str
 	case ast.TypeRef:
 		ref = string(typ)
 	default:
-		return "", fmt.Errorf("Cedar type %T is not an entity reference", typ)
+		return "", fmt.Errorf("cedar type %T is not an entity reference", typ)
 	}
 
-	for _, path := range entityRefCandidates(ns, ref) {
-		if schemaDeclaresEntityType(tree, path) {
-			return string(path), nil
-		}
+	path, err := resolveEntityType(tree, ns, ref)
+	if err != nil {
+		return "", err
 	}
-	return "", fmt.Errorf("entity type %q is not declared", ref)
-}
-
-func entityRefCandidates(ns types.Path, ref string) []types.Path {
-	if ns != "" && !strings.Contains(ref, "::") {
-		return []types.Path{types.Path(string(ns) + "::" + ref), types.Path(ref)}
-	}
-	return []types.Path{types.Path(ref)}
-}
-
-func schemaDeclaresEntityType(tree *ast.Schema, path types.Path) bool {
-	text := string(path)
-	idx := strings.LastIndex(text, "::")
-	if idx < 0 {
-		name := types.Ident(text)
-		_, entityOK := tree.Entities[name]
-		_, enumOK := tree.Enums[name]
-		return entityOK || enumOK
-	}
-	ns, name := types.Path(text[:idx]), types.Ident(text[idx+2:])
-	declarations, ok := tree.Namespaces[ns]
-	if !ok {
-		return false
-	}
-	_, entityOK := declarations.Entities[name]
-	_, enumOK := declarations.Enums[name]
-	return entityOK || enumOK
+	return string(path), nil
 }
