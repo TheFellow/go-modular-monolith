@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"maps"
 	"path/filepath"
 	"testing"
 
@@ -27,10 +28,26 @@ type testEntity struct {
 }
 
 func (e testEntity) CedarEntity() cedar.Entity {
+	attrs := maps.Clone(e.Attributes)
+	if e.ID.Type == drinksauthz.DrinkType {
+		if attrs == nil {
+			attrs = cedar.RecordMap{}
+		}
+		for _, name := range []cedar.String{
+			drinksauthz.DrinkCategoryAttr,
+			drinksauthz.DrinkDescriptionAttr,
+			drinksauthz.DrinkGlassAttr,
+			drinksauthz.DrinkNameAttr,
+		} {
+			if _, ok := attrs[name]; !ok {
+				attrs[name] = cedar.String("")
+			}
+		}
+	}
 	return cedar.Entity{
 		UID:        e.ID,
 		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(e.Attributes),
+		Attributes: cedar.NewRecord(attrs),
 		Tags:       cedar.NewRecord(e.Tags),
 	}
 }

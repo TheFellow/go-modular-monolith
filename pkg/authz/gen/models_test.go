@@ -34,11 +34,14 @@ namespace Mixology::Drink {
 	normalized := strings.Join(strings.Fields(string(got)), " ")
 	for _, want := range []string{
 		`DrinkType cedar.EntityType = "Mixology::Drink"`,
+		`ResourceType cedar.EntityType = DrinkType`,
 		`ActionAddIce = cedar.NewEntityUID(ActionType, "add_ice")`,
 		`Name string`,
 		`Featured bool`,
 		`Owner cedar.EntityUID`,
 		`DrinkNameAttr: cedar.String(m.Name)`,
+		`DrinkOwnerAttr: cedar.NewEntityUID("Mixology::Actor", m.Owner.ID)`,
+		`func ValidateEntity(entity cedar.Entity) error`,
 	} {
 		testutil.ErrorIf(t, !strings.Contains(normalized, want), "generated source missing %q:\n%s", want, got)
 	}
@@ -55,6 +58,7 @@ namespace Mixology::Drink {
 		`moduleauthz.DrinkNameAttr: cedar.String("test-name")`,
 		`testutil.Equals(t, got, want)`,
 		`validate.New(resolved).Entity(got)`,
+		`moduleauthz.ValidateEntity(got)`,
 	} {
 		testutil.ErrorIf(t, !strings.Contains(testSource, want), "generated test source missing %q:\n%s", want, generatedTests)
 	}

@@ -1,6 +1,7 @@
 package models
 
 import (
+	inventoryauthz "github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
@@ -18,10 +19,9 @@ func (u Update) EntityUID() cedar.EntityUID {
 }
 
 func (u Update) CedarEntity() cedar.Entity {
-	return cedar.Entity{
-		UID:        u.EntityUID(),
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
-	}
+	return inventoryauthz.Inventory{
+		UID:          u.EntityUID(),
+		IngredientID: u.IngredientID.EntityUID(),
+		Unit:         string(u.Amount.Unit()),
+	}.CedarEntity()
 }

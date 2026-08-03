@@ -74,6 +74,7 @@ func renderModuleModelTests(tree *ast.Schema, moduleName, importPath string) ([]
 	b.WriteString("\tresolved, err := parsed.Resolve()\n")
 	b.WriteString("\ttestutil.Ok(t, err)\n")
 	b.WriteString("\ttestutil.Ok(t, validate.New(resolved).Entity(got))\n")
+	b.WriteString("\ttestutil.Ok(t, moduleauthz.ValidateEntity(got))\n")
 	b.WriteString("}\n")
 
 	return format.Source(b.Bytes())

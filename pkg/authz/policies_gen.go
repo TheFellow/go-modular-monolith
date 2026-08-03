@@ -9,6 +9,7 @@ import (
 	menusauthz "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	ordersauthz "github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
 	taggingauthz "github.com/TheFellow/go-modular-monolith/app/domains/tagging/authz"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 func policyDocuments() []PolicyDocument {
@@ -21,5 +22,26 @@ func policyDocuments() []PolicyDocument {
 		{Name: "app/domains/menus/authz/policies.cedar", Text: menusauthz.Policies},
 		{Name: "app/domains/orders/authz/policies.cedar", Text: ordersauthz.Policies},
 		{Name: "app/domains/tagging/authz/policies.cedar", Text: taggingauthz.Policies},
+	}
+}
+
+func entityValidator(entityType cedar.EntityType) (func(cedar.Entity) error, bool) {
+	switch entityType {
+	case auditauthz.ResourceType:
+		return auditauthz.ValidateEntity, true
+	case drinksauthz.ResourceType:
+		return drinksauthz.ValidateEntity, true
+	case ingredientsauthz.ResourceType:
+		return ingredientsauthz.ValidateEntity, true
+	case inventoryauthz.ResourceType:
+		return inventoryauthz.ValidateEntity, true
+	case menusauthz.ResourceType:
+		return menusauthz.ValidateEntity, true
+	case ordersauthz.ResourceType:
+		return ordersauthz.ValidateEntity, true
+	case taggingauthz.ResourceType:
+		return taggingauthz.ValidateEntity, true
+	default:
+		return nil, false
 	}
 }

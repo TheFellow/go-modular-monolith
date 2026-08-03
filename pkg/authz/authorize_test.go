@@ -13,12 +13,7 @@ import (
 func TestAuthorizeWithEntity_AllowsAnonymousList(t *testing.T) {
 	t.Parallel()
 
-	resource := cedar.Entity{
-		UID: cedar.NewEntityUID(cedar.EntityType("Mixology::Drink"), cedar.String("wine")),
-		Attributes: cedar.NewRecord(cedar.RecordMap{
-			"Category": cedar.String("wine"),
-		}),
-	}
+	resource := validDrinkEntity()
 	err := authz.AuthorizeWithEntity(authn.Anonymous(), drinksauthz.ActionList, resource)
 	testutil.Ok(t, err)
 }
@@ -26,12 +21,7 @@ func TestAuthorizeWithEntity_AllowsAnonymousList(t *testing.T) {
 func TestAuthorizeWithEntity_DeniesAnonymousCreate(t *testing.T) {
 	t.Parallel()
 
-	resource := cedar.Entity{
-		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Drink::Catalog"), cedar.String("default")),
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
-	}
+	resource := validDrinkEntity()
 
 	err := authz.AuthorizeWithEntity(authn.Anonymous(), drinksauthz.ActionCreate, resource)
 	testutil.ErrorIsPermission(t, err)
@@ -40,13 +30,39 @@ func TestAuthorizeWithEntity_DeniesAnonymousCreate(t *testing.T) {
 func TestAuthorizeWithEntity_AllowsOwnerCreate(t *testing.T) {
 	t.Parallel()
 
-	resource := cedar.Entity{
-		UID:        cedar.NewEntityUID(cedar.EntityType("Mixology::Drink::Catalog"), cedar.String("default")),
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
-	}
+	resource := validDrinkEntity()
 
 	err := authz.AuthorizeWithEntity(authn.Owner(), drinksauthz.ActionCreate, resource)
 	testutil.Ok(t, err)
+}
+
+func TestAuthorizeWithEntity_RejectsInvalidResource(t *testing.T) {
+	t.Parallel()
+
+	resource := validDrinkEntity()
+	resource.Attributes = cedar.NewRecord(cedar.RecordMap{
+		drinksauthz.DrinkCategoryAttr: cedar.Long(42),
+	})
+
+	err := authz.AuthorizeWithEntity(authn.Owner(), drinksauthz.ActionGet, resource)
+	testutil.ErrorIsInternal(t, err)
+}
+
+func TestAuthorizeWithEntity_RejectsUnknownResourceType(t *testing.T) {
+	t.Parallel()
+
+	err := authz.AuthorizeWithEntity(authn.Owner(), drinksauthz.ActionGet, cedar.Entity{
+		UID: cedar.NewEntityUID("Unknown::Resource", "test"),
+	})
+	testutil.ErrorIsInternal(t, err)
+}
+
+func validDrinkEntity() cedar.Entity {
+	return drinksauthz.Drink{
+		UID:         cedar.NewEntityUID(drinksauthz.DrinkType, "wine"),
+		Name:        "Wine",
+		Category:    "wine",
+		Glass:       "wine glass",
+		Description: "A test wine",
+	}.CedarEntity()
 }

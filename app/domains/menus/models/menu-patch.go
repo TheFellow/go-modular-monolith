@@ -1,6 +1,7 @@
 package models
 
 import (
+	menuauthz "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -15,10 +16,5 @@ func (c MenuPatch) EntityUID() cedar.EntityUID {
 }
 
 func (c MenuPatch) CedarEntity() cedar.Entity {
-	return cedar.Entity{
-		UID:        c.MenuID.EntityUID(),
-		Parents:    cedar.NewEntityUIDSet(),
-		Attributes: cedar.NewRecord(nil),
-		Tags:       cedar.NewRecord(nil),
-	}
+	return menuauthz.Menu{UID: c.MenuID.EntityUID()}.CedarEntity()
 }

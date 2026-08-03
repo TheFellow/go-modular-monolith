@@ -4,8 +4,12 @@ package authz
 
 import (
 	_ "embed"
+	"sync"
 
 	cedar "github.com/cedar-policy/cedar-go"
+	"github.com/cedar-policy/cedar-go/x/exp/schema"
+	"github.com/cedar-policy/cedar-go/x/exp/schema/resolved"
+	"github.com/cedar-policy/cedar-go/x/exp/schema/validate"
 )
 
 //go:embed schema.cedarschema
@@ -13,8 +17,31 @@ var Schema string
 
 const (
 	AuditEntryType cedar.EntityType = "Mixology::AuditEntry"
+	ResourceType   cedar.EntityType = AuditEntryType
 	ActionType     cedar.EntityType = "Mixology::AuditEntry::Action"
 )
+
+var (
+	schemaOnce     sync.Once
+	resolvedSchema *resolved.Schema
+	schemaErr      error
+)
+
+// ValidateEntity validates entity against the module's Cedar schema.
+func ValidateEntity(entity cedar.Entity) error {
+	schemaOnce.Do(func() {
+		var parsed schema.Schema
+		parsed.SetFilename("schema.cedarschema")
+		if schemaErr = parsed.UnmarshalCedar([]byte(Schema)); schemaErr != nil {
+			return
+		}
+		resolvedSchema, schemaErr = parsed.Resolve()
+	})
+	if schemaErr != nil {
+		return schemaErr
+	}
+	return validate.New(resolvedSchema).Entity(entity)
+}
 
 var (
 	ActionGet  = cedar.NewEntityUID(ActionType, "get")
