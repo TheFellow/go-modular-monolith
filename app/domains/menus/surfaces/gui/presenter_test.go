@@ -3,6 +3,7 @@ package gui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -28,12 +29,14 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	appgui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 func TestDetailTextIncludesTimestampsItemIdentityAndSortedOrder(t *testing.T) {
@@ -115,7 +118,7 @@ func TestReadOnlyActorGetsSelectableDetailWithoutMutationActions(t *testing.T) {
 	testutil.Equals(t, v.description.Text, "Copy this description")
 }
 
-func TestDraftAndPublishedDetailExposeOnlyApplicableCleanActions(t *testing.T) {
+func TestDraftAndPublishedDetailKeepAuthorizedLifecycleActionsVisible(t *testing.T) {
 	gui := frameworktest.NewApp()
 	defer gui.Quit()
 	f := testutil.NewFixture(t)
@@ -136,14 +139,18 @@ func TestDraftAndPublishedDetailExposeOnlyApplicableCleanActions(t *testing.T) {
 	selectID(draft.ID)
 	v := NewView(p)
 	testutil.Equals(t, v.publish.Hidden, false)
-	testutil.Equals(t, v.draft.Hidden, true)
+	testutil.Equals(t, v.draft.Hidden, false)
+	testutil.Equals(t, v.draft.Disabled(), true)
 	testutil.Equals(t, v.addDrink.Hidden, false)
 	testutil.Equals(t, v.delete.Hidden, false)
 	selectID(published.ID)
-	testutil.Equals(t, v.publish.Hidden, true)
+	testutil.Equals(t, v.publish.Hidden, false)
+	testutil.Equals(t, v.publish.Disabled(), true)
 	testutil.Equals(t, v.draft.Hidden, false)
-	testutil.Equals(t, v.addDrink.Hidden, true)
-	testutil.Equals(t, v.delete.Hidden, true)
+	testutil.Equals(t, v.addDrink.Hidden, false)
+	testutil.Equals(t, v.addDrink.Disabled(), true)
+	testutil.Equals(t, v.delete.Hidden, false)
+	testutil.Equals(t, v.delete.Disabled(), true)
 }
 
 func TestDuplicateNameCreateRetainsFormAndPresentsTypedConflict(t *testing.T) {
@@ -184,7 +191,7 @@ func TestTaggingUsesDedicatedDirtyEditorWithoutWorkflowActions(t *testing.T) {
 	testutil.Equals(t, p.State().Mode, Browsing)
 }
 
-func TestDirtyDetailHidesWorkflowActionsAndCancelRestores(t *testing.T) {
+func TestDirtyDetailDisablesWorkflowActionsAndCancelRestores(t *testing.T) {
 	gui := frameworktest.NewApp()
 	defer gui.Quit()
 	f := testutil.NewFixture(t)
@@ -204,13 +211,59 @@ func TestDirtyDetailHidesWorkflowActionsAndCancelRestores(t *testing.T) {
 	form.Description = "local edit"
 	p.SetForm(form)
 	testutil.Equals(t, p.State().Dirty, true)
-	testutil.Equals(t, v.publish.Hidden, true)
-	testutil.Equals(t, v.addDrink.Hidden, true)
+	testutil.Equals(t, v.publish.Hidden, false)
+	testutil.Equals(t, v.publish.Disabled(), true)
+	testutil.Equals(t, v.addDrink.Hidden, false)
+	testutil.Equals(t, v.addDrink.Disabled(), true)
 	testutil.Equals(t, v.save.Disabled(), false)
 	p.Cancel()
 	testutil.Equals(t, p.State().Dirty, false)
 	testutil.Equals(t, p.State().Form.Description, menu.Description)
 	testutil.Equals(t, v.publish.Hidden, false)
+	testutil.Equals(t, v.publish.Disabled(), false)
+}
+
+func TestEmptyDraftPublishIsVisibleDisabledWithProjectedReason(t *testing.T) {
+	gui := frameworktest.NewApp()
+	defer gui.Quit()
+	f := testutil.NewFixture(t)
+	menu := testutil.CreateMenu(t, f, "Empty draft")
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	p.state.Items = []*models.Menu{menu}
+	p.Select(0)
+	v := NewView(p)
+
+	state := p.State().Actions[menus.ControlPublish]
+	testutil.Equals(t, state.Visible, true)
+	testutil.Equals(t, state.Enabled, false)
+	testutil.Equals(t, state.DisabledReason, "Add at least one drink before publishing.")
+	testutil.Equals(t, v.publish.Hidden, false)
+	testutil.Equals(t, v.publish.Disabled(), true)
+}
+
+func TestPublishPermissionIsIndependentOfUpdateAndEvaluatorErrorsSurface(t *testing.T) {
+	f := testutil.NewFixture(t)
+	drink := menuDrink(t, f, "Independent publish")
+	menu := testutil.CreateMenu(t, f, "Independent publish", testutil.WithDrink(drink))
+	projector := menus.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
+		if action == authz.ActionUpdate {
+			return apperrors.Permissionf("update denied")
+		}
+		return nil
+	}}
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Projector: &projector})
+	p.state.Items = []*models.Menu{menu}
+	p.Select(0)
+	testutil.Equals(t, p.State().Mode, Viewing)
+	testutil.Equals(t, p.State().Actions[menus.ControlEdit].Visible, false)
+	testutil.Equals(t, p.State().Actions[menus.ControlPublish].Enabled, true)
+
+	want := errors.New("policy evaluator unavailable")
+	failing := menus.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
+	failed := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Projector: &failing})
+	testutil.ErrorIf(t, !errors.Is(failed.State().Err, want), "presenter error = %v, want %v", failed.State().Err, want)
+	testutil.Equals(t, len(failed.State().Actions), 0)
+	testutil.Equals(t, failed.State().CanCreate, false)
 }
 
 func TestPresenterRefreshComposesPagingFiltersAndRejectsStaleResult(t *testing.T) {
