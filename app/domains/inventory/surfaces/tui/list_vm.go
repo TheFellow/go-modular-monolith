@@ -6,11 +6,13 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/set"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventory "github.com/TheFellow/go-modular-monolith/app/domains/inventory"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
@@ -58,6 +60,8 @@ type ListViewModel struct {
 	rows        []InventoryRow
 	table       table.Model
 	detail      *DetailViewModel
+	projector   inventory.ActionProjector
+	actions     map[actions.ID]actions.State
 	mode        listMode
 	adjust      *AdjustInventoryVM
 	set         *SetInventoryVM
@@ -93,6 +97,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		formKeys:   keys.Standard.Form,
 		table:      model,
 		detail:     NewDetailViewModel(styles.Standard.ListView),
+		projector:  inventory.NewActionProjector(),
 		loading:    true,
 	}
 	vm.spinner = tui.NewSpinner("Loading inventory...", vm.styles.Subtitle)
@@ -204,10 +209,19 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 			m.request.Cursor, m.history, m.loading = m.history[i], m.history[:i], true
 			return m, tea.Batch(m.spinner.Init(), m.loadInventory())
 		case key.Matches(msg, m.keys.Adjust):
+			if !m.actionEnabled(inventory.ControlAdjust) {
+				return m, nil
+			}
 			return m, m.startAdjust()
 		case key.Matches(msg, m.keys.Set):
+			if !m.actionEnabled(inventory.ControlSet) {
+				return m, nil
+			}
 			return m, m.startSet()
 		case key.Matches(msg, m.keys.Tags):
+			if !m.actionEnabled(inventory.ControlTags) {
+				return m, nil
+			}
 			return m, m.startTags()
 		}
 	case InventoryLoadedMsg:
@@ -225,6 +239,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.table.SetRows(buildInventoryTableRows(msg.Rows, m.styles))
 		m.selectInventory(selected)
 		m.syncDetail()
+		m.syncActions()
 		return m, nil
 	}
 
@@ -255,6 +270,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	var cmd tea.Cmd
 	m.table, cmd = m.table.Update(msg)
 	m.syncDetail()
+	m.syncActions()
 	return m, cmd
 }
 
@@ -297,7 +313,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	case listModeAdjusting, listModeSetting:
 		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
-		return []key.Binding{m.keys.Up, m.keys.Down, previousInventoryPage, nextInventoryPage, m.keys.Adjust, m.keys.Set, m.keys.Tags, m.keys.Refresh, m.keys.Back}
+		return append([]key.Binding{m.keys.Up, m.keys.Down, previousInventoryPage, nextInventoryPage}, append(m.visibleActionBindings(), m.keys.Refresh, m.keys.Back)...)
 	case listModeFiltering:
 	}
 	return nil
@@ -316,7 +332,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 		return [][]key.Binding{
 			{m.keys.Up, m.keys.Down, m.keys.Enter},
 			{previousInventoryPage, nextInventoryPage},
-			{m.keys.Adjust, m.keys.Set, m.keys.Tags},
+			m.visibleActionBindings(),
 			{m.keys.Refresh, m.keys.Back},
 		}
 	case listModeFiltering:
@@ -504,6 +520,44 @@ func (m *ListViewModel) syncDetail() {
 	}
 
 	m.detail.SetRow(optional.Some(m.rows[idx]))
+}
+
+func (m *ListViewModel) syncActions() {
+	row, ok := m.selectedRow()
+	var selected *inventorymodels.Inventory
+	if ok {
+		selected = &row.Inventory
+	}
+	states, err := m.projector.Project(m.context(), m.context().Principal(), selected)
+	if err != nil {
+		m.actions, m.err = nil, err
+		return
+	}
+	m.actions = make(map[actions.ID]actions.State, len(states))
+	for _, state := range states {
+		m.actions[state.ID] = state
+	}
+}
+
+func (m *ListViewModel) actionEnabled(id actions.ID) bool {
+	state, ok := m.actions[id]
+	return ok && state.Visible && state.Enabled
+}
+
+func (m *ListViewModel) visibleActionBindings() []key.Binding {
+	pairs := []struct {
+		id      actions.ID
+		binding key.Binding
+	}{
+		{inventory.ControlAdjust, m.keys.Adjust}, {inventory.ControlSet, m.keys.Set}, {inventory.ControlTags, m.keys.Tags},
+	}
+	out := make([]key.Binding, 0, len(pairs))
+	for _, pair := range pairs {
+		if m.actions[pair.id].Visible {
+			out = append(out, pair.binding)
+		}
+	}
+	return out
 }
 
 func (m *ListViewModel) context() *middleware.Context {

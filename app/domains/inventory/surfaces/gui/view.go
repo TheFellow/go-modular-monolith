@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
+	inventory "github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
@@ -76,13 +77,13 @@ func NewView(p *Presenter) *View {
 		if id.Col == len(columns)-1 {
 			rowID := r.Inventory.ID
 			actions := []ui.RowAction{{Label: "View", Run: func() { p.Select(rowID) }}}
-			if r.CanAdjust {
+			if actionVisible(r.Actions, inventory.ControlAdjust) {
 				actions = append(actions, ui.RowAction{Label: "Adjust", Run: func() { p.Select(rowID); p.StartAdjust() }})
 			}
-			if r.CanSet {
+			if actionVisible(r.Actions, inventory.ControlSet) {
 				actions = append(actions, ui.RowAction{Label: "Set", Run: func() { p.Select(rowID); p.StartSet() }})
 			}
-			if r.CanTag {
+			if actionVisible(r.Actions, inventory.ControlTags) {
 				actions = append(actions, ui.RowAction{Label: "Tags", Run: func() { p.Select(rowID); p.StartTags() }})
 			}
 			ui.ShowCellActions(cell, actions)
@@ -258,9 +259,9 @@ func (v *View) render(s State) {
 			v.detail = ui.StandardFormPage(ui.FormPage{Title: s.Selected.Ingredient.Name, Breadcrumb: v.breadcrumb(s.Selected.Ingredient.Name), Fields: v.detailFields(s), Status: v.formStatus}).(*framework.Container)
 		}
 	}
-	v.adjust.Hidden = s.Selected == nil || !s.CanAdjust
-	v.set.Hidden = s.Selected == nil || !s.CanSet
-	v.tagAction.Hidden = s.Selected == nil || !s.CanTag
+	v.adjust.Hidden = s.Selected == nil || !actionVisible(s.Actions, inventory.ControlAdjust)
+	v.set.Hidden = s.Selected == nil || !actionVisible(s.Actions, inventory.ControlSet)
+	v.tagAction.Hidden = s.Selected == nil || !actionVisible(s.Actions, inventory.ControlTags)
 	if s.Submitting || !s.Dirty {
 		v.save.Disable()
 		v.cancel.Disable()
