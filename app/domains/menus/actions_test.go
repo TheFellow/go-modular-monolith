@@ -12,8 +12,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
-	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/actions"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 

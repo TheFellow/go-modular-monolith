@@ -84,7 +84,7 @@ Authorization and action availability are deliberately separate. A denied action
 the presentation; an authorized action whose domain prerequisite is unmet remains visible but
 disabled with an explanation. A group's permission is only a default: a control with a distinct
 operation, such as Publish, overrides Edit rather than inheriting it. The shared
-[action presentation toolkit](../pkg/toolkits/actions/readme.md) evaluates these declarations, but
+[action presentation model](../pkg/presentation/actions/readme.md) evaluates these declarations, but
 commands remain authoritative and repeat authorization and invariants against current state. UI
 projection is guidance, not protection against stale state or time-of-check/time-of-use races.
 

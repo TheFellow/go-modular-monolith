@@ -23,7 +23,7 @@ Shell + Route + View
   input.
 - `SemanticButton`, `SemanticEntry`, `FilterSelect`, and `ActionSelect` expose stable IDs for real
   widget tests. `Trigger` and `SubmitOnEnter` preserve visible enabled/disabled guards.
-- Domain presenters may consume framework-neutral [`actions.State`](../actions/readme.md) values.
+- Domain presenters may consume framework-neutral [`actions.State`](../../presentation/actions/readme.md) values.
   Permission-denied controls are hidden; authorized controls with unmet domain prerequisites stay
   visible and disabled. Views additionally gate them for dirty, busy, confirming, or invalid local
   state, and every trigger retains the same guard as pointer input.

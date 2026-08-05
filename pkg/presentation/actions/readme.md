@@ -1,4 +1,4 @@
-# Action presentation toolkit
+# Action presentation model
 
 `actions` turns declarative control requirements into presentation state shared by GUI, TUI, and
 web adapters. It deliberately does not execute commands: command middleware remains the security
@@ -57,4 +57,4 @@ nil checks are declaration defects, not user denials. There is currently no HTTP
 endpoint; a web adapter can consume the same projector in process or expose it through a transport
 designed by that application.
 
-Run `go test ./pkg/toolkits/actions` while iterating.
+Run `go test ./pkg/presentation/actions` while iterating.

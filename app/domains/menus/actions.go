@@ -6,7 +6,7 @@ import (
 	menusauthz "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	pkgAuthz "github.com/TheFellow/go-modular-monolith/pkg/authz"
-	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/actions"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
