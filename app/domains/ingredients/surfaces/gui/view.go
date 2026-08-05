@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
+	domain "github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
@@ -18,10 +19,10 @@ const (
 	ControlFilter       = "ingredients-filter"
 	ControlApplyFilter  = "ingredients-apply-filter"
 	ControlRefresh      = "ingredients-refresh"
-	ControlCreate       = "ingredients-create"
-	ControlEdit         = "ingredients-edit"
-	ControlDelete       = "ingredients-delete"
-	ControlTags         = "ingredients-tags"
+	ControlCreate       = string(domain.ControlCreate)
+	ControlEdit         = string(domain.ControlEdit)
+	ControlDelete       = string(domain.ControlDelete)
+	ControlTags         = string(domain.ControlTags)
 	ControlSelectPrefix = "ingredient-select-"
 	ControlFormTags     = "ingredient-form-tags"
 	ControlName         = "ingredient-form-name"
