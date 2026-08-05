@@ -8,18 +8,19 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
 const (
-	ControlInspect    = "tags.operation.inspect"
-	ControlAdd        = "tags.operation.add"
-	ControlRemove     = "tags.operation.remove"
-	ControlShowExact  = "tags.operation.show-exact"
-	ControlShowKey    = "tags.operation.show-key"
-	ControlSummary    = "tags.operation.summary"
+	ControlInspect    = string(tagging.ControlInspect)
+	ControlAdd        = string(tagging.ControlTag)
+	ControlRemove     = string(tagging.ControlUntag)
+	ControlShowExact  = string(tagging.ControlShow) + ".exact"
+	ControlShowKey    = string(tagging.ControlShow) + ".key"
+	ControlSummary    = string(tagging.ControlSummary)
 	ControlSearch     = "tags.entity.search"
 	ControlValue      = "tags.value"
 	ControlSubmit     = "tags.submit"
@@ -31,17 +32,18 @@ func typeControl(kind cedar.EntityType) string { return "tags.type." + fmt.Sprin
 func entityControl(index int) string           { return fmt.Sprintf("tags.entity.%d", index) }
 
 type View struct {
-	presenter                                                         *Presenter
-	root, browse, workflow, operations, types, entities, form, detail *framework.Container
-	entityRows, resultRows                                            *framework.Container
-	list                                                              *widget.Table
-	listStack                                                         *framework.Container
-	empty                                                             *framework.Container
-	search, entitySearch, value                                       *ui.SemanticEntry
-	apply, submit, back                                               *ui.SemanticButton
-	status, workflowTitle, detailTitle, crumbName                     *widget.Label
-	state                                                             State
-	tagNaturalWidth                                                   float32
+	presenter                                                           *Presenter
+	root, browse, workflow, operations, types, entities, form, detail   *framework.Container
+	entityRows, resultRows                                              *framework.Container
+	list                                                                *widget.Table
+	listStack                                                           *framework.Container
+	empty                                                               *framework.Container
+	search, entitySearch, value                                         *ui.SemanticEntry
+	apply, submit, back                                                 *ui.SemanticButton
+	status, workflowTitle, detailTitle, crumbName                       *widget.Label
+	state                                                               State
+	tagNaturalWidth                                                     float32
+	inspect, addOperation, removeOperation, showExact, showKey, summary *ui.SemanticButton
 }
 
 var _ ui.View = (*View)(nil)
@@ -92,14 +94,13 @@ func NewView(p *Presenter) *View {
 	v.detail = container.NewBorder(container.NewPadded(detailHeader), nil, nil, nil, container.NewPadded(container.NewVScroll(v.resultRows)))
 
 	v.types = container.NewVBox()
-	v.operations = container.NewVBox(
-		ui.NewButton(ControlInspect, "Inspect entity tags", func() { p.Start(Inspect) }),
-		ui.NewButton(ControlAdd, "Tag entity", func() { p.Start(Add) }),
-		ui.NewButton(ControlRemove, "Untag entity", func() { p.Start(Remove) }),
-		ui.NewButton(ControlShowExact, "Find exact tag", func() { p.Start(ShowExact) }),
-		ui.NewButton(ControlShowKey, "Find tag key", func() { p.Start(ShowKey) }),
-		ui.NewButton(ControlSummary, "Tag usage summary", func() { p.Start(Summary) }),
-	)
+	v.inspect = ui.NewButton(ControlInspect, "Inspect entity tags", func() { p.Start(Inspect) })
+	v.addOperation = ui.NewButton(ControlAdd, "Tag entity", func() { p.Start(Add) })
+	v.removeOperation = ui.NewButton(ControlRemove, "Untag entity", func() { p.Start(Remove) })
+	v.showExact = ui.NewButton(ControlShowExact, "Find exact tag", func() { p.Start(ShowExact) })
+	v.showKey = ui.NewButton(ControlShowKey, "Find tag key", func() { p.Start(ShowKey) })
+	v.summary = ui.NewButton(ControlSummary, "Tag usage summary", func() { p.Start(Summary) })
+	v.operations = container.NewVBox(v.inspect, v.addOperation, v.removeOperation, v.showExact, v.showKey, v.summary)
 	for _, item := range []struct {
 		kind  cedar.EntityType
 		label string
@@ -143,6 +144,20 @@ func (v *View) ExecuteCommand(c ui.Command) bool {
 }
 
 func (v *View) render(s State) {
+	show := s.Actions[tagging.ControlShow]
+	summary := s.Actions[tagging.ControlSummary]
+	v.showExact.Hidden, v.showKey.Hidden = !show.Visible, !show.Visible
+	v.showExact.Enable()
+	v.showKey.Enable()
+	if !show.Enabled {
+		v.showExact.Disable()
+		v.showKey.Disable()
+	}
+	v.summary.Hidden = !summary.Visible
+	v.summary.Enable()
+	if !summary.Enabled {
+		v.summary.Disable()
+	}
 	if len(s.VisibleSummaries) > 0 {
 		values := make([]string, len(s.VisibleSummaries))
 		for i, summary := range s.VisibleSummaries {
@@ -176,7 +191,11 @@ func (v *View) render(s State) {
 		}
 		v.entityRows.RemoveAll()
 		for i, item := range s.Visible {
-			v.entityRows.Add(ui.NewButton(entityControl(i), item.Name+" — "+item.Detail, func() { p := v.presenter; p.SelectEntity(i) }))
+			button := ui.NewButton(entityControl(i), item.Name+" — "+item.Detail, func() { p := v.presenter; p.SelectEntity(i) })
+			if state := item.Actions[targetControl(s.Operation)]; !state.Visible || !state.Enabled {
+				button.Disable()
+			}
+			v.entityRows.Add(button)
 		}
 		v.entityRows.Refresh()
 	}
@@ -189,6 +208,16 @@ func (v *View) render(s State) {
 			v.value.SetPlaceHolder("key")
 		} else {
 			v.value.SetPlaceHolder("key or key=value")
+		}
+		control := targetControl(s.Operation)
+		if control == "" {
+			control = discoveryControl(s.Operation)
+		}
+		state := s.Actions[control]
+		v.submit.Hidden = !state.Visible
+		v.submit.Enable()
+		if !state.Enabled {
+			v.submit.Disable()
 		}
 	}
 	if detail {
