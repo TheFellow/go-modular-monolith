@@ -33,7 +33,7 @@ func TestDrinkActionProjectorAuthorization(t *testing.T) {
 			t.Parallel()
 			states, err := drinks.NewActionProjector().Project(context.Background(), actor.principal, drink)
 			testutil.Ok(t, err)
-			testutil.Equals(t, len(states), 4)
+			testutil.Equals(t, len(states), 5)
 			for _, state := range states {
 				testutil.Equals(t, state.Visible, actor.visible)
 				testutil.Equals(t, state.Enabled, actor.visible)
@@ -42,11 +42,14 @@ func TestDrinkActionProjectorAuthorization(t *testing.T) {
 	}
 }
 
-func TestDrinkActionProjectorWithoutSelectionReturnsCreateOnly(t *testing.T) {
+func TestDrinkActionProjectorWithoutSelectionReturnsCollectionActions(t *testing.T) {
 	t.Parallel()
 	states, err := drinks.NewActionProjector().Project(context.Background(), authn.Owner(), nil)
 	testutil.Ok(t, err)
-	testutil.Equals(t, states, []actions.State{{ID: drinks.ControlCreate, Visible: true, Enabled: true}})
+	testutil.Equals(t, states, []actions.State{
+		{ID: drinks.ControlList, Visible: true, Enabled: true},
+		{ID: drinks.ControlCreate, Visible: true, Enabled: true},
+	})
 }
 
 func TestDrinkActionProjectorPermissionsAreIndependent(t *testing.T) {
@@ -77,7 +80,7 @@ func TestDrinkActionStatesHaveStableJSONReadyIDs(t *testing.T) {
 	t.Parallel()
 	states, err := drinks.NewActionProjector().Project(context.Background(), authn.Owner(), &models.Drink{ID: models.NewDrinkID("json")})
 	testutil.Ok(t, err)
-	want := []actions.ID{drinks.ControlCreate, drinks.ControlEdit, drinks.ControlDelete, drinks.ControlTags}
+	want := []actions.ID{drinks.ControlList, drinks.ControlCreate, drinks.ControlEdit, drinks.ControlDelete, drinks.ControlTags}
 	got := make([]actions.ID, len(states))
 	for i := range states {
 		got[i] = states[i].ID
