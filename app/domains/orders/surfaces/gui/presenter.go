@@ -5,6 +5,7 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"time"
@@ -824,9 +825,7 @@ func cloneState(in State) State {
 	out.Menus = append([]MenuOption(nil), in.Menus...)
 	out.Drinks = append([]DrinkOption(nil), in.Drinks...)
 	out.Actions = make(map[actions.ID]actions.State, len(in.Actions))
-	for id, state := range in.Actions {
-		out.Actions[id] = state
-	}
+	maps.Copy(out.Actions, in.Actions)
 	return out
 }
 func cloneDrinkMap(in map[entity.MenuID][]DrinkOption) map[entity.MenuID][]DrinkOption {

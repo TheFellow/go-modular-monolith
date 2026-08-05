@@ -15,6 +15,7 @@ import (
 )
 
 func TestActionProjectorUsesRegisteredTargetActionsIndependently(t *testing.T) {
+	t.Parallel()
 	registry, target, get, tagAction, untag := actionRegistry()
 	denied := map[cedar.EntityUID]bool{tagAction: true}
 	projector := tagging.NewActionProjector(registry)
@@ -35,6 +36,7 @@ func TestActionProjectorUsesRegisteredTargetActionsIndependently(t *testing.T) {
 }
 
 func TestActionProjectorSurfacesDiscoveryAndTargetEvaluatorErrors(t *testing.T) {
+	t.Parallel()
 	registry, target, _, _, _ := actionRegistry()
 	want := stderrors.New("policy evaluator unavailable")
 	projector := tagging.NewActionProjector(registry)

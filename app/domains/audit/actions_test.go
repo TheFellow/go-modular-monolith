@@ -17,6 +17,7 @@ import (
 )
 
 func TestActionProjectorUsesIndependentListAndGetCapabilities(t *testing.T) {
+	t.Parallel()
 	entry := &models.AuditEntry{ID: entity.NewAuditEntryID()}
 	projector := audit.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, resource cedar.Entity) error {
 		if action == auditauthz.ActionGet {
@@ -34,12 +35,14 @@ func TestActionProjectorUsesIndependentListAndGetCapabilities(t *testing.T) {
 }
 
 func TestActionProjectorWithoutSelectionProjectsOnlyList(t *testing.T) {
+	t.Parallel()
 	states, err := audit.NewActionProjector().Project(context.Background(), authn.Owner(), nil)
 	testutil.Ok(t, err)
 	testutil.Equals(t, states, []actions.State{{ID: audit.ControlList, Visible: true, Enabled: true}})
 }
 
 func TestActionProjectorSurfacesEvaluatorFailures(t *testing.T) {
+	t.Parallel()
 	want := stderrors.New("policy evaluator unavailable")
 	projector := audit.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
 	_, err := projector.Project(context.Background(), authn.Owner(), nil)

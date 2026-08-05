@@ -4,6 +4,7 @@ package gui
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -563,9 +564,7 @@ func cloneState(state State) State {
 	state.Items = append([]models.Ingredient(nil), state.Items...)
 	state.History = append([]paging.Cursor(nil), state.History...)
 	actionsCopy := make(map[actions.ID]actions.State, len(state.Actions))
-	for id, action := range state.Actions {
-		actionsCopy[id] = action
-	}
+	maps.Copy(actionsCopy, state.Actions)
 	state.Actions = actionsCopy
 	if state.Selected != nil {
 		selected := *state.Selected

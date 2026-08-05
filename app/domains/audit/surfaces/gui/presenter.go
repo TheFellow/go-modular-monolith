@@ -3,6 +3,7 @@ package gui
 
 import (
 	"context"
+	"maps"
 	"sort"
 	"strings"
 	"time"
@@ -390,9 +391,7 @@ func cloneActions(in map[actions.ID]actions.State) map[actions.ID]actions.State 
 		return nil
 	}
 	out := make(map[actions.ID]actions.State, len(in))
-	for id, state := range in {
-		out[id] = state
-	}
+	maps.Copy(out, in)
 	return out
 }
 func selectedID(row *Row) string {
