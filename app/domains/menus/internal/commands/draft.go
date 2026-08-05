@@ -15,8 +15,8 @@ func (c *Commands) Draft(ctx *middleware.Context, menu *models.Menu) (*models.Me
 		return nil, errors.Invalidf("menu is required")
 	}
 
-	if menu.Status != models.MenuStatusPublished {
-		return nil, errors.Invalidf("only published menus can be drafted")
+	if err := menu.RequireReturnToDraft(); err != nil {
+		return nil, err
 	}
 
 	updated := *menu

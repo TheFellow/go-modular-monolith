@@ -14,6 +14,9 @@ func (c *Commands) Publish(ctx *middleware.Context, menu *models.Menu) (*models.
 	if menu == nil {
 		return nil, errors.Invalidf("menu is required")
 	}
+	if err := menu.RequirePublishable(); err != nil {
+		return nil, err
+	}
 	now := time.Now().UTC()
 	updated := *menu
 	updated.Status = models.MenuStatusPublished

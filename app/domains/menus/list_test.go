@@ -13,7 +13,8 @@ func TestMenus_ListExpressionFilters(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 
-	target := testutil.CreateMenu(t, f, "Summer Terrace", testutil.WithDescription("Seasonal patio menu"), testutil.Published())
+	drink := createMenuTestDrink(t, f, "Summer drink")
+	target := testutil.CreateMenu(t, f, "Summer Terrace", testutil.WithDescription("Seasonal patio menu"), testutil.WithDrink(drink), testutil.Published())
 	testutil.CreateMenu(t, f, "Winter Cellar", testutil.WithDescription("Rich winter menu"))
 
 	tests := map[string]string{
