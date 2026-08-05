@@ -13,6 +13,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -52,6 +53,7 @@ type Filter struct {
 type Row struct {
 	Entry   models.AuditEntry
 	Touches []string
+	Actions map[actions.ID]actions.State
 }
 
 type State struct {
@@ -63,12 +65,14 @@ type State struct {
 	Cursor, Next paging.Cursor
 	History      []paging.Cursor
 	Err          error
+	Actions      map[actions.ID]actions.State
 }
 
 type Dependencies struct {
 	Executor   ui.Executor
 	Dispatcher ui.Dispatcher
 	Dialogs    ui.Dialogs
+	Projector  *audit.ActionProjector
 }
 
 type listResult struct {
@@ -77,17 +81,28 @@ type listResult struct {
 }
 
 type Presenter struct {
-	app     *app.Session
-	dialogs ui.Dialogs
-	load    *ui.LatestRequest[listResult]
-	state   State
-	changed func(State)
+	app       *app.Session
+	dialogs   ui.Dialogs
+	load      *ui.LatestRequest[listResult]
+	state     State
+	changed   func(State)
+	projector audit.ActionProjector
 }
 
 func NewPresenter(session *app.Session, deps Dependencies) *Presenter {
-	p := &Presenter{app: session, dialogs: deps.Dialogs}
+	projector := audit.NewActionProjector()
+	if deps.Projector != nil {
+		projector = *deps.Projector
+	}
+	p := &Presenter{app: session, dialogs: deps.Dialogs, projector: projector}
 	p.state.Filter.Limit = ui.PageLimit
 	p.load = ui.NewLatestRequest[listResult](deps.Executor, deps.Dispatcher)
+	states, err := projector.Project(session.Context(), session.Context().Principal(), nil)
+	if err != nil {
+		p.state.Err = ui.PresentError(err)
+	} else {
+		p.state.Actions = indexActions(states)
+	}
 	return p
 }
 
@@ -95,6 +110,9 @@ func (p *Presenter) Observe(fn func(State)) { p.changed = fn; p.publish() }
 func (p *Presenter) State() State           { return cloneState(p.state) }
 
 func (p *Presenter) Refresh() {
+	if !p.actionEnabled(audit.ControlList) {
+		return
+	}
 	p.state.Cursor, p.state.Next, p.state.History = "", "", nil
 	p.loadPage(false)
 }
@@ -116,7 +134,13 @@ func (p *Presenter) loadPage(appendPage bool) {
 			if entry == nil {
 				return listResult{}, apperrors.Internalf("audit entry missing")
 			}
-			rows = append(rows, rowFromEntry(*entry))
+			row := rowFromEntry(*entry)
+			states, err := p.projector.Project(ctx, p.app.Context().Principal(), entry)
+			if err != nil {
+				return listResult{}, err
+			}
+			row.Actions = indexActions(states)
+			rows = append(rows, row)
 		}
 		return listResult{rows: rows, next: page.Next}, nil
 	}, func(result ui.LoadState[listResult]) {
@@ -141,7 +165,7 @@ func (p *Presenter) loadPage(appendPage bool) {
 }
 
 func (p *Presenter) ApplyFilter(filter Filter) bool {
-	if p.state.Loading {
+	if p.state.Loading || !p.actionEnabled(audit.ControlList) {
 		return false
 	}
 	filter = normalizeFilter(filter)
@@ -155,7 +179,7 @@ func (p *Presenter) ApplyFilter(filter Filter) bool {
 }
 
 func (p *Presenter) NextPage() {
-	if p.state.Loading || p.state.Next == "" {
+	if p.state.Loading || p.state.Next == "" || !p.actionEnabled(audit.ControlList) {
 		return
 	}
 	p.state.History = append(p.state.History, p.state.Cursor)
@@ -164,7 +188,7 @@ func (p *Presenter) NextPage() {
 }
 
 func (p *Presenter) PreviousPage() {
-	if p.state.Loading || len(p.state.History) == 0 {
+	if p.state.Loading || len(p.state.History) == 0 || !p.actionEnabled(audit.ControlList) {
 		return
 	}
 	last := len(p.state.History) - 1
@@ -173,18 +197,33 @@ func (p *Presenter) PreviousPage() {
 	p.loadPage(false)
 }
 
+func (p *Presenter) actionEnabled(id actions.ID) bool {
+	state, ok := p.state.Actions[id]
+	return ok && state.Visible && state.Enabled
+}
+
 func (p *Presenter) Select(index int) {
 	if p.state.Loading {
 		return
 	}
 	if index < 0 || index >= len(p.state.Rows) {
 		p.state.Selected = nil
+	} else if state, ok := p.state.Rows[index].Actions[audit.ControlView]; !ok || !state.Visible || !state.Enabled {
+		return
 	} else {
 		row := cloneRow(p.state.Rows[index])
 		p.state.Selected = &row
 		p.state.Mode = Viewing
 	}
 	p.publish()
+}
+
+func indexActions(states []actions.State) map[actions.ID]actions.State {
+	indexed := make(map[actions.ID]actions.State, len(states))
+	for _, state := range states {
+		indexed[state.ID] = state
+	}
+	return indexed
 }
 
 // Back returns to the exact list query and page that opened the detail.
@@ -326,6 +365,7 @@ func cloneEntry(entry models.AuditEntry) models.AuditEntry {
 func cloneRow(row Row) Row {
 	row.Entry = cloneEntry(row.Entry)
 	row.Touches = append([]string(nil), row.Touches...)
+	row.Actions = cloneActions(row.Actions)
 	return row
 }
 func cloneRows(rows []Row) []Row {
@@ -338,11 +378,22 @@ func cloneRows(rows []Row) []Row {
 func cloneState(state State) State {
 	state.Rows = cloneRows(state.Rows)
 	state.History = append([]paging.Cursor(nil), state.History...)
+	state.Actions = cloneActions(state.Actions)
 	if state.Selected != nil {
 		row := cloneRow(*state.Selected)
 		state.Selected = &row
 	}
 	return state
+}
+func cloneActions(in map[actions.ID]actions.State) map[actions.ID]actions.State {
+	if in == nil {
+		return nil
+	}
+	out := make(map[actions.ID]actions.State, len(in))
+	for id, state := range in {
+		out[id] = state
+	}
+	return out
 }
 func selectedID(row *Row) string {
 	if row == nil {
