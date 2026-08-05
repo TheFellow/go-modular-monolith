@@ -37,6 +37,11 @@ rendered. Conditions belong in the domain surface adapter when they are view-spe
 business predicates may live closer to the domain. In every case, the corresponding command must
 independently enforce authorization and business invariants.
 
+Do not authorize a collection control against a fabricated entity. When list authorization is
+evaluated per returned entity (including ABAC-based row elision), entering the collection is a
+public presentation capability and each returned row remains protected by the query pipeline. Use
+an authorized collection control only when the policy model defines a genuine collection resource.
+
 A projection is a snapshot for one principal and resource. Discard it when the actor or selection
 changes, recompute it after persisted state changes, and clear it if evaluation fails so an earlier
 enabled state cannot authorize a newer target. Permission runs before conditions intentionally:

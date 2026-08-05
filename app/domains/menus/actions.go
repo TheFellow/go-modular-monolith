@@ -51,12 +51,12 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 		})
 	}
 
-	collection := models.Menu{ID: models.NewMenuID("workspace")}.CedarEntity()
 	declaration := actions.Group{
 		Controls: []actions.Control{
 			{
-				ID:         ControlList,
-				Permission: permission(menusauthz.ActionList, collection),
+				ID: ControlList,
+				// Lists authorize and elide each returned menu independently.
+				Permission: actions.Public(),
 			}, {
 				ID:         ControlCreate,
 				Permission: permission(menusauthz.ActionCreate, (models.Menu{}).CedarEntity()),

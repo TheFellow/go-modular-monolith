@@ -35,6 +35,11 @@ func TestDrinkActionProjectorAuthorization(t *testing.T) {
 			testutil.Ok(t, err)
 			testutil.Equals(t, len(states), 5)
 			for _, state := range states {
+				if state.ID == drinks.ControlList {
+					testutil.Equals(t, state.Visible, true)
+					testutil.Equals(t, state.Enabled, true)
+					continue
+				}
 				testutil.Equals(t, state.Visible, actor.visible)
 				testutil.Equals(t, state.Enabled, actor.visible)
 			}
