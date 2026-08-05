@@ -2,6 +2,8 @@
 package gui
 
 import (
+	"context"
+	stderrors "errors"
 	"slices"
 	"strings"
 	"testing"
@@ -12,6 +14,7 @@ import (
 
 	application "github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventory "github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventoryauthz "github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
@@ -23,7 +26,39 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	cedar "github.com/cedar-policy/cedar-go"
 )
+
+func TestPresenterProjectsRowsAndRechecksStaleCapabilities(t *testing.T) {
+	fix, _ := inventoryFixture(t)
+	denied := false
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
+	p.projector = inventory.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
+		if denied && action == inventoryauthz.ActionAdjust {
+			return apperrors.Permissionf("adjust revoked")
+		}
+		return nil
+	}}
+	p.Load()
+	state := p.Snapshot()
+	testutil.Equals(t, state.Rows[0].Actions[inventory.ControlAdjust].Visible, true)
+	p.Select(state.Rows[0].Inventory.ID)
+	denied = true
+	p.StartAdjust()
+	state = p.Snapshot()
+	testutil.Equals(t, state.Mode, Viewing)
+	testutil.Equals(t, state.Actions[inventory.ControlAdjust].Visible, false)
+}
+
+func TestPresenterSurfacesProjectionEvaluatorFailure(t *testing.T) {
+	fix, _ := inventoryFixture(t)
+	want := stderrors.New("policy evaluator unavailable")
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
+	p.projector = inventory.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
+	p.Load()
+	state := p.Snapshot()
+	testutil.ErrorIf(t, state.Status != toolkit.Failed || !stderrors.Is(state.Err, want) || len(state.Actions) != 0, "failed projection state = %#v", state)
+}
 
 func TestInventoryDetailLabelsIncludeExactLastUpdated(t *testing.T) {
 	fix, _ := inventoryFixture(t)

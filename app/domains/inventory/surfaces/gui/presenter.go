@@ -12,18 +12,17 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventory "github.com/TheFellow/go-modular-monolith/app/domains/inventory"
-	inventoryauthz "github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	pkgAuthz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -55,6 +54,7 @@ type Row struct {
 	CanAdjust  bool
 	CanSet     bool
 	CanTag     bool
+	Actions    map[actions.ID]actions.State
 }
 
 type Form struct {
@@ -81,6 +81,7 @@ type State struct {
 	CanAdjust    bool
 	CanSet       bool
 	CanTag       bool
+	Actions      map[actions.ID]actions.State
 	FormInstance uint64
 }
 
@@ -90,17 +91,19 @@ type loadResult struct {
 }
 
 type Presenter struct {
-	app     *app.Session
-	dialogs toolkit.Dialogs
-	load    *toolkit.LatestRequest[loadResult]
-	submit  *toolkit.Submission
-	mu      sync.Mutex
-	state   State
-	changed func(State)
+	app       *app.Session
+	dialogs   toolkit.Dialogs
+	load      *toolkit.LatestRequest[loadResult]
+	submit    *toolkit.Submission
+	mu        sync.Mutex
+	state     State
+	changed   func(State)
+	projector inventory.ActionProjector
 }
 
 func NewPresenter(session *app.Session, executor toolkit.Executor, dispatcher toolkit.Dispatcher, dialogs ...toolkit.Dialogs) *Presenter {
-	p := &Presenter{app: session, state: State{Limit: toolkit.PageLimit, LowStock: LowStockThreshold}}
+	projector := inventory.NewActionProjector()
+	p := &Presenter{app: session, state: State{Limit: toolkit.PageLimit, LowStock: LowStockThreshold}, projector: projector}
 	if len(dialogs) > 0 {
 		p.dialogs = dialogs[0]
 	}
@@ -146,10 +149,14 @@ func (p *Presenter) loadPage(appendPage bool) {
 				return loadResult{}, apperrors.Internalf("ingredient %s missing", item.IngredientID)
 			}
 			row := makeRow(*item, *ingredient, threshold)
-			principal, resource := op.Principal(), item.CedarEntity()
-			row.CanAdjust = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionAdjust, resource) == nil
-			row.CanSet = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionSet, resource) == nil
-			row.CanTag = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionTag, resource) == nil
+			states, err := p.projector.Project(op, op.Principal(), item)
+			if err != nil {
+				return loadResult{}, fmt.Errorf("project inventory actions: %w", err)
+			}
+			row.Actions = indexActions(states)
+			row.CanAdjust = actionVisible(row.Actions, inventory.ControlAdjust)
+			row.CanSet = actionVisible(row.Actions, inventory.ControlSet)
+			row.CanTag = actionVisible(row.Actions, inventory.ControlTags)
 			rows = append(rows, row)
 		}
 		return loadResult{rows: rows, next: page.Next}, nil
@@ -230,7 +237,9 @@ func (p *Presenter) Select(id entity.InventoryID) {
 	if p.state.Selected != nil {
 		p.state.Mode, p.state.Dirty, p.state.Err = Viewing, false, nil
 		p.state.FormInstance++
-		p.permissionsLocked()
+		if err := p.permissionsLocked(); err != nil {
+			p.state.Err = toolkit.PresentError(err)
+		}
 	}
 	p.publishLocked()
 	p.mu.Unlock()
@@ -277,15 +286,21 @@ func (p *Presenter) leaveDetail(reset bool) {
 	proceed()
 }
 
-func (p *Presenter) permissionsLocked() {
+func (p *Presenter) permissionsLocked() error {
+	p.state.Actions = nil
+	p.state.CanAdjust, p.state.CanSet, p.state.CanTag = false, false, false
 	if p.state.Selected == nil {
-		return
+		return nil
 	}
-	entity := p.state.Selected.Inventory.CedarEntity()
-	principal := p.app.Context().Principal()
-	p.state.CanAdjust = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionAdjust, entity) == nil
-	p.state.CanSet = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionSet, entity) == nil
-	p.state.CanTag = pkgAuthz.AuthorizeWithEntity(principal, inventoryauthz.ActionTag, entity) == nil
+	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), &p.state.Selected.Inventory)
+	if err != nil {
+		return err
+	}
+	p.state.Actions = indexActions(states)
+	p.state.CanAdjust = actionVisible(p.state.Actions, inventory.ControlAdjust)
+	p.state.CanSet = actionVisible(p.state.Actions, inventory.ControlSet)
+	p.state.CanTag = actionVisible(p.state.Actions, inventory.ControlTags)
+	return nil
 }
 
 func (p *Presenter) StartAdjust() { p.start(Adjust) }
@@ -297,8 +312,12 @@ func (p *Presenter) start(mode Mode) {
 	if p.state.Selected == nil {
 		return
 	}
-	p.permissionsLocked()
-	allowed := (mode == Adjust && p.state.CanAdjust) || (mode == Set && p.state.CanSet) || (mode == Tags && p.state.CanTag)
+	if err := p.permissionsLocked(); err != nil {
+		p.state.Err = toolkit.PresentError(err)
+		p.publishLocked()
+		return
+	}
+	allowed := (mode == Adjust && actionEnabled(p.state.Actions, inventory.ControlAdjust)) || (mode == Set && actionEnabled(p.state.Actions, inventory.ControlSet)) || (mode == Tags && actionEnabled(p.state.Actions, inventory.ControlTags))
 	if !allowed {
 		return
 	}
@@ -551,12 +570,38 @@ func findRow(rows []Row, id entity.InventoryID) *Row {
 }
 func cloneState(state State) State {
 	state.Rows = append([]Row(nil), state.Rows...)
+	for i := range state.Rows {
+		state.Rows[i].Actions = cloneActions(state.Rows[i].Actions)
+	}
 	state.History = append([]paging.Cursor(nil), state.History...)
+	state.Actions = cloneActions(state.Actions)
 	if state.Selected != nil {
 		v := *state.Selected
+		v.Actions = cloneActions(v.Actions)
 		state.Selected = &v
 	}
 	return state
+}
+func indexActions(states []actions.State) map[actions.ID]actions.State {
+	out := make(map[actions.ID]actions.State, len(states))
+	for _, state := range states {
+		out[state.ID] = state
+	}
+	return out
+}
+func actionVisible(states map[actions.ID]actions.State, id actions.ID) bool {
+	return states[id].Visible
+}
+func actionEnabled(states map[actions.ID]actions.State, id actions.ID) bool {
+	state, ok := states[id]
+	return ok && state.Visible && state.Enabled
+}
+func cloneActions(in map[actions.ID]actions.State) map[actions.ID]actions.State {
+	out := make(map[actions.ID]actions.State, len(in))
+	for id, state := range in {
+		out[id] = state
+	}
+	return out
 }
 func (p *Presenter) publishLocked() {
 	if p.changed != nil {
