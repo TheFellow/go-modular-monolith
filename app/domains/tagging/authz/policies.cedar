@@ -1,5 +1,5 @@
 // Tag discovery is a separate authorization vertical. Granting either action
-// intentionally discloses matching entity types and IDs without consulting
+// intentionally discloses matching entity types, names, and IDs without consulting
 // the owning domains' read policies.
 permit(
     principal == Mixology::Actor::"owner",

@@ -22,8 +22,9 @@ type ActiveTargets func(store.Context, []cedar.String) (set.Set[cedar.String], e
 
 // TargetState is the complete domain-owned state needed by tag orchestration.
 type TargetState struct {
-	Entity cedar.Entity
-	Tags   tag.Tags
+	Entity      cedar.Entity
+	DisplayName string
+	Tags        tag.Tags
 }
 
 // Target describes the domain-owned authorization and loading behavior for a

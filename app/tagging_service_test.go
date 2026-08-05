@@ -25,6 +25,7 @@ import (
 
 type tagTarget struct {
 	name        string
+	displayName string
 	uid         cedar.EntityUID
 	tagAction   cedar.EntityUID
 	untagAction cedar.EntityUID
@@ -51,11 +52,11 @@ func operationalTagTargets(t *testing.T, f *testutil.Fixture) []tagTarget {
 		MenuID: menu.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
 	})
 	return []tagTarget{
-		{name: "ingredient", uid: ingredient.EntityUID(), tagAction: ingredientauthz.ActionTag, untagAction: ingredientauthz.ActionUntag},
-		{name: "drink", uid: drink.EntityUID(), tagAction: drinkauthz.ActionTag, untagAction: drinkauthz.ActionUntag},
-		{name: "inventory", uid: stock.EntityUID(), tagAction: inventoryauthz.ActionTag, untagAction: inventoryauthz.ActionUntag},
-		{name: "menu", uid: menu.EntityUID(), tagAction: menuauthz.ActionTag, untagAction: menuauthz.ActionUntag},
-		{name: "order", uid: order.EntityUID(), tagAction: orderauthz.ActionTag, untagAction: orderauthz.ActionUntag},
+		{name: "ingredient", displayName: ingredient.Name, uid: ingredient.EntityUID(), tagAction: ingredientauthz.ActionTag, untagAction: ingredientauthz.ActionUntag},
+		{name: "drink", displayName: drink.Name, uid: drink.EntityUID(), tagAction: drinkauthz.ActionTag, untagAction: drinkauthz.ActionUntag},
+		{name: "inventory", displayName: "Inventory for " + ingredient.Name, uid: stock.EntityUID(), tagAction: inventoryauthz.ActionTag, untagAction: inventoryauthz.ActionUntag},
+		{name: "menu", displayName: menu.Name, uid: menu.EntityUID(), tagAction: menuauthz.ActionTag, untagAction: menuauthz.ActionUntag},
+		{name: "order", displayName: "Order for " + menu.Name, uid: order.EntityUID(), tagAction: orderauthz.ActionTag, untagAction: orderauthz.ActionUntag},
 	}
 }
 
@@ -279,6 +280,7 @@ func TestTagDiscoveryFindsAndSummarizesActiveTargets(t *testing.T) {
 	testutil.Equals(t, len(exact), 2)
 	for _, reference := range exact {
 		testutil.Equals(t, reference.Tag, "region=west")
+		testutil.ErrorIf(t, reference.EntityName == "", "reference has no entity name: %#v", reference)
 	}
 	wide, err := f.App.Tags.Show(ctx, tag.Tag{Key: "region"}, false)
 	testutil.Ok(t, err)
@@ -286,6 +288,15 @@ func TestTagDiscoveryFindsAndSummarizesActiveTargets(t *testing.T) {
 	testutil.Equals(t, wide[0].Tag, "region=west")
 	testutil.Equals(t, wide[1].Tag, "region=west")
 	testutil.Equals(t, wide[2].Tag, "region=east")
+	displayNames := make(map[string]string, len(targets))
+	for _, target := range targets {
+		displayNames[string(target.uid.ID)] = target.displayName
+	}
+	for _, reference := range wide {
+		displayName, ok := displayNames[reference.EntityID]
+		testutil.ErrorIf(t, !ok, "unexpected tag reference: %#v", reference)
+		testutil.Equals(t, reference.EntityName, displayName)
+	}
 
 	summary, err := f.App.Tags.Summary(ctx)
 	testutil.Ok(t, err)
