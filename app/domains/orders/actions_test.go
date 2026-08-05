@@ -16,6 +16,7 @@ import (
 )
 
 func TestActionProjectorIndependentlyAuthorizesAndProjectsLifecycle(t *testing.T) {
+	t.Parallel()
 	principal := cedar.NewEntityUID("User", "owner")
 	order := &models.Order{ID: entity.NewOrderID(), Status: models.OrderStatusCompleted}
 	denied := map[cedar.EntityUID]bool{ordersauthz.ActionCancel: true}
@@ -37,6 +38,7 @@ func TestActionProjectorIndependentlyAuthorizesAndProjectsLifecycle(t *testing.T
 }
 
 func TestActionProjectorPendingLifecycle(t *testing.T) {
+	t.Parallel()
 	projector := orders.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return nil }}
 	for _, status := range []models.OrderStatus{models.OrderStatusPending, models.OrderStatusCompleted, models.OrderStatusCancelled} {
 		states, err := projector.Project(context.Background(), cedar.EntityUID{}, &models.Order{ID: entity.NewOrderID(), Status: status})
@@ -48,7 +50,8 @@ func TestActionProjectorPendingLifecycle(t *testing.T) {
 }
 
 func TestActionProjectorKeepsListEntryPublicAndPlacementIndependent(t *testing.T) {
-	projector := orders.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, resource cedar.Entity) error {
+	t.Parallel()
+	projector := orders.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, _ cedar.EntityUID, _ cedar.Entity) error {
 		return nil
 	}}
 	states, err := projector.Project(context.Background(), cedar.EntityUID{}, nil)
@@ -59,6 +62,7 @@ func TestActionProjectorKeepsListEntryPublicAndPlacementIndependent(t *testing.T
 }
 
 func TestActionProjectorSurfacesEvaluatorFailure(t *testing.T) {
+	t.Parallel()
 	want := stderrors.New("evaluator unavailable")
 	projector := orders.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
 	_, err := projector.Project(context.Background(), cedar.EntityUID{}, nil)

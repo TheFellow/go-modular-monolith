@@ -273,9 +273,7 @@ func (p *Presenter) SelectEntity(index int) {
 		return
 	}
 	p.state.Target, p.state.TargetName, p.state.Value, p.state.Err = selected.UID, selected.Name, "", nil
-	for id, state := range selected.Actions {
-		p.state.Actions[id] = state
-	}
+	maps.Copy(p.state.Actions, selected.Actions)
 	if p.state.Operation == Inspect {
 		target := selected.UID
 		p.runQuery(func(ctx *middleware.Context) (any, error) { return p.app.Tags.List(ctx, target) })
@@ -626,6 +624,8 @@ func discoveryControl(operation Operation) actions.ID {
 		return tagging.ControlShow
 	case Summary:
 		return tagging.ControlSummary
+	case Inspect, Add, Remove:
+		return ""
 	}
 	return ""
 }
@@ -637,6 +637,8 @@ func targetControl(operation Operation) actions.ID {
 		return tagging.ControlTag
 	case Remove:
 		return tagging.ControlUntag
+	case ShowExact, ShowKey, Summary:
+		return ""
 	}
 	return ""
 }

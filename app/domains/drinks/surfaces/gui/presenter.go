@@ -4,6 +4,7 @@ package gui
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"strconv"
 	"strings"
@@ -603,9 +604,7 @@ func cloneState(in State) State {
 	out.Ingredients = append([]IngredientOption(nil), in.Ingredients...)
 	out.Form = cloneForm(in.Form)
 	out.Actions = make(map[actions.ID]actions.State, len(in.Actions))
-	for id, state := range in.Actions {
-		out.Actions[id] = state
-	}
+	maps.Copy(out.Actions, in.Actions)
 	return out
 }
 func cloneForm(in Form) Form {

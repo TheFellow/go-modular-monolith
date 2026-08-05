@@ -4,6 +4,7 @@ package gui
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"strconv"
 	"strings"
@@ -613,9 +614,7 @@ func actionEnabled(states map[actions.ID]actions.State, id actions.ID) bool {
 }
 func cloneActions(in map[actions.ID]actions.State) map[actions.ID]actions.State {
 	out := make(map[actions.ID]actions.State, len(in))
-	for id, state := range in {
-		out[id] = state
-	}
+	maps.Copy(out, in)
 	return out
 }
 func (p *Presenter) publishLocked() {

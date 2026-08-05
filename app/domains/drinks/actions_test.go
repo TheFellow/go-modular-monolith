@@ -28,7 +28,6 @@ func TestDrinkActionProjectorAuthorization(t *testing.T) {
 		{name: "manager", principal: authn.Manager(), visible: true},
 		{name: "read-only", principal: authn.Sommelier(), visible: false},
 	} {
-		actor := actor
 		t.Run(actor.name, func(t *testing.T) {
 			t.Parallel()
 			states, err := drinks.NewActionProjector().Project(context.Background(), actor.principal, drink)
