@@ -2,10 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
-	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"slices"
 	"strings"
 
@@ -16,6 +12,11 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/dialog"
@@ -64,6 +65,9 @@ type ListViewModel struct {
 	history   []paging.Cursor
 	loadToken uint64
 	items     []list.Item
+	projector ingredients.ActionProjector
+	actions   map[actions.ID]actions.State
+	actionErr error
 
 	deleteTarget *models.Ingredient
 
@@ -83,13 +87,19 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		dialogKeys:   keys.Standard.Dialog,
 		shell:        tui.NewListDetail("Ingredients", "Loading ingredients...", styles.Standard.ListView),
 		detail:       NewDetailViewModel(styles.Standard.ListView),
+		projector:    ingredients.NewActionProjector(),
 	}
 	vm.shell.SetLocalFiltering(false)
 	vm.shell.SetLocalPagination(false)
+	vm.syncActions()
 	return vm
 }
 
 func (m *ListViewModel) Init() tea.Cmd {
+	if !m.actionEnabled(ingredients.ControlList) {
+		m.shell.SetResult(nil, m.actionErr)
+		return nil
+	}
 	return tea.Batch(m.shell.BeginLoading(), m.loadIngredients(""))
 }
 
@@ -188,6 +198,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 				return m, nil
 			}
 			if filterSubmit(msg) {
+				if !m.actionEnabled(ingredients.ControlList) {
+					return m, nil
+				}
 				req, err := m.filter.Request()
 				if err != nil {
 					return m, nil
@@ -202,27 +215,45 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
+			if !m.actionEnabled(ingredients.ControlList) {
+				return m, nil
+			}
 			return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(m.request.Cursor))
 		case msg.String() == "f":
+			if !m.actionEnabled(ingredients.ControlList) {
+				return m, nil
+			}
 			m.mode, m.filter = listModeFiltering, newFilterVM(m.request)
 			m.filter.form.SetWidth(m.detailWidth)
 			return m, m.filter.Init()
-		case msg.String() == "]" && m.next != "":
+		case msg.String() == "]" && m.next != "" && m.actionEnabled(ingredients.ControlList):
 			m.history = append(m.history, m.request.Cursor)
 			m.request.Cursor = m.next
 			return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(m.request.Cursor))
-		case msg.String() == "[" && len(m.history) > 0:
+		case msg.String() == "[" && len(m.history) > 0 && m.actionEnabled(ingredients.ControlList):
 			i := len(m.history) - 1
 			m.request.Cursor = m.history[i]
 			m.history = m.history[:i]
 			return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(m.request.Cursor))
 		case key.Matches(msg, m.keys.Create):
+			if !m.actionEnabled(ingredients.ControlCreate) {
+				return m, nil
+			}
 			return m, m.startCreate()
 		case key.Matches(msg, m.keys.Edit), key.Matches(msg, m.keys.Enter):
+			if !m.actionEnabled(ingredients.ControlEdit) {
+				return m, nil
+			}
 			return m, m.startEdit()
 		case key.Matches(msg, m.keys.Delete):
+			if !m.actionEnabled(ingredients.ControlDelete) {
+				return m, nil
+			}
 			return m, m.startDelete()
 		case key.Matches(msg, m.keys.Tags):
+			if !m.actionEnabled(ingredients.ControlTags) {
+				return m, nil
+			}
 			return m, m.startTags()
 		}
 	case IngredientsLoadedMsg:
@@ -244,6 +275,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.selectIngredient(selected)
 		m.updateTitle()
 		m.syncDetail()
+		m.syncActions()
 		return m, nil
 	}
 
@@ -271,6 +303,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 
 	cmd := m.shell.Update(msg)
 	m.syncDetail()
+	m.syncActions()
 	return m, cmd
 }
 
@@ -311,12 +344,15 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	case listModeCreating, listModeEditing:
 		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
-		return []key.Binding{
-			m.keys.Up, m.keys.Down,
-			m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage,
-			m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags,
-			m.keys.Refresh, m.keys.Back,
+		bindings := []key.Binding{}
+		if m.actionEnabled(ingredients.ControlList) {
+			bindings = append(bindings, m.keys.Up, m.keys.Down, m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage)
 		}
+		bindings = append(bindings, m.visibleBindings()...)
+		if m.actionEnabled(ingredients.ControlList) {
+			bindings = append(bindings, m.keys.Refresh)
+		}
+		return append(bindings, m.keys.Back)
 	case listModeFiltering:
 	}
 	return nil
@@ -337,11 +373,24 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.keys.Back},
 		}
 	case listModeBrowsing:
+		navigation := []key.Binding{}
+		pagingHelp := []key.Binding{}
+		if m.actionEnabled(ingredients.ControlList) {
+			navigation = append(navigation, m.keys.Up, m.keys.Down)
+			pagingHelp = append(pagingHelp, m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage)
+		}
+		if m.actionEnabled(ingredients.ControlList) && m.actionEnabled(ingredients.ControlEdit) {
+			navigation = append(navigation, m.keys.Enter)
+		}
+		last := []key.Binding{m.keys.Back}
+		if m.actionEnabled(ingredients.ControlList) {
+			last = append([]key.Binding{m.keys.Refresh}, last...)
+		}
 		return [][]key.Binding{
-			{m.keys.Up, m.keys.Down, m.keys.Enter},
-			{m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage},
-			{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags},
-			{m.keys.Refresh, m.keys.Back},
+			navigation,
+			pagingHelp,
+			m.visibleBindings(),
+			last,
 		}
 	case listModeFiltering:
 	}
@@ -362,7 +411,7 @@ func (m *ListViewModel) loadIngredients(cursor paging.Cursor) tea.Cmd {
 		items := make([]models.Ingredient, 0, len(ingredientsList.Items))
 		for i, ingredient := range ingredientsList.Items {
 			if ingredient == nil {
-				return IngredientsLoadedMsg{Err: errors.Internalf("ingredient %d missing", i), Token: token}
+				return IngredientsLoadedMsg{Err: apperrors.Internalf("ingredient %d missing", i), Token: token}
 			}
 			items = append(items, *ingredient)
 		}
@@ -376,6 +425,52 @@ func (m *ListViewModel) startCreate() tea.Cmd {
 	m.create = NewCreateIngredientVM(m.app)
 	m.create.SetWidth(m.detailWidth)
 	return m.create.Init()
+}
+
+func (m *ListViewModel) syncActions() {
+	states, err := m.projector.Project(m.context(), m.context().Principal(), m.selectedIngredient())
+	if err != nil {
+		m.actions = nil
+		m.actionErr = err
+		m.shell.SetResult(nil, err)
+		return
+	}
+	if m.actionErr != nil {
+		m.shell.SetResult(m.items, nil)
+	}
+	m.actionErr = nil
+	m.actions = make(map[actions.ID]actions.State, len(states))
+	for _, state := range states {
+		m.actions[state.ID] = state
+	}
+	if !m.actionEnabled(ingredients.ControlList) {
+		m.shell.SetResult(nil, nil)
+		m.syncDetail()
+	}
+}
+
+func (m *ListViewModel) actionEnabled(id actions.ID) bool {
+	state, ok := m.actions[id]
+	return ok && state.Visible && state.Enabled
+}
+
+func (m *ListViewModel) visibleBindings() []key.Binding {
+	pairs := []struct {
+		id      actions.ID
+		binding key.Binding
+	}{
+		{ingredients.ControlCreate, m.keys.Create},
+		{ingredients.ControlEdit, m.keys.Edit},
+		{ingredients.ControlDelete, m.keys.Delete},
+		{ingredients.ControlTags, m.keys.Tags},
+	}
+	bindings := make([]key.Binding, 0, len(pairs))
+	for _, pair := range pairs {
+		if m.actionEnabled(pair.id) {
+			bindings = append(bindings, pair.binding)
+		}
+	}
+	return bindings
 }
 
 type showDeleteDialogMsg struct {

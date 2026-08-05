@@ -34,8 +34,13 @@ func TestIngredientActionProjectorAuthorization(t *testing.T) {
 			t.Parallel()
 			states, err := ingredients.NewActionProjector().Project(context.Background(), actor.principal, ingredient)
 			testutil.Ok(t, err)
-			testutil.Equals(t, len(states), 4)
-			for _, state := range states {
+			testutil.Equals(t, len(states), 5)
+			for i, state := range states {
+				if i == 0 {
+					testutil.Equals(t, state.Visible, true)
+					testutil.Equals(t, state.Enabled, true)
+					continue
+				}
 				testutil.Equals(t, state.Visible, actor.visible)
 				testutil.Equals(t, state.Enabled, actor.visible)
 			}
@@ -47,7 +52,10 @@ func TestIngredientActionProjectorWithoutSelectionReturnsCreateOnly(t *testing.T
 	t.Parallel()
 	states, err := ingredients.NewActionProjector().Project(context.Background(), authn.Owner(), nil)
 	testutil.Ok(t, err)
-	testutil.Equals(t, states, []actions.State{{ID: ingredients.ControlCreate, Visible: true, Enabled: true}})
+	testutil.Equals(t, states, []actions.State{
+		{ID: ingredients.ControlList, Visible: true, Enabled: true},
+		{ID: ingredients.ControlCreate, Visible: true, Enabled: true},
+	})
 }
 
 func TestIngredientActionProjectorPermissionsAreIndependent(t *testing.T) {
@@ -78,7 +86,7 @@ func TestIngredientActionStatesHaveStableJSONReadyIDs(t *testing.T) {
 	t.Parallel()
 	states, err := ingredients.NewActionProjector().Project(context.Background(), authn.Owner(), &models.Ingredient{ID: entity.NewIngredientID()})
 	testutil.Ok(t, err)
-	want := []actions.ID{ingredients.ControlCreate, ingredients.ControlEdit, ingredients.ControlDelete, ingredients.ControlTags}
+	want := []actions.ID{ingredients.ControlList, ingredients.ControlCreate, ingredients.ControlEdit, ingredients.ControlDelete, ingredients.ControlTags}
 	got := make([]actions.ID, len(states))
 	for i := range states {
 		got[i] = states[i].ID
