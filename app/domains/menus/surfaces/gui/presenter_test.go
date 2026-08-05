@@ -562,7 +562,10 @@ func TestDeniedMutationRetainsFormAndRollsBack(t *testing.T) {
 	testutil.Ok(t, err)
 	denied := appcore.NewSession(f.ActorContext("bartender"), f.App.App)
 	dialogs := &fynetest.Dialogs{}
-	p := NewPresenter(denied, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: dialogs})
+	// Simulate a stale optimistic projection: presentation capabilities are
+	// advisory, so the command must still authorize and roll back the write.
+	projector := menus.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return nil }}
+	p := NewPresenter(denied, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: dialogs, Projector: &projector})
 	p.state.Items = []*models.Menu{menu}
 	p.Select(0)
 	p.StartRename()

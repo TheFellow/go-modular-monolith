@@ -73,7 +73,8 @@ func TestMenusCLIAnalysisRejectsNonFiniteAndOutOfRangeMargins(t *testing.T) {
 }
 
 func TestMenusCLIUpdateAndDeleteEnforceValidationAuthorizationStateAndAtomicTags(t *testing.T) {
-	cli := newCLIE2E(filepath.Join(t.TempDir(), "menus.db"))
+	dir := t.TempDir()
+	cli := newCLIE2E(filepath.Join(dir, "menus.db"))
 	created := cli.Run("menus", "create", "Original", "--tags", "stable=yes", "--json")
 	testutil.Ok(t, created.Err)
 	var menu menucli.Menu
@@ -91,6 +92,16 @@ func TestMenusCLIUpdateAndDeleteEnforceValidationAuthorizationStateAndAtomicTags
 	deniedDelete := cli.As("bartender").Run("menus", "delete", "--id", menu.ID)
 	testutil.ErrorIf(t, deniedDelete.Err == nil, "%v", "unauthorized delete was accepted")
 
+	ingredient := cli.Run("ingredients", "create", "Menu Base", "--category", "other", "--unit", "oz")
+	testutil.Ok(t, ingredient.Err)
+	ingredientID := strings.TrimSpace(ingredient.Stdout)
+	drinkInput := filepath.Join(dir, "drink.json")
+	drinkJSON := `{"name":"Menu Drink","category":"cocktail","glass":"coupe","recipe":{"ingredients":[{"ingredient_id":"` + ingredientID + `","amount":1,"unit":"oz"}],"steps":["mix"]}}`
+	testutil.Ok(t, os.WriteFile(drinkInput, []byte(drinkJSON), 0o600))
+	drink := cli.Run("drinks", "create", "--file", drinkInput)
+	testutil.Ok(t, drink.Err)
+	drinkID := strings.TrimSpace(drink.Stdout)
+	testutil.Ok(t, cli.Run("menus", "add-drink", "--menu-id", menu.ID, "--drink-id", drinkID).Err)
 	testutil.Ok(t, cli.Run("menus", "publish", "--id", menu.ID).Err)
 	for _, result := range []cliResult{
 		cli.Run("menus", "update", "--id", menu.ID, "--name", "Published Change"),
