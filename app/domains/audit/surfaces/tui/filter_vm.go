@@ -8,7 +8,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
@@ -143,7 +143,7 @@ func (v *filterVM) Query() (auditQuery, audit.ListRequest, error) {
 	}
 	limit, err := strconv.Atoi(fmt.Sprint(v.limit.Value()))
 	if err != nil || limit <= 0 {
-		v.err = apperrors.Invalidf("page size must be greater than zero")
+		v.err = errors.Invalidf("page size must be greater than zero")
 		return auditQuery{}, audit.ListRequest{}, v.err
 	}
 	q := auditQuery{scope: v.scope.Value().(auditScope), entity: strings.TrimSpace(fmt.Sprint(v.entity.Value())), principal: strings.TrimSpace(fmt.Sprint(v.principal.Value())), action: strings.TrimSpace(fmt.Sprint(v.action.Value())), from: strings.TrimSpace(fmt.Sprint(v.from.Value())), to: strings.TrimSpace(fmt.Sprint(v.to.Value())), expression: strings.TrimSpace(fmt.Sprint(v.expression.Value())), limit: limit}
@@ -171,16 +171,16 @@ func (q auditQuery) Request() (audit.ListRequest, error) {
 		req.Action, err = parseAuditUID(q.action)
 	case scopeEntity:
 		if q.entity == "" {
-			return req, apperrors.Invalidf("entity is required for history")
+			return req, errors.Invalidf("entity is required for history")
 		}
 		req.Entity, err = parseAuditUID(q.entity)
 	case scopeActor:
 		if q.principal == "" {
-			return req, apperrors.Invalidf("principal is required for actor activity")
+			return req, errors.Invalidf("principal is required for actor activity")
 		}
 		req.Principal, err = parseAuditPrincipal(q.principal)
 	default:
-		return req, apperrors.Invalidf("invalid audit scope")
+		return req, errors.Invalidf("invalid audit scope")
 	}
 	if err != nil {
 		return req, err
@@ -205,7 +205,7 @@ func parseAuditTime(value string) (time.Time, error) {
 	if t, e := time.Parse("2006-01-02", value); e == nil {
 		return t, nil
 	}
-	return time.Time{}, apperrors.Invalidf("invalid time %q", value)
+	return time.Time{}, errors.Invalidf("invalid time %q", value)
 }
 func parseAuditPrincipal(value string) (cedar.EntityUID, error) {
 	if value == "" {
@@ -225,17 +225,17 @@ func parseAuditUID(value string) (cedar.EntityUID, error) {
 	if strings.Contains(value, "::\"") || strings.HasSuffix(value, "\"") {
 		var uid cedar.EntityUID
 		if err := uid.UnmarshalCedar([]byte(value)); err != nil {
-			return uid, apperrors.Invalidf("invalid entity uid %q: %v", value, err)
+			return uid, errors.Invalidf("invalid entity uid %q: %v", value, err)
 		}
 		return uid, nil
 	}
 	at := strings.LastIndex(value, "::")
 	if at <= 0 || at+2 >= len(value) {
-		return cedar.EntityUID{}, apperrors.Invalidf("invalid entity uid %q", value)
+		return cedar.EntityUID{}, errors.Invalidf("invalid entity uid %q", value)
 	}
 	typ, id := value[:at], strings.Trim(value[at+2:], "\"")
 	if typ == "" || id == "" {
-		return cedar.EntityUID{}, apperrors.Invalidf("invalid entity uid %q", value)
+		return cedar.EntityUID{}, errors.Invalidf("invalid entity uid %q", value)
 	}
 	return cedar.NewEntityUID(cedar.EntityType(typ), cedar.String(id)), nil
 }

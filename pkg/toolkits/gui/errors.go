@@ -1,8 +1,6 @@
 package gui
 
-import "errors"
-
-import apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+import "github.com/TheFellow/go-modular-monolith/pkg/errors"
 
 // ErrorSeverity is deliberately neutral presentation policy. A bespoke
 // surface decides whether and where a Presentation is rendered.
@@ -31,21 +29,21 @@ func PresentError(err error) error {
 	if err == nil {
 		return nil
 	}
-	presentation := ErrorPresentation{Severity: ErrorSeverityError, Message: apperrors.SpecFor(apperrors.KindInternal).Message, Cause: err}
-	var typed *apperrors.Error
-	if !apperrors.As(err, &typed) {
+	presentation := ErrorPresentation{Severity: ErrorSeverityError, Message: errors.SpecFor(errors.KindInternal).Message, Cause: err}
+	var typed *errors.Error
+	if !errors.As(err, &typed) {
 		return presentation
 	}
 	presentation.Message = typed.UserMessage()
 	switch typed.Kind() {
-	case apperrors.KindInvalid:
+	case errors.KindInvalid:
 		presentation.Severity = ErrorSeverityInline
-	case apperrors.KindNotFound, apperrors.KindConflict, apperrors.KindFailedPrecondition:
+	case errors.KindNotFound, errors.KindConflict, errors.KindFailedPrecondition:
 		presentation.Severity = ErrorSeverityWarning
-	case apperrors.KindPermission, apperrors.KindInternal:
+	case errors.KindPermission, errors.KindInternal:
 		presentation.Severity = ErrorSeverityError
 	default:
-		presentation.Message = apperrors.SpecFor(apperrors.KindInternal).Message
+		presentation.Message = errors.SpecFor(errors.KindInternal).Message
 	}
 	return presentation
 }

@@ -1,9 +1,9 @@
 package tui
 
 import (
-	"errors"
 	"fmt"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"strconv"
 	"strings"
 

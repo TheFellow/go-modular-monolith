@@ -3,7 +3,6 @@ package menus_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
@@ -11,7 +10,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -101,7 +100,7 @@ func TestMenuActionProjectorPublishOverridesEditPermission(t *testing.T) {
 	t.Parallel()
 	projector := menus.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
 		if action == menusauthz.ActionUpdate {
-			return apperrors.Permissionf("update denied")
+			return errors.Permissionf("update denied")
 		}
 		return nil
 	}}

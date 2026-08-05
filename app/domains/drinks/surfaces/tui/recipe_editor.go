@@ -13,7 +13,7 @@ import (
 	ingredientmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
@@ -450,7 +450,7 @@ func (e *RecipeEditor) Validate() error {
 
 func (e *RecipeEditor) recipe() (models.Recipe, error) {
 	if e.loading {
-		return models.Recipe{}, apperrors.Invalidf("ingredient catalog is still loading")
+		return models.Recipe{}, errors.Invalidf("ingredient catalog is still loading")
 	}
 	if e.loadErr != nil {
 		return models.Recipe{}, e.loadErr
@@ -458,31 +458,31 @@ func (e *RecipeEditor) recipe() (models.Recipe, error) {
 	recipe := models.Recipe{Garnish: strings.TrimSpace(e.garnish.Value())}
 	for i, row := range e.rows {
 		if row.ingredient.IsZero() || !e.known(row.ingredient) {
-			return recipe, apperrors.Invalidf("recipe ingredient %d must be selected from the catalog", i+1)
+			return recipe, errors.Invalidf("recipe ingredient %d must be selected from the catalog", i+1)
 		}
 		raw := strings.TrimSpace(row.amount.Value())
 		if raw == "" {
-			return recipe, apperrors.Invalidf("recipe ingredient %d amount is required", i+1)
+			return recipe, errors.Invalidf("recipe ingredient %d amount is required", i+1)
 		}
 		if decimalPlaces(raw) > 6 {
-			return recipe, apperrors.Invalidf("recipe ingredient %d amount has more than 6 decimal places", i+1)
+			return recipe, errors.Invalidf("recipe ingredient %d amount has more than 6 decimal places", i+1)
 		}
 		value, err := strconv.ParseFloat(raw, 64)
 		if err != nil {
-			return recipe, apperrors.Invalidf("recipe ingredient %d has invalid amount", i+1)
+			return recipe, errors.Invalidf("recipe ingredient %d has invalid amount", i+1)
 		}
 		if value <= 0 {
-			return recipe, apperrors.Invalidf("recipe ingredient %d amount must be positive", i+1)
+			return recipe, errors.Invalidf("recipe ingredient %d amount must be positive", i+1)
 		}
 		if err := row.unit.Validate(); err != nil {
 			return recipe, err
 		}
 		for _, substitute := range row.substitutes {
 			if !e.known(substitute) {
-				return recipe, apperrors.Invalidf("recipe ingredient %d contains an unknown substitute", i+1)
+				return recipe, errors.Invalidf("recipe ingredient %d contains an unknown substitute", i+1)
 			}
 			if substitute == row.ingredient {
-				return recipe, apperrors.Invalidf("recipe ingredient %d cannot substitute itself", i+1)
+				return recipe, errors.Invalidf("recipe ingredient %d cannot substitute itself", i+1)
 			}
 		}
 		amount, err := measurement.NewAmount(value, row.unit)

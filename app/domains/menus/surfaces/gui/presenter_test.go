@@ -3,7 +3,6 @@ package gui
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -29,7 +28,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -247,7 +246,7 @@ func TestPublishPermissionIsIndependentOfUpdateAndEvaluatorErrorsSurface(t *test
 	menu := testutil.CreateMenu(t, f, "Independent publish", testutil.WithDrink(drink))
 	projector := menus.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
 		if action == authz.ActionUpdate {
-			return apperrors.Permissionf("update denied")
+			return errors.Permissionf("update denied")
 		}
 		return nil
 	}}
@@ -270,7 +269,7 @@ func TestListEntryDoesNotAuthorizeAgainstSyntheticMenu(t *testing.T) {
 	f := testutil.NewFixture(t)
 	projector := menus.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
 		if action == authz.ActionList {
-			return apperrors.Permissionf("list denied")
+			return errors.Permissionf("list denied")
 		}
 		return nil
 	}}
@@ -303,7 +302,7 @@ func TestProjectionErrorRecoveryDoesNotClearUnrelatedMenuError(t *testing.T) {
 	testutil.Ok(t, p.State().Err)
 	testutil.Equals(t, p.State().CanList, true)
 
-	unrelated := apperrors.Invalidf("keep this error")
+	unrelated := errors.Invalidf("keep this error")
 	p.state.Err = appgui.PresentError(unrelated)
 	p.permissions()
 	testutil.ErrorIf(t, !errors.Is(p.State().Err, unrelated), "unrelated error was cleared: %v", p.State().Err)

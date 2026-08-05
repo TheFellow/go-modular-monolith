@@ -1,7 +1,7 @@
 package tui_test
 
 import (
-	"errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"strings"
 	"testing"
 

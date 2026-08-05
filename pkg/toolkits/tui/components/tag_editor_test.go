@@ -1,7 +1,7 @@
 package components
 
 import (
-	"errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"

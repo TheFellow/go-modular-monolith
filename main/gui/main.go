@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"io"
 	"os"
 	"strconv"

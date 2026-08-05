@@ -1,8 +1,8 @@
 package views
 
 import (
-	"errors"
 	"fmt"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"strconv"
 
 	"github.com/charmbracelet/bubbles/key"

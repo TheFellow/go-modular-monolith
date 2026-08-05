@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
@@ -13,7 +12,7 @@ import (
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
@@ -57,7 +56,7 @@ func (a *App) Dashboard(ctx *middleware.Context) (Dashboard, error) {
 	load := func(target *int, fn func() (int, error)) {
 		value, err := fn()
 		if err != nil {
-			if first == nil && !apperrors.IsPermission(err) {
+			if first == nil && !errors.IsPermission(err) {
 				first = err
 			}
 			return
@@ -82,7 +81,7 @@ func (a *App) Dashboard(ctx *middleware.Context) (Dashboard, error) {
 	load(&data.AuditCount, func() (int, error) { return a.Audit.Count(ctx, audit.ListRequest{}) })
 	page, err := a.Audit.List(ctx, audit.ListRequest{Limit: DashboardRecentLimit})
 	if err != nil {
-		if first == nil && !apperrors.IsPermission(err) {
+		if first == nil && !errors.IsPermission(err) {
 			first = err
 		}
 	} else {

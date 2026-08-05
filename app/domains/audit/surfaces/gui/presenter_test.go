@@ -3,7 +3,6 @@ package gui
 
 import (
 	"context"
-	stderrors "errors"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +16,7 @@ import (
 	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
@@ -36,7 +35,7 @@ func TestPresenterProjectsGetAndSurfacesEvaluatorFailures(t *testing.T) {
 	createAuditedIngredient(t, fixture, "Projection")
 	denyGet := audit.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
 		if action == auditauthz.ActionGet {
-			return apperrors.Permissionf("denied")
+			return errors.Permissionf("denied")
 		}
 		return nil
 	}}
@@ -45,10 +44,10 @@ func TestPresenterProjectsGetAndSurfacesEvaluatorFailures(t *testing.T) {
 	presenter.Select(0)
 	testutil.ErrorIf(t, presenter.State().Selected != nil, "%v", "get-denied row opened")
 
-	want := stderrors.New("policy evaluator unavailable")
+	want := errors.New("policy evaluator unavailable")
 	failing := audit.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
 	presenter = NewPresenter(fixture.App, Dependencies{Executor: ui.InlineExecutor{}, Dispatcher: ui.InlineDispatcher{}, Projector: &failing})
-	testutil.ErrorIf(t, !stderrors.Is(presenter.State().Err, want), "projection error = %v, want %v", presenter.State().Err, want)
+	testutil.ErrorIf(t, !errors.Is(presenter.State().Err, want), "projection error = %v, want %v", presenter.State().Err, want)
 }
 
 func auditPresenter(fixture *testutil.Fixture) *Presenter {

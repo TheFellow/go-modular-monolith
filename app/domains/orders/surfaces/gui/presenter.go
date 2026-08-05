@@ -3,7 +3,6 @@ package gui
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"maps"
 	"sort"
@@ -17,7 +16,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
@@ -159,7 +158,7 @@ func (p *Presenter) loadPage(appendPage bool) {
 		rows := make([]Row, 0, len(page.Items))
 		for _, order := range page.Items {
 			if order == nil {
-				return listResult{}, apperrors.Internalf("order missing")
+				return listResult{}, errors.Internalf("order missing")
 			}
 			row, err := p.resolve(op, *order)
 			if err != nil {
@@ -193,7 +192,7 @@ func (p *Presenter) ApplyFilter(filter Filter) bool {
 		return false
 	}
 	if filter.Limit <= 0 {
-		p.fail(apperrors.Invalidf("page size must be > 0"))
+		p.fail(errors.Invalidf("page size must be > 0"))
 		return false
 	}
 	filter.Expression = strings.TrimSpace(filter.Expression)
@@ -311,7 +310,7 @@ func (p *Presenter) loadPlaceCatalog() {
 		result := placeCatalog{drinks: make(map[entity.MenuID][]DrinkOption)}
 		for _, menu := range all {
 			if menu == nil {
-				return placeCatalog{}, apperrors.Internalf("menu missing")
+				return placeCatalog{}, errors.Internalf("menu missing")
 			}
 			result.menus = append(result.menus, MenuOption{ID: menu.ID, Name: menu.Name})
 			for _, item := range menu.Items {
@@ -325,7 +324,7 @@ func (p *Presenter) loadPlaceCatalog() {
 						return placeCatalog{}, getErr
 					}
 					if drink == nil {
-						return placeCatalog{}, apperrors.Internalf("drink %s missing", item.DrinkID)
+						return placeCatalog{}, errors.Internalf("drink %s missing", item.DrinkID)
 					}
 					name = drink.Name
 				}
@@ -394,11 +393,11 @@ func (p *Presenter) AddItem(id entity.DrinkID, quantity int, notes string) bool 
 		return false
 	}
 	if p.state.Form.MenuID.IsZero() {
-		p.fail(apperrors.Invalidf("menu is required"))
+		p.fail(errors.Invalidf("menu is required"))
 		return false
 	}
 	if quantity <= 0 {
-		p.fail(apperrors.Invalidf("quantity must be > 0"))
+		p.fail(errors.Invalidf("quantity must be > 0"))
 		return false
 	}
 	var found *DrinkOption
@@ -410,7 +409,7 @@ func (p *Presenter) AddItem(id entity.DrinkID, quantity int, notes string) bool 
 		}
 	}
 	if found == nil {
-		p.fail(apperrors.Invalidf("available menu drink is required"))
+		p.fail(errors.Invalidf("available menu drink is required"))
 		return false
 	}
 	for i := range p.state.Form.Items {
@@ -463,17 +462,17 @@ func (p *Presenter) SavePlace() bool {
 	}
 	form := cloneForm(p.state.Form)
 	if form.MenuID.IsZero() {
-		p.fail(apperrors.Invalidf("menu is required"))
+		p.fail(errors.Invalidf("menu is required"))
 		return false
 	}
 	if len(form.Items) == 0 {
-		p.fail(apperrors.Invalidf("order must have at least 1 item"))
+		p.fail(errors.Invalidf("order must have at least 1 item"))
 		return false
 	}
 	items := make([]models.OrderItem, len(form.Items))
 	for i, item := range form.Items {
 		if item.Quantity <= 0 {
-			p.fail(apperrors.Invalidf("item %d: quantity must be > 0", i))
+			p.fail(errors.Invalidf("item %d: quantity must be > 0", i))
 			return false
 		}
 		items[i] = models.OrderItem{DrinkID: item.DrinkID, Quantity: item.Quantity, Notes: strings.TrimSpace(item.Notes)}
@@ -641,7 +640,7 @@ func (p *Presenter) permissionsFor(selected *models.Order) error {
 		p.state.CanList, p.state.CanPlace, p.state.CanComplete, p.state.CanCancel, p.state.CanTag = false, false, false, false, false
 		return err
 	}
-	if p.actionErr != nil && stderrors.Is(p.state.Err, p.actionErr) {
+	if p.actionErr != nil && errors.Is(p.state.Err, p.actionErr) {
 		p.state.Err = nil
 	}
 	p.actionErr = nil
@@ -673,7 +672,7 @@ func (p *Presenter) resolve(ctx *middleware.Context, order models.Order) (Row, e
 		return Row{}, err
 	}
 	if menu == nil {
-		return Row{}, apperrors.Internalf("menu %s missing", order.MenuID)
+		return Row{}, errors.Internalf("menu %s missing", order.MenuID)
 	}
 	menuItems := make(map[entity.DrinkID]menumodels.MenuItem, len(menu.Items))
 	for _, item := range menu.Items {
@@ -691,12 +690,12 @@ func (p *Presenter) resolve(ctx *middleware.Context, order models.Order) (Row, e
 			name = displayName
 		} else {
 			drink, getErr := p.app.Drinks.Get(ctx, item.DrinkID)
-			if getErr != nil && !apperrors.IsPermission(getErr) {
+			if getErr != nil && !errors.IsPermission(getErr) {
 				return Row{}, getErr
 			}
 			if getErr == nil {
 				if drink == nil {
-					return Row{}, apperrors.Internalf("drink %s missing", item.DrinkID)
+					return Row{}, errors.Internalf("drink %s missing", item.DrinkID)
 				}
 				name = drink.Name
 			}

@@ -2,7 +2,7 @@
 package fynetest
 
 import (
-	"errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"testing"
 )

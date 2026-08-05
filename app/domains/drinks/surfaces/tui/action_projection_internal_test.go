@@ -3,14 +3,13 @@ package tui
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 
 	application "github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/list"
@@ -47,7 +46,7 @@ func TestListEntryDoesNotAuthorizeAgainstSyntheticDrink(t *testing.T) {
 	vm := NewListViewModel(fix.App)
 	vm.projector = drinks.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
 		if action == drinksauthz.ActionList {
-			return apperrors.Permissionf("list denied")
+			return errors.Permissionf("list denied")
 		}
 		return nil
 	}}
@@ -62,7 +61,7 @@ func TestListEntryDoesNotAuthorizeAgainstSyntheticDrink(t *testing.T) {
 
 func TestActionProjectionEvaluatorErrorRecovers(t *testing.T) {
 	fix := testutil.NewFixture(t)
-	want := stderrors.New("policy evaluator unavailable")
+	want := errors.New("policy evaluator unavailable")
 	failing := true
 	vm := NewListViewModel(fix.App)
 	vm.projector = drinks.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error {
@@ -72,7 +71,7 @@ func TestActionProjectionEvaluatorErrorRecovers(t *testing.T) {
 		return nil
 	}}
 	vm.syncActions()
-	testutil.ErrorIf(t, !stderrors.Is(vm.err, want), "projection error = %v, want %v", vm.err, want)
+	testutil.ErrorIf(t, !errors.Is(vm.err, want), "projection error = %v, want %v", vm.err, want)
 	testutil.Equals(t, len(vm.actions), 0)
 
 	failing = false

@@ -1,7 +1,7 @@
 package testutil
 
 import (
-	"errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"math"
 	"reflect"
 	"strings"

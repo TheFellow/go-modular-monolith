@@ -2,17 +2,16 @@ package actions_test
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 func allow(context.Context) error { return nil }
 
-func deny(context.Context) error { return apperrors.Permissionf("not permitted") }
+func deny(context.Context) error { return errors.Permissionf("not permitted") }
 
 func TestEvaluatePermissionInheritanceAndOverrides(t *testing.T) {
 	t.Parallel()
@@ -87,7 +86,7 @@ func TestEvaluateDeniedControlDoesNotEvaluateConditions(t *testing.T) {
 func TestEvaluateReturnsAuthorizationEvaluationError(t *testing.T) {
 	t.Parallel()
 
-	want := stderrors.New("policy service unavailable")
+	want := errors.New("policy service unavailable")
 	_, err := actions.Evaluate(context.Background(), actions.Group{
 		Controls: []actions.Control{{
 			ID: "publish",
@@ -97,13 +96,13 @@ func TestEvaluateReturnsAuthorizationEvaluationError(t *testing.T) {
 		}},
 	})
 	testutil.ErrorIf(t, err == nil, "expected an error")
-	testutil.ErrorIf(t, !stderrors.Is(err, want), "error = %v, want wrapping %v", err, want)
+	testutil.ErrorIf(t, !errors.Is(err, want), "error = %v, want wrapping %v", err, want)
 }
 
 func TestEvaluateReturnsConditionError(t *testing.T) {
 	t.Parallel()
 
-	want := stderrors.New("entity failed to load")
+	want := errors.New("entity failed to load")
 	_, err := actions.Evaluate(context.Background(), actions.Group{
 		Controls: []actions.Control{{
 			ID: "publish",
@@ -113,7 +112,7 @@ func TestEvaluateReturnsConditionError(t *testing.T) {
 		}},
 	})
 	testutil.ErrorIf(t, err == nil, "expected an error")
-	testutil.ErrorIf(t, !stderrors.Is(err, want), "error = %v, want wrapping %v", err, want)
+	testutil.ErrorIf(t, !errors.Is(err, want), "error = %v, want wrapping %v", err, want)
 }
 
 func TestEvaluateRejectsInvalidDeclarations(t *testing.T) {

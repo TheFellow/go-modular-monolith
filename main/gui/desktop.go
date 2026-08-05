@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -30,7 +29,7 @@ import (
 	taggingdomain "github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	tagginggui "github.com/TheFellow/go-modular-monolith/app/domains/tagging/surfaces/gui"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/runtimeconfig"
@@ -190,7 +189,7 @@ func visibleWorkspaces(session *application.Session) set.Set[workspace] {
 		}},
 	}
 	for _, check := range checks {
-		if err := check.read(); err == nil || !apperrors.IsPermission(err) {
+		if err := check.read(); err == nil || !errors.IsPermission(err) {
 			visible.Add(check.id)
 		}
 	}
@@ -206,7 +205,7 @@ func requireVisibleCapability(states []actions.State, id actions.ID, err error) 
 			if state.Visible {
 				return nil
 			}
-			return apperrors.Permissionf("capability %q denied", id)
+			return errors.Permissionf("capability %q denied", id)
 		}
 	}
 	return fmt.Errorf("capability projection omitted %q", id)

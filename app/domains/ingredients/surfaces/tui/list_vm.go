@@ -12,7 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
@@ -411,7 +411,7 @@ func (m *ListViewModel) loadIngredients(cursor paging.Cursor) tea.Cmd {
 		items := make([]models.Ingredient, 0, len(ingredientsList.Items))
 		for i, ingredient := range ingredientsList.Items {
 			if ingredient == nil {
-				return IngredientsLoadedMsg{Err: apperrors.Internalf("ingredient %d missing", i), Token: token}
+				return IngredientsLoadedMsg{Err: errors.Internalf("ingredient %d missing", i), Token: token}
 			}
 			items = append(items, *ingredient)
 		}

@@ -19,7 +19,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
@@ -149,14 +149,14 @@ func (p *Presenter) loadPage(appendPage bool) {
 		rows := make([]Row, 0, len(page.Items))
 		for i, item := range page.Items {
 			if item == nil {
-				return loadResult{}, apperrors.Internalf("inventory %d missing", i)
+				return loadResult{}, errors.Internalf("inventory %d missing", i)
 			}
 			ingredient, err := p.app.Ingredients.Get(op, item.IngredientID)
 			if err != nil {
 				return loadResult{}, fmt.Errorf("load ingredient %s: %w", item.IngredientID, err)
 			}
 			if ingredient == nil {
-				return loadResult{}, apperrors.Internalf("ingredient %s missing", item.IngredientID)
+				return loadResult{}, errors.Internalf("ingredient %s missing", item.IngredientID)
 			}
 			row := makeRow(*item, *ingredient, threshold)
 			states, err := p.projector.Project(op, op.Principal(), item)
@@ -207,7 +207,7 @@ func (p *Presenter) Filter(stock StockMode, expression string, lowStock float64,
 		return false
 	}
 	if lowStock < 0 {
-		p.state.Err = toolkit.PresentError(apperrors.Invalidf("low-stock threshold must be >= 0"))
+		p.state.Err = toolkit.PresentError(errors.Invalidf("low-stock threshold must be >= 0"))
 		p.publishLocked()
 		p.mu.Unlock()
 		return false
@@ -401,7 +401,7 @@ func (p *Presenter) Submit(form Form) bool {
 	mode, selected := p.state.Mode, p.state.Selected
 	p.state.Form = form
 	if selected == nil {
-		p.state.Err = toolkit.PresentError(apperrors.Invalidf("inventory item is required"))
+		p.state.Err = toolkit.PresentError(errors.Invalidf("inventory item is required"))
 		p.publishLocked()
 		p.mu.Unlock()
 		return false
@@ -436,7 +436,7 @@ func (p *Presenter) Submit(form Form) bool {
 		case Tags:
 			_, err = p.app.Tags.Replace(p.app.Context(), selected.Inventory.EntityUID(), validated.tags)
 		case Browse, Viewing:
-			err = apperrors.Invalidf("inventory form is not active")
+			err = errors.Invalidf("inventory form is not active")
 		}
 		return err
 	}, func(err error) {
@@ -478,11 +478,11 @@ func validate(mode Mode, form Form, unit measurement.Unit, existingCost optional
 		}
 	}
 	if mode == Adjust && !validReason(form.Reason) {
-		return out, apperrors.Invalidf("reason is required")
+		return out, errors.Invalidf("reason is required")
 	}
 	amountText := strings.TrimSpace(form.Amount)
 	if mode == Set && amountText == "" {
-		return out, apperrors.Invalidf("amount is required")
+		return out, errors.Invalidf("amount is required")
 	}
 	if amountText != "" {
 		value, err := parsePrecision2(amountText, "amount")
@@ -490,7 +490,7 @@ func validate(mode Mode, form Form, unit measurement.Unit, existingCost optional
 			return out, err
 		}
 		if mode == Set && value < 0 {
-			return out, apperrors.Invalidf("quantity must be >= 0")
+			return out, errors.Invalidf("quantity must be >= 0")
 		}
 		amount, err := measurement.NewAmount(value, unit)
 		if err != nil {
@@ -514,7 +514,7 @@ func validate(mode Mode, form Form, unit measurement.Unit, existingCost optional
 		out.cost = optional.Some(price)
 	}
 	if mode == Adjust && out.amount.IsNone() && out.cost.IsNone() {
-		return out, apperrors.Invalidf("at least one of amount or cost is required")
+		return out, errors.Invalidf("at least one of amount or cost is required")
 	}
 	return out, nil
 }
@@ -535,14 +535,14 @@ func parseInventoryPrice(raw string, existing optional.Value[money.Price]) (mone
 func parsePrecision2(raw, name string) (float64, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
-		return 0, apperrors.Invalidf("%s is required", name)
+		return 0, errors.Invalidf("%s is required", name)
 	}
 	if dot := strings.IndexByte(raw, '.'); dot >= 0 && len(raw)-dot-1 > 2 {
-		return 0, apperrors.Invalidf("%s must have at most 2 decimal places", name)
+		return 0, errors.Invalidf("%s must have at most 2 decimal places", name)
 	}
 	value, err := strconv.ParseFloat(raw, 64)
 	if err != nil {
-		return 0, apperrors.Invalidf("invalid %s", name)
+		return 0, errors.Invalidf("invalid %s", name)
 	}
 	return value, nil
 }
