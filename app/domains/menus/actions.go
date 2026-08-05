@@ -23,27 +23,17 @@ const (
 	ControlDraft       actions.ID = "menus.draft"
 )
 
-// ActionAuthorizer is the authorization boundary used by ActionProjector.
-// The context makes the projector suitable for in-process and remote policy
-// evaluators; the default implementation evaluates the application's Cedar
-// policies directly.
-type ActionAuthorizer func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error
-
 // ActionProjector produces framework-neutral menu control state. It does not
 // include transient presentation concerns such as dirty forms or requests in
 // flight; each UI composes those local constraints with this domain state.
 type ActionProjector struct {
-	Authorize ActionAuthorizer
+	Authorize pkgAuthz.EntityAuthorizer
 }
 
 // NewActionProjector returns a projector backed by the application's Cedar
 // policy service.
 func NewActionProjector() ActionProjector {
-	return ActionProjector{
-		Authorize: func(_ context.Context, principal, action cedar.EntityUID, resource cedar.Entity) error {
-			return pkgAuthz.AuthorizeWithEntity(principal, action, resource)
-		},
-	}
+	return ActionProjector{Authorize: pkgAuthz.AuthorizeEntity}
 }
 
 // Project returns create state and, when selected is non-nil, states for all
