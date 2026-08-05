@@ -63,6 +63,15 @@ Those behaviors are documented in the
 call `AuthorizeWithEntity` to decide whether to expose an action, but the command/query pipeline
 remains the enforcement point.
 
+For a set of UI actions, prefer a domain-owned action projector over scattered authorization calls
+in widgets. The projector maps generated Cedar actions and the current resource into the shared
+[`actions` toolkit](../toolkits/actions/readme.md), where permission denials become hidden controls
+and authorized actions can still be disabled by domain prerequisites. Controls may inherit a
+surface permission or replace it with their own operation; Publish, for example, need not depend on
+Edit. Evaluator and infrastructure errors are returned and must be presented as errors, never
+treated as ordinary denials. The eventual command still authorizes its freshly loaded input and
+resulting state, so a projection cannot grant access or make a stale decision safe.
+
 The lower-level call looks like this:
 
 ```go

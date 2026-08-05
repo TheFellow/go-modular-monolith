@@ -37,4 +37,24 @@ rendered. Conditions belong in the domain surface adapter when they are view-spe
 business predicates may live closer to the domain. In every case, the corresponding command must
 independently enforce authorization and business invariants.
 
+## Adding an action
+
+1. Add the domain operation to its Cedar schema and policy, then regenerate authorization code.
+2. Give the control a stable, namespaced `actions.ID` in the domain package.
+3. Add it to the domain projector. Inherit the containing permission only when it is truly the same
+   operation; otherwise use `Require` for the action's own Cedar check.
+4. Add domain conditions that return a useful disabled reason. Keep dirty, submitting, confirming,
+   focus, and similar runtime state in the concrete UI adapter.
+5. Bind `Visible` and `Enabled` to the native control or key help, surface evaluator errors, and test
+   permit, deny, unavailable, and failure cases.
+6. Enforce the same authorization and invariants in the command. Projection can become stale
+   between rendering and execution.
+
+For debugging, inspect the state by stable ID and determine which layer changed it: `Visible=false`
+means a typed permission denial; `Visible=true, Enabled=false` and `DisabledReason` identify the
+first failed condition; no result plus an error means evaluation failed. Empty/duplicate IDs and
+nil checks are declaration defects, not user denials. There is currently no HTTP capability
+endpoint; a web adapter can consume the same projector in process or expose it through a transport
+designed by that application.
+
 Run `go test ./pkg/toolkits/actions` while iterating.

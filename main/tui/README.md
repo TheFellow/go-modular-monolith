@@ -48,6 +48,10 @@ graph TD
 - Forms and dialogs own their local input behavior.
 - Domain views choose commands and render domain-specific details; shared helpers
   handle recurring concerns such as list layout, loading, filtering, and sizing.
+- Domain action projectors provide the same permission and durable availability decisions used by
+  GUI adapters. Denied actions disappear from keys/help; permitted actions blocked by entity state
+  are described under unavailable actions. View models add transient workflow constraints and
+  surface projection failures as errors. Commands still recheck authorization and invariants.
 - Extract shared behavior only after it has proven useful in multiple views.
 
 ### Interaction model
