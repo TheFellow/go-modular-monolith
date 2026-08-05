@@ -181,21 +181,39 @@ func TestViewResetsSearchWithNewEntityCatalogAndIdentifiesResultTarget(t *testin
 	testutil.ErrorIf(t, p.State().Result.Target != fx.targets[entity.TypeIngredient] || p.State().Result.TargetName == "", "result lost target identity: %#v", p.State().Result)
 }
 
-func TestDeniedMutationRetainsEditorAndDoesNotPersist(t *testing.T) {
+func TestDeniedTargetMethodsDoNotDispatchOrPersist(t *testing.T) {
 	fx := fullFixture(t)
 	denied := application.NewSession(fx.f.ActorContext("bartender"), fx.f.App.App)
 	p := presenter(denied)
 	p.Start(Add)
 	p.SelectType(entity.TypeIngredient)
 	p.SelectEntity(0)
+	testutil.ErrorIf(t, p.State().Mode != PickingEntity || !p.State().Target.IsZero(), "denied selection advanced workflow: %#v", p.State())
+
+	// Even a stale or synthetic caller that reaches the editor cannot dispatch
+	// while the projected target capability remains denied.
+	p.state.Mode = EnteringValue
+	p.state.Target = fx.targets[entity.TypeIngredient]
+	p.state.Actions[tagging.ControlTag] = p.state.Visible[0].Actions[tagging.ControlTag]
 	p.SetValue("denied=yes")
-	p.Submit()
-	s := p.State()
-	testutil.ErrorIf(t, s.Mode != EnteringValue || s.Err == nil, "denied state = %#v", s)
-	testutil.ErrorIsPermission(t, s.Err)
+	testutil.ErrorIf(t, p.Submit(), "denied submit dispatched: %#v", p.State())
 	values, err := fx.f.App.Tags.List(fx.f.OwnerContext(), fx.targets[entity.TypeIngredient])
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, len(values) != 0, "denied mutation persisted: %#v", values)
+}
+
+func TestDeniedDiscoveryMethodsDoNotDispatch(t *testing.T) {
+	fx := fullFixture(t)
+	denied := application.NewSession(fx.f.ActorContext("bartender"), fx.f.App.App)
+	executor := &fynetest.ManualExecutor{}
+	p := NewPresenter(denied, Dependencies{Executor: executor, Dispatcher: ui.InlineDispatcher{}})
+
+	p.ResetList()
+	p.Start(Summary)
+	testutil.ErrorIf(t, executor.Pending() != 0 || p.State().Mode != Browsing, "denied summary dispatched: pending=%d state=%#v", executor.Pending(), p.State())
+
+	p.state.Mode, p.state.Operation, p.state.Value = EnteringValue, ShowExact, "scope=private"
+	testutil.ErrorIf(t, p.Submit() || executor.Pending() != 0, "denied show dispatched: pending=%d state=%#v", executor.Pending(), p.State())
 }
 
 func TestBackInvalidatesQueuedLoadAndSubmissionLocksNavigation(t *testing.T) {

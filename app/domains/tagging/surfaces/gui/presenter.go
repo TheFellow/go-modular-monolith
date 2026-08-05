@@ -238,6 +238,9 @@ func (p *Presenter) SelectSummary(index int) {
 	if p.state.Submitting || p.state.Mode != Results || p.state.Operation != Summary || index < 0 || index >= len(p.state.VisibleSummaries) {
 		return
 	}
+	if !actionEnabled(p.state.Actions, tagging.ControlShow) {
+		return
+	}
 	value, err := tag.Parse(p.state.VisibleSummaries[index].Tag)
 	if err != nil {
 		p.fail(err)
@@ -253,6 +256,9 @@ func (p *Presenter) ResetList() {
 	if p.state.Submitting || p.app == nil {
 		return
 	}
+	if !actionEnabled(p.state.Actions, tagging.ControlSummary) {
+		return
+	}
 	p.load.Invalidate()
 	p.state = State{Operation: Summary, Actions: discoveryActions(p.state.Actions)}
 	p.runQuery(func(ctx *middleware.Context) (any, error) { return p.app.Tags.Summary(ctx) })
@@ -263,6 +269,9 @@ func (p *Presenter) SelectEntity(index int) {
 		return
 	}
 	selected := p.state.Visible[index]
+	if !actionEnabled(selected.Actions, targetControl(p.state.Operation)) {
+		return
+	}
 	p.state.Target, p.state.TargetName, p.state.Value, p.state.Err = selected.UID, selected.Name, "", nil
 	for id, state := range selected.Actions {
 		p.state.Actions[id] = state
@@ -284,6 +293,13 @@ func (p *Presenter) SetValue(value string) {
 
 func (p *Presenter) Submit() bool {
 	if p.state.Submitting || p.state.Mode != EnteringValue {
+		return false
+	}
+	control := targetControl(p.state.Operation)
+	if control == "" {
+		control = discoveryControl(p.state.Operation)
+	}
+	if !actionEnabled(p.state.Actions, control) {
 		return false
 	}
 	value, err := p.parsedValue()
