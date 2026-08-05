@@ -3,6 +3,7 @@ package gui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"math"
@@ -73,6 +74,7 @@ type State struct {
 	CanUpdate, CanDelete, CanTag    bool
 	CanAddDrink, CanRemoveDrink     bool
 	CanPublish, CanDraft            bool
+	CanList                         bool
 	CanCreate                       bool
 	Actions                         map[actions.ID]actions.State
 	FormInstance                    uint64
@@ -90,17 +92,18 @@ type catalog struct {
 }
 
 type Presenter struct {
-	app        *app.Session
-	dialogs    ui.Dialogs
-	load       *ui.LatestRequest[catalog]
-	choices    *ui.LatestRequest[[]DrinkOption]
-	analysis   *ui.LatestRequest[queries.MenuAnalytics]
-	submit     *ui.Submission
-	state      State
-	names      map[entity.DrinkID]string
-	changed    func(State)
-	confirming bool
-	projector  menus.ActionProjector
+	app           *app.Session
+	dialogs       ui.Dialogs
+	load          *ui.LatestRequest[catalog]
+	choices       *ui.LatestRequest[[]DrinkOption]
+	analysis      *ui.LatestRequest[queries.MenuAnalytics]
+	submit        *ui.Submission
+	state         State
+	names         map[entity.DrinkID]string
+	changed       func(State)
+	confirming    bool
+	projector     menus.ActionProjector
+	projectionErr error
 }
 
 func NewPresenter(session *app.Session, d Dependencies) *Presenter {
@@ -122,7 +125,7 @@ func NewPresenter(session *app.Session, d Dependencies) *Presenter {
 func (p *Presenter) Observe(fn func(State)) { p.changed = fn; p.publish() }
 func (p *Presenter) State() State           { return cloneState(p.state) }
 func (p *Presenter) SetFilter(filter Filter) bool {
-	if p.state.Submitting || p.state.Confirming {
+	if p.state.Submitting || p.state.Confirming || !p.actionEnabled(menus.ControlList) {
 		return false
 	}
 	if filter.Limit < 0 {
@@ -138,11 +141,17 @@ func (p *Presenter) SetFilter(filter Filter) bool {
 	return true
 }
 func (p *Presenter) Refresh() {
+	if !p.actionEnabled(menus.ControlList) {
+		return
+	}
 	p.state.Cursor, p.state.Next, p.state.History = "", "", nil
 	p.loadPage(false)
 }
 
 func (p *Presenter) loadPage(appendPage bool) {
+	if !p.actionEnabled(menus.ControlList) {
+		return
+	}
 	f := p.state.Filter
 	cursor := p.state.Cursor
 	p.load.LoadContext(p.app.Context(), func(ctx context.Context) (catalog, error) {
@@ -200,7 +209,7 @@ func (p *Presenter) loadPage(appendPage bool) {
 	})
 }
 func (p *Presenter) NextPage() {
-	if p.state.Next == "" || p.state.Loading {
+	if p.state.Next == "" || p.state.Loading || !p.actionEnabled(menus.ControlList) {
 		return
 	}
 	p.state.History = append(p.state.History, p.state.Cursor)
@@ -208,7 +217,7 @@ func (p *Presenter) NextPage() {
 	p.loadPage(true)
 }
 func (p *Presenter) PreviousPage() {
-	if len(p.state.History) == 0 || p.state.Loading {
+	if len(p.state.History) == 0 || p.state.Loading || !p.actionEnabled(menus.ControlList) {
 		return
 	}
 	last := len(p.state.History) - 1
@@ -217,7 +226,7 @@ func (p *Presenter) PreviousPage() {
 	p.loadPage(false)
 }
 func (p *Presenter) Select(index int) {
-	if p.state.Loading || p.state.Submitting || p.state.Confirming {
+	if p.state.Loading || p.state.Submitting || p.state.Confirming || !p.actionEnabled(menus.ControlList) {
 		return
 	}
 	if index < 0 || index >= len(p.state.Items) {
@@ -239,10 +248,15 @@ func (p *Presenter) Select(index int) {
 }
 
 func (p *Presenter) ListActions(index int) (map[actions.ID]actions.State, error) {
-	if index < 0 || index >= len(p.state.Items) || p.state.Items[index] == nil {
+	if !p.actionEnabled(menus.ControlList) || index < 0 || index >= len(p.state.Items) || p.state.Items[index] == nil {
 		return nil, nil
 	}
 	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), p.state.Items[index])
+	if err != nil {
+		p.projectionErr = err
+		return nil, err
+	}
+	p.clearProjectionError()
 	return indexActions(states), err
 }
 
@@ -684,14 +698,17 @@ func (p *Presenter) permissions() {
 }
 func (p *Presenter) permissionsFor(menu *models.Menu) error {
 	p.state.Actions = nil
-	p.state.CanCreate, p.state.CanUpdate, p.state.CanDelete, p.state.CanTag = false, false, false, false
+	p.state.CanList, p.state.CanCreate, p.state.CanUpdate, p.state.CanDelete, p.state.CanTag = false, false, false, false, false
 	p.state.CanAddDrink, p.state.CanRemoveDrink, p.state.CanPublish, p.state.CanDraft = false, false, false, false
 	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), menu)
 	if err != nil {
+		p.projectionErr = err
 		return err
 	}
+	p.clearProjectionError()
 	p.state.Actions = indexActions(states)
 	state := func(id actions.ID) actions.State { return p.state.Actions[id] }
+	p.state.CanList = state(menus.ControlList).Visible
 	p.state.CanCreate = state(menus.ControlCreate).Visible
 	p.state.CanUpdate = state(menus.ControlEdit).Visible
 	p.state.CanDelete = state(menus.ControlDelete).Visible
@@ -701,6 +718,12 @@ func (p *Presenter) permissionsFor(menu *models.Menu) error {
 	p.state.CanPublish = state(menus.ControlPublish).Visible
 	p.state.CanDraft = state(menus.ControlDraft).Visible
 	return nil
+}
+func (p *Presenter) clearProjectionError() {
+	if p.projectionErr != nil && errors.Is(p.state.Err, p.projectionErr) {
+		p.state.Err = nil
+	}
+	p.projectionErr = nil
 }
 func (p *Presenter) actionEnabled(id actions.ID) bool {
 	state, ok := p.state.Actions[id]

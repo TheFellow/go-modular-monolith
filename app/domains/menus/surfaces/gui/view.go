@@ -379,17 +379,19 @@ func (v *View) render(s State) {
 	v.tagAction.Hidden = !detail || !actionVisible(s, menusdomain.ControlTags)
 	v.delete.Hidden = !detail || !actionVisible(s, menusdomain.ControlDelete)
 	v.descriptionHelp.Hidden = s.Mode != Editing && s.Mode != Renaming
-	setEnabled(v.refresh, !busy)
+	listAccess := actionVisible(s, menusdomain.ControlList)
+	setEnabled(v.refresh, !busy && listAccess)
 	setEnabled(v.create, !busy)
 	v.create.Hidden = !s.CanCreate
-	setEnabled(v.filterExpression, !busy)
-	setEnabled(v.filterStatus, !busy)
-	setEnabled(v.applyFilter, !busy)
+	setEnabled(v.filterExpression, !busy && listAccess)
+	setEnabled(v.filterStatus, !busy && listAccess)
+	setEnabled(v.applyFilter, !busy && listAccess)
 	setEnabled(v.rename, !busy)
 	setEnabled(v.tagAction, !busy)
 	setEnabled(v.delete, !busy)
-	v.empty.Hidden = s.Loading || len(s.Items) > 0
-	v.list.Hidden = !v.empty.Hidden
+	v.refresh.Hidden = !listAccess
+	v.empty.Hidden = !listAccess || s.Loading || len(s.Items) > 0
+	v.list.Hidden = !listAccess || !v.empty.Hidden
 	if s.Loading {
 		v.status.SetText("Loading menus…")
 	} else if s.Err != nil {

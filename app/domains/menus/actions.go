@@ -13,6 +13,7 @@ import (
 // Stable control identities let every presentation adapter bind its native
 // widgets, key bindings, or HTTP affordances to the same domain actions.
 const (
+	ControlList        actions.ID = "menus.list"
 	ControlCreate      actions.ID = "menus.create"
 	ControlEdit        actions.ID = "menus.edit"
 	ControlDelete      actions.ID = "menus.delete"
@@ -50,11 +51,16 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 		})
 	}
 
+	collection := models.Menu{ID: models.NewMenuID("workspace")}.CedarEntity()
 	declaration := actions.Group{
-		Controls: []actions.Control{{
-			ID:         ControlCreate,
-			Permission: permission(menusauthz.ActionCreate, (models.Menu{}).CedarEntity()),
-		}},
+		Controls: []actions.Control{
+			{
+				ID:         ControlList,
+				Permission: permission(menusauthz.ActionList, collection),
+			}, {
+				ID:         ControlCreate,
+				Permission: permission(menusauthz.ActionCreate, (models.Menu{}).CedarEntity()),
+			}},
 	}
 	if selected == nil {
 		return actions.Evaluate(ctx, declaration)
