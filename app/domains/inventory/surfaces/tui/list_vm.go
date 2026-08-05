@@ -74,6 +74,7 @@ type ListViewModel struct {
 	spinner     tui.Spinner
 	loading     bool
 	err         error
+	actionErr   error
 	width       int
 	height      int
 	listWidth   int
@@ -101,10 +102,14 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		loading:    true,
 	}
 	vm.spinner = tui.NewSpinner("Loading inventory...", vm.styles.Subtitle)
+	vm.syncActions()
 	return vm
 }
 
 func (m *ListViewModel) Init() tea.Cmd {
+	if !m.actionEnabled(inventory.ControlList) {
+		return nil
+	}
 	m.loading = true
 	return tea.Batch(m.spinner.Init(), m.loadInventory())
 }
@@ -193,18 +198,24 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
+			if !m.actionEnabled(inventory.ControlList) {
+				return m, nil
+			}
 			m.loading = true
 			m.err = nil
 			return m, tea.Batch(m.spinner.Init(), m.loadInventory())
 		case msg.String() == "f":
+			if !m.actionEnabled(inventory.ControlList) {
+				return m, nil
+			}
 			m.mode, m.filter = listModeFiltering, newFilterVM(m.request)
 			m.filter.form.SetWidth(m.detailWidth)
 			return m, m.filter.Init()
-		case msg.String() == "]" && m.next != "":
+		case msg.String() == "]" && m.next != "" && m.actionEnabled(inventory.ControlList):
 			m.history = append(m.history, m.request.Cursor)
 			m.request.Cursor, m.loading = m.next, true
 			return m, tea.Batch(m.spinner.Init(), m.loadInventory())
-		case msg.String() == "[" && len(m.history) > 0:
+		case msg.String() == "[" && len(m.history) > 0 && m.actionEnabled(inventory.ControlList):
 			i := len(m.history) - 1
 			m.request.Cursor, m.history, m.loading = m.history[i], m.history[:i], true
 			return m, tea.Batch(m.spinner.Init(), m.loadInventory())
@@ -286,7 +297,9 @@ func (m *ListViewModel) View() string {
 	}
 
 	listView := m.table.View()
-	if m.err != nil {
+	if m.actionErr != nil {
+		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.actionErr))
+	} else if m.err != nil {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
 	}
 	listView = m.styles.ListPane.Width(tui.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
@@ -313,7 +326,11 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	case listModeAdjusting, listModeSetting:
 		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
-		return append([]key.Binding{m.keys.Up, m.keys.Down, previousInventoryPage, nextInventoryPage}, append(m.visibleActionBindings(), m.keys.Refresh, m.keys.Back)...)
+		base := []key.Binding{m.keys.Back}
+		if m.actionEnabled(inventory.ControlList) {
+			base = []key.Binding{m.keys.Up, m.keys.Down, previousInventoryPage, nextInventoryPage, m.keys.Refresh, m.keys.Back}
+		}
+		return append(base, m.visibleActionBindings()...)
 	case listModeFiltering:
 	}
 	return nil
@@ -329,6 +346,9 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.keys.Back},
 		}
 	case listModeBrowsing:
+		if !m.actionEnabled(inventory.ControlList) {
+			return [][]key.Binding{{m.keys.Back}}
+		}
 		return [][]key.Binding{
 			{m.keys.Up, m.keys.Down, m.keys.Enter},
 			{previousInventoryPage, nextInventoryPage},
@@ -530,9 +550,10 @@ func (m *ListViewModel) syncActions() {
 	}
 	states, err := m.projector.Project(m.context(), m.context().Principal(), selected)
 	if err != nil {
-		m.actions, m.err = nil, err
+		m.actions, m.actionErr = nil, err
 		return
 	}
+	m.actionErr = nil
 	m.actions = make(map[actions.ID]actions.State, len(states))
 	for _, state := range states {
 		m.actions[state.ID] = state
