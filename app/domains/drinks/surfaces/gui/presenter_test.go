@@ -3,6 +3,7 @@ package gui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -25,6 +26,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
+	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/set"
@@ -32,7 +34,48 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	appgui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	cedar "github.com/cedar-policy/cedar-go"
 )
+
+func TestProjectedPermissionsAndEvaluatorErrorsSurface(t *testing.T) {
+	f, _, drink := fixtureDrink(t, "Projection")
+	projector := domain.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
+		if action == authz.ActionDelete {
+			return apperrors.Permissionf("delete denied")
+		}
+		return nil
+	}}
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Projector: &projector})
+	p.state.Items = []*models.Drink{drink}
+	p.Select(0)
+	testutil.Equals(t, p.State().CanUpdate, true)
+	testutil.Equals(t, p.State().CanDelete, false)
+	testutil.Equals(t, p.State().CanTag, true)
+
+	want := errors.New("policy evaluator unavailable")
+	failing := domain.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
+	failed := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Projector: &failing})
+	testutil.ErrorIf(t, !errors.Is(failed.State().Err, want), "presenter error = %v, want %v", failed.State().Err, want)
+	testutil.Equals(t, len(failed.State().Actions), 0)
+	testutil.Equals(t, failed.State().CanCreate, false)
+}
+
+func TestProjectedCapabilityDoesNotBypassCommandAuthorization(t *testing.T) {
+	f, _, drink := fixtureDrink(t, "Protected")
+	allow := domain.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return nil }}
+	anonymous := appcore.NewSession(f.ActorContext("anonymous"), f.App.App)
+	p := NewPresenter(anonymous, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Projector: &allow})
+	p.state.Items = []*models.Drink{drink}
+	p.Select(0)
+	form := p.State().Form
+	form.Name = "Forbidden"
+	p.SetForm(form)
+	testutil.Equals(t, p.Save(), true)
+	testutil.ErrorIsPermission(t, p.State().Err)
+	got, err := f.Drinks.Get(f.OwnerContext(), drink.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, got.Name, "Protected")
+}
 
 func chooseFirstSelectOption(t *testing.T, window framework.Window, selectWidget *semanticSelect) {
 	t.Helper()

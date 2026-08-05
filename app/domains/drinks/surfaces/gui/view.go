@@ -325,6 +325,7 @@ func (v *View) render(state State) {
 	v.browse.Hidden = state.Mode != Browsing
 	v.formPanel.Hidden = state.Mode != Creating && state.Mode != Editing && state.Mode != Viewing
 	v.tagsPanel.Hidden = state.Mode != Tagging
+	v.create.Hidden = !state.CanCreate
 	formChanged := !v.formRendered || v.renderedMode != state.Mode || v.renderedFormInstance != state.FormInstance || !reflect.DeepEqual(v.renderedForm, state.Form)
 	if (state.Mode == Creating || state.Mode == Editing || state.Mode == Viewing) && formChanged {
 		v.name.SetText(state.Form.Name)
