@@ -81,7 +81,7 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 			{ID: ControlDelete, Permission: permission(menusauthz.ActionDelete, resource), Conditions: []actions.Condition{draftOnly}},
 			{ID: ControlTags, Permission: permission(menusauthz.ActionTag, resource)},
 			{ID: ControlAddDrink, Permission: permission(menusauthz.ActionAddDrink, resource), Conditions: []actions.Condition{draftOnly}},
-			{ID: ControlRemoveDrink, Permission: permission(menusauthz.ActionRemoveDrink, resource), Conditions: []actions.Condition{draftOnly}},
+			{ID: ControlRemoveDrink, Permission: permission(menusauthz.ActionRemoveDrink, resource), Conditions: []actions.Condition{draftOnly, hasDrinkCondition(selected)}},
 			{ID: ControlPublish, Permission: permission(menusauthz.ActionPublish, resource), Conditions: []actions.Condition{publishCondition(selected)}},
 			{ID: ControlDraft, Permission: permission(menusauthz.ActionDraft, resource), Conditions: []actions.Condition{
 				lifecycleCondition(selected.RequireReturnToDraft, "Available only while the menu is published."),
@@ -90,6 +90,15 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 	}}
 
 	return actions.Evaluate(ctx, declaration)
+}
+
+func hasDrinkCondition(menu *models.Menu) actions.Condition {
+	return func(context.Context) (bool, string, error) {
+		if len(menu.Items) == 0 {
+			return false, "Add a drink before trying to remove one.", nil
+		}
+		return true, "", nil
+	}
 }
 
 func lifecycleCondition(require func() error, reason string) actions.Condition {

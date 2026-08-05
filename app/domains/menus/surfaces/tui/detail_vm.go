@@ -8,21 +8,24 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app"
+	menus "github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/charmbracelet/lipgloss"
 )
 
 // DetailViewModel renders a menu detail pane.
 type DetailViewModel struct {
-	styles tui.ListViewStyles
-	width  int
-	height int
-	menu   optional.Value[models.Menu]
-	app    *app.Session
+	styles  tui.ListViewStyles
+	width   int
+	height  int
+	menu    optional.Value[models.Menu]
+	app     *app.Session
+	actions map[actions.ID]actions.State
 }
 
 func NewDetailViewModel(styles tui.ListViewStyles, app *app.Session) *DetailViewModel {
@@ -40,6 +43,8 @@ func (d *DetailViewModel) SetSize(width, height int) {
 func (d *DetailViewModel) SetMenu(menu optional.Value[models.Menu]) {
 	d.menu = menu
 }
+
+func (d *DetailViewModel) SetActions(states map[actions.ID]actions.State) { d.actions = states }
 
 func (d *DetailViewModel) View() string {
 	menu, ok := d.menu.Unwrap()
@@ -61,6 +66,26 @@ func (d *DetailViewModel) View() string {
 
 	if strings.TrimSpace(menu.Description) != "" {
 		lines = append(lines, "", d.styles.Subtitle.Render("Description"), menu.Description)
+	}
+
+	var unavailable []string
+	for _, action := range []struct {
+		id    actions.ID
+		label string
+	}{
+		{menus.ControlEdit, "Edit"}, {menus.ControlDelete, "Delete"},
+		{menus.ControlAddDrink, "Add drink"}, {menus.ControlRemoveDrink, "Remove drink"},
+		{menus.ControlPublish, "Publish"}, {menus.ControlDraft, "Return to draft"},
+	} {
+		if state, ok := d.actions[action.id]; ok && state.Visible && !state.Enabled && state.DisabledReason != "" {
+			unavailable = append(unavailable, action.label+": "+state.DisabledReason)
+		}
+	}
+	if len(unavailable) > 0 {
+		lines = append(lines, "", d.styles.Subtitle.Render("Unavailable actions"))
+		for _, reason := range unavailable {
+			lines = append(lines, d.styles.Muted.Render("- "+reason))
+		}
 	}
 
 	lines = append(lines, "", d.styles.Subtitle.Render("Drinks: ")+fmt.Sprintf("%d", len(menu.Items)))

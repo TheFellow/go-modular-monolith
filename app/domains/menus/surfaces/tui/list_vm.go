@@ -6,6 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/actions"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	menus "github.com/TheFellow/go-modular-monolith/app/domains/menus"
@@ -89,6 +90,8 @@ type ListViewModel struct {
 	spinner      tui.Spinner
 	loading      bool
 	err          error
+	projector    menus.ActionProjector
+	actions      map[actions.ID]actions.State
 
 	deleteTarget      *menusmodels.Menu
 	publishTarget     *menusmodels.Menu
@@ -126,6 +129,10 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		list:         l,
 		detail:       NewDetailViewModel(styles.Standard.ListView, app),
 		loading:      true,
+		projector:    menus.NewActionProjector(),
+	}
+	if app != nil {
+		vm.syncActions()
 	}
 	vm.spinner = tui.NewSpinner("Loading menus...", vm.styles.Subtitle)
 	return vm
@@ -385,20 +392,44 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 			m.loading = true
 			return m, tea.Batch(m.spinner.Init(), m.loadMenus(m.request.Cursor))
 		case key.Matches(msg, m.keys.Create):
+			if !m.actionEnabled(menus.ControlCreate) {
+				return m, nil
+			}
 			return m, m.startCreate()
 		case key.Matches(msg, m.keys.Edit), key.Matches(msg, m.keys.Enter):
+			if !m.actionEnabled(menus.ControlEdit) {
+				return m, nil
+			}
 			return m, m.startRename()
 		case key.Matches(msg, m.keys.Delete):
+			if !m.actionEnabled(menus.ControlDelete) {
+				return m, nil
+			}
 			return m, m.startDelete()
 		case key.Matches(msg, m.keys.Publish):
+			if !m.actionEnabled(menus.ControlPublish) {
+				return m, nil
+			}
 			return m, m.startPublish()
 		case key.Matches(msg, m.keys.Draft):
+			if !m.actionEnabled(menus.ControlDraft) {
+				return m, nil
+			}
 			return m, m.startDraft()
 		case key.Matches(msg, m.keys.Tags):
+			if !m.actionEnabled(menus.ControlTags) {
+				return m, nil
+			}
 			return m, m.startTags()
 		case key.Matches(msg, addDrinkKey):
+			if !m.actionEnabled(menus.ControlAddDrink) {
+				return m, nil
+			}
 			return m, m.startDrinkPicker(false)
 		case key.Matches(msg, removeDrinkKey):
+			if !m.actionEnabled(menus.ControlRemoveDrink) {
+				return m, nil
+			}
 			return m, m.startDrinkPicker(true)
 		case key.Matches(msg, analyzeKey):
 			return m, m.startAnalysis()
@@ -421,6 +452,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.list.SetItems(items)
 		selectMenuID(&m.list, selected)
 		m.syncDetail()
+		m.syncActions()
 		return m, nil
 	}
 
@@ -496,6 +528,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
 	m.syncDetail()
+	m.syncActions()
 	return m, cmd
 }
 
@@ -566,12 +599,12 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	case listModeFiltering:
 		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
-		return []key.Binding{
+		bindings := []key.Binding{
 			m.keys.Up, m.keys.Down,
 			prevMenusKey, nextMenusKey, filterMenusKey,
-			m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Draft, m.keys.Tags, addDrinkKey, removeDrinkKey, analyzeKey,
-			m.keys.Refresh, m.keys.Back,
 		}
+		bindings = m.appendVisibleBindings(bindings)
+		return append(bindings, analyzeKey, m.keys.Refresh, m.keys.Back)
 	case listModeAddingDrink, listModeRemovingDrink, listModeAnalyzing:
 	}
 	if m.mode == listModeAddingDrink || m.mode == listModeRemovingDrink || m.mode == listModeAnalyzing {
@@ -597,11 +630,16 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 	case listModeFiltering:
 		return [][]key.Binding{{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit}, {m.keys.Back}}
 	case listModeBrowsing:
+		actionsHelp := m.visibleBindings()
+		navigation := []key.Binding{m.keys.Up, m.keys.Down}
+		if m.actionEnabled(menus.ControlEdit) {
+			navigation = append(navigation, m.keys.Enter)
+		}
 		return [][]key.Binding{
-			{m.keys.Up, m.keys.Down, m.keys.Enter},
+			navigation,
 			{prevMenusKey, nextMenusKey, filterMenusKey},
-			{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Publish, m.keys.Draft, m.keys.Tags},
-			{addDrinkKey, removeDrinkKey, analyzeKey},
+			actionsHelp,
+			{analyzeKey},
 			{m.keys.Refresh, m.keys.Back},
 		}
 	case listModeAddingDrink, listModeRemovingDrink, listModeAnalyzing:
@@ -681,9 +719,6 @@ func (m *ListViewModel) showDeleteConfirm(menu *menusmodels.Menu) tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		if menu.Status != menusmodels.MenuStatusDraft {
-			return DeleteErrorMsg{Err: errors.Invalidf("only draft menus can be deleted")}
-		}
 		itemCount := len(menu.Items)
 		message := fmt.Sprintf("Delete %q?", menu.Name)
 		if itemCount > 0 {
@@ -730,12 +765,6 @@ func (m *ListViewModel) showPublishConfirm(menu *menusmodels.Menu) tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		if menu.Status != menusmodels.MenuStatusDraft {
-			return PublishErrorMsg{Err: errors.Invalidf("only draft menus can be published")}
-		}
-		if len(menu.Items) == 0 {
-			return PublishErrorMsg{Err: errors.Invalidf("cannot publish empty menu")}
-		}
 		message := fmt.Sprintf(
 			"Publish menu %q?\n\nThis will make the menu available for orders.\nPublished menus cannot be modified.",
 			menu.Name,
@@ -781,9 +810,6 @@ func (m *ListViewModel) showDraftConfirm(menu *menusmodels.Menu) tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		if menu.Status != menusmodels.MenuStatusPublished {
-			return DraftErrorMsg{Err: errors.Invalidf("only published menus can be drafted")}
-		}
 		message := fmt.Sprintf(
 			"Return %q to draft?\n\nThis will remove the menu from active service.\nCustomers will not be able to order from this menu.",
 			menu.Name,
@@ -861,12 +887,7 @@ func (m *ListViewModel) startDrinkPicker(removing bool) tea.Cmd {
 	if menu == nil {
 		return nil
 	}
-	if menu.Status != menusmodels.MenuStatusDraft {
-		m.err = errors.Invalidf("only draft menus can be modified")
-		return nil
-	}
 	if removing && len(menu.Items) == 0 {
-		m.err = errors.Invalidf("menu has no drinks to remove")
 		return nil
 	}
 	m.err = nil
@@ -986,6 +1007,49 @@ func (m *ListViewModel) syncDetail() {
 		return
 	}
 	m.detail.SetMenu(optional.Some(item.Value))
+}
+
+func (m *ListViewModel) syncActions() {
+	states, err := m.projector.Project(m.context(), m.context().Principal(), m.selectedMenu())
+	if err != nil {
+		m.actions = nil
+		m.err = err
+		m.detail.SetActions(nil)
+		return
+	}
+	m.actions = make(map[actions.ID]actions.State, len(states))
+	for _, state := range states {
+		m.actions[state.ID] = state
+	}
+	m.detail.SetActions(m.actions)
+}
+
+func (m *ListViewModel) actionEnabled(id actions.ID) bool {
+	state, ok := m.actions[id]
+	return ok && state.Visible && state.Enabled
+}
+
+func (m *ListViewModel) appendVisibleBindings(dst []key.Binding) []key.Binding {
+	return append(dst, m.visibleBindings()...)
+}
+
+func (m *ListViewModel) visibleBindings() []key.Binding {
+	pairs := []struct {
+		id      actions.ID
+		binding key.Binding
+	}{
+		{menus.ControlCreate, m.keys.Create}, {menus.ControlEdit, m.keys.Edit},
+		{menus.ControlDelete, m.keys.Delete}, {menus.ControlPublish, m.keys.Publish},
+		{menus.ControlDraft, m.keys.Draft}, {menus.ControlTags, m.keys.Tags},
+		{menus.ControlAddDrink, addDrinkKey}, {menus.ControlRemoveDrink, removeDrinkKey},
+	}
+	bindings := make([]key.Binding, 0, len(pairs))
+	for _, pair := range pairs {
+		if state, ok := m.actions[pair.id]; ok && state.Visible && state.Enabled {
+			bindings = append(bindings, pair.binding)
+		}
+	}
+	return bindings
 }
 
 func (m *ListViewModel) context() *middleware.Context {
