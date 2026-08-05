@@ -1,11 +1,14 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
-	"strings"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	drinks "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
@@ -60,6 +63,9 @@ type ListViewModel struct {
 	spinner   tui.Spinner
 	loading   bool
 	err       error
+	actionErr error
+	projector drinks.ActionProjector
+	actions   map[actions.ID]actions.State
 	filter    *filterVM
 	request   drinks.ListRequest
 	next      paging.Cursor
@@ -100,12 +106,18 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		list:         l,
 		detail:       NewDetailViewModel(styles.Standard.ListView, app),
 		loading:      true,
+		projector:    drinks.NewActionProjector(),
 	}
+	vm.syncActions()
 	vm.spinner = tui.NewSpinner("Loading drinks...", vm.styles.Subtitle)
 	return vm
 }
 
 func (m *ListViewModel) Init() tea.Cmd {
+	if !m.actionEnabled(drinks.ControlList) {
+		m.loading = false
+		return nil
+	}
 	m.loading = true
 	return tea.Batch(m.spinner.Init(), m.loadDrinks(""))
 }
@@ -217,6 +229,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 				return m, nil
 			}
 			if filterSubmit(msg) {
+				if !m.actionEnabled(drinks.ControlList) {
+					return m, nil
+				}
 				req, err := m.filter.Request()
 				if err != nil {
 					return m, nil
@@ -231,31 +246,49 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
+			if !m.actionEnabled(drinks.ControlList) {
+				return m, nil
+			}
 			m.loading = true
 			m.err = nil
 			return m, tea.Batch(m.spinner.Init(), m.loadDrinks(m.request.Cursor))
 		case msg.String() == "f":
+			if !m.actionEnabled(drinks.ControlList) {
+				return m, nil
+			}
 			m.mode, m.filter = listModeFiltering, newFilterVM(m.request)
 			m.filter.form.SetWidth(m.detailWidth)
 			return m, m.filter.Init()
-		case msg.String() == "]" && m.next != "":
+		case msg.String() == "]" && m.next != "" && m.actionEnabled(drinks.ControlList):
 			m.history = append(m.history, m.request.Cursor)
 			m.request.Cursor = m.next
 			m.loading = true
 			return m, tea.Batch(m.spinner.Init(), m.loadDrinks(m.request.Cursor))
-		case msg.String() == "[" && len(m.history) > 0:
+		case msg.String() == "[" && len(m.history) > 0 && m.actionEnabled(drinks.ControlList):
 			i := len(m.history) - 1
 			m.request.Cursor = m.history[i]
 			m.history = m.history[:i]
 			m.loading = true
 			return m, tea.Batch(m.spinner.Init(), m.loadDrinks(m.request.Cursor))
 		case key.Matches(msg, m.keys.Create):
+			if !m.actionEnabled(drinks.ControlCreate) {
+				return m, nil
+			}
 			return m, m.startCreate()
 		case key.Matches(msg, m.keys.Edit), key.Matches(msg, m.keys.Enter):
+			if !m.actionEnabled(drinks.ControlEdit) {
+				return m, nil
+			}
 			return m, m.startEdit()
 		case key.Matches(msg, m.keys.Delete):
+			if !m.actionEnabled(drinks.ControlDelete) {
+				return m, nil
+			}
 			return m, m.startDelete()
 		case key.Matches(msg, m.keys.Tags):
+			if !m.actionEnabled(drinks.ControlTags) {
+				return m, nil
+			}
 			return m, m.startTags()
 		}
 	case DrinksLoadedMsg:
@@ -265,6 +298,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.loading = false
 		m.err = msg.Err
 		if msg.Err != nil {
+			m.syncActions()
 			return m, nil
 		}
 		m.next = msg.Next
@@ -277,6 +311,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		selectDrinkID(&m.list, selected)
 		m.updateTitle()
 		m.syncDetail()
+		m.syncActions()
 		return m, nil
 	}
 
@@ -311,6 +346,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
 	m.syncDetail()
+	m.syncActions()
 	return m, cmd
 }
 
@@ -363,12 +399,15 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	case listModeCreating, listModeEditing:
 		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
-		return []key.Binding{
-			m.keys.Up, m.keys.Down,
-			m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
-			m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags,
-			m.keys.Refresh, m.keys.Back,
+		bindings := []key.Binding{}
+		if m.actionEnabled(drinks.ControlList) {
+			bindings = append(bindings, m.keys.Up, m.keys.Down, m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage)
 		}
+		bindings = append(bindings, m.visibleBindings()...)
+		if m.actionEnabled(drinks.ControlList) {
+			bindings = append(bindings, m.keys.Refresh)
+		}
+		return append(bindings, m.keys.Back)
 	case listModeFiltering:
 	}
 	return nil
@@ -389,11 +428,24 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.keys.Back},
 		}
 	case listModeBrowsing:
+		navigation := []key.Binding{}
+		pagingHelp := []key.Binding{}
+		if m.actionEnabled(drinks.ControlList) {
+			navigation = append(navigation, m.keys.Up, m.keys.Down)
+			pagingHelp = append(pagingHelp, m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage)
+		}
+		if m.actionEnabled(drinks.ControlList) && m.actionEnabled(drinks.ControlEdit) {
+			navigation = append(navigation, m.keys.Enter)
+		}
+		last := []key.Binding{m.keys.Back}
+		if m.actionEnabled(drinks.ControlList) {
+			last = append([]key.Binding{m.keys.Refresh}, last...)
+		}
 		return [][]key.Binding{
-			{m.keys.Up, m.keys.Down, m.keys.Enter},
-			{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
-			{m.keys.Create, m.keys.Edit, m.keys.Delete, m.keys.Tags},
-			{m.keys.Refresh, m.keys.Back},
+			navigation,
+			pagingHelp,
+			m.visibleBindings(),
+			last,
 		}
 	case listModeFiltering:
 	}
@@ -433,6 +485,52 @@ func (m *ListViewModel) startCreate() tea.Cmd {
 	m.create = NewCreateDrinkVM(m.app)
 	m.create.SetSize(m.detailWidth, m.detailHeight)
 	return m.create.Init()
+}
+
+func (m *ListViewModel) syncActions() {
+	states, err := m.projector.Project(m.context(), m.context().Principal(), m.selectedDrink())
+	if err != nil {
+		m.actions = nil
+		m.actionErr = err
+		m.err = err
+		return
+	}
+	if m.actionErr != nil && errors.Is(m.err, m.actionErr) {
+		m.err = nil
+	}
+	m.actionErr = nil
+	m.actions = make(map[actions.ID]actions.State, len(states))
+	for _, state := range states {
+		m.actions[state.ID] = state
+	}
+	if !m.actionEnabled(drinks.ControlList) {
+		m.list.SetItems(nil)
+		m.syncDetail()
+	}
+}
+
+func (m *ListViewModel) actionEnabled(id actions.ID) bool {
+	state, ok := m.actions[id]
+	return ok && state.Visible && state.Enabled
+}
+
+func (m *ListViewModel) visibleBindings() []key.Binding {
+	pairs := []struct {
+		id      actions.ID
+		binding key.Binding
+	}{
+		{drinks.ControlCreate, m.keys.Create},
+		{drinks.ControlEdit, m.keys.Edit},
+		{drinks.ControlDelete, m.keys.Delete},
+		{drinks.ControlTags, m.keys.Tags},
+	}
+	bindings := make([]key.Binding, 0, len(pairs))
+	for _, pair := range pairs {
+		if m.actionEnabled(pair.id) {
+			bindings = append(bindings, pair.binding)
+		}
+	}
+	return bindings
 }
 
 func (m *ListViewModel) startEdit() tea.Cmd {

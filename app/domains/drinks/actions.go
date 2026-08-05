@@ -13,6 +13,7 @@ import (
 // Stable control identities let every presentation adapter bind its native
 // controls to the same drink capabilities.
 const (
+	ControlList   actions.ID = "drinks.list"
 	ControlCreate actions.ID = "drinks.create"
 	ControlEdit   actions.ID = "drinks.edit"
 	ControlDelete actions.ID = "drinks.delete"
@@ -42,9 +43,11 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 		})
 	}
 
-	declaration := actions.Group{Controls: []actions.Control{{
-		ID: ControlCreate, Permission: permission(drinksauthz.ActionCreate, (models.Drink{}).CedarEntity()),
-	}}}
+	collection := models.Drink{ID: models.NewDrinkID("workspace")}.CedarEntity()
+	declaration := actions.Group{Controls: []actions.Control{
+		{ID: ControlList, Permission: permission(drinksauthz.ActionList, collection)},
+		{ID: ControlCreate, Permission: permission(drinksauthz.ActionCreate, (models.Drink{}).CedarEntity())},
+	}}
 	if selected == nil {
 		return actions.Evaluate(ctx, declaration)
 	}

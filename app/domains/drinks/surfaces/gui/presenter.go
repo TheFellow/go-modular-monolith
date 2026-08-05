@@ -57,19 +57,19 @@ type Form struct {
 	ReplaceTags                        bool
 }
 type State struct {
-	Mode                                           Mode
-	FormInstance                                   uint64
-	Loading, Submitting                            bool
-	CanCreate, CanUpdate, CanDelete, CanTag, Dirty bool
-	Actions                                        map[actions.ID]actions.State
-	Items                                          []*models.Drink
-	Selected                                       *models.Drink
-	Filter                                         Filter
-	Cursor, Next                                   paging.Cursor
-	History                                        []paging.Cursor
-	Form                                           Form
-	Ingredients                                    []IngredientOption
-	Err                                            error
+	Mode                                                    Mode
+	FormInstance                                            uint64
+	Loading, Submitting                                     bool
+	CanList, CanCreate, CanUpdate, CanDelete, CanTag, Dirty bool
+	Actions                                                 map[actions.ID]actions.State
+	Items                                                   []*models.Drink
+	Selected                                                *models.Drink
+	Filter                                                  Filter
+	Cursor, Next                                            paging.Cursor
+	History                                                 []paging.Cursor
+	Form                                                    Form
+	Ingredients                                             []IngredientOption
+	Err                                                     error
 }
 type Dependencies struct {
 	Executor   ui.Executor
@@ -479,7 +479,7 @@ func (p *Presenter) permissions() {
 
 func (p *Presenter) permissionsFor(drink *models.Drink) error {
 	p.state.Actions = nil
-	p.state.CanCreate, p.state.CanUpdate, p.state.CanDelete, p.state.CanTag = false, false, false, false
+	p.state.CanList, p.state.CanCreate, p.state.CanUpdate, p.state.CanDelete, p.state.CanTag = false, false, false, false, false
 	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), drink)
 	if err != nil {
 		return err
@@ -488,6 +488,7 @@ func (p *Presenter) permissionsFor(drink *models.Drink) error {
 	for _, state := range states {
 		p.state.Actions[state.ID] = state
 	}
+	p.state.CanList = p.state.Actions[domain.ControlList].Visible
 	p.state.CanCreate = p.state.Actions[domain.ControlCreate].Visible
 	p.state.CanUpdate = p.state.Actions[domain.ControlEdit].Visible
 	p.state.CanDelete = p.state.Actions[domain.ControlDelete].Visible
