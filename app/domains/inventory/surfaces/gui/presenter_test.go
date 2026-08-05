@@ -72,6 +72,7 @@ func TestPresenterProjectionFailureCanRecover(t *testing.T) {
 		return nil
 	}}
 	p.mu.Lock()
+	p.state.Selected = &Row{Inventory: inventorymodels.Inventory{ID: entity.NewInventoryID(), IngredientID: entity.NewIngredientID(), Amount: measurement.MustAmount(1, measurement.UnitOz)}}
 	err := p.permissionsLocked()
 	failing = false
 	recovered := p.permissionsLocked()

@@ -43,9 +43,10 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 		})
 	}
 
-	collection := models.Drink{ID: models.NewDrinkID("workspace")}.CedarEntity()
 	declaration := actions.Group{Controls: []actions.Control{
-		{ID: ControlList, Permission: permission(drinksauthz.ActionList, collection)},
+		// List authorization is evaluated per returned drink so ABAC can elide
+		// individual rows; there is no synthetic collection resource to check.
+		{ID: ControlList, Permission: actions.Public()},
 		{ID: ControlCreate, Permission: permission(drinksauthz.ActionCreate, (models.Drink{}).CedarEntity())},
 	}}
 	if selected == nil {

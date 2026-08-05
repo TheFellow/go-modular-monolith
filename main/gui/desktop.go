@@ -15,7 +15,7 @@ import (
 	fynedesktop "fyne.io/fyne/v2/driver/desktop"
 
 	application "github.com/TheFellow/go-modular-monolith/app"
-	auditauthz "github.com/TheFellow/go-modular-monolith/app/domains/audit/authz"
+	auditdomain "github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	auditgui "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/gui"
 	drinksdomain "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	drinksgui "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/gui"
@@ -27,18 +27,17 @@ import (
 	menusgui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/gui"
 	ordersdomain "github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersgui "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/gui"
-	taggingauthz "github.com/TheFellow/go-modular-monolith/app/domains/tagging/authz"
+	taggingdomain "github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	tagginggui "github.com/TheFellow/go-modular-monolith/app/domains/tagging/surfaces/gui"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	pkg_authz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/runtimeconfig"
 	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	gui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
 const (
@@ -151,39 +150,43 @@ type desktopDependencies struct {
 	dashboardLoader func(*application.Session) dashboardLoader
 }
 
-// visibleWorkspaces probes the same authorized read paths used by each
+// visibleWorkspaces consumes the same domain capability projections as each
 // workspace. Permission denials remove a workspace; operational failures leave
 // it visible so its surface can report the underlying problem.
 func visibleWorkspaces(session *application.Session) set.Set[workspace] {
 	visible := set.New(workspaceDashboard)
+	principal := session.Context().Principal()
 	checks := []struct {
 		id   workspace
 		read func() error
 	}{
 		{workspaceDrinks, func() error {
-			_, err := session.Drinks.Count(session.Context(), drinksdomain.ListRequest{})
-			return err
+			states, err := drinksdomain.NewActionProjector().Project(session.Context(), principal, nil)
+			return requireVisibleCapability(states, drinksdomain.ControlList, err)
 		}},
 		{workspaceIngredients, func() error {
-			_, err := session.Ingredients.Count(session.Context(), ingredientsdomain.ListRequest{})
-			return err
+			states, err := ingredientsdomain.NewActionProjector().Project(session.Context(), principal, nil)
+			return requireVisibleCapability(states, ingredientsdomain.ControlList, err)
 		}},
 		{workspaceInventory, func() error {
-			_, err := session.Inventory.Count(session.Context(), inventorydomain.ListRequest{})
-			return err
+			states, err := inventorydomain.NewActionProjector().Project(session.Context(), principal, nil)
+			return requireVisibleCapability(states, inventorydomain.ControlList, err)
 		}},
-		{workspaceMenus, func() error { _, err := session.Menus.Count(session.Context(), menusdomain.ListRequest{}); return err }},
+		{workspaceMenus, func() error {
+			states, err := menusdomain.NewActionProjector().Project(session.Context(), principal, nil)
+			return requireVisibleCapability(states, menusdomain.ControlList, err)
+		}},
 		{workspaceOrders, func() error {
-			_, err := session.Orders.Count(session.Context(), ordersdomain.ListRequest{})
-			return err
+			states, err := ordersdomain.NewActionProjector().Project(session.Context(), principal, nil)
+			return requireVisibleCapability(states, ordersdomain.ControlList, err)
 		}},
 		{workspaceAudit, func() error {
-			resource := auditauthz.AuditEntry{UID: cedar.NewEntityUID(auditauthz.AuditEntryType, "workspace")}
-			return pkg_authz.AuthorizeWithEntity(session.Context().Principal(), auditauthz.ActionList, resource.CedarEntity())
+			states, err := auditdomain.NewActionProjector().Project(session.Context(), principal, nil)
+			return requireVisibleCapability(states, auditdomain.ControlList, err)
 		}},
 		{workspaceTags, func() error {
-			resource := taggingauthz.TagDiscovery{UID: cedar.NewEntityUID(taggingauthz.TagDiscoveryType, "workspace")}
-			return pkg_authz.AuthorizeWithEntity(session.Context().Principal(), taggingauthz.ActionSummary, resource.CedarEntity())
+			states, err := session.Tags.NewActionProjector().ProjectDiscovery(session.Context(), principal)
+			return requireVisibleCapability(states, taggingdomain.ControlSummary, err)
 		}},
 	}
 	for _, check := range checks {
@@ -192,6 +195,21 @@ func visibleWorkspaces(session *application.Session) set.Set[workspace] {
 		}
 	}
 	return visible
+}
+
+func requireVisibleCapability(states []actions.State, id actions.ID, err error) error {
+	if err != nil {
+		return err
+	}
+	for _, state := range states {
+		if state.ID == id {
+			if state.Visible {
+				return nil
+			}
+			return apperrors.Permissionf("capability %q denied", id)
+		}
+	}
+	return fmt.Errorf("capability projection omitted %q", id)
 }
 
 func openDesktop(ctx context.Context, fyneApp framework.App, config desktopConfig) (*desktop, error) {

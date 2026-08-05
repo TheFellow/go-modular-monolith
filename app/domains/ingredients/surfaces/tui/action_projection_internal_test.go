@@ -13,7 +13,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/list"
@@ -45,7 +44,7 @@ func TestIngredientActionsProjectIntoTUIKeysAndHandlers(t *testing.T) {
 	}
 }
 
-func TestDeniedIngredientListCapabilitySuppressesLoadingAndNavigation(t *testing.T) {
+func TestListEntryDoesNotAuthorizeAgainstSyntheticIngredient(t *testing.T) {
 	fix := testutil.NewFixture(t)
 	vm := NewListViewModel(fix.App)
 	vm.projector = ingredients.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
@@ -55,19 +54,12 @@ func TestDeniedIngredientListCapabilitySuppressesLoadingAndNavigation(t *testing
 		return nil
 	}}
 	vm.syncActions()
-	testutil.ErrorIf(t, vm.Init() != nil, "%v", "denied list capability started a load")
+	testutil.Equals(t, vm.actionEnabled(ingredients.ControlList), true)
+	foundRefresh := false
 	for _, binding := range vm.ShortHelp() {
-		testutil.ErrorIf(t, binding.Help().Key == "r", "%v", "denied list capability exposed refresh")
+		foundRefresh = foundRefresh || binding.Help().Key == "r"
 	}
-	vm.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
-	testutil.Equals(t, vm.shell.Loading(), false)
-	vm.next = "next-page"
-	vm.history = []paging.Cursor{"previous-page"}
-	for _, pressed := range []string{"f", "]", "["} {
-		vm.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(pressed)})
-		testutil.Equals(t, vm.mode, listModeBrowsing)
-		testutil.Equals(t, vm.request.Cursor, paging.Cursor(""))
-	}
+	testutil.Equals(t, foundRefresh, true)
 }
 
 func TestIngredientActionProjectionEvaluatorErrorRecovers(t *testing.T) {

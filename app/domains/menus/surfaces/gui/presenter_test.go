@@ -266,7 +266,7 @@ func TestPublishPermissionIsIndependentOfUpdateAndEvaluatorErrorsSurface(t *test
 	testutil.Equals(t, failed.State().CanCreate, false)
 }
 
-func TestListProjectionGuardsMenuCollectionInteractions(t *testing.T) {
+func TestListEntryDoesNotAuthorizeAgainstSyntheticMenu(t *testing.T) {
 	f := testutil.NewFixture(t)
 	projector := menus.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
 		if action == authz.ActionList {
@@ -275,16 +275,13 @@ func TestListProjectionGuardsMenuCollectionInteractions(t *testing.T) {
 		return nil
 	}}
 	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Projector: &projector})
-	testutil.Equals(t, p.State().CanList, false)
+	testutil.Equals(t, p.State().CanList, true)
 	testutil.Equals(t, p.State().CanCreate, true)
-	testutil.Equals(t, p.SetFilter(Filter{Expression: "name == `hidden`"}), false)
-	p.Refresh()
-	testutil.Equals(t, len(p.State().Items), 0)
 
 	gui := frameworktest.NewApp()
 	defer gui.Quit()
 	v := NewView(p)
-	testutil.Equals(t, v.refresh.Hidden, true)
+	testutil.Equals(t, v.refresh.Hidden, false)
 	testutil.Equals(t, v.create.Hidden, false)
 }
 

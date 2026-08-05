@@ -46,7 +46,7 @@ func TestUnauthorizedOrderKeysAndHelpAreOmitted(t *testing.T) {
 	testutil.Equals(t, vm.mode, listModeBrowsing)
 }
 
-func TestDeniedOrderListBlocksLoadingAndNavigationButNotPlacement(t *testing.T) {
+func TestListEntryDoesNotAuthorizeAgainstSyntheticOrder(t *testing.T) {
 	fix := testutil.NewFixture(t)
 	vm := NewListViewModel(fix.App)
 	vm.projector = orders.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
@@ -56,14 +56,14 @@ func TestDeniedOrderListBlocksLoadingAndNavigationButNotPlacement(t *testing.T) 
 		return nil
 	}}
 	vm.syncActions()
-	testutil.ErrorIf(t, vm.Init() != nil, "denied list started loading")
+	testutil.ErrorIf(t, !vm.actionEnabled(orders.ControlList), "list entry should remain public")
 	testutil.ErrorIf(t, !vm.actionEnabled(orders.ControlPlace), "list denial disabled placement")
-	_, cmd := vm.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("f")})
-	testutil.ErrorIf(t, cmd != nil || vm.mode != listModeBrowsing, "denied list opened filter")
+	foundRefresh := false
 	for _, binding := range vm.ShortHelp() {
 		help := binding.Help()
-		testutil.ErrorIf(t, help.Key == vm.keys.Up.Help().Key || help.Key == vm.keys.Refresh.Help().Key, "denied list exposed navigation help %q", help.Key)
+		foundRefresh = foundRefresh || help.Key == vm.keys.Refresh.Help().Key
 	}
+	testutil.ErrorIf(t, !foundRefresh, "public list omitted refresh help")
 }
 
 func TestOrderProjectionEvaluatorErrorsSurfaceInTUI(t *testing.T) {

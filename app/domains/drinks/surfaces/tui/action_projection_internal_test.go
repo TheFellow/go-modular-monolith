@@ -42,7 +42,7 @@ func TestDrinkActionsProjectIntoTUIKeysAndHandlers(t *testing.T) {
 	}
 }
 
-func TestDeniedListCapabilitySuppressesLoadingAndNavigation(t *testing.T) {
+func TestListEntryDoesNotAuthorizeAgainstSyntheticDrink(t *testing.T) {
 	fix := testutil.NewFixture(t)
 	vm := NewListViewModel(fix.App)
 	vm.projector = drinks.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
@@ -52,13 +52,12 @@ func TestDeniedListCapabilitySuppressesLoadingAndNavigation(t *testing.T) {
 		return nil
 	}}
 	vm.syncActions()
-	testutil.ErrorIf(t, vm.Init() != nil, "%v", "denied list capability started a load")
-	testutil.Equals(t, vm.loading, false)
+	testutil.Equals(t, vm.actionEnabled(drinks.ControlList), true)
+	foundRefresh := false
 	for _, binding := range vm.ShortHelp() {
-		testutil.ErrorIf(t, binding.Help().Key == "r", "%v", "denied list capability exposed refresh")
+		foundRefresh = foundRefresh || binding.Help().Key == "r"
 	}
-	vm.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
-	testutil.Equals(t, vm.loading, false)
+	testutil.Equals(t, foundRefresh, true)
 }
 
 func TestActionProjectionEvaluatorErrorRecovers(t *testing.T) {

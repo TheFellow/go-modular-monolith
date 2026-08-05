@@ -47,21 +47,15 @@ func TestActionProjectorPendingLifecycle(t *testing.T) {
 	}
 }
 
-func TestActionProjectorUsesStableCollectionResourceAndDistinctListPermission(t *testing.T) {
-	var listResource cedar.Entity
+func TestActionProjectorKeepsListEntryPublicAndPlacementIndependent(t *testing.T) {
 	projector := orders.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, resource cedar.Entity) error {
-		if action == ordersauthz.ActionList {
-			listResource = resource
-			return apperrors.Permissionf("denied")
-		}
 		return nil
 	}}
 	states, err := projector.Project(context.Background(), cedar.EntityUID{}, nil)
 	testutil.Ok(t, err)
 	got := actionMap(states)
-	testutil.ErrorIf(t, got[orders.ControlList].Visible, "denied list should be hidden")
+	testutil.ErrorIf(t, !got[orders.ControlList].Visible, "list entry should be public because rows are authorized individually")
 	testutil.ErrorIf(t, !got[orders.ControlPlace].Enabled, "list denial leaked into placement")
-	testutil.Equals(t, listResource.UID.ID, cedar.String("workspace"))
 }
 
 func TestActionProjectorSurfacesEvaluatorFailure(t *testing.T) {

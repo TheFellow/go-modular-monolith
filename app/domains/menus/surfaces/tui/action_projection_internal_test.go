@@ -83,7 +83,7 @@ func TestActionProjectionEvaluatorErrorsSurface(t *testing.T) {
 	}
 }
 
-func TestMenuListProjectionGuardsCollectionKeysAndLoading(t *testing.T) {
+func TestListEntryDoesNotAuthorizeAgainstSyntheticMenu(t *testing.T) {
 	fix := testutil.NewFixture(t)
 	vm := NewListViewModel(fix.App)
 	vm.projector = menus.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
@@ -93,16 +93,14 @@ func TestMenuListProjectionGuardsCollectionKeysAndLoading(t *testing.T) {
 		return nil
 	}}
 	vm.syncActions()
-	testutil.Equals(t, vm.actionEnabled(menus.ControlList), false)
+	testutil.Equals(t, vm.actionEnabled(menus.ControlList), true)
 	testutil.Equals(t, vm.actionEnabled(menus.ControlCreate), true)
-	testutil.Equals(t, vm.Init() == nil, true)
-	testutil.Equals(t, vm.loading, false)
+	foundRefresh := false
 	for _, binding := range vm.ShortHelp() {
 		help := binding.Help()
-		testutil.ErrorIf(t, help.Key == "r" || help.Key == "f" || help.Key == "[" || help.Key == "]", "list help exposed %q", help.Key)
+		foundRefresh = foundRefresh || help.Key == "r"
 	}
-	vm.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("f")})
-	testutil.Equals(t, vm.mode, listModeBrowsing)
+	testutil.Equals(t, foundRefresh, true)
 }
 
 func TestMenuProjectionErrorRecoveryPreservesUnrelatedError(t *testing.T) {
