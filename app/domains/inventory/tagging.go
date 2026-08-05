@@ -1,6 +1,8 @@
 package inventory
 
 import (
+	"fmt"
+
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
@@ -21,7 +23,11 @@ func (m *Module) registerTagTarget(targets *tagging.Registry) {
 			if err != nil {
 				return tagging.TargetState{}, err
 			}
-			return tagging.TargetState{Entity: value.CedarEntity(), Tags: value.Tags}, nil
+			ingredient, err := m.ingredients.Get(ctx, value.IngredientID)
+			if err != nil {
+				return tagging.TargetState{}, err
+			}
+			return tagging.TargetState{Entity: value.CedarEntity(), DisplayName: fmt.Sprintf("Inventory for %s", ingredient.Name), Tags: value.Tags}, nil
 		},
 	})
 }

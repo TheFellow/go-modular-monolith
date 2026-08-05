@@ -99,6 +99,9 @@ func TestTagsCLIWorkflowsPersistAndAuthorize(t *testing.T) {
 	out, err = runTagsCLI(dbPath, "owner", "tags", "show", "shared=visible")
 	testutil.Ok(t, err)
 	testutil.StringContains(t, out, "ENTITY TYPE")
+	for _, name := range []string{"CLI Highball", "CLI Gin", "Inventory for CLI Gin", "CLI Menu", "Order for CLI Menu"} {
+		testutil.StringContains(t, out, name)
+	}
 	for _, id := range all {
 		testutil.StringContains(t, out, id)
 	}

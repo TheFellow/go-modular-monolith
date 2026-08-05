@@ -240,9 +240,9 @@ func (v *View) renderResults(s State) {
 		}
 		v.resultRows.Add(rowObjects(widget.NewLabel(s.Result.TargetName), ui.TagPills([]string(s.Result.Tags.Canonical())), widget.NewLabel(result)))
 	case ShowExact, ShowKey:
-		v.resultRows.Add(row("ENTITY TYPE", "ENTITY", "TAG"))
+		v.resultRows.Add(row("ENTITY TYPE", "ENTITY NAME", "ENTITY ID", "TAG"))
 		for _, r := range s.Result.References {
-			v.resultRows.Add(rowObjects(widget.NewLabel(r.EntityType), widget.NewLabel(r.EntityID), ui.TagPills([]string{r.Tag})))
+			v.resultRows.Add(rowObjects(widget.NewLabel(r.EntityType), widget.NewLabel(r.EntityName), widget.NewLabel(r.EntityID), ui.TagPills([]string{r.Tag})))
 		}
 		if len(s.Result.References) == 0 {
 			v.resultRows.Add(widget.NewLabel("No matching active tag usage."))

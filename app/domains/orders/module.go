@@ -3,6 +3,7 @@ package orders
 import (
 	"context"
 
+	menusqueries "github.com/TheFellow/go-modular-monolith/app/domains/menus/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/internal/commands"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/queries"
@@ -14,6 +15,7 @@ import (
 
 type Module struct {
 	queries  *queries.Queries
+	menus    *menusqueries.Queries
 	commands *commands.Commands
 	pipeline *middleware.Pipeline
 }
@@ -22,6 +24,7 @@ func NewModule(ctx context.Context, s *store.Store, tags tag.Repository, targets
 	dao.Register(ctx, s)
 	m := &Module{
 		queries:  queries.New(s, tags),
+		menus:    menusqueries.New(s, tags),
 		commands: commands.New(s, tags),
 		pipeline: pipeline,
 	}

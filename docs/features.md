@@ -47,6 +47,11 @@ its own entities and hydrates tags in one type-scoped query. Soft-deleted rows r
 the inventory hard-delete path removes them transactionally. Tags have no reserved application
 meaning—individual Cedar policies or other consumers choose semantics.
 
+Tag discovery returns each active match's domain-provided display name alongside its entity type
+and ID. The CLI, TUI, and GUI render that same shared reference model; the tagging discovery
+permission therefore governs disclosure of all three identity fields without requiring the owning
+domain's separate read permission.
+
 ## Authorization personas
 
 Use `--actor` (or `--as`) with any interactive entrypoint. Owner has full access; manager has broad

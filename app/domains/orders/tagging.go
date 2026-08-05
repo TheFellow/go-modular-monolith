@@ -1,6 +1,8 @@
 package orders
 
 import (
+	"fmt"
+
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
@@ -21,7 +23,11 @@ func (m *Module) registerTagTarget(targets *tagging.Registry) {
 			if err != nil {
 				return tagging.TargetState{}, err
 			}
-			return tagging.TargetState{Entity: value.CedarEntity(), Tags: value.Tags}, nil
+			menu, err := m.menus.Get(ctx, value.MenuID)
+			if err != nil {
+				return tagging.TargetState{}, err
+			}
+			return tagging.TargetState{Entity: value.CedarEntity(), DisplayName: fmt.Sprintf("Order for %s", menu.Name), Tags: value.Tags}, nil
 		},
 	})
 }

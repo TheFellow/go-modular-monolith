@@ -11,6 +11,7 @@ type entityTagRow struct {
 // Reference identifies an active entity carrying a tag.
 type Reference struct {
 	EntityType string `json:"entity_type" table:"ENTITY TYPE"`
+	EntityName string `json:"entity_name" table:"ENTITY NAME"`
 	EntityID   string `json:"entity_id" table:"ENTITY ID"`
 	Tag        string `json:"tag" table:"TAG"`
 }

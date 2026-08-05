@@ -2,6 +2,7 @@ package tagging
 
 import (
 	"sort"
+	"strings"
 
 	taggingauthz "github.com/TheFellow/go-modular-monolith/app/domains/tagging/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
@@ -33,6 +34,7 @@ func (r Result) CedarEntity() cedar.Entity { return r.entity }
 type targetState struct {
 	target cedar.EntityUID
 	entity cedar.Entity
+	name   string
 	tags   tag.Tags
 }
 
@@ -199,9 +201,24 @@ func (m *Module) Show(ctx *middleware.Context, value tag.Tag, exact bool) ([]Ref
 				return discoveryResult[[]Reference]{}, err
 			}
 			refs := make([]Reference, 0, len(active))
+			names := make(map[cedar.EntityUID]string)
 			for _, association := range active {
+				name, ok := names[association.target]
+				if !ok {
+					registration, resolveErr := m.registry.resolve(association.target.Type)
+					if resolveErr != nil {
+						return discoveryResult[[]Reference]{}, resolveErr
+					}
+					state, loadErr := loadState(queryCtx, registration, association.target)
+					if loadErr != nil {
+						return discoveryResult[[]Reference]{}, loadErr
+					}
+					name = state.name
+					names[association.target] = name
+				}
 				refs = append(refs, Reference{
 					EntityType: entityTypeName(association.target.Type),
+					EntityName: name,
 					EntityID:   string(association.target.ID),
 					Tag:        association.tag.String(),
 				})
@@ -332,7 +349,11 @@ func loadState(ctx store.Context, registration Target, target cedar.EntityUID) (
 	if loaded.Entity.UID != target {
 		return targetState{}, errors.Internalf("tag target loader returned %s for %s", loaded.Entity.UID, target)
 	}
-	return targetState{target: target, entity: loaded.Entity, tags: loaded.Tags}, nil
+	name := strings.TrimSpace(loaded.DisplayName)
+	if name == "" {
+		return targetState{}, errors.Internalf("tag target loader returned an empty display name for %s", target)
+	}
+	return targetState{target: target, entity: loaded.Entity, name: name, tags: loaded.Tags}, nil
 }
 
 func resultFromState(state targetState, changed bool) Result {

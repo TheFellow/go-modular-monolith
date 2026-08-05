@@ -479,7 +479,7 @@ func (m *Tags) setResultTable(result tagResultMsg) {
 	case tagOperationShow, tagOperationShowKey:
 		rows := make([]table.Row, 0, len(result.references))
 		for _, v := range result.references {
-			rows = append(rows, table.Row{v.EntityType, v.EntityID, v.Tag})
+			rows = append(rows, table.Row{v.EntityType, v.EntityName, v.EntityID, v.Tag})
 		}
 		m.replaceResultTable(referenceColumns(tableWidth), rows)
 	case tagOperationInspect, tagOperationAdd, tagOperationRemove:
@@ -520,11 +520,12 @@ func entityColumns(width int) []table.Column {
 }
 
 func referenceColumns(width int) []table.Column {
-	const entityTypeWidth, entityIDWidth = 14, 34
+	const entityTypeWidth, entityNameWidth, entityIDWidth = 14, 24, 34
 	return []table.Column{
 		{Title: "ENTITY TYPE", Width: entityTypeWidth},
+		{Title: "ENTITY NAME", Width: entityNameWidth},
 		{Title: "ENTITY ID", Width: entityIDWidth},
-		{Title: "TAG", Width: flexibleTagColumn(width, entityTypeWidth+entityIDWidth, 3)},
+		{Title: "TAG", Width: flexibleTagColumn(width, entityTypeWidth+entityNameWidth+entityIDWidth, 4)},
 	}
 }
 

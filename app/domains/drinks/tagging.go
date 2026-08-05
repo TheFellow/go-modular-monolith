@@ -21,7 +21,7 @@ func (m *Module) registerTagTarget(targets *tagging.Registry) {
 			if err != nil {
 				return tagging.TargetState{}, err
 			}
-			return tagging.TargetState{Entity: value.CedarEntity(), Tags: value.Tags}, nil
+			return tagging.TargetState{Entity: value.CedarEntity(), DisplayName: value.Name, Tags: value.Tags}, nil
 		},
 	})
 }

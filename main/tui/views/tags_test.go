@@ -35,7 +35,7 @@ func TestTagsResultTableSupportsEveryShapeTransition(t *testing.T) {
 		{name: "references", result: tagResultMsg{
 			operation: tagOperationShow,
 			references: []tagging.Reference{{
-				EntityType: "Ingredient", EntityID: entity.NewIngredientID().String(), Tag: "featured",
+				EntityType: "Ingredient", EntityName: "Tonic", EntityID: entity.NewIngredientID().String(), Tag: "featured",
 			}},
 		}},
 		{name: "summary", result: tagResultMsg{
@@ -181,7 +181,7 @@ func TestTagsWorkspaceDiscoveryTablesAndBackNavigation(t *testing.T) {
 	testutil.Ok(t, vm.value.SetValue("region=west"))
 	vm = updateTags(t, vm, tea.KeyMsg{Type: tea.KeyCtrlS})
 	testutil.Equals(t, vm.mode, tagsModeResults)
-	for _, expected := range []string{"ENTITY TYPE", "ENTITY ID", "TAG", "Ingredient", ingredient.ID.String(), "region=west", "esc back"} {
+	for _, expected := range []string{"ENTITY TYPE", "ENTITY NAME", "ENTITY ID", "TAG", "Ingredient", ingredient.Name, ingredient.ID.String(), "region=west", "esc back"} {
 		testutil.StringContains(t, vm.View(), expected)
 	}
 	vm = updateTags(t, vm, tea.KeyMsg{Type: tea.KeyEsc})
