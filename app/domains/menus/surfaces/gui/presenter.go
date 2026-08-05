@@ -16,18 +16,16 @@ import (
 	drinks "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	drinkmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	menus "github.com/TheFellow/go-modular-monolith/app/domains/menus"
-	menusauthz "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/queries"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	pkgAuthz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/set"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/actions"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type Mode uint8
@@ -76,12 +74,14 @@ type State struct {
 	CanAddDrink, CanRemoveDrink     bool
 	CanPublish, CanDraft            bool
 	CanCreate                       bool
+	Actions                         map[actions.ID]actions.State
 	FormInstance                    uint64
 }
 type Dependencies struct {
 	Executor   ui.Executor
 	Dispatcher ui.Dispatcher
 	Dialogs    ui.Dialogs
+	Projector  *menus.ActionProjector
 }
 type catalog struct {
 	menus []*models.Menu
@@ -100,11 +100,19 @@ type Presenter struct {
 	names      map[entity.DrinkID]string
 	changed    func(State)
 	confirming bool
+	projector  menus.ActionProjector
 }
 
 func NewPresenter(session *app.Session, d Dependencies) *Presenter {
-	p := &Presenter{app: session, dialogs: d.Dialogs, names: make(map[entity.DrinkID]string), state: State{Filter: Filter{Limit: ui.PageLimit}}}
-	p.state.CanCreate = pkgAuthz.AuthorizeWithEntity(session.Context().Principal(), menusauthz.ActionCreate, (models.Menu{}).CedarEntity()) == nil
+	projector := menus.NewActionProjector()
+	if d.Projector != nil {
+		projector = *d.Projector
+	}
+	p := &Presenter{app: session, dialogs: d.Dialogs, names: make(map[entity.DrinkID]string), projector: projector, state: State{Filter: Filter{Limit: ui.PageLimit}}}
+	if err := p.permissionsFor(nil); err != nil {
+		p.state.Err = ui.PresentError(err)
+		ui.ShowPresentation(p.dialogs, err)
+	}
 	p.load = ui.NewLatestRequest[catalog](d.Executor, d.Dispatcher)
 	p.choices = ui.NewLatestRequest[[]DrinkOption](d.Executor, d.Dispatcher)
 	p.analysis = ui.NewLatestRequest[queries.MenuAnalytics](d.Executor, d.Dispatcher)
@@ -230,15 +238,12 @@ func (p *Presenter) Select(index int) {
 	p.publish()
 }
 
-func (p *Presenter) ListPermissions(index int) (publish, draft bool) {
+func (p *Presenter) ListActions(index int) (map[actions.ID]actions.State, error) {
 	if index < 0 || index >= len(p.state.Items) || p.state.Items[index] == nil {
-		return false, false
+		return nil, nil
 	}
-	menu := p.state.Items[index]
-	principal, resource := p.app.Context().Principal(), menu.CedarEntity()
-	publish = menu.Status == models.MenuStatusDraft && len(menu.Items) > 0 && pkgAuthz.AuthorizeWithEntity(principal, menusauthz.ActionPublish, resource) == nil
-	draft = menu.Status == models.MenuStatusPublished && pkgAuthz.AuthorizeWithEntity(principal, menusauthz.ActionDraft, resource) == nil
-	return publish, draft
+	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), p.state.Items[index])
+	return indexActions(states), err
 }
 
 func (p *Presenter) Back()      { p.leaveDetail(false) }
@@ -280,7 +285,7 @@ func (p *Presenter) StartCreate() {
 	p.publish()
 }
 func (p *Presenter) StartRename() {
-	if p.state.Loading || p.state.Submitting || p.state.Confirming || p.state.Selected == nil || p.state.Selected.Status != models.MenuStatusDraft {
+	if p.state.Loading || p.state.Submitting || p.state.Confirming || p.state.Dirty || !p.actionEnabled(menus.ControlEdit) {
 		return
 	}
 	p.state.FormInstance++
@@ -288,7 +293,7 @@ func (p *Presenter) StartRename() {
 	p.publish()
 }
 func (p *Presenter) StartTags() {
-	if p.state.Loading || p.state.Submitting || p.state.Confirming || p.state.Selected == nil {
+	if p.state.Loading || p.state.Submitting || p.state.Confirming || p.state.Dirty || !p.actionEnabled(menus.ControlTags) {
 		return
 	}
 	values, _ := tag.FormatCollection(p.state.Selected.Tags)
@@ -296,7 +301,7 @@ func (p *Presenter) StartTags() {
 	p.publish()
 }
 func (p *Presenter) StartAddDrink() {
-	if p.state.Loading || p.state.Submitting || p.state.Confirming || p.state.Selected == nil || p.state.Selected.Status != models.MenuStatusDraft {
+	if p.state.Loading || p.state.Submitting || p.state.Confirming || p.state.Dirty || !p.actionEnabled(menus.ControlAddDrink) {
 		return
 	}
 	p.state.Mode, p.state.Form, p.state.Drinks, p.state.Err = AddingDrink, Form{Tags: p.state.Selected.Tags.Canonical().String(), ReplaceTags: true}, nil, nil
@@ -409,6 +414,9 @@ func (p *Presenter) Cancel() {
 }
 func (p *Presenter) Save() bool {
 	mode, form, target := p.state.Mode, p.state.Form, cloneMenu(p.state.Selected)
+	if mode == Creating && !p.actionEnabled(menus.ControlCreate) || mode == Renaming && !p.actionEnabled(menus.ControlEdit) || mode == Tagging && !p.actionEnabled(menus.ControlTags) {
+		return false
+	}
 	switch mode {
 	case Creating, Renaming, Editing:
 		if mode == Editing && (!p.state.CanUpdate || !p.state.Dirty) {
@@ -471,7 +479,7 @@ func (p *Presenter) Save() bool {
 }
 func (p *Presenter) AddDrink(id entity.DrinkID) bool {
 	target := cloneMenu(p.state.Selected)
-	if target == nil || target.Status != models.MenuStatusDraft {
+	if target == nil || !p.actionEnabled(menus.ControlAddDrink) {
 		p.fail(apperrors.Invalidf("draft menu is required"))
 		return false
 	}
@@ -498,7 +506,7 @@ func (p *Presenter) AddDrink(id entity.DrinkID) bool {
 }
 func (p *Presenter) RemoveDrink(id entity.DrinkID) {
 	target := cloneMenu(p.state.Selected)
-	if target == nil || target.Status != models.MenuStatusDraft || p.dialogs == nil || p.confirming || p.submit.Active() {
+	if target == nil || !p.actionEnabled(menus.ControlRemoveDrink) || p.state.Dirty || p.dialogs == nil || p.confirming || p.submit.Active() {
 		return
 	}
 	p.confirming = true
@@ -525,7 +533,7 @@ func (p *Presenter) RemoveDrink(id entity.DrinkID) {
 }
 func (p *Presenter) Delete() {
 	target := cloneMenu(p.state.Selected)
-	if target == nil || target.Status != models.MenuStatusDraft || p.dialogs == nil || p.confirming || p.submit.Active() {
+	if target == nil || !p.actionEnabled(menus.ControlDelete) || p.state.Dirty || p.dialogs == nil || p.confirming || p.submit.Active() {
 		return
 	}
 	p.confirming = true
@@ -546,7 +554,7 @@ func (p *Presenter) Delete() {
 }
 func (p *Presenter) Publish() {
 	target := cloneMenu(p.state.Selected)
-	if target == nil || target.Status != models.MenuStatusDraft || len(target.Items) == 0 || p.dialogs == nil || p.confirming || p.submit.Active() {
+	if target == nil || !p.actionEnabled(menus.ControlPublish) || p.state.Dirty || p.dialogs == nil || p.confirming || p.submit.Active() {
 		return
 	}
 	p.confirming = true
@@ -571,7 +579,7 @@ func (p *Presenter) Publish() {
 }
 func (p *Presenter) ReturnToDraft() {
 	target := cloneMenu(p.state.Selected)
-	if target == nil || target.Status != models.MenuStatusPublished || p.dialogs == nil || p.confirming || p.submit.Active() {
+	if target == nil || !p.actionEnabled(menus.ControlDraft) || p.state.Dirty || p.dialogs == nil || p.confirming || p.submit.Active() {
 		return
 	}
 	p.confirming = true
@@ -669,27 +677,53 @@ func formFromMenu(menu *models.Menu) Form {
 	return Form{Name: menu.Name, Description: menu.Description, Tags: menu.Tags.Canonical().String(), ReplaceTags: true}
 }
 func (p *Presenter) permissions() {
-	menu := p.state.Selected
-	if menu == nil {
-		p.state.CanUpdate, p.state.CanDelete, p.state.CanTag, p.state.CanAddDrink, p.state.CanRemoveDrink, p.state.CanPublish, p.state.CanDraft = false, false, false, false, false, false, false
-		return
+	if err := p.permissionsFor(p.state.Selected); err != nil {
+		p.state.Err = ui.PresentError(err)
+		ui.ShowPresentation(p.dialogs, err)
 	}
-	principal, entity := p.app.Context().Principal(), menu.CedarEntity()
-	allowed := func(action cedar.EntityUID) bool {
-		return pkgAuthz.AuthorizeWithEntity(principal, action, entity) == nil
+}
+func (p *Presenter) permissionsFor(menu *models.Menu) error {
+	p.state.Actions = nil
+	p.state.CanCreate, p.state.CanUpdate, p.state.CanDelete, p.state.CanTag = false, false, false, false
+	p.state.CanAddDrink, p.state.CanRemoveDrink, p.state.CanPublish, p.state.CanDraft = false, false, false, false
+	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), menu)
+	if err != nil {
+		return err
 	}
-	p.state.CanUpdate = allowed(menusauthz.ActionUpdate)
-	p.state.CanDelete = allowed(menusauthz.ActionDelete)
-	p.state.CanTag = allowed(menusauthz.ActionTag)
-	p.state.CanAddDrink = allowed(menusauthz.ActionAddDrink)
-	p.state.CanRemoveDrink = allowed(menusauthz.ActionRemoveDrink)
-	p.state.CanPublish = allowed(menusauthz.ActionPublish)
-	p.state.CanDraft = allowed(menusauthz.ActionDraft)
+	p.state.Actions = indexActions(states)
+	state := func(id actions.ID) actions.State { return p.state.Actions[id] }
+	p.state.CanCreate = state(menus.ControlCreate).Visible
+	p.state.CanUpdate = state(menus.ControlEdit).Visible
+	p.state.CanDelete = state(menus.ControlDelete).Visible
+	p.state.CanTag = state(menus.ControlTags).Visible
+	p.state.CanAddDrink = state(menus.ControlAddDrink).Visible
+	p.state.CanRemoveDrink = state(menus.ControlRemoveDrink).Visible
+	p.state.CanPublish = state(menus.ControlPublish).Visible
+	p.state.CanDraft = state(menus.ControlDraft).Visible
+	return nil
+}
+func (p *Presenter) actionEnabled(id actions.ID) bool {
+	state, ok := p.state.Actions[id]
+	return ok && state.Visible && state.Enabled
+}
+func indexActions(states []actions.State) map[actions.ID]actions.State {
+	indexed := make(map[actions.ID]actions.State, len(states))
+	for _, state := range states {
+		indexed[state.ID] = state
+	}
+	return indexed
 }
 func (p *Presenter) fail(err error) {
 	p.state.Err = ui.PresentError(err)
 	ui.ShowPresentation(p.dialogs, err)
 	p.publish()
+}
+func (p *Presenter) recordProjectionError(err error) {
+	if err == nil || p.state.Err != nil && p.state.Err.Error() == ui.PresentError(err).Error() {
+		return
+	}
+	p.state.Err = ui.PresentError(err)
+	ui.ShowPresentation(p.dialogs, err)
 }
 func (p *Presenter) publish() {
 	if p.changed != nil {
@@ -700,6 +734,7 @@ func (p *Presenter) reselect() {
 	if p.state.Selected == nil {
 		if len(p.state.Items) > 0 {
 			p.state.Selected = cloneMenu(p.state.Items[0])
+			p.permissions()
 		}
 		return
 	}
@@ -707,10 +742,12 @@ func (p *Presenter) reselect() {
 	for _, item := range p.state.Items {
 		if item.ID == id {
 			p.state.Selected = cloneMenu(item)
+			p.permissions()
 			return
 		}
 	}
 	p.state.Selected = nil
+	p.permissions()
 }
 func cloneMenu(in *models.Menu) *models.Menu {
 	if in == nil {
@@ -738,6 +775,7 @@ func cloneState(in State) State {
 	in.History = append([]paging.Cursor(nil), in.History...)
 	in.Selected = cloneMenu(in.Selected)
 	in.Drinks = append([]DrinkOption(nil), in.Drinks...)
+	in.Actions = maps.Clone(in.Actions)
 	if in.Analysis != nil {
 		value := cloneAnalysis(*in.Analysis)
 		in.Analysis = &value

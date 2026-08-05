@@ -13,10 +13,12 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
+	menusdomain "github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/queries"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/actions"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -100,11 +102,16 @@ func NewView(p *Presenter) *View {
 		if id.Col == len(columns)-1 {
 			index := id.Row
 			actions := []ui.RowAction{{Label: "View", Run: func() { p.Select(index) }}}
-			canPublish, canDraft := p.ListPermissions(index)
-			if canPublish {
+			projected, err := p.ListActions(index)
+			if err != nil {
+				p.recordProjectionError(err)
+				ui.ShowCellActions(cell, actions)
+				return
+			}
+			if state := projected[menusdomain.ControlPublish]; state.Visible && state.Enabled {
 				actions = append(actions, ui.RowAction{Label: "Publish", Run: func() { p.Select(index); p.Publish() }})
 			}
-			if canDraft {
+			if state := projected[menusdomain.ControlDraft]; state.Visible && state.Enabled {
 				actions = append(actions, ui.RowAction{Label: "Return to draft", Run: func() { p.Select(index); p.ReturnToDraft() }})
 			}
 			ui.ShowCellActions(cell, actions)
@@ -264,7 +271,8 @@ func (v *View) buildDetail(s State) *framework.Container {
 			}
 			name := widget.NewLabelWithStyle(v.p.DrinkName(item.DrinkID), framework.TextAlignLeading, framework.TextStyle{Bold: true})
 			meta := widget.NewLabel(fmt.Sprintf("%s  ·  %s  ·  order %d", price, item.Availability, item.SortOrder))
-			canRemove := s.CanRemoveDrink && m.Status == models.MenuStatusDraft && !s.Dirty && !s.Submitting && !s.Confirming
+			removeState := s.Actions[menusdomain.ControlRemoveDrink]
+			canRemove := removeState.Visible && removeState.Enabled && !s.Dirty && !s.Submitting && !s.Confirming
 			options := []string(nil)
 			if canRemove {
 				options = []string{"Remove"}
@@ -296,24 +304,29 @@ func (v *View) buildDetail(s State) *framework.Container {
 		}
 	}
 	actions := []framework.CanvasObject{}
-	if selected != nil && (s.Mode == Viewing || s.Mode == Editing) && !s.Dirty && !s.Submitting && !s.Confirming {
-		draft := selected.Status == models.MenuStatusDraft
-		if s.CanAddDrink && draft {
+	if selected != nil && (s.Mode == Viewing || s.Mode == Editing) {
+		if actionVisible(s, menusdomain.ControlAddDrink) {
 			actions = append(actions, v.addDrink)
 		}
 		actions = append(actions, v.analyze)
-		if s.CanPublish && draft && len(selected.Items) > 0 {
+		if actionVisible(s, menusdomain.ControlPublish) {
 			actions = append(actions, v.publish)
 		}
-		if s.CanDraft && selected.Status == models.MenuStatusPublished {
+		if actionVisible(s, menusdomain.ControlDraft) {
 			actions = append(actions, v.draft)
 		}
-		if s.CanTag {
+		if actionVisible(s, menusdomain.ControlTags) {
 			actions = append(actions, v.tagAction)
 		}
-		if s.CanDelete && draft {
+		if actionVisible(s, menusdomain.ControlDelete) {
 			actions = append(actions, v.delete)
 		}
+		transientReady := !s.Dirty && !s.Loading && !s.Submitting && !s.Confirming
+		setEnabled(v.addDrink, transientReady && actionEnabled(s, menusdomain.ControlAddDrink))
+		setEnabled(v.publish, transientReady && actionEnabled(s, menusdomain.ControlPublish))
+		setEnabled(v.draft, transientReady && actionEnabled(s, menusdomain.ControlDraft))
+		setEnabled(v.tagAction, transientReady && actionEnabled(s, menusdomain.ControlTags))
+		setEnabled(v.delete, transientReady && actionEnabled(s, menusdomain.ControlDelete))
 	}
 	body := []framework.CanvasObject{}
 	if bar := ui.ActionBar(nil, actions); bar != nil {
@@ -358,14 +371,13 @@ func (v *View) render(s State) {
 		v.renderedMode, v.renderedInstance, v.renderedForm = s.Mode, s.FormInstance, s.Form
 	}
 	busy := s.Loading || s.Submitting || s.Confirming
-	cleanDetail := s.Selected != nil && (s.Mode == Viewing || s.Mode == Editing) && !s.Dirty && !busy
-	draftMenu := cleanDetail && s.Selected.Status == models.MenuStatusDraft
-	v.addDrink.Hidden = !draftMenu || !s.CanAddDrink
-	v.analyze.Hidden = !cleanDetail
-	v.publish.Hidden = !draftMenu || !s.CanPublish || len(s.Selected.Items) == 0
-	v.draft.Hidden = !cleanDetail || !s.CanDraft || s.Selected.Status != models.MenuStatusPublished
-	v.tagAction.Hidden = !cleanDetail || !s.CanTag
-	v.delete.Hidden = !draftMenu || !s.CanDelete
+	detail := s.Selected != nil && (s.Mode == Viewing || s.Mode == Editing)
+	v.addDrink.Hidden = !detail || !actionVisible(s, menusdomain.ControlAddDrink)
+	v.analyze.Hidden = !detail
+	v.publish.Hidden = !detail || !actionVisible(s, menusdomain.ControlPublish)
+	v.draft.Hidden = !detail || !actionVisible(s, menusdomain.ControlDraft)
+	v.tagAction.Hidden = !detail || !actionVisible(s, menusdomain.ControlTags)
+	v.delete.Hidden = !detail || !actionVisible(s, menusdomain.ControlDelete)
 	v.descriptionHelp.Hidden = s.Mode != Editing && s.Mode != Renaming
 	setEnabled(v.refresh, !busy)
 	setEnabled(v.create, !busy)
@@ -498,6 +510,10 @@ func setEnabled(o interface {
 	} else {
 		o.Disable()
 	}
+}
+func actionVisible(s State, id actions.ID) bool { return s.Actions[id].Visible }
+func actionEnabled(s State, id actions.ID) bool {
+	return s.Actions[id].Visible && s.Actions[id].Enabled
 }
 func field(label string, o framework.CanvasObject) framework.CanvasObject {
 	return ui.DetailField(label, o)
