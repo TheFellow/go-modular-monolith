@@ -78,6 +78,8 @@ func TestMenuActionProjectorAuthorizationAndLifecycle(t *testing.T) {
 					case "empty":
 						testutil.Equals(t, byID[menus.ControlPublish].Enabled, false)
 						testutil.Equals(t, byID[menus.ControlPublish].DisabledReason, "Add at least one drink before publishing.")
+						testutil.Equals(t, byID[menus.ControlRemoveDrink].Enabled, false)
+						testutil.Equals(t, byID[menus.ControlRemoveDrink].DisabledReason, "Add a drink before trying to remove one.")
 					}
 				})
 			}
