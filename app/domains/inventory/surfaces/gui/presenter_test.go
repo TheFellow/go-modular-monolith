@@ -3,7 +3,6 @@ package gui
 
 import (
 	"context"
-	stderrors "errors"
 	"slices"
 	"strings"
 	"testing"
@@ -21,7 +20,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
@@ -35,7 +34,7 @@ func TestPresenterProjectsRowsAndRechecksStaleCapabilities(t *testing.T) {
 	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
 	p.projector = inventory.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
 		if denied && action == inventoryauthz.ActionAdjust {
-			return apperrors.Permissionf("adjust revoked")
+			return errors.Permissionf("adjust revoked")
 		}
 		return nil
 	}}
@@ -52,17 +51,17 @@ func TestPresenterProjectsRowsAndRechecksStaleCapabilities(t *testing.T) {
 
 func TestPresenterSurfacesProjectionEvaluatorFailure(t *testing.T) {
 	fix, _ := inventoryFixture(t)
-	want := stderrors.New("policy evaluator unavailable")
+	want := errors.New("policy evaluator unavailable")
 	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
 	p.projector = inventory.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
 	p.Load()
 	state := p.Snapshot()
-	testutil.ErrorIf(t, state.Status != toolkit.Failed || !stderrors.Is(state.Err, want), "failed projection state = %#v", state)
+	testutil.ErrorIf(t, state.Status != toolkit.Failed || !errors.Is(state.Err, want), "failed projection state = %#v", state)
 }
 
 func TestPresenterProjectionFailureCanRecover(t *testing.T) {
 	fix, _ := inventoryFixture(t)
-	want := stderrors.New("policy evaluator unavailable")
+	want := errors.New("policy evaluator unavailable")
 	failing := true
 	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
 	p.projector = inventory.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error {
@@ -78,7 +77,7 @@ func TestPresenterProjectionFailureCanRecover(t *testing.T) {
 	recovered := p.permissionsLocked()
 	state := cloneState(p.state)
 	p.mu.Unlock()
-	testutil.ErrorIf(t, !stderrors.Is(err, want), "projection error = %v", err)
+	testutil.ErrorIf(t, !errors.Is(err, want), "projection error = %v", err)
 	testutil.Ok(t, recovered)
 	testutil.Equals(t, actionEnabled(state.Actions, inventory.ControlList), true)
 }
@@ -360,7 +359,7 @@ func TestInlineTypedValidationErrorsRemainVisibleForEveryInventoryMutation(t *te
 		testutil.ErrorIf(t, p.Submit(tc.form), "case %d submitted", i)
 		{
 			got := p.Snapshot()
-			testutil.ErrorIf(t, got.Err == nil || !apperrors.IsInvalid(got.Err) || !strings.Contains(v.formStatus.Text, "Error:"), "case %d did not render typed invalid error: %#v status=%q", i, got, v.formStatus.Text)
+			testutil.ErrorIf(t, got.Err == nil || !errors.IsInvalid(got.Err) || !strings.Contains(v.formStatus.Text, "Error:"), "case %d did not render typed invalid error: %#v status=%q", i, got, v.formStatus.Text)
 		}
 		p.Cancel()
 	}

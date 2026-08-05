@@ -2,11 +2,10 @@ package tagging_test
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -22,7 +21,7 @@ func TestActionProjectorUsesRegisteredTargetActionsIndependently(t *testing.T) {
 	projector.Authorize = func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, resource cedar.Entity) error {
 		testutil.Equals(t, resource.UID, target.UID)
 		if denied[action] {
-			return apperrors.Permissionf("denied")
+			return errors.Permissionf("denied")
 		}
 		return nil
 	}
@@ -38,13 +37,13 @@ func TestActionProjectorUsesRegisteredTargetActionsIndependently(t *testing.T) {
 func TestActionProjectorSurfacesDiscoveryAndTargetEvaluatorErrors(t *testing.T) {
 	t.Parallel()
 	registry, target, _, _, _ := actionRegistry()
-	want := stderrors.New("policy evaluator unavailable")
+	want := errors.New("policy evaluator unavailable")
 	projector := tagging.NewActionProjector(registry)
 	projector.Authorize = func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }
 	_, err := projector.ProjectDiscovery(context.Background(), cedar.EntityUID{})
-	testutil.ErrorIf(t, !stderrors.Is(err, want), "discovery error = %v", err)
+	testutil.ErrorIf(t, !errors.Is(err, want), "discovery error = %v", err)
 	_, err = projector.ProjectTarget(context.Background(), cedar.EntityUID{}, target)
-	testutil.ErrorIf(t, !stderrors.Is(err, want), "target error = %v", err)
+	testutil.ErrorIf(t, !errors.Is(err, want), "target error = %v", err)
 }
 
 func actionRegistry() (*tagging.Registry, cedar.Entity, cedar.EntityUID, cedar.EntityUID, cedar.EntityUID) {

@@ -3,7 +3,6 @@ package tui
 
 import (
 	"context"
-	stderrors "errors"
 	"testing"
 
 	application "github.com/TheFellow/go-modular-monolith/app"
@@ -11,7 +10,7 @@ import (
 	ordersauthz "github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/list"
@@ -51,7 +50,7 @@ func TestListEntryDoesNotAuthorizeAgainstSyntheticOrder(t *testing.T) {
 	vm := NewListViewModel(fix.App)
 	vm.projector = orders.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
 		if action == ordersauthz.ActionList {
-			return apperrors.Permissionf("denied")
+			return errors.Permissionf("denied")
 		}
 		return nil
 	}}
@@ -68,8 +67,8 @@ func TestListEntryDoesNotAuthorizeAgainstSyntheticOrder(t *testing.T) {
 
 func TestOrderProjectionEvaluatorErrorsSurfaceInTUI(t *testing.T) {
 	fix := testutil.NewFixture(t)
-	want := stderrors.New("policy evaluator unavailable")
-	businessErr := stderrors.New("order load failed")
+	want := errors.New("policy evaluator unavailable")
+	businessErr := errors.New("order load failed")
 	vm := NewListViewModel(fix.App)
 	vm.err = businessErr
 	failing := true
@@ -80,11 +79,11 @@ func TestOrderProjectionEvaluatorErrorsSurfaceInTUI(t *testing.T) {
 		return nil
 	}}
 	vm.syncActions()
-	testutil.ErrorIf(t, !stderrors.Is(vm.actionErr, want), "projection error = %v", vm.actionErr)
+	testutil.ErrorIf(t, !errors.Is(vm.actionErr, want), "projection error = %v", vm.actionErr)
 	testutil.Equals(t, len(vm.actions), 0)
 	failing = false
 	vm.syncActions()
 	testutil.ErrorIf(t, vm.actionErr != nil, "recovered projection error = %v", vm.actionErr)
-	testutil.ErrorIf(t, !stderrors.Is(vm.err, businessErr), "projection recovery cleared business error: %v", vm.err)
+	testutil.ErrorIf(t, !errors.Is(vm.err, businessErr), "projection recovery cleared business error: %v", vm.err)
 	testutil.Equals(t, vm.actionEnabled(orders.ControlList), true)
 }

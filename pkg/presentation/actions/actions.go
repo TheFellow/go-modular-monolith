@@ -10,7 +10,7 @@ import (
 	"context"
 	"fmt"
 
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/set"
 )
 
@@ -142,7 +142,7 @@ func evaluateControl(ctx context.Context, control Control, authorize Authorize) 
 	state := State{ID: control.ID, Visible: true, Enabled: true}
 	if authorize != nil {
 		if err := authorize(ctx); err != nil {
-			if apperrors.IsPermission(err) {
+			if errors.IsPermission(err) {
 				state.Visible = false
 				state.Enabled = false
 				return state, nil

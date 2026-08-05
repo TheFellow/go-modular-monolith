@@ -3,8 +3,8 @@ package gui
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"strings"
 	"testing"
 

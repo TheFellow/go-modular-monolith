@@ -3,7 +3,7 @@ package main
 
 import (
 	"context"
-	"errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"testing"
 
 	"fyne.io/fyne/v2/test"

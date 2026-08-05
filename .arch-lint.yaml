@@ -1,4 +1,17 @@
 specs:
+  # Application code uses the shared package for both typed errors and the
+  # standard-library-compatible helpers it forwards.
+  - name: shared-errors-only
+    packages:
+      include:
+        - "**"
+      exclude:
+        - "pkg/errors"
+        - "pkg/errors/**"
+    rules:
+      forbid:
+        - "errors"
+
   # Reusable presentation toolkits own mechanics, never application policy.
   - name: presentation-toolkits-no-application
     packages:

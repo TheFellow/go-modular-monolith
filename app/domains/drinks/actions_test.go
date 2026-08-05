@@ -3,14 +3,13 @@ package drinks_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -60,7 +59,7 @@ func TestDrinkActionProjectorPermissionsAreIndependent(t *testing.T) {
 	t.Parallel()
 	projector := drinks.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
 		if action == drinksauthz.ActionDelete {
-			return apperrors.Permissionf("delete denied")
+			return errors.Permissionf("delete denied")
 		}
 		return nil
 	}}

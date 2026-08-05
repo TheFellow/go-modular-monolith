@@ -22,7 +22,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
@@ -147,7 +147,7 @@ func (p *Presenter) Start(operation Operation) {
 	discovery := maps.Clone(p.state.Actions)
 	p.state = State{Operation: operation, Actions: discovery}
 	if !operation.valid() {
-		p.fail(apperrors.Invalidf("invalid tag operation"))
+		p.fail(errors.Invalidf("invalid tag operation"))
 		p.publish()
 		return
 	}
@@ -183,7 +183,7 @@ func (p *Presenter) SelectType(kind cedar.EntityType) {
 		}
 		options, ok := r.Value.([]EntityOption)
 		if !ok {
-			err := apperrors.Internalf("unexpected entity catalog")
+			err := errors.Internalf("unexpected entity catalog")
 			p.state.Mode, p.state.Err = PickingType, ui.PresentError(err)
 			ui.ShowPresentation(p.dialogs, err)
 			p.publish()
@@ -340,7 +340,7 @@ func (p *Presenter) Submit() bool {
 			p.publish()
 		})
 	case Inspect, Summary:
-		p.fail(apperrors.Invalidf("operation does not accept a value"))
+		p.fail(errors.Invalidf("operation does not accept a value"))
 		return false
 	}
 	return false
@@ -403,7 +403,7 @@ func (p *Presenter) runQuery(work func(*middleware.Context) (any, error)) {
 			p.state.Catalog = append([]tagging.Summary(nil), result.Summaries...)
 			p.state.Query = ""
 		case Add, Remove:
-			p.state.Mode, p.state.Err = Results, apperrors.Internalf("unexpected tag query")
+			p.state.Mode, p.state.Err = Results, errors.Internalf("unexpected tag query")
 			p.publish()
 			return
 		}
@@ -554,7 +554,7 @@ func (p *Presenter) loadEntities(ctx *middleware.Context, kind cedar.EntityType)
 		}
 		return out, nil
 	default:
-		return nil, apperrors.Invalidf("unsupported entity type")
+		return nil, errors.Invalidf("unsupported entity type")
 	}
 }
 

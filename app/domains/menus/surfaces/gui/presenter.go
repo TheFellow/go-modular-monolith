@@ -3,7 +3,6 @@ package gui
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"math"
@@ -21,7 +20,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/queries"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
@@ -129,7 +128,7 @@ func (p *Presenter) SetFilter(filter Filter) bool {
 		return false
 	}
 	if filter.Limit < 0 {
-		p.fail(apperrors.Invalidf("page size must be greater than zero"))
+		p.fail(errors.Invalidf("page size must be greater than zero"))
 		return false
 	}
 	if filter.Limit == 0 {
@@ -163,7 +162,7 @@ func (p *Presenter) loadPage(appendPage bool) {
 		names := make(map[entity.DrinkID]string)
 		for _, menu := range page.Items {
 			if menu == nil {
-				return catalog{}, apperrors.Internalf("menu missing")
+				return catalog{}, errors.Internalf("menu missing")
 			}
 			for _, item := range menu.Items {
 				if _, ok := names[item.DrinkID]; ok {
@@ -176,7 +175,7 @@ func (p *Presenter) loadPage(appendPage bool) {
 						return catalog{}, getErr
 					}
 					if drink == nil {
-						return catalog{}, apperrors.Internalf("drink %s missing", item.DrinkID.String())
+						return catalog{}, errors.Internalf("drink %s missing", item.DrinkID.String())
 					}
 					name = drink.Name
 				}
@@ -332,12 +331,12 @@ func (p *Presenter) StartAnalysis() {
 func (p *Presenter) SetAnalysisForm(form AnalysisForm) { p.state.AnalysisForm = form; p.publish() }
 func (p *Presenter) Analyze() bool {
 	if p.state.Mode != Analyzing || p.state.Selected == nil {
-		p.fail(apperrors.Invalidf("menu analysis is not active"))
+		p.fail(errors.Invalidf("menu analysis is not active"))
 		return false
 	}
 	target, err := strconv.ParseFloat(strings.TrimSpace(p.state.AnalysisForm.TargetMargin), 64)
 	if err != nil || math.IsNaN(target) || math.IsInf(target, 0) || target <= 0 || target >= 1 {
-		p.fail(apperrors.Invalidf("target margin must be a number between 0 and 1"))
+		p.fail(errors.Invalidf("target margin must be a number between 0 and 1"))
 		return false
 	}
 	menu := *cloneMenu(p.state.Selected)
@@ -447,16 +446,16 @@ func (p *Presenter) Save() bool {
 		}
 		name := strings.TrimSpace(form.Name)
 		if name == "" {
-			p.fail(apperrors.Invalidf("name is required"))
+			p.fail(errors.Invalidf("name is required"))
 			return false
 		}
 		if len([]rune(name)) > 100 {
-			p.fail(apperrors.Invalidf("name must be at most 100 characters"))
+			p.fail(errors.Invalidf("name must be at most 100 characters"))
 			return false
 		}
 		description := strings.TrimSpace(form.Description)
 		if len([]rune(description)) > 500 {
-			p.fail(apperrors.Invalidf("description must be at most 500 characters"))
+			p.fail(errors.Invalidf("description must be at most 500 characters"))
 			return false
 		}
 		return p.mutate(func() error {
@@ -467,7 +466,7 @@ func (p *Presenter) Save() bool {
 				return err
 			}
 			if target == nil {
-				return apperrors.Invalidf("menu not selected")
+				return errors.Invalidf("menu not selected")
 			}
 			_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) {
 				return p.app.Menus.Update(ctx, &models.Menu{ID: target.ID, Name: name, Description: description})
@@ -476,7 +475,7 @@ func (p *Presenter) Save() bool {
 		})
 	case Tagging:
 		if target == nil {
-			p.fail(apperrors.Invalidf("menu not selected"))
+			p.fail(errors.Invalidf("menu not selected"))
 			return false
 		}
 		tags, err := tag.ParseCollection(form.Tags)
@@ -486,7 +485,7 @@ func (p *Presenter) Save() bool {
 		}
 		return p.mutate(func() error { _, err := p.app.Tags.Replace(p.app.Context(), target.EntityUID(), tags); return err })
 	case Browsing, Viewing, AddingDrink, Analyzing:
-		p.fail(apperrors.Invalidf("no menu form is active"))
+		p.fail(errors.Invalidf("no menu form is active"))
 		return false
 	}
 	return false
@@ -494,7 +493,7 @@ func (p *Presenter) Save() bool {
 func (p *Presenter) AddDrink(id entity.DrinkID) bool {
 	target := cloneMenu(p.state.Selected)
 	if target == nil || !p.actionEnabled(menus.ControlAddDrink) {
-		p.fail(apperrors.Invalidf("draft menu is required"))
+		p.fail(errors.Invalidf("draft menu is required"))
 		return false
 	}
 	desired, err := taggedChoice(ui.ReplaceTags, p.state.Form.Tags)

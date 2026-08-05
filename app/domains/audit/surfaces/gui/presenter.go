@@ -12,7 +12,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
@@ -133,7 +133,7 @@ func (p *Presenter) loadPage(appendPage bool) {
 		rows := make([]Row, 0, len(page.Items))
 		for _, entry := range page.Items {
 			if entry == nil {
-				return listResult{}, apperrors.Internalf("audit entry missing")
+				return listResult{}, errors.Internalf("audit entry missing")
 			}
 			row := rowFromEntry(*entry)
 			states, err := p.projector.Project(ctx, p.app.Context().Principal(), entry)
@@ -254,22 +254,22 @@ func normalizeFilter(filter Filter) Filter {
 
 func requestFromFilter(filter Filter, cursor paging.Cursor) (audit.ListRequest, error) {
 	if filter.Limit <= 0 {
-		return audit.ListRequest{}, apperrors.Invalidf("page size must be greater than zero")
+		return audit.ListRequest{}, errors.Invalidf("page size must be greater than zero")
 	}
 	req := audit.ListRequest{Cursor: cursor, Limit: filter.Limit, Filter: filter.Expression}
 	if !filter.Scope.valid() {
-		return req, apperrors.Invalidf("invalid audit scope")
+		return req, errors.Invalidf("invalid audit scope")
 	}
 	switch filter.Scope {
 	case AllActivity:
 	case EntityHistory:
 		if filter.Entity == "" {
-			return req, apperrors.Invalidf("entity is required for history")
+			return req, errors.Invalidf("entity is required for history")
 		}
 		filter.Principal, filter.Action = "", ""
 	case ActorActivity:
 		if filter.Principal == "" {
-			return req, apperrors.Invalidf("principal is required for actor activity")
+			return req, errors.Invalidf("principal is required for actor activity")
 		}
 		filter.Entity, filter.Action = "", ""
 	}
@@ -302,7 +302,7 @@ func parseTime(value string) (time.Time, error) {
 	if parsed, err := time.Parse(dateLayout, value); err == nil {
 		return parsed, nil
 	}
-	return time.Time{}, apperrors.Invalidf("invalid time %q", value)
+	return time.Time{}, errors.Invalidf("invalid time %q", value)
 }
 
 func parsePrincipal(value string) (cedar.EntityUID, error) {
@@ -324,17 +324,17 @@ func parseEntityUID(value string) (cedar.EntityUID, error) {
 	if strings.Contains(value, "::\"") || strings.HasSuffix(value, "\"") {
 		var uid cedar.EntityUID
 		if err := uid.UnmarshalCedar([]byte(value)); err != nil {
-			return cedar.EntityUID{}, apperrors.Invalidf("invalid entity uid %q: %v", value, err)
+			return cedar.EntityUID{}, errors.Invalidf("invalid entity uid %q: %v", value, err)
 		}
 		return uid, nil
 	}
 	index := strings.LastIndex(value, "::")
 	if index <= 0 || index+2 >= len(value) {
-		return cedar.EntityUID{}, apperrors.Invalidf("invalid entity uid %q", value)
+		return cedar.EntityUID{}, errors.Invalidf("invalid entity uid %q", value)
 	}
 	typ, id := value[:index], strings.Trim(value[index+2:], "\"")
 	if typ == "" || id == "" {
-		return cedar.EntityUID{}, apperrors.Invalidf("invalid entity uid %q", value)
+		return cedar.EntityUID{}, errors.Invalidf("invalid entity uid %q", value)
 	}
 	return cedar.NewEntityUID(cedar.EntityType(typ), cedar.String(id)), nil
 }

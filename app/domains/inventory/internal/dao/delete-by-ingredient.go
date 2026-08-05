@@ -1,7 +1,7 @@
 package dao
 
 import (
-	"errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"

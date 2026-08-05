@@ -1,6 +1,6 @@
 package gui
 
-import "errors"
+import "github.com/TheFellow/go-modular-monolith/pkg/errors"
 
 // Validator is a composable, presentation-only validation function.
 type Validator func(string) error

@@ -1,8 +1,8 @@
 package testutil_test
 
 import (
-	"errors"
 	"fmt"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"

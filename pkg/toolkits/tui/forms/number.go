@@ -1,8 +1,8 @@
 package forms
 
 import (
-	"errors"
 	"fmt"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"strconv"
 	"strings"
 

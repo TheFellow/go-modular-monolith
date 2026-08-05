@@ -3,7 +3,7 @@ package gui
 
 import (
 	"context"
-	stderrors "errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"io"
 	"log/slog"
 	"os/exec"
@@ -136,16 +136,16 @@ func TestPresenterExposesOnlyAuthorizedOrderActions(t *testing.T) {
 
 func TestPresenterSurfacesActionProjectionEvaluatorFailure(t *testing.T) {
 	f := testutil.NewFixture(t)
-	want := stderrors.New("policy evaluator unavailable")
+	want := errors.New("policy evaluator unavailable")
 	projector := orders.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
 	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}}, projector)
-	testutil.ErrorIf(t, !stderrors.Is(p.State().Err, want), "projection error = %v", p.State().Err)
+	testutil.ErrorIf(t, !errors.Is(p.State().Err, want), "projection error = %v", p.State().Err)
 	testutil.ErrorIf(t, p.State().CanPlace, "failed projection exposed place")
 }
 
 func TestPresenterRecoversFromActionProjectionFailure(t *testing.T) {
 	f := testutil.NewFixture(t)
-	want := stderrors.New("policy evaluator unavailable")
+	want := errors.New("policy evaluator unavailable")
 	failing := true
 	projector := orders.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error {
 		if failing {
@@ -154,16 +154,16 @@ func TestPresenterRecoversFromActionProjectionFailure(t *testing.T) {
 		return nil
 	}}
 	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}}, projector)
-	testutil.ErrorIf(t, !stderrors.Is(p.State().Err, want), "projection error = %v", p.State().Err)
+	testutil.ErrorIf(t, !errors.Is(p.State().Err, want), "projection error = %v", p.State().Err)
 	failing = false
 	testutil.Ok(t, p.permissionsFor(nil))
 	testutil.ErrorIf(t, p.State().Err != nil, "recovered projection retained error: %v", p.State().Err)
 	testutil.ErrorIf(t, !p.State().CanList, "recovered projection did not expose list")
 	p.actionErr = want
-	businessErr := stderrors.New("order load failed")
+	businessErr := errors.New("order load failed")
 	p.state.Err = businessErr
 	testutil.Ok(t, p.permissionsFor(nil))
-	testutil.ErrorIf(t, !stderrors.Is(p.State().Err, businessErr), "projection recovery cleared business error: %v", p.State().Err)
+	testutil.ErrorIf(t, !errors.Is(p.State().Err, businessErr), "projection recovery cleared business error: %v", p.State().Err)
 }
 
 func TestDirtyPlaceBackAndResetRequireConfirmationAndRetainInput(t *testing.T) {

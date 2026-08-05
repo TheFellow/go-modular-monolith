@@ -49,8 +49,10 @@ if errors.As(err, &appErr) {
 ```
 
 The package forwards `As`, `AsType`, `Is`, `Join`, `New`, and `Unwrap` from the standard library so
-callers normally need only one errors import. Constructors accept `fmt.Errorf`-style formatting and
-retain a single `%w` cause for `errors.Is`/`errors.As` traversal.
+the rest of the repository imports only `pkg/errors`, using its natural `errors` package name.
+Constructors accept `fmt.Errorf`-style formatting and retain a single `%w` cause for
+`errors.Is`/`errors.As` traversal. The architecture lint configuration rejects direct standard
+library `errors` imports outside this package.
 
 Choose kinds by meaning rather than by the current surface:
 

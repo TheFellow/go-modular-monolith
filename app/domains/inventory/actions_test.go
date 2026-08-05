@@ -3,7 +3,6 @@ package inventory_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
@@ -12,7 +11,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -23,7 +22,7 @@ func TestInventoryActionProjectorUsesStableIndependentCapabilities(t *testing.T)
 	stock := testStock()
 	projector := inventory.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
 		if action == inventoryauthz.ActionSet {
-			return apperrors.Permissionf("set denied")
+			return errors.Permissionf("set denied")
 		}
 		return nil
 	}}

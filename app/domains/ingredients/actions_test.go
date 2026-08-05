@@ -3,7 +3,6 @@ package ingredients_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
@@ -11,7 +10,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -61,7 +60,7 @@ func TestIngredientActionProjectorPermissionsAreIndependent(t *testing.T) {
 	t.Parallel()
 	projector := ingredients.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
 		if action == ingredientauthz.ActionDelete {
-			return apperrors.Permissionf("delete denied")
+			return errors.Permissionf("delete denied")
 		}
 		return nil
 	}}

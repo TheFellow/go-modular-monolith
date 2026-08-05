@@ -19,7 +19,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
@@ -117,7 +117,7 @@ func (p *Presenter) Observe(fn func(State)) { p.changed = fn; p.publish() }
 func (p *Presenter) State() State           { return cloneState(p.state) }
 func (p *Presenter) SetFilter(f Filter) bool {
 	if f.Limit < 0 {
-		p.fail(apperrors.Invalidf("page size must be greater than zero"))
+		p.fail(errors.Invalidf("page size must be greater than zero"))
 		return false
 	}
 	if f.Limit == 0 {
@@ -331,7 +331,7 @@ func (p *Presenter) Save() bool {
 			return false
 		}
 	case Browsing:
-		p.fail(apperrors.Invalidf("no drink form is active"))
+		p.fail(errors.Invalidf("no drink form is active"))
 		return false
 	case Viewing:
 		return false
@@ -409,7 +409,7 @@ func countMenusWithDrink(items []*menusmodels.Menu, id entity.DrinkID) int {
 func (p *Presenter) saveTags() bool {
 	target := cloneDrink(p.state.Selected)
 	if target == nil {
-		p.fail(apperrors.Invalidf("drink not selected"))
+		p.fail(errors.Invalidf("drink not selected"))
 		return false
 	}
 	tags, err := tag.ParseCollection(p.state.Form.Tags)
@@ -525,25 +525,25 @@ func (p *Presenter) formDrink() (*models.Drink, error) {
 	f := p.state.Form
 	name := strings.TrimSpace(f.Name)
 	if name == "" {
-		return nil, apperrors.Invalidf("name is required")
+		return nil, errors.Invalidf("name is required")
 	}
 	if len([]rune(name)) > 100 {
-		return nil, apperrors.Invalidf("name must be at most 100 characters")
+		return nil, errors.Invalidf("name must be at most 100 characters")
 	}
 	description := strings.TrimSpace(f.Description)
 	if len([]rune(description)) > 500 {
-		return nil, apperrors.Invalidf("description must be at most 500 characters")
+		return nil, errors.Invalidf("description must be at most 500 characters")
 	}
 	category := models.DrinkCategory(f.Category)
 	if category == "" {
-		return nil, apperrors.Invalidf("category is required")
+		return nil, errors.Invalidf("category is required")
 	}
 	if err := category.Validate(); err != nil {
 		return nil, err
 	}
 	glass := models.GlassType(f.Glass)
 	if glass == "" {
-		return nil, apperrors.Invalidf("glass is required")
+		return nil, errors.Invalidf("glass is required")
 	}
 	if err := glass.Validate(); err != nil {
 		return nil, err
@@ -562,11 +562,11 @@ func parseRecipe(f Form) (models.Recipe, error) {
 	r := models.Recipe{Garnish: strings.TrimSpace(f.Garnish), Steps: nonEmptyLines(f.Steps)}
 	for i, row := range f.Recipe {
 		if row.Ingredient.IsZero() {
-			return r, apperrors.Invalidf("recipe ingredient %d is required", i+1)
+			return r, errors.Invalidf("recipe ingredient %d is required", i+1)
 		}
 		value, err := strconv.ParseFloat(strings.TrimSpace(row.Amount), 64)
 		if err != nil {
-			return r, apperrors.Invalidf("recipe ingredient %d has invalid amount", i+1)
+			return r, errors.Invalidf("recipe ingredient %d has invalid amount", i+1)
 		}
 		amount, err := measurement.NewAmount(value, row.Unit)
 		if err != nil {

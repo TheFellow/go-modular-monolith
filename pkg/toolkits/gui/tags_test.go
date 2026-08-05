@@ -2,7 +2,7 @@
 package gui
 
 import (
-	"errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"testing"
 
 	framework "fyne.io/fyne/v2"

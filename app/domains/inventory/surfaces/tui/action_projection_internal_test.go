@@ -3,7 +3,7 @@ package tui
 
 import (
 	"context"
-	stderrors "errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"testing"
 
 	application "github.com/TheFellow/go-modular-monolith/app"
@@ -34,7 +34,7 @@ func TestUnauthorizedInventoryKeysAndHelpAreOmitted(t *testing.T) {
 
 func TestInventoryProjectionEvaluatorErrorsSurface(t *testing.T) {
 	fix := testutil.NewFixture(t)
-	want := stderrors.New("policy evaluator unavailable")
+	want := errors.New("policy evaluator unavailable")
 	vm := NewListViewModel(fix.App)
 	vm.rows = []InventoryRow{{Inventory: projectedInventory()}}
 	vm.table.SetRows([]table.Row{{"stock"}})
@@ -46,13 +46,13 @@ func TestInventoryProjectionEvaluatorErrorsSurface(t *testing.T) {
 		return nil
 	}}
 	vm.syncActions()
-	testutil.ErrorIf(t, !stderrors.Is(vm.actionErr, want), "projection error = %v, want %v", vm.actionErr, want)
+	testutil.ErrorIf(t, !errors.Is(vm.actionErr, want), "projection error = %v, want %v", vm.actionErr, want)
 	testutil.Equals(t, len(vm.actions), 0)
-	loadErr := stderrors.New("load still failed")
+	loadErr := errors.New("load still failed")
 	vm.err, failing = loadErr, false
 	vm.syncActions()
 	testutil.Equals(t, vm.actionErr, nil)
-	testutil.ErrorIf(t, !stderrors.Is(vm.err, loadErr), "load error was clobbered: %v", vm.err)
+	testutil.ErrorIf(t, !errors.Is(vm.err, loadErr), "load error was clobbered: %v", vm.err)
 	testutil.Equals(t, vm.actionEnabled(inventory.ControlList), true)
 }
 

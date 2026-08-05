@@ -3,7 +3,6 @@ package gui
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -26,7 +25,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	pkglog "github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/set"
@@ -41,7 +40,7 @@ func TestProjectedPermissionsAndEvaluatorErrorsSurface(t *testing.T) {
 	f, _, drink := fixtureDrink(t, "Projection")
 	projector := domain.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
 		if action == authz.ActionDelete {
-			return apperrors.Permissionf("delete denied")
+			return errors.Permissionf("delete denied")
 		}
 		return nil
 	}}

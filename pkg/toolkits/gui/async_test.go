@@ -3,7 +3,7 @@ package gui_test
 
 import (
 	"context"
-	"errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"sync"
 	"testing"
 

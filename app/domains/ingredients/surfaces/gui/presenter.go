@@ -19,7 +19,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
@@ -368,14 +368,14 @@ func (p *Presenter) Submit(form Form) bool {
 			})
 		case Edit:
 			if selected == nil {
-				return apperrors.Invalidf("ingredient is required")
+				return errors.Invalidf("ingredient is required")
 			}
 			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Ingredient, error) {
 				return p.app.Ingredients.Update(ctx, &models.Ingredient{ID: selected.ID, Name: strings.TrimSpace(form.Name), Category: category, Unit: unit, Description: strings.TrimSpace(form.Description)})
 			})
 		case Tags:
 			if selected == nil {
-				return apperrors.Invalidf("ingredient is required")
+				return errors.Invalidf("ingredient is required")
 			}
 			var desired tag.Tags
 			desired, err = tag.ParseCollection(form.Tags)
@@ -383,7 +383,7 @@ func (p *Presenter) Submit(form Form) bool {
 				_, err = p.app.Tags.Replace(p.app.Context(), selected.EntityUID(), desired)
 			}
 		case Browse, Viewing:
-			err = apperrors.FailedPreconditionf("ingredient form is not active")
+			err = errors.FailedPreconditionf("ingredient form is not active")
 		}
 		return err
 	}, func(err error) {
@@ -513,10 +513,10 @@ func validateForm(mode Mode, form Form) error {
 	}
 	name := strings.TrimSpace(form.Name)
 	if name == "" {
-		return apperrors.Invalidf("name is required")
+		return errors.Invalidf("name is required")
 	}
 	if utf8.RuneCountInString(name) > 100 {
-		return apperrors.Invalidf("name must be at most 100 characters")
+		return errors.Invalidf("name must be at most 100 characters")
 	}
 	if err := form.Category.Validate(); err != nil {
 		return err
@@ -525,7 +525,7 @@ func validateForm(mode Mode, form Form) error {
 		return err
 	}
 	if utf8.RuneCountInString(strings.TrimSpace(form.Description)) > 500 {
-		return apperrors.Invalidf("description must be at most 500 characters")
+		return errors.Invalidf("description must be at most 500 characters")
 	}
 	return nil
 }

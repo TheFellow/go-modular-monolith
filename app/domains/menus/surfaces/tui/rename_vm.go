@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"errors"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
