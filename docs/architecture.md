@@ -35,6 +35,10 @@ effects. Invalid registration fails immediately.
 Presentation follows a second set of vertical boundaries documented under
 [domain surfaces](../app/domains/readme.md#presentation-surfaces). Reusable framework code lives in
 the [toolkits](../pkg/toolkits/readme.md); process and cross-domain composition live in `main`.
+Domain action projectors bridge those boundaries: they combine Cedar authorization with durable
+domain prerequisites and return framework-neutral control state for GUI, TUI, and future web
+adapters. Each concrete view then composes transient state such as dirty forms or requests in
+flight without moving business rules into widget code.
 
 ## Operation pipelines
 
@@ -75,6 +79,14 @@ Each domain owns a Cedar schema and policies; the shared
 Public actors are owner, manager, sommelier, bartender, and anonymous. Gets/commands return typed
 permission errors; lists elide denied entities. Taggable entities expose native Cedar string tags,
 enabling policy-owned ABAC without giving tags application-global meaning.
+
+Authorization and action availability are deliberately separate. A denied action is omitted from
+the presentation; an authorized action whose domain prerequisite is unmet remains visible but
+disabled with an explanation. A group's permission is only a default: a control with a distinct
+operation, such as Publish, overrides Edit rather than inheriting it. The shared
+[action presentation toolkit](../pkg/toolkits/actions/readme.md) evaluates these declarations, but
+commands remain authoritative and repeat authorization and invariants against current state. UI
+projection is guidance, not protection against stale state or time-of-check/time-of-use races.
 
 ## Generation
 

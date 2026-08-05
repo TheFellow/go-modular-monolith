@@ -18,6 +18,9 @@ and workflows.
   toolkit never imports application types.
 - [forms](forms/readme.md), [dialog](dialog/readme.md), and [keyname](keyname/readme.md) provide the
   reusable interaction primitives used by domain workflows.
+- Domain view models may consume framework-neutral [`actions.State`](../actions/readme.md) values.
+  Denied bindings are omitted; authorized but unavailable actions can remain visible as disabled
+  detail with a reason. The view model adds transient form and request state before handling keys.
 
 Mixology route identity and navigation messages live in `main/tui/routes`; domain adapters own
 domain-specific labels and behavior. The toolkit has no imports of `app` or `main`.

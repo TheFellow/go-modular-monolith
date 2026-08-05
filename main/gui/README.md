@@ -91,6 +91,14 @@ Shortcuts use the same enabled controls as pointer input. They do nothing when
 an action is hidden, disabled, submitting, confirming, or invalid for the
 current workspace mode. Tab and Shift+Tab use Fyne's standard focus traversal.
 
+Domain action projectors supply the same permission and durable availability state used by other
+front ends. A permission denial hides the corresponding control. If the actor is permitted but the
+selected entity is in the wrong lifecycle state, the control remains visible and disabled; the
+view then adds local constraints such as unsaved changes or work in flight. A specific operation
+may override a page default—for example, Publish authorization is independent of Edit. Projection
+errors are shown as application errors, and command execution rechecks all rules against current
+state.
+
 Fyne does not currently provide complete cross-platform screen-reader
 semantics for every widget. Labels, form items, visible button text, native
 menus, keyboard traversal, status text, and disabled states improve usable
