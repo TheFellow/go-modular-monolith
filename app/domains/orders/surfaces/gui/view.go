@@ -105,11 +105,12 @@ func (v *View) browser(s State) framework.CanvasObject {
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", v.presenter.Refresh), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlPlace, "Place order", v.presenter.StartPlace), ui.IconAdd))
 	busy := s.Loading || s.Submitting || s.Confirming
-	setEnabled(v.refresh, !busy)
+	setEnabled(v.refresh, !busy && s.CanList)
+	v.refresh.Hidden = !s.CanList
 	setEnabled(v.create, !busy)
 	v.create.Hidden = !s.CanPlace
-	setEnabled(v.expression, !busy)
-	setEnabled(bar.Apply, !busy)
+	setEnabled(v.expression, !busy && s.CanList)
+	setEnabled(bar.Apply, !busy && s.CanList)
 	columns := []string{"Menu", "Menu ID", "Status", "Items", "Total quantity", "Total", "Created", "Completed", "Tags", "Actions"}
 	if v.list == nil {
 		v.list = ui.NewAutoPagingRowTable(func() (int, int) { return len(v.state.Rows), len(columns) }, func() framework.CanvasObject {
@@ -168,7 +169,9 @@ func (v *View) browser(s State) framework.CanvasObject {
 	}
 	v.list.Refresh()
 	list := framework.CanvasObject(v.list)
-	if len(s.Rows) == 0 && !s.Loading {
+	if !s.CanList {
+		list = ui.EmptyCollection(ui.IconEmpty, "Orders unavailable", "You do not have permission to browse orders.")
+	} else if len(s.Rows) == 0 && !s.Loading {
 		list = ui.EmptyCollection(ui.IconEmpty, "No orders found", "Adjust the filter or place an order.")
 	}
 	status := ""

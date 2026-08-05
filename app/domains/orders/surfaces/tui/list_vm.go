@@ -58,18 +58,19 @@ type ListViewModel struct {
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
 
-	list     list.Model
-	detail   *DetailViewModel
-	mode     listMode
-	dialog   *components.TaggedConfirm[tag.Tags]
-	tags     *components.TagEditor[cedar.EntityUID, tag.Tags]
-	filter   *filterVM
-	place    *placeVM
-	workflow uint64
-	spinner  tui.Spinner
-	loading  bool
-	mutating bool
-	err      error
+	list      list.Model
+	detail    *DetailViewModel
+	mode      listMode
+	dialog    *components.TaggedConfirm[tag.Tags]
+	tags      *components.TagEditor[cedar.EntityUID, tag.Tags]
+	filter    *filterVM
+	place     *placeVM
+	workflow  uint64
+	spinner   tui.Spinner
+	loading   bool
+	mutating  bool
+	err       error
+	actionErr error
 
 	completeTarget *ordersmodels.Order
 	cancelTarget   *ordersmodels.Order
@@ -113,10 +114,17 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		request:      orders.ListRequest{Limit: paging.DefaultLimit},
 	}
 	vm.spinner = tui.NewSpinner("Loading orders...", vm.styles.Subtitle)
+	if app != nil {
+		vm.syncActions()
+	}
 	return vm
 }
 
 func (m *ListViewModel) Init() tea.Cmd {
+	if !m.actionEnabled(orders.ControlList) {
+		m.loading = false
+		return nil
+	}
 	m.loading = true
 	return tea.Batch(m.spinner.Init(), m.loadOrders())
 }
@@ -248,6 +256,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 				return m, nil
 			}
 			if msg.String() == keyname.Submit {
+				if !m.actionEnabled(orders.ControlList) {
+					return m, nil
+				}
 				req, err := m.filter.Request()
 				if err != nil {
 					return m, nil
@@ -278,6 +289,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
+			if !m.actionEnabled(orders.ControlList) {
+				return m, nil
+			}
 			m.loading = true
 			m.err = nil
 			return m, tea.Batch(m.spinner.Init(), m.loadOrders())
@@ -305,15 +319,18 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 			m.place = newPlaceVM(m.app, m.workflow)
 			return m, m.place.Init()
 		case msg.String() == "f":
+			if !m.actionEnabled(orders.ControlList) {
+				return m, nil
+			}
 			m.mode, m.filter = listModeFiltering, newFilterVM(m.request)
 			return m, m.filter.Init()
-		case msg.String() == "]" && m.next != "":
+		case msg.String() == "]" && m.next != "" && m.actionEnabled(orders.ControlList):
 			m.history = append(m.history, m.request.Cursor)
 			m.restoreID = selectedOrderID(m.selectedOrder())
 			m.request.Cursor = m.next
 			m.loading, m.err = true, nil
 			return m, tea.Batch(m.spinner.Init(), m.loadOrders())
-		case msg.String() == "[" && len(m.history) > 0:
+		case msg.String() == "[" && len(m.history) > 0 && m.actionEnabled(orders.ControlList):
 			i := len(m.history) - 1
 			m.request.Cursor = m.history[i]
 			m.history = m.history[:i]
@@ -366,6 +383,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	}
+	if !m.actionEnabled(orders.ControlList) {
+		return m, nil
+	}
 
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
@@ -402,6 +422,8 @@ func (m *ListViewModel) View() string {
 	}
 	if m.err != nil {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
+	} else if m.actionErr != nil {
+		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.actionErr))
 	}
 	listView = m.styles.ListPane.Width(tui.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
@@ -424,12 +446,15 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	if m.mode == listModePlacing {
 		return []key.Binding{keys.Standard.Submit, m.keys.Back}
 	}
-	return m.visibleBindings([]key.Binding{
-		m.keys.Up, m.keys.Down,
-		m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
-		m.keys.Create, m.keys.Complete, m.keys.Cancel, m.keys.Tags,
-		m.keys.Refresh, m.keys.Back,
-	})
+	bindings := []key.Binding{}
+	if m.actionEnabled(orders.ControlList) {
+		bindings = append(bindings, m.keys.Up, m.keys.Down, m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage)
+	}
+	bindings = append(bindings, m.visibleBindings([]key.Binding{m.keys.Create, m.keys.Complete, m.keys.Cancel, m.keys.Tags})...)
+	if m.actionEnabled(orders.ControlList) {
+		bindings = append(bindings, m.keys.Refresh)
+	}
+	return append(bindings, m.keys.Back)
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
@@ -448,27 +473,35 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 	if m.mode == listModePlacing {
 		return [][]key.Binding{{keys.Standard.Submit, m.keys.Back}}
 	}
-	return m.visibleBindingGroups([][]key.Binding{
-		{m.keys.Up, m.keys.Down, m.keys.Enter},
-		{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
-		{m.keys.Create, m.keys.Complete, m.keys.Cancel, m.keys.Tags},
-		{m.keys.Refresh, m.keys.Back},
-	})
+	navigation, paging, last := []key.Binding{}, []key.Binding{}, []key.Binding{m.keys.Back}
+	if m.actionEnabled(orders.ControlList) {
+		navigation = append(navigation, m.keys.Up, m.keys.Down, m.keys.Enter)
+		paging = append(paging, m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage)
+		last = append([]key.Binding{m.keys.Refresh}, last...)
+	}
+	return m.visibleBindingGroups([][]key.Binding{navigation, paging, []key.Binding{m.keys.Create, m.keys.Complete, m.keys.Cancel, m.keys.Tags}, last})
 }
 
 func (m *ListViewModel) syncActions() {
 	states, err := m.projector.Project(m.app.Context(), m.app.Context().Principal(), m.selectedOrder())
 	if err != nil {
 		m.actions = nil
-		m.err = err
+		m.actionErr = err
+		m.loading = false
 		m.detail.SetActions(nil)
 		return
 	}
+	m.actionErr = nil
 	m.actions = make(map[actions.ID]actions.State, len(states))
 	for _, state := range states {
 		m.actions[state.ID] = state
 	}
 	m.detail.SetActions(m.actions)
+	if !m.actionEnabled(orders.ControlList) {
+		m.loading = false
+		m.list.SetItems(nil)
+		m.syncDetail()
+	}
 }
 
 func (m *ListViewModel) actionEnabled(id actions.ID) bool {

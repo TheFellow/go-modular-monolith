@@ -3,6 +3,7 @@ package gui
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -73,20 +74,20 @@ type Row struct {
 	Total    string
 }
 type State struct {
-	Mode                                            Mode
-	Loading, CatalogLoading, Submitting, Confirming bool
-	Rows                                            []Row
-	Selected                                        *Row
-	Filter                                          Filter
-	Cursor, Next                                    paging.Cursor
-	History                                         []paging.Cursor
-	Form                                            Form
-	Menus                                           []MenuOption
-	Drinks                                          []DrinkOption
-	Err                                             error
-	CanPlace, CanComplete, CanCancel, CanTag        bool
-	Actions                                         map[actions.ID]actions.State
-	Dirty                                           bool
+	Mode                                              Mode
+	Loading, CatalogLoading, Submitting, Confirming   bool
+	Rows                                              []Row
+	Selected                                          *Row
+	Filter                                            Filter
+	Cursor, Next                                      paging.Cursor
+	History                                           []paging.Cursor
+	Form                                              Form
+	Menus                                             []MenuOption
+	Drinks                                            []DrinkOption
+	Err                                               error
+	CanList, CanPlace, CanComplete, CanCancel, CanTag bool
+	Actions                                           map[actions.ID]actions.State
+	Dirty                                             bool
 }
 type Dependencies struct {
 	Executor   ui.Executor
@@ -113,6 +114,7 @@ type Presenter struct {
 	changed       func(State)
 	confirmTarget *models.Order
 	projector     orders.ActionProjector
+	actionErr     error
 }
 
 func NewPresenter(session *app.Session, deps Dependencies, projectors ...orders.ActionProjector) *Presenter {
@@ -135,11 +137,17 @@ func (p *Presenter) Observe(fn func(State)) { p.changed = fn; p.publish() }
 func (p *Presenter) State() State           { return cloneState(p.state) }
 
 func (p *Presenter) Refresh() {
+	if !actionEnabled(p.state.Actions, orders.ControlList) {
+		return
+	}
 	p.state.Cursor, p.state.Next, p.state.History = "", "", nil
 	p.loadPage(false)
 }
 
 func (p *Presenter) loadPage(appendPage bool) {
+	if !actionEnabled(p.state.Actions, orders.ControlList) {
+		return
+	}
 	f, cursor := p.state.Filter, p.state.Cursor
 	p.load.LoadContext(p.app.Context(), func(ctx context.Context) (listResult, error) {
 		op := p.app.ContextFrom(ctx)
@@ -180,7 +188,7 @@ func (p *Presenter) loadPage(appendPage bool) {
 	})
 }
 func (p *Presenter) ApplyFilter(filter Filter) bool {
-	if p.busy() {
+	if p.busy() || !actionEnabled(p.state.Actions, orders.ControlList) {
 		return false
 	}
 	if filter.Limit <= 0 {
@@ -193,7 +201,7 @@ func (p *Presenter) ApplyFilter(filter Filter) bool {
 	return true
 }
 func (p *Presenter) NextPage() {
-	if p.busy() || p.state.Next == "" {
+	if p.busy() || p.state.Next == "" || !actionEnabled(p.state.Actions, orders.ControlList) {
 		return
 	}
 	p.state.History = append(p.state.History, p.state.Cursor)
@@ -201,7 +209,7 @@ func (p *Presenter) NextPage() {
 	p.loadPage(true)
 }
 func (p *Presenter) PreviousPage() {
-	if p.busy() || len(p.state.History) == 0 {
+	if p.busy() || len(p.state.History) == 0 || !actionEnabled(p.state.Actions, orders.ControlList) {
 		return
 	}
 	n := len(p.state.History) - 1
@@ -210,7 +218,7 @@ func (p *Presenter) PreviousPage() {
 	p.loadPage(false)
 }
 func (p *Presenter) Select(index int) {
-	if p.busy() || p.state.Mode != Browsing {
+	if p.busy() || p.state.Mode != Browsing || !actionEnabled(p.state.Actions, orders.ControlList) {
 		return
 	}
 	if index < 0 || index >= len(p.state.Rows) {
@@ -225,7 +233,7 @@ func (p *Presenter) Select(index int) {
 }
 
 func (p *Presenter) ListPermissions(index int) (complete, cancel, tags bool) {
-	if index < 0 || index >= len(p.state.Rows) {
+	if index < 0 || index >= len(p.state.Rows) || !actionEnabled(p.state.Actions, orders.ControlList) {
 		return false, false, false
 	}
 	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), &p.state.Rows[index].Order)
@@ -627,11 +635,17 @@ func (p *Presenter) permissions() {
 func (p *Presenter) permissionsFor(selected *models.Order) error {
 	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), selected)
 	if err != nil {
+		p.actionErr = err
 		p.state.Actions = nil
-		p.state.CanPlace, p.state.CanComplete, p.state.CanCancel, p.state.CanTag = false, false, false, false
+		p.state.CanList, p.state.CanPlace, p.state.CanComplete, p.state.CanCancel, p.state.CanTag = false, false, false, false, false
 		return err
 	}
+	if p.actionErr != nil && stderrors.Is(p.state.Err, p.actionErr) {
+		p.state.Err = nil
+	}
+	p.actionErr = nil
 	p.state.Actions = indexActions(states)
+	p.state.CanList = actionEnabled(p.state.Actions, orders.ControlList)
 	p.state.CanPlace = actionEnabled(p.state.Actions, orders.ControlPlace)
 	p.state.CanComplete = actionEnabled(p.state.Actions, orders.ControlComplete)
 	p.state.CanCancel = actionEnabled(p.state.Actions, orders.ControlCancel)

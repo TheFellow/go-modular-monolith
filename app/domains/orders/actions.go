@@ -12,6 +12,7 @@ import (
 
 // Stable identities shared by every order presentation adapter.
 const (
+	ControlList     actions.ID = "orders.list"
 	ControlPlace    actions.ID = "orders.place"
 	ControlComplete actions.ID = "orders.complete"
 	ControlCancel   actions.ID = "orders.cancel"
@@ -36,9 +37,11 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 	permission := func(action cedar.EntityUID, resource cedar.Entity) actions.Permission {
 		return actions.Require(func(ctx context.Context) error { return authorize(ctx, principal, action, resource) })
 	}
-	declaration := actions.Group{Controls: []actions.Control{{
-		ID: ControlPlace, Permission: permission(ordersauthz.ActionPlace, (models.Order{}).CedarEntity()),
-	}}}
+	collection := models.Order{ID: models.NewOrderID("workspace")}.CedarEntity()
+	declaration := actions.Group{Controls: []actions.Control{
+		{ID: ControlList, Permission: permission(ordersauthz.ActionList, collection)},
+		{ID: ControlPlace, Permission: permission(ordersauthz.ActionPlace, (models.Order{}).CedarEntity())},
+	}}
 	if selected == nil {
 		return actions.Evaluate(ctx, declaration)
 	}

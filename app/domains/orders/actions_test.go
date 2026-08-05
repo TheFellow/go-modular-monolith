@@ -28,6 +28,7 @@ func TestActionProjectorIndependentlyAuthorizesAndProjectsLifecycle(t *testing.T
 	states, err := projector.Project(context.Background(), principal, order)
 	testutil.Ok(t, err)
 	got := actionMap(states)
+	testutil.ErrorIf(t, !got[orders.ControlList].Visible, "list should be visible")
 	testutil.ErrorIf(t, !got[orders.ControlPlace].Visible, "place should be visible")
 	testutil.ErrorIf(t, !got[orders.ControlComplete].Visible || got[orders.ControlComplete].Enabled, "complete = %#v", got[orders.ControlComplete])
 	testutil.StringContains(t, got[orders.ControlComplete].DisabledReason, "completed")
@@ -44,6 +45,23 @@ func TestActionProjectorPendingLifecycle(t *testing.T) {
 		testutil.Equals(t, got[orders.ControlComplete].Enabled, status == models.OrderStatusPending)
 		testutil.Equals(t, got[orders.ControlCancel].Enabled, status == models.OrderStatusPending)
 	}
+}
+
+func TestActionProjectorUsesStableCollectionResourceAndDistinctListPermission(t *testing.T) {
+	var listResource cedar.Entity
+	projector := orders.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, resource cedar.Entity) error {
+		if action == ordersauthz.ActionList {
+			listResource = resource
+			return apperrors.Permissionf("denied")
+		}
+		return nil
+	}}
+	states, err := projector.Project(context.Background(), cedar.EntityUID{}, nil)
+	testutil.Ok(t, err)
+	got := actionMap(states)
+	testutil.ErrorIf(t, got[orders.ControlList].Visible, "denied list should be hidden")
+	testutil.ErrorIf(t, !got[orders.ControlPlace].Enabled, "list denial leaked into placement")
+	testutil.Equals(t, listResource.UID.ID, cedar.String("workspace"))
 }
 
 func TestActionProjectorSurfacesEvaluatorFailure(t *testing.T) {

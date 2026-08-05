@@ -131,6 +131,7 @@ func TestPresenterExposesOnlyAuthorizedOrderActions(t *testing.T) {
 	reader.Select(0)
 	state = reader.State()
 	testutil.ErrorIf(t, state.CanPlace || state.CanComplete || state.CanCancel || state.CanTag, "read-only actor actions disclosed: %#v", state)
+	testutil.ErrorIf(t, !state.CanList, "read-only actor could not browse orders: %#v", state)
 }
 
 func TestPresenterSurfacesActionProjectionEvaluatorFailure(t *testing.T) {
@@ -140,6 +141,29 @@ func TestPresenterSurfacesActionProjectionEvaluatorFailure(t *testing.T) {
 	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}}, projector)
 	testutil.ErrorIf(t, !stderrors.Is(p.State().Err, want), "projection error = %v", p.State().Err)
 	testutil.ErrorIf(t, p.State().CanPlace, "failed projection exposed place")
+}
+
+func TestPresenterRecoversFromActionProjectionFailure(t *testing.T) {
+	f := testutil.NewFixture(t)
+	want := stderrors.New("policy evaluator unavailable")
+	failing := true
+	projector := orders.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error {
+		if failing {
+			return want
+		}
+		return nil
+	}}
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}}, projector)
+	testutil.ErrorIf(t, !stderrors.Is(p.State().Err, want), "projection error = %v", p.State().Err)
+	failing = false
+	testutil.Ok(t, p.permissionsFor(nil))
+	testutil.ErrorIf(t, p.State().Err != nil, "recovered projection retained error: %v", p.State().Err)
+	testutil.ErrorIf(t, !p.State().CanList, "recovered projection did not expose list")
+	p.actionErr = want
+	businessErr := stderrors.New("order load failed")
+	p.state.Err = businessErr
+	testutil.Ok(t, p.permissionsFor(nil))
+	testutil.ErrorIf(t, !stderrors.Is(p.State().Err, businessErr), "projection recovery cleared business error: %v", p.State().Err)
 }
 
 func TestDirtyPlaceBackAndResetRequireConfirmationAndRetainInput(t *testing.T) {
