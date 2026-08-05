@@ -4,6 +4,7 @@ package gui
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 
@@ -24,6 +25,7 @@ import (
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -61,6 +63,8 @@ const (
 type EntityOption struct {
 	UID          cedar.EntityUID
 	Name, Detail string
+	Resource     cedar.Entity
+	Actions      map[actions.ID]actions.State
 }
 
 type Result struct {
@@ -90,6 +94,7 @@ type State struct {
 	Err               error
 	SummarySort       int
 	SummaryDescending bool
+	Actions           map[actions.ID]actions.State
 }
 
 type Dependencies struct {
@@ -99,16 +104,36 @@ type Dependencies struct {
 }
 
 type Presenter struct {
-	app     *app.Session
-	dialogs ui.Dialogs
-	load    *ui.LatestRequest[any]
-	submit  *ui.Submission
-	state   State
-	changed func(State)
+	app       *app.Session
+	dialogs   ui.Dialogs
+	load      *ui.LatestRequest[any]
+	submit    *ui.Submission
+	state     State
+	changed   func(State)
+	projector tagging.ActionProjector
 }
 
-func NewPresenter(session *app.Session, deps Dependencies) *Presenter {
-	return &Presenter{app: session, dialogs: deps.Dialogs, load: ui.NewLatestRequest[any](deps.Executor, deps.Dispatcher), submit: ui.NewSubmission(deps.Executor, deps.Dispatcher)}
+func NewPresenter(session *app.Session, deps Dependencies, projectors ...tagging.ActionProjector) *Presenter {
+	var projector tagging.ActionProjector
+	if session != nil && session.Tags != nil {
+		projector = session.Tags.NewActionProjector()
+	}
+	if len(projectors) > 0 {
+		projector = projectors[0]
+	}
+	p := &Presenter{app: session, dialogs: deps.Dialogs, load: ui.NewLatestRequest[any](deps.Executor, deps.Dispatcher), submit: ui.NewSubmission(deps.Executor, deps.Dispatcher), projector: projector}
+	if session != nil {
+		if states, err := projector.ProjectDiscovery(session.Context(), session.Context().Principal()); err != nil {
+			p.state.Err = ui.PresentError(err)
+		} else {
+			p.state.Actions = actionMap(states)
+		}
+	} else {
+		p.state.Actions = map[actions.ID]actions.State{
+			tagging.ControlShow: {ID: tagging.ControlShow, Visible: true, Enabled: true}, tagging.ControlSummary: {ID: tagging.ControlSummary, Visible: true, Enabled: true},
+		}
+	}
+	return p
 }
 
 func (p *Presenter) Observe(fn func(State)) { p.changed = fn; p.publish() }
@@ -119,10 +144,14 @@ func (p *Presenter) Start(operation Operation) {
 		return
 	}
 	p.load.Invalidate()
-	p.state = State{Operation: operation}
+	discovery := maps.Clone(p.state.Actions)
+	p.state = State{Operation: operation, Actions: discovery}
 	if !operation.valid() {
 		p.fail(apperrors.Invalidf("invalid tag operation"))
 		p.publish()
+		return
+	}
+	if id := discoveryControl(operation); id != "" && !actionEnabled(p.state.Actions, id) {
 		return
 	}
 	switch operation {
@@ -159,6 +188,16 @@ func (p *Presenter) SelectType(kind cedar.EntityType) {
 			ui.ShowPresentation(p.dialogs, err)
 			p.publish()
 			return
+		}
+		for i := range options {
+			states, err := p.projector.ProjectTarget(p.app.Context(), p.app.Context().Principal(), options[i].Resource)
+			if err != nil {
+				p.state.Mode, p.state.Err = PickingType, ui.PresentError(err)
+				ui.ShowPresentation(p.dialogs, err)
+				p.publish()
+				return
+			}
+			options[i].Actions = actionMap(states)
 		}
 		p.state.Entities, p.state.Query, p.state.Mode, p.state.Err = cloneEntities(options), "", PickingEntity, nil
 		p.applyQuery()
@@ -215,7 +254,7 @@ func (p *Presenter) ResetList() {
 		return
 	}
 	p.load.Invalidate()
-	p.state = State{Operation: Summary}
+	p.state = State{Operation: Summary, Actions: discoveryActions(p.state.Actions)}
 	p.runQuery(func(ctx *middleware.Context) (any, error) { return p.app.Tags.Summary(ctx) })
 }
 
@@ -225,6 +264,9 @@ func (p *Presenter) SelectEntity(index int) {
 	}
 	selected := p.state.Visible[index]
 	p.state.Target, p.state.TargetName, p.state.Value, p.state.Err = selected.UID, selected.Name, "", nil
+	for id, state := range selected.Actions {
+		p.state.Actions[id] = state
+	}
 	if p.state.Operation == Inspect {
 		target := selected.UID
 		p.runQuery(func(ctx *middleware.Context) (any, error) { return p.app.Tags.List(ctx, target) })
@@ -313,7 +355,7 @@ func (p *Presenter) Back() bool {
 			p.state.Result = Result{Summaries: append([]tagging.Summary(nil), p.state.Catalog...)}
 			p.applySummaryQuery()
 		} else {
-			p.state = State{Mode: Browsing}
+			p.state = State{Mode: Browsing, Actions: discoveryActions(p.state.Actions)}
 		}
 	}
 	p.publish()
@@ -438,7 +480,7 @@ func (p *Presenter) loadEntities(ctx *middleware.Context, kind cedar.EntityType)
 		}
 		out := make([]EntityOption, 0, len(items))
 		for _, v := range items {
-			out = append(out, EntityOption{v.EntityUID(), v.Name, fmt.Sprintf("%s • %s", v.Category, v.ID)})
+			out = append(out, EntityOption{UID: v.EntityUID(), Name: v.Name, Detail: fmt.Sprintf("%s • %s", v.Category, v.ID), Resource: v.CedarEntity()})
 		}
 		return out, nil
 	case entity.TypeIngredient:
@@ -450,7 +492,7 @@ func (p *Presenter) loadEntities(ctx *middleware.Context, kind cedar.EntityType)
 		}
 		out := make([]EntityOption, 0, len(items))
 		for _, v := range items {
-			out = append(out, EntityOption{v.EntityUID(), v.Name, fmt.Sprintf("%s • %s", v.Category, v.ID)})
+			out = append(out, EntityOption{UID: v.EntityUID(), Name: v.Name, Detail: fmt.Sprintf("%s • %s", v.Category, v.ID), Resource: v.CedarEntity()})
 		}
 		return out, nil
 	case entity.TypeInventory:
@@ -470,7 +512,7 @@ func (p *Presenter) loadEntities(ctx *middleware.Context, kind cedar.EntityType)
 			if name == "" {
 				name = "Unknown ingredient"
 			}
-			out = append(out, EntityOption{v.EntityUID(), name, fmt.Sprintf("%s • %s", v.Amount, v.ID)})
+			out = append(out, EntityOption{UID: v.EntityUID(), Name: name, Detail: fmt.Sprintf("%s • %s", v.Amount, v.ID), Resource: v.CedarEntity()})
 		}
 		return out, nil
 	case entity.TypeMenu:
@@ -482,7 +524,7 @@ func (p *Presenter) loadEntities(ctx *middleware.Context, kind cedar.EntityType)
 		}
 		out := make([]EntityOption, 0, len(items))
 		for _, v := range items {
-			out = append(out, EntityOption{v.EntityUID(), v.Name, fmt.Sprintf("%s • %s", v.Status, v.ID)})
+			out = append(out, EntityOption{UID: v.EntityUID(), Name: v.Name, Detail: fmt.Sprintf("%s • %s", v.Status, v.ID), Resource: v.CedarEntity()})
 		}
 		return out, nil
 	case entity.TypeOrder:
@@ -494,7 +536,7 @@ func (p *Presenter) loadEntities(ctx *middleware.Context, kind cedar.EntityType)
 		}
 		out := make([]EntityOption, 0, len(items))
 		for _, v := range items {
-			out = append(out, EntityOption{v.EntityUID(), "Order " + v.ID.String(), fmt.Sprintf("%s • menu %s", v.Status, v.MenuID)})
+			out = append(out, EntityOption{UID: v.EntityUID(), Name: "Order " + v.ID.String(), Detail: fmt.Sprintf("%s • menu %s", v.Status, v.MenuID), Resource: v.CedarEntity()})
 		}
 		return out, nil
 	default:
@@ -528,7 +570,13 @@ func (p *Presenter) publish() {
 		p.changed(cloneState(p.state))
 	}
 }
-func cloneEntities(v []EntityOption) []EntityOption { return append([]EntityOption(nil), v...) }
+func cloneEntities(v []EntityOption) []EntityOption {
+	result := append([]EntityOption(nil), v...)
+	for i := range result {
+		result[i].Actions = maps.Clone(result[i].Actions)
+	}
+	return result
+}
 func cloneResult(r Result) Result {
 	r.Tags = append(tag.Tags(nil), r.Tags...)
 	r.References = append([]tagging.Reference(nil), r.References...)
@@ -541,5 +589,41 @@ func cloneState(s State) State {
 	s.Result = cloneResult(s.Result)
 	s.Catalog = append([]tagging.Summary(nil), s.Catalog...)
 	s.VisibleSummaries = append([]tagging.Summary(nil), s.VisibleSummaries...)
+	s.Actions = maps.Clone(s.Actions)
 	return s
+}
+
+func actionMap(states []actions.State) map[actions.ID]actions.State {
+	result := make(map[actions.ID]actions.State, len(states))
+	for _, state := range states {
+		result[state.ID] = state
+	}
+	return result
+}
+func actionEnabled(states map[actions.ID]actions.State, id actions.ID) bool {
+	state, ok := states[id]
+	return ok && state.Visible && state.Enabled
+}
+func discoveryControl(operation Operation) actions.ID {
+	switch operation {
+	case ShowExact, ShowKey:
+		return tagging.ControlShow
+	case Summary:
+		return tagging.ControlSummary
+	}
+	return ""
+}
+func targetControl(operation Operation) actions.ID {
+	switch operation {
+	case Inspect:
+		return tagging.ControlInspect
+	case Add:
+		return tagging.ControlTag
+	case Remove:
+		return tagging.ControlUntag
+	}
+	return ""
+}
+func discoveryActions(states map[actions.ID]actions.State) map[actions.ID]actions.State {
+	return map[actions.ID]actions.State{tagging.ControlShow: states[tagging.ControlShow], tagging.ControlSummary: states[tagging.ControlSummary]}
 }
