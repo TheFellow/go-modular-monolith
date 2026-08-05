@@ -8,8 +8,10 @@ import (
 
 	application "github.com/TheFellow/go-modular-monolith/app"
 	orders "github.com/TheFellow/go-modular-monolith/app/domains/orders"
+	ordersauthz "github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/list"
@@ -44,12 +46,45 @@ func TestUnauthorizedOrderKeysAndHelpAreOmitted(t *testing.T) {
 	testutil.Equals(t, vm.mode, listModeBrowsing)
 }
 
+func TestDeniedOrderListBlocksLoadingAndNavigationButNotPlacement(t *testing.T) {
+	fix := testutil.NewFixture(t)
+	vm := NewListViewModel(fix.App)
+	vm.projector = orders.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
+		if action == ordersauthz.ActionList {
+			return apperrors.Permissionf("denied")
+		}
+		return nil
+	}}
+	vm.syncActions()
+	testutil.ErrorIf(t, vm.Init() != nil, "denied list started loading")
+	testutil.ErrorIf(t, !vm.actionEnabled(orders.ControlPlace), "list denial disabled placement")
+	_, cmd := vm.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("f")})
+	testutil.ErrorIf(t, cmd != nil || vm.mode != listModeBrowsing, "denied list opened filter")
+	for _, binding := range vm.ShortHelp() {
+		help := binding.Help()
+		testutil.ErrorIf(t, help.Key == vm.keys.Up.Help().Key || help.Key == vm.keys.Refresh.Help().Key, "denied list exposed navigation help %q", help.Key)
+	}
+}
+
 func TestOrderProjectionEvaluatorErrorsSurfaceInTUI(t *testing.T) {
 	fix := testutil.NewFixture(t)
 	want := stderrors.New("policy evaluator unavailable")
+	businessErr := stderrors.New("order load failed")
 	vm := NewListViewModel(fix.App)
-	vm.projector = orders.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
+	vm.err = businessErr
+	failing := true
+	vm.projector = orders.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error {
+		if failing {
+			return want
+		}
+		return nil
+	}}
 	vm.syncActions()
-	testutil.ErrorIf(t, !stderrors.Is(vm.err, want), "projection error = %v", vm.err)
+	testutil.ErrorIf(t, !stderrors.Is(vm.actionErr, want), "projection error = %v", vm.actionErr)
 	testutil.Equals(t, len(vm.actions), 0)
+	failing = false
+	vm.syncActions()
+	testutil.ErrorIf(t, vm.actionErr != nil, "recovered projection error = %v", vm.actionErr)
+	testutil.ErrorIf(t, !stderrors.Is(vm.err, businessErr), "projection recovery cleared business error: %v", vm.err)
+	testutil.Equals(t, vm.actionEnabled(orders.ControlList), true)
 }
