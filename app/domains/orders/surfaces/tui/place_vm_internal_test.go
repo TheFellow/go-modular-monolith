@@ -40,13 +40,13 @@ func TestPlaceVMFiltersCatalogAndCombinesDuplicateLines(t *testing.T) {
 
 func TestPlaceVMLoadsEveryPublishedMenuPage(t *testing.T) {
 	fix := testutil.NewFixture(t)
-	const published = 101
-	for i := range published {
-		testutil.CreateMenu(t, fix, fmt.Sprintf("Menu %03d", i), testutil.Published())
-	}
-	testutil.CreateMenu(t, fix, "Unpublished")
 	ingredient := testutil.CreateIngredient(t, fix, ingredientsmodels.Ingredient{Name: "Unavailable Base", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
 	unavailable := testutil.CreateDrink(t, fix, drinksmodels.Drink{Name: "Unavailable Drink", Category: drinksmodels.DrinkCategoryHighball, Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)}}, Steps: []string{"Build"}}})
+	const published = 101
+	for i := range published {
+		testutil.CreateMenu(t, fix, fmt.Sprintf("Menu %03d", i), testutil.WithDrink(unavailable), testutil.Published())
+	}
+	testutil.CreateMenu(t, fix, "Unpublished")
 	testutil.CreateMenu(t, fix, "Unavailable Published", testutil.WithDrink(unavailable), testutil.Published())
 
 	v := newPlaceVM(fix.App, 1)

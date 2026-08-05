@@ -58,7 +58,15 @@ func TestListViewModel_ShowsStatusBadge(t *testing.T) {
 	f := testutil.NewFixture(t)
 
 	testutil.CreateMenu(t, f, "Draft Menu")
-	testutil.CreateMenu(t, f, "Published Menu", testutil.Published())
+	base := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Status Base", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
+		Name: "Status Drink", Category: drinksmodels.DrinkCategoryCocktail,
+		Recipe: drinksmodels.Recipe{
+			Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: base.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)}},
+			Steps:       []string{"Mix"},
+		},
+	})
+	testutil.CreateMenu(t, f, "Published Menu", testutil.WithDrink(drink), testutil.Published())
 
 	model := tuitest.InitAndLoad(t, menustui.NewListViewModel(
 		f.App,
