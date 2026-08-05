@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/set"
 )
 
 // ID is the stable identity of a control within a declaration. It should not
@@ -81,14 +82,14 @@ type State struct {
 // be non-empty and unique across the complete tree.
 func Evaluate(ctx context.Context, declaration Group) ([]State, error) {
 	states := make([]State, 0)
-	seen := make(map[ID]struct{})
-	if err := evaluateGroup(ctx, declaration, nil, seen, &states); err != nil {
+	var seen set.Set[ID]
+	if err := evaluateGroup(ctx, declaration, nil, &seen, &states); err != nil {
 		return nil, err
 	}
 	return states, nil
 }
 
-func evaluateGroup(ctx context.Context, group Group, inherited Authorize, seen map[ID]struct{}, states *[]State) error {
+func evaluateGroup(ctx context.Context, group Group, inherited Authorize, seen *set.Set[ID], states *[]State) error {
 	authorize, err := resolvePermission(group.Permission, inherited)
 	if err != nil {
 		return err
@@ -98,10 +99,10 @@ func evaluateGroup(ctx context.Context, group Group, inherited Authorize, seen m
 		if control.ID == "" {
 			return fmt.Errorf("actions: control ID must not be empty")
 		}
-		if _, exists := seen[control.ID]; exists {
+		if seen.Contains(control.ID) {
 			return fmt.Errorf("actions: duplicate control ID %q", control.ID)
 		}
-		seen[control.ID] = struct{}{}
+		seen.Add(control.ID)
 
 		controlAuthorize, err := resolvePermission(control.Permission, authorize)
 		if err != nil {

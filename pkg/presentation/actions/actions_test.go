@@ -128,6 +128,10 @@ func TestEvaluateRejectsInvalidDeclarations(t *testing.T) {
 			Controls: []actions.Control{{ID: "save"}},
 			Groups:   []actions.Group{{Controls: []actions.Control{{ID: "save"}}}},
 		}},
+		{name: "duplicate sibling ID", group: actions.Group{Groups: []actions.Group{
+			{Controls: []actions.Control{{ID: "save"}}},
+			{Controls: []actions.Control{{ID: "save"}}},
+		}}},
 		{name: "nil required permission", group: actions.Group{
 			Permission: actions.Require(nil),
 			Controls:   []actions.Control{{ID: "save"}},
