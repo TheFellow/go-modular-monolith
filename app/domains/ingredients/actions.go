@@ -5,6 +5,7 @@ import (
 
 	ingredientauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	pkgAuthz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	cedar "github.com/cedar-policy/cedar-go"
@@ -13,6 +14,7 @@ import (
 // Stable control identities let every presentation adapter bind its native
 // controls to the same ingredient capabilities.
 const (
+	ControlList   actions.ID = "ingredients.list"
 	ControlCreate actions.ID = "ingredients.create"
 	ControlEdit   actions.ID = "ingredients.edit"
 	ControlDelete actions.ID = "ingredients.delete"
@@ -44,9 +46,11 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 		})
 	}
 
-	declaration := actions.Group{Controls: []actions.Control{{
-		ID: ControlCreate, Permission: permission(ingredientauthz.ActionCreate, (models.Ingredient{}).CedarEntity()),
-	}}}
+	collection := models.Ingredient{ID: entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, "workspace"))}.CedarEntity()
+	declaration := actions.Group{Controls: []actions.Control{
+		{ID: ControlList, Permission: permission(ingredientauthz.ActionList, collection)},
+		{ID: ControlCreate, Permission: permission(ingredientauthz.ActionCreate, (models.Ingredient{}).CedarEntity())},
+	}}
 	if selected == nil {
 		return actions.Evaluate(ctx, declaration)
 	}
