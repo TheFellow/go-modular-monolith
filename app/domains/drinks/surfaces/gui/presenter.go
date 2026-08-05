@@ -10,7 +10,6 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	domain "github.com/TheFellow/go-modular-monolith/app/domains/drinks"
-	drinksauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsdomain "github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
@@ -19,10 +18,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	pkgAuthz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -58,23 +57,25 @@ type Form struct {
 	ReplaceTags                        bool
 }
 type State struct {
-	Mode                                Mode
-	FormInstance                        uint64
-	Loading, Submitting                 bool
-	CanUpdate, CanDelete, CanTag, Dirty bool
-	Items                               []*models.Drink
-	Selected                            *models.Drink
-	Filter                              Filter
-	Cursor, Next                        paging.Cursor
-	History                             []paging.Cursor
-	Form                                Form
-	Ingredients                         []IngredientOption
-	Err                                 error
+	Mode                                           Mode
+	FormInstance                                   uint64
+	Loading, Submitting                            bool
+	CanCreate, CanUpdate, CanDelete, CanTag, Dirty bool
+	Actions                                        map[actions.ID]actions.State
+	Items                                          []*models.Drink
+	Selected                                       *models.Drink
+	Filter                                         Filter
+	Cursor, Next                                   paging.Cursor
+	History                                        []paging.Cursor
+	Form                                           Form
+	Ingredients                                    []IngredientOption
+	Err                                            error
 }
 type Dependencies struct {
 	Executor   ui.Executor
 	Dispatcher ui.Dispatcher
 	Dialogs    ui.Dialogs
+	Projector  *domain.ActionProjector
 }
 type drinkCatalog struct {
 	drinks      []*models.Drink
@@ -92,10 +93,19 @@ type Presenter struct {
 	state            State
 	changed          func(State)
 	confirmingDelete bool
+	projector        domain.ActionProjector
 }
 
 func NewPresenter(session *app.Session, d Dependencies) *Presenter {
-	p := &Presenter{app: session, dialogs: d.Dialogs, state: State{Filter: Filter{Limit: ui.PageLimit}}}
+	projector := domain.NewActionProjector()
+	if d.Projector != nil {
+		projector = *d.Projector
+	}
+	p := &Presenter{app: session, dialogs: d.Dialogs, projector: projector, state: State{Filter: Filter{Limit: ui.PageLimit}}}
+	if err := p.permissionsFor(nil); err != nil {
+		p.state.Err = ui.PresentError(err)
+		ui.ShowPresentation(p.dialogs, err)
+	}
 	p.load = ui.NewLatestRequest[drinkCatalog](d.Executor, d.Dispatcher)
 	p.ingredients = ui.NewLatestRequest[[]IngredientOption](d.Executor, d.Dispatcher)
 	p.deleteCheck = ui.NewLatestRequest[int](d.Executor, d.Dispatcher)
@@ -174,13 +184,12 @@ func (p *Presenter) Select(i int) {
 	if i < 0 || i >= len(p.state.Items) {
 		p.state.Selected = nil
 		p.state.Mode = Browsing
+		p.permissions()
 	} else {
 		p.state.Selected = cloneDrink(p.state.Items[i])
 		p.state.FormInstance++
 		p.state.Form = formFromDrink(p.state.Selected)
-		p.state.CanUpdate = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), drinksauthz.ActionUpdate, p.state.Selected.CedarEntity()) == nil
-		p.state.CanDelete = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), drinksauthz.ActionDelete, p.state.Selected.CedarEntity()) == nil
-		p.state.CanTag = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), drinksauthz.ActionTag, p.state.Selected.CedarEntity()) == nil
+		p.permissions()
 		if p.state.CanUpdate {
 			p.state.Mode = Editing
 		} else {
@@ -230,6 +239,9 @@ func (p *Presenter) ResetList() {
 	p.leaveDetail(true)
 }
 func (p *Presenter) StartCreate() {
+	if !p.actionEnabled(domain.ControlCreate) {
+		return
+	}
 	p.state.FormInstance++
 	p.state.Mode, p.state.Form, p.state.Err = Creating, Form{Recipe: []RecipeRow{{Unit: measurement.UnitOz}}, ReplaceTags: true}, nil
 	p.publish()
@@ -240,8 +252,8 @@ func (p *Presenter) StartEdit() {
 		return
 	}
 	p.state.FormInstance++
-	p.state.CanUpdate = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), drinksauthz.ActionUpdate, p.state.Selected.CedarEntity()) == nil
-	if !p.state.CanUpdate {
+	p.permissions()
+	if !p.actionEnabled(domain.ControlEdit) {
 		p.state.Mode = Viewing
 		p.state.Form = formFromDrink(p.state.Selected)
 		p.publish()
@@ -252,7 +264,7 @@ func (p *Presenter) StartEdit() {
 	p.loadIngredients()
 }
 func (p *Presenter) StartTags() {
-	if p.state.Selected == nil {
+	if p.state.Selected == nil || !p.actionEnabled(domain.ControlTags) {
 		return
 	}
 	p.state.FormInstance++
@@ -349,7 +361,7 @@ func (p *Presenter) Save() bool {
 }
 func (p *Presenter) Delete() {
 	target := cloneDrink(p.state.Selected)
-	if target == nil || p.dialogs == nil || p.confirmingDelete || p.submit.Active() {
+	if target == nil || !p.actionEnabled(domain.ControlDelete) || p.dialogs == nil || p.confirmingDelete || p.submit.Active() {
 		return
 	}
 	p.confirmingDelete = true
@@ -433,6 +445,7 @@ func (p *Presenter) mutate(work func() error) bool {
 					p.state.Items[i] = cloneDrink(updated)
 				}
 			}
+			p.permissions()
 			p.publish()
 		} else {
 			p.state.Mode, p.state.Err = Browsing, nil
@@ -456,21 +469,54 @@ func (p *Presenter) publish() {
 		p.changed(cloneState(p.state))
 	}
 }
+
+func (p *Presenter) permissions() {
+	if err := p.permissionsFor(p.state.Selected); err != nil {
+		p.state.Err = ui.PresentError(err)
+		ui.ShowPresentation(p.dialogs, err)
+	}
+}
+
+func (p *Presenter) permissionsFor(drink *models.Drink) error {
+	p.state.Actions = nil
+	p.state.CanCreate, p.state.CanUpdate, p.state.CanDelete, p.state.CanTag = false, false, false, false
+	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), drink)
+	if err != nil {
+		return err
+	}
+	p.state.Actions = make(map[actions.ID]actions.State, len(states))
+	for _, state := range states {
+		p.state.Actions[state.ID] = state
+	}
+	p.state.CanCreate = p.state.Actions[domain.ControlCreate].Visible
+	p.state.CanUpdate = p.state.Actions[domain.ControlEdit].Visible
+	p.state.CanDelete = p.state.Actions[domain.ControlDelete].Visible
+	p.state.CanTag = p.state.Actions[domain.ControlTags].Visible
+	return nil
+}
+
+func (p *Presenter) actionEnabled(id actions.ID) bool {
+	state, ok := p.state.Actions[id]
+	return ok && state.Visible && state.Enabled
+}
 func (p *Presenter) reselect() {
 	if p.state.Selected == nil {
 		if len(p.state.Items) > 0 {
 			p.state.Selected = cloneDrink(p.state.Items[0])
 		}
+		p.permissions()
 		return
 	}
 	id := p.state.Selected.ID
 	for _, item := range p.state.Items {
 		if item.ID == id {
 			p.state.Selected = cloneDrink(item)
+			p.permissions()
 			return
 		}
 	}
 	p.state.Selected = nil
+	p.permissions()
 }
 
 func (p *Presenter) formDrink() (*models.Drink, error) {
@@ -555,6 +601,10 @@ func cloneState(in State) State {
 	out.Selected = cloneDrink(in.Selected)
 	out.Ingredients = append([]IngredientOption(nil), in.Ingredients...)
 	out.Form = cloneForm(in.Form)
+	out.Actions = make(map[actions.ID]actions.State, len(in.Actions))
+	for id, state := range in.Actions {
+		out.Actions[id] = state
+	}
 	return out
 }
 func cloneForm(in Form) Form {
