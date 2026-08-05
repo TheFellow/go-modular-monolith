@@ -6,7 +6,6 @@ prevent imports of `app`, `main`, sibling toolkits, and mismatched surface types
 
 | Toolkit                      | Owns                                                                                               | Used by                                        |
 | ---------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| [Actions](actions/readme.md) | Framework-neutral authorization and availability projection                                        | GUI, TUI, and future web domain adapters       |
 | [CLI](cli/readme.md)         | JSON input/output and reflection-based tables                                                      | `main/cli` composition and CLI domain adapters |
 | [TUI](tui/readme.md)         | Bubble Tea view contracts, list/detail state, layout, components, forms, dialogs, styles, and keys | `main/tui` and TUI domain view models          |
 | [GUI](gui/readme.md)         | Fyne shell, standard pages, async publication, dialogs, semantic controls, tags, and validation    | `main/gui` and GUI domain presenters/views     |
@@ -21,10 +20,11 @@ app/domains/*/surfaces/*    domain-aware presentation adapters
 pkg/toolkits/<surface>      reusable framework mechanics
 ```
 
-`pkg/toolkits/actions` sits beside the framework toolkits rather than beneath one of them. A
-domain-owned projector declares stable control IDs, permission inheritance or overrides, and
-business conditions once. Each surface maps the resulting visible/enabled states into native
-widgets or key bindings and adds only its transient interaction constraints.
+The framework-neutral [action presentation model](../presentation/actions/readme.md) sits outside
+the surface-specific toolkits. A domain-owned projector declares stable control IDs, permission
+inheritance or overrides, and business conditions once. Each surface maps the resulting
+visible/enabled states into native widgets or key bindings and adds only its transient interaction
+constraints.
 
 Start with the README for the surface you are changing, then inspect one representative adapter:
 ingredients is a compact CRUD example; menus is a useful stateful-workflow example. Keep business

@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
-	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/actions"
 )
 
 func allow(context.Context) error { return nil }

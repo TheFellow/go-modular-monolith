@@ -18,7 +18,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/queries"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/actions"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
