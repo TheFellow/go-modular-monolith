@@ -8,8 +8,10 @@ import (
 
 	application "github.com/TheFellow/go-modular-monolith/app"
 	menus "github.com/TheFellow/go-modular-monolith/app/domains/menus"
+	menusauthz "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/bubbles/list"
@@ -79,4 +81,49 @@ func TestActionProjectionEvaluatorErrorsSurface(t *testing.T) {
 		help := binding.Help()
 		testutil.ErrorIf(t, help.Key == "c", "%v", "failed projection exposed create help")
 	}
+}
+
+func TestMenuListProjectionGuardsCollectionKeysAndLoading(t *testing.T) {
+	fix := testutil.NewFixture(t)
+	vm := NewListViewModel(fix.App)
+	vm.projector = menus.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
+		if action == menusauthz.ActionList {
+			return apperrors.Permissionf("list denied")
+		}
+		return nil
+	}}
+	vm.syncActions()
+	testutil.Equals(t, vm.actionEnabled(menus.ControlList), false)
+	testutil.Equals(t, vm.actionEnabled(menus.ControlCreate), true)
+	testutil.Equals(t, vm.Init() == nil, true)
+	testutil.Equals(t, vm.loading, false)
+	for _, binding := range vm.ShortHelp() {
+		help := binding.Help()
+		testutil.ErrorIf(t, help.Key == "r" || help.Key == "f" || help.Key == "[" || help.Key == "]", "list help exposed %q", help.Key)
+	}
+	vm.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("f")})
+	testutil.Equals(t, vm.mode, listModeBrowsing)
+}
+
+func TestMenuProjectionErrorRecoveryPreservesUnrelatedError(t *testing.T) {
+	fix := testutil.NewFixture(t)
+	want := stderrors.New("policy evaluator unavailable")
+	failing := true
+	vm := NewListViewModel(fix.App)
+	vm.projector = menus.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error {
+		if failing {
+			return want
+		}
+		return nil
+	}}
+	vm.syncActions()
+	testutil.ErrorIf(t, !stderrors.Is(vm.actionErr, want), "projection error = %v", vm.actionErr)
+	failing = false
+	vm.syncActions()
+	testutil.Ok(t, vm.err)
+
+	unrelated := stderrors.New("load failed")
+	vm.err = unrelated
+	vm.syncActions()
+	testutil.ErrorIf(t, !stderrors.Is(vm.err, unrelated), "unrelated error was cleared: %v", vm.err)
 }

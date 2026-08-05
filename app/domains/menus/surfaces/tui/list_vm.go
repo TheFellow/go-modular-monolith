@@ -90,6 +90,7 @@ type ListViewModel struct {
 	spinner      tui.Spinner
 	loading      bool
 	err          error
+	actionErr    error
 	projector    menus.ActionProjector
 	actions      map[actions.ID]actions.State
 
@@ -139,6 +140,10 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 }
 
 func (m *ListViewModel) Init() tea.Cmd {
+	if !m.actionEnabled(menus.ControlList) {
+		m.loading = false
+		return nil
+	}
 	m.loading = true
 	return tea.Batch(m.spinner.Init(), m.loadMenus(""))
 }
@@ -359,6 +364,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 				return m, nil
 			}
 			if key.Matches(msg, m.formKeys.Submit) {
+				if !m.actionEnabled(menus.ControlList) {
+					return m, nil
+				}
 				req, err := m.filter.Request()
 				if err != nil {
 					return m, nil
@@ -373,19 +381,25 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
+			if !m.actionEnabled(menus.ControlList) {
+				return m, nil
+			}
 			m.loading = true
 			m.err = nil
 			return m, tea.Batch(m.spinner.Init(), m.loadMenus(m.request.Cursor))
 		case key.Matches(msg, filterMenusKey):
+			if !m.actionEnabled(menus.ControlList) {
+				return m, nil
+			}
 			m.mode, m.filter = listModeFiltering, newFilterVM(m.request)
 			m.filter.form.SetWidth(m.detailWidth)
 			return m, m.filter.Init()
-		case key.Matches(msg, nextMenusKey) && m.next != "":
+		case key.Matches(msg, nextMenusKey) && m.next != "" && m.actionEnabled(menus.ControlList):
 			m.history = append(m.history, m.request.Cursor)
 			m.request.Cursor = m.next
 			m.loading = true
 			return m, tea.Batch(m.spinner.Init(), m.loadMenus(m.request.Cursor))
-		case key.Matches(msg, prevMenusKey) && len(m.history) > 0:
+		case key.Matches(msg, prevMenusKey) && len(m.history) > 0 && m.actionEnabled(menus.ControlList):
 			i := len(m.history) - 1
 			m.request.Cursor = m.history[i]
 			m.history = m.history[:i]
@@ -599,12 +613,15 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	case listModeFiltering:
 		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
-		bindings := []key.Binding{
-			m.keys.Up, m.keys.Down,
-			prevMenusKey, nextMenusKey, filterMenusKey,
+		bindings := []key.Binding{}
+		if m.actionEnabled(menus.ControlList) {
+			bindings = append(bindings, m.keys.Up, m.keys.Down, prevMenusKey, nextMenusKey, filterMenusKey)
 		}
 		bindings = m.appendVisibleBindings(bindings)
-		return append(bindings, analyzeKey, m.keys.Refresh, m.keys.Back)
+		if m.actionEnabled(menus.ControlList) {
+			bindings = append(bindings, analyzeKey, m.keys.Refresh)
+		}
+		return append(bindings, m.keys.Back)
 	case listModeAddingDrink, listModeRemovingDrink, listModeAnalyzing:
 	}
 	if m.mode == listModeAddingDrink || m.mode == listModeRemovingDrink || m.mode == listModeAnalyzing {
@@ -631,16 +648,25 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 		return [][]key.Binding{{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit}, {m.keys.Back}}
 	case listModeBrowsing:
 		actionsHelp := m.visibleBindings()
-		navigation := []key.Binding{m.keys.Up, m.keys.Down}
+		navigation := []key.Binding{}
+		collection := []key.Binding{}
+		analysisHelp := []key.Binding{}
+		footer := []key.Binding{m.keys.Back}
+		if m.actionEnabled(menus.ControlList) {
+			navigation = append(navigation, m.keys.Up, m.keys.Down)
+			collection = append(collection, prevMenusKey, nextMenusKey, filterMenusKey)
+			analysisHelp = append(analysisHelp, analyzeKey)
+			footer = append([]key.Binding{m.keys.Refresh}, footer...)
+		}
 		if m.actionEnabled(menus.ControlEdit) {
 			navigation = append(navigation, m.keys.Enter)
 		}
 		return [][]key.Binding{
 			navigation,
-			{prevMenusKey, nextMenusKey, filterMenusKey},
+			collection,
 			actionsHelp,
-			{analyzeKey},
-			{m.keys.Refresh, m.keys.Back},
+			analysisHelp,
+			footer,
 		}
 	case listModeAddingDrink, listModeRemovingDrink, listModeAnalyzing:
 	}
@@ -651,6 +677,9 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 }
 
 func (m *ListViewModel) loadMenus(cursor paging.Cursor) tea.Cmd {
+	if !m.actionEnabled(menus.ControlList) {
+		return nil
+	}
 	m.loadToken++
 	token := m.loadToken
 	req := m.request
@@ -1013,15 +1042,24 @@ func (m *ListViewModel) syncActions() {
 	states, err := m.projector.Project(m.context(), m.context().Principal(), m.selectedMenu())
 	if err != nil {
 		m.actions = nil
+		m.actionErr = err
 		m.err = err
 		m.detail.SetActions(nil)
 		return
 	}
+	if m.actionErr != nil && errors.Is(m.err, m.actionErr) {
+		m.err = nil
+	}
+	m.actionErr = nil
 	m.actions = make(map[actions.ID]actions.State, len(states))
 	for _, state := range states {
 		m.actions[state.ID] = state
 	}
 	m.detail.SetActions(m.actions)
+	if !m.actionEnabled(menus.ControlList) {
+		m.list.SetItems(nil)
+		m.syncDetail()
+	}
 }
 
 func (m *ListViewModel) actionEnabled(id actions.ID) bool {

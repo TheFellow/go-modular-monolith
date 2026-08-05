@@ -49,8 +49,9 @@ func TestMenuActionProjectorAuthorizationAndLifecycle(t *testing.T) {
 					testutil.Ok(t, err)
 					byID := indexStates(states)
 					for id, state := range byID {
-						testutil.Equals(t, state.Visible, actor.visible)
-						if !actor.visible {
+						visible := actor.visible || id == menus.ControlList
+						testutil.Equals(t, state.Visible, visible)
+						if !visible {
 							testutil.Equals(t, state.Enabled, false)
 							testutil.Equals(t, state.DisabledReason, "")
 							continue
@@ -86,11 +87,14 @@ func TestMenuActionProjectorAuthorizationAndLifecycle(t *testing.T) {
 	}
 }
 
-func TestMenuActionProjectorWithoutSelectionReturnsCreateOnly(t *testing.T) {
+func TestMenuActionProjectorWithoutSelectionReturnsCollectionActions(t *testing.T) {
 	t.Parallel()
 	states, err := menus.NewActionProjector().Project(context.Background(), authn.Owner(), nil)
 	testutil.Ok(t, err)
-	testutil.Equals(t, states, []actions.State{{ID: menus.ControlCreate, Visible: true, Enabled: true}})
+	testutil.Equals(t, states, []actions.State{
+		{ID: menus.ControlList, Visible: true, Enabled: true},
+		{ID: menus.ControlCreate, Visible: true, Enabled: true},
+	})
 }
 
 func TestMenuActionProjectorPublishOverridesEditPermission(t *testing.T) {
@@ -123,7 +127,7 @@ func TestMenuActionStatesHaveStableJSONReadyIDs(t *testing.T) {
 	states, err := menus.NewActionProjector().Project(context.Background(), authn.Owner(), actionMenu(models.MenuStatusDraft, 1))
 	testutil.Ok(t, err)
 	wantIDs := []actions.ID{
-		menus.ControlCreate, menus.ControlEdit, menus.ControlDelete, menus.ControlTags,
+		menus.ControlList, menus.ControlCreate, menus.ControlEdit, menus.ControlDelete, menus.ControlTags,
 		menus.ControlAddDrink, menus.ControlRemoveDrink, menus.ControlPublish, menus.ControlDraft,
 	}
 	gotIDs := make([]actions.ID, len(states))

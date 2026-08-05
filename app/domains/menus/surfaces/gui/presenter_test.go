@@ -266,6 +266,52 @@ func TestPublishPermissionIsIndependentOfUpdateAndEvaluatorErrorsSurface(t *test
 	testutil.Equals(t, failed.State().CanCreate, false)
 }
 
+func TestListProjectionGuardsMenuCollectionInteractions(t *testing.T) {
+	f := testutil.NewFixture(t)
+	projector := menus.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
+		if action == authz.ActionList {
+			return apperrors.Permissionf("list denied")
+		}
+		return nil
+	}}
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Projector: &projector})
+	testutil.Equals(t, p.State().CanList, false)
+	testutil.Equals(t, p.State().CanCreate, true)
+	testutil.Equals(t, p.SetFilter(Filter{Expression: "name == `hidden`"}), false)
+	p.Refresh()
+	testutil.Equals(t, len(p.State().Items), 0)
+
+	gui := frameworktest.NewApp()
+	defer gui.Quit()
+	v := NewView(p)
+	testutil.Equals(t, v.refresh.Hidden, true)
+	testutil.Equals(t, v.create.Hidden, false)
+}
+
+func TestProjectionErrorRecoveryDoesNotClearUnrelatedMenuError(t *testing.T) {
+	f := testutil.NewFixture(t)
+	want := errors.New("policy evaluator unavailable")
+	failing := true
+	projector := menus.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error {
+		if failing {
+			return want
+		}
+		return nil
+	}}
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Projector: &projector})
+	testutil.ErrorIf(t, !errors.Is(p.State().Err, want), "projection error = %v", p.State().Err)
+
+	failing = false
+	p.permissions()
+	testutil.Ok(t, p.State().Err)
+	testutil.Equals(t, p.State().CanList, true)
+
+	unrelated := apperrors.Invalidf("keep this error")
+	p.state.Err = appgui.PresentError(unrelated)
+	p.permissions()
+	testutil.ErrorIf(t, !errors.Is(p.State().Err, unrelated), "unrelated error was cleared: %v", p.State().Err)
+}
+
 func TestPresenterRefreshComposesPagingFiltersAndRejectsStaleResult(t *testing.T) {
 	f := testutil.NewFixture(t)
 	first, err := f.Menus.Create(f.OwnerContext(), &models.Menu{Name: "First"})
