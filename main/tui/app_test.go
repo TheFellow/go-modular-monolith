@@ -311,7 +311,7 @@ func TestE2E_TagEditorSupportsReplaceClearCancelAndValidationAcrossEveryEntityVi
 	}
 }
 
-func TestE2E_TagEditorPermissionFailureStaysOpenAndDoesNotPersist(t *testing.T) {
+func TestE2E_DeniedTagActionDoesNotOpenOrPersist(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
@@ -322,9 +322,8 @@ func TestE2E_TagEditorPermissionFailureStaysOpenAndDoesNotPersist(t *testing.T) 
 	driver.Resize(100, 40)
 	driver.Press("2")
 	driver.Press("t")
-	pressText(driver, "denied")
-	driver.Press("ctrl+s")
-	driver.RequireText("Manage tags", "authz denied")
+	driver.RequireText("Protected Tonic")
+	driver.RequireNoText("Manage tags")
 	driver.RequireViewport(100, 40)
 	requirePersistedTags(t, f, ingredient.EntityUID(), "")
 }
@@ -527,6 +526,13 @@ func TestBackKey_NavigatesWhenDomainHasNoLocalState(t *testing.T) {
 func TestBackKey_ClosesExpandedHelpBeforeNavigating(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Help Spirit", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+	testutil.CreateDrink(t, f, drinksmodels.Drink{
+		Name: "Help Cocktail", Recipe: drinksmodels.Recipe{
+			Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, ingredient.Unit)}},
+			Steps:       []string{"Stir"},
+		},
+	})
 	driver := tuitest.NewDriver(t, NewApp(f.App))
 	driver.Resize(100, 40)
 	driver.Press("1")
