@@ -9,11 +9,13 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	orders "github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/govalues/decimal"
@@ -21,11 +23,12 @@ import (
 
 // DetailViewModel renders an order detail pane.
 type DetailViewModel struct {
-	styles tui.ListViewStyles
-	width  int
-	height int
-	order  optional.Value[models.Order]
-	app    *app.Session
+	styles  tui.ListViewStyles
+	width   int
+	height  int
+	order   optional.Value[models.Order]
+	app     *app.Session
+	actions map[actions.ID]actions.State
 }
 
 func NewDetailViewModel(styles tui.ListViewStyles, app *app.Session) *DetailViewModel {
@@ -43,6 +46,8 @@ func (d *DetailViewModel) SetSize(width, height int) {
 func (d *DetailViewModel) SetOrder(order optional.Value[models.Order]) {
 	d.order = order
 }
+
+func (d *DetailViewModel) SetActions(states map[actions.ID]actions.State) { d.actions = states }
 
 func (d *DetailViewModel) View() string {
 	order, ok := d.order.Unwrap()
@@ -71,6 +76,16 @@ func (d *DetailViewModel) View() string {
 
 	if strings.TrimSpace(order.Notes) != "" {
 		lines = append(lines, "", d.styles.Subtitle.Render("Notes"), order.Notes)
+	}
+	for _, action := range []struct {
+		id    actions.ID
+		label string
+	}{
+		{orders.ControlComplete, "Complete"}, {orders.ControlCancel, "Cancel order"},
+	} {
+		if state, ok := d.actions[action.id]; ok && state.Visible && !state.Enabled && state.DisabledReason != "" {
+			lines = append(lines, d.styles.Muted.Render(action.label+": "+state.DisabledReason))
+		}
 	}
 
 	itemLines, total, err := d.renderItems(order.Items, menu)

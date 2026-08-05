@@ -10,7 +10,7 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
-	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	orders "github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
@@ -235,15 +235,21 @@ func (v *View) detail(s State) framework.CanvasObject {
 	}
 	fields.Add(ui.DetailForm(ui.DetailField("Order total", readonly(r.Total))))
 	actions := []framework.CanvasObject{}
-	cleanPending := !s.Submitting && !s.Confirming && !s.Dirty && r.Order.Status == models.OrderStatusPending
-	if cleanPending && s.CanComplete {
-		actions = append(actions, ui.NewButton(ControlComplete, "Complete", v.presenter.ConfirmComplete))
+	clean := !s.Submitting && !s.Confirming && !s.Dirty
+	if action, ok := s.Actions[orders.ControlComplete]; ok && action.Visible {
+		button := ui.NewButton(ControlComplete, "Complete", v.presenter.ConfirmComplete)
+		setEnabled(button, clean && action.Enabled)
+		actions = append(actions, button)
 	}
-	if !s.Submitting && !s.Confirming && !s.Dirty && s.CanTag {
-		actions = append(actions, ui.WithIcon(ui.NewButton(ControlTags, "Tags", v.presenter.StartTags), ui.IconTag))
+	if action, ok := s.Actions[orders.ControlTags]; ok && action.Visible {
+		button := ui.WithIcon(ui.NewButton(ControlTags, "Tags", v.presenter.StartTags), ui.IconTag)
+		setEnabled(button, clean && action.Enabled)
+		actions = append(actions, button)
 	}
-	if cleanPending && s.CanCancel {
-		actions = append(actions, ui.Destructive(ui.NewButton(ControlCancelOrder, "Cancel order", v.presenter.ConfirmCancel)))
+	if action, ok := s.Actions[orders.ControlCancel]; ok && action.Visible {
+		button := ui.Destructive(ui.NewButton(ControlCancelOrder, "Cancel order", v.presenter.ConfirmCancel))
+		setEnabled(button, clean && action.Enabled)
+		actions = append(actions, button)
 	}
 	if actionBar := ui.ActionBar(nil, actions); actionBar != nil {
 		fields.Objects = append([]framework.CanvasObject{actionBar}, fields.Objects...)

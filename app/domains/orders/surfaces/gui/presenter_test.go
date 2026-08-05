@@ -3,6 +3,7 @@ package gui
 
 import (
 	"context"
+	stderrors "errors"
 	"io"
 	"log/slog"
 	"os/exec"
@@ -31,6 +32,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	appgui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 func TestPresenterPagesFiltersResolvesDetailAndSnapshots(t *testing.T) {
@@ -129,6 +131,15 @@ func TestPresenterExposesOnlyAuthorizedOrderActions(t *testing.T) {
 	reader.Select(0)
 	state = reader.State()
 	testutil.ErrorIf(t, state.CanPlace || state.CanComplete || state.CanCancel || state.CanTag, "read-only actor actions disclosed: %#v", state)
+}
+
+func TestPresenterSurfacesActionProjectionEvaluatorFailure(t *testing.T) {
+	f := testutil.NewFixture(t)
+	want := stderrors.New("policy evaluator unavailable")
+	projector := orders.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}}, projector)
+	testutil.ErrorIf(t, !stderrors.Is(p.State().Err, want), "projection error = %v", p.State().Err)
+	testutil.ErrorIf(t, p.State().CanPlace, "failed projection exposed place")
 }
 
 func TestDirtyPlaceBackAndResetRequireConfirmationAndRetainInput(t *testing.T) {

@@ -6,6 +6,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
@@ -76,6 +77,8 @@ type ListViewModel struct {
 	next           paging.Cursor
 	history        []paging.Cursor
 	restoreID      entity.OrderID
+	projector      orders.ActionProjector
+	actions        map[actions.ID]actions.State
 
 	width       int
 	height      int
@@ -105,6 +108,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		dialogKeys:   keys.Standard.Dialog,
 		list:         l,
 		detail:       NewDetailViewModel(styles.Standard.ListView, app),
+		projector:    orders.NewActionProjector(),
 		loading:      true,
 		request:      orders.ListRequest{Limit: paging.DefaultLimit},
 	}
@@ -278,12 +282,24 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 			m.err = nil
 			return m, tea.Batch(m.spinner.Init(), m.loadOrders())
 		case key.Matches(msg, m.keys.Complete):
+			if !m.actionEnabled(orders.ControlComplete) {
+				return m, nil
+			}
 			return m, m.startComplete()
 		case key.Matches(msg, m.keys.Cancel):
+			if !m.actionEnabled(orders.ControlCancel) {
+				return m, nil
+			}
 			return m, m.startCancel()
 		case key.Matches(msg, m.keys.Tags):
+			if !m.actionEnabled(orders.ControlTags) {
+				return m, nil
+			}
 			return m, m.startTags()
 		case key.Matches(msg, m.keys.Create):
+			if !m.actionEnabled(orders.ControlPlace) {
+				return m, nil
+			}
 			m.workflow++
 			m.mode = listModePlacing
 			m.place = newPlaceVM(m.app, m.workflow)
@@ -324,6 +340,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.list.SetItems(items)
 		m.restoreSelection()
 		m.syncDetail()
+		m.syncActions()
 		return m, nil
 	}
 
@@ -353,6 +370,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
 	m.syncDetail()
+	m.syncActions()
 	return m, cmd
 }
 
@@ -406,12 +424,12 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	if m.mode == listModePlacing {
 		return []key.Binding{keys.Standard.Submit, m.keys.Back}
 	}
-	return []key.Binding{
+	return m.visibleBindings([]key.Binding{
 		m.keys.Up, m.keys.Down,
 		m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage,
 		m.keys.Create, m.keys.Complete, m.keys.Cancel, m.keys.Tags,
 		m.keys.Refresh, m.keys.Back,
-	}
+	})
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
@@ -430,12 +448,67 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 	if m.mode == listModePlacing {
 		return [][]key.Binding{{keys.Standard.Submit, m.keys.Back}}
 	}
-	return [][]key.Binding{
+	return m.visibleBindingGroups([][]key.Binding{
 		{m.keys.Up, m.keys.Down, m.keys.Enter},
 		{m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage},
 		{m.keys.Create, m.keys.Complete, m.keys.Cancel, m.keys.Tags},
 		{m.keys.Refresh, m.keys.Back},
+	})
+}
+
+func (m *ListViewModel) syncActions() {
+	states, err := m.projector.Project(m.app.Context(), m.app.Context().Principal(), m.selectedOrder())
+	if err != nil {
+		m.actions = nil
+		m.err = err
+		m.detail.SetActions(nil)
+		return
 	}
+	m.actions = make(map[actions.ID]actions.State, len(states))
+	for _, state := range states {
+		m.actions[state.ID] = state
+	}
+	m.detail.SetActions(m.actions)
+}
+
+func (m *ListViewModel) actionEnabled(id actions.ID) bool {
+	state, ok := m.actions[id]
+	return ok && state.Visible && state.Enabled
+}
+
+func (m *ListViewModel) actionVisibleForBinding(binding key.Binding) bool {
+	switch binding.Help().Key {
+	case m.keys.Create.Help().Key:
+		return m.actions[orders.ControlPlace].Visible
+	case m.keys.Complete.Help().Key:
+		return m.actions[orders.ControlComplete].Visible
+	case m.keys.Cancel.Help().Key:
+		return m.actions[orders.ControlCancel].Visible
+	case m.keys.Tags.Help().Key:
+		return m.actions[orders.ControlTags].Visible
+	default:
+		return true
+	}
+}
+
+func (m *ListViewModel) visibleBindings(in []key.Binding) []key.Binding {
+	out := make([]key.Binding, 0, len(in))
+	for _, binding := range in {
+		if m.actionVisibleForBinding(binding) {
+			out = append(out, binding)
+		}
+	}
+	return out
+}
+
+func (m *ListViewModel) visibleBindingGroups(in [][]key.Binding) [][]key.Binding {
+	out := make([][]key.Binding, 0, len(in))
+	for _, group := range in {
+		if visible := m.visibleBindings(group); len(visible) > 0 {
+			out = append(out, visible)
+		}
+	}
+	return out
 }
 
 func (m *ListViewModel) loadOrders() tea.Cmd {

@@ -12,14 +12,13 @@ import (
 	menus "github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	orders "github.com/TheFellow/go-modular-monolith/app/domains/orders"
-	ordersauthz "github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	pkgAuthz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 	"github.com/govalues/decimal"
 )
@@ -86,6 +85,7 @@ type State struct {
 	Drinks                                          []DrinkOption
 	Err                                             error
 	CanPlace, CanComplete, CanCancel, CanTag        bool
+	Actions                                         map[actions.ID]actions.State
 	Dirty                                           bool
 }
 type Dependencies struct {
@@ -112,12 +112,20 @@ type Presenter struct {
 	menuDrinks    map[entity.MenuID][]DrinkOption
 	changed       func(State)
 	confirmTarget *models.Order
+	projector     orders.ActionProjector
 }
 
-func NewPresenter(session *app.Session, deps Dependencies) *Presenter {
-	p := &Presenter{app: session, dialogs: deps.Dialogs, menuDrinks: make(map[entity.MenuID][]DrinkOption)}
+func NewPresenter(session *app.Session, deps Dependencies, projectors ...orders.ActionProjector) *Presenter {
+	projector := orders.NewActionProjector()
+	if len(projectors) > 0 {
+		projector = projectors[0]
+	}
+	p := &Presenter{app: session, dialogs: deps.Dialogs, menuDrinks: make(map[entity.MenuID][]DrinkOption), projector: projector}
 	p.state.Filter.Limit = ui.PageLimit
-	p.state.CanPlace = pkgAuthz.AuthorizeWithEntity(session.Context().Principal(), ordersauthz.ActionPlace, (models.Order{}).CedarEntity()) == nil
+	if err := p.permissionsFor(nil); err != nil {
+		p.state.Err = ui.PresentError(err)
+		ui.ShowPresentation(deps.Dialogs, err)
+	}
 	p.load = ui.NewLatestRequest[listResult](deps.Executor, deps.Dispatcher)
 	p.catalog = ui.NewLatestRequest[placeCatalog](deps.Executor, deps.Dispatcher)
 	p.submit = ui.NewSubmission(deps.Executor, deps.Dispatcher)
@@ -220,12 +228,13 @@ func (p *Presenter) ListPermissions(index int) (complete, cancel, tags bool) {
 	if index < 0 || index >= len(p.state.Rows) {
 		return false, false, false
 	}
-	order := p.state.Rows[index].Order
-	principal, resource := p.app.Context().Principal(), order.CedarEntity()
-	pending := order.Status == models.OrderStatusPending
-	return pending && pkgAuthz.AuthorizeWithEntity(principal, ordersauthz.ActionComplete, resource) == nil,
-		pending && pkgAuthz.AuthorizeWithEntity(principal, ordersauthz.ActionCancel, resource) == nil,
-		pkgAuthz.AuthorizeWithEntity(principal, ordersauthz.ActionTag, resource) == nil
+	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), &p.state.Rows[index].Order)
+	if err != nil {
+		p.fail(err)
+		return false, false, false
+	}
+	projected := indexActions(states)
+	return actionEnabled(projected, orders.ControlComplete), actionEnabled(projected, orders.ControlCancel), actionEnabled(projected, orders.ControlTags)
 }
 
 // Back returns to the exact list state from which the order was opened.
@@ -605,14 +614,42 @@ func (p *Presenter) mutate(work func() error, closeForm bool) bool {
 }
 
 func (p *Presenter) permissions() {
-	p.state.CanComplete, p.state.CanCancel, p.state.CanTag = false, false, false
-	if p.state.Selected == nil {
-		return
+	var selected *models.Order
+	if p.state.Selected != nil {
+		selected = &p.state.Selected.Order
 	}
-	principal, resource := p.app.Context().Principal(), p.state.Selected.Order.CedarEntity()
-	p.state.CanComplete = pkgAuthz.AuthorizeWithEntity(principal, ordersauthz.ActionComplete, resource) == nil
-	p.state.CanCancel = pkgAuthz.AuthorizeWithEntity(principal, ordersauthz.ActionCancel, resource) == nil
-	p.state.CanTag = pkgAuthz.AuthorizeWithEntity(principal, ordersauthz.ActionTag, resource) == nil
+	if err := p.permissionsFor(selected); err != nil {
+		p.state.Err = ui.PresentError(err)
+		ui.ShowPresentation(p.dialogs, err)
+	}
+}
+
+func (p *Presenter) permissionsFor(selected *models.Order) error {
+	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), selected)
+	if err != nil {
+		p.state.Actions = nil
+		p.state.CanPlace, p.state.CanComplete, p.state.CanCancel, p.state.CanTag = false, false, false, false
+		return err
+	}
+	p.state.Actions = indexActions(states)
+	p.state.CanPlace = actionEnabled(p.state.Actions, orders.ControlPlace)
+	p.state.CanComplete = actionEnabled(p.state.Actions, orders.ControlComplete)
+	p.state.CanCancel = actionEnabled(p.state.Actions, orders.ControlCancel)
+	p.state.CanTag = actionEnabled(p.state.Actions, orders.ControlTags)
+	return nil
+}
+
+func indexActions(states []actions.State) map[actions.ID]actions.State {
+	result := make(map[actions.ID]actions.State, len(states))
+	for _, state := range states {
+		result[state.ID] = state
+	}
+	return result
+}
+
+func actionEnabled(states map[actions.ID]actions.State, id actions.ID) bool {
+	state, ok := states[id]
+	return ok && state.Visible && state.Enabled
 }
 
 func (p *Presenter) resolve(ctx *middleware.Context, order models.Order) (Row, error) {
@@ -772,6 +809,10 @@ func cloneState(in State) State {
 	out.Form = cloneForm(in.Form)
 	out.Menus = append([]MenuOption(nil), in.Menus...)
 	out.Drinks = append([]DrinkOption(nil), in.Drinks...)
+	out.Actions = make(map[actions.ID]actions.State, len(in.Actions))
+	for id, state := range in.Actions {
+		out.Actions[id] = state
+	}
 	return out
 }
 func cloneDrinkMap(in map[entity.MenuID][]DrinkOption) map[entity.MenuID][]DrinkOption {
