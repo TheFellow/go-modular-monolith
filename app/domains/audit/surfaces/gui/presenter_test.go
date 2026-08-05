@@ -2,6 +2,8 @@
 package gui
 
 import (
+	"context"
+	stderrors "errors"
 	"strings"
 	"testing"
 	"time"
@@ -11,12 +13,15 @@ import (
 
 	application "github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
+	auditauthz "github.com/TheFellow/go-modular-monolith/app/domains/audit/authz"
 	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 func createAuditedIngredient(t testing.TB, fixture *testutil.Fixture, name string) *models.Ingredient {
@@ -24,6 +29,26 @@ func createAuditedIngredient(t testing.TB, fixture *testutil.Fixture, name strin
 	ingredient, err := fixture.Ingredients.Create(fixture.OwnerContext(), &models.Ingredient{Name: name, Category: models.CategoryOther, Unit: measurement.UnitOz})
 	testutil.Ok(t, err)
 	return ingredient
+}
+
+func TestPresenterProjectsGetAndSurfacesEvaluatorFailures(t *testing.T) {
+	fixture := testutil.NewFixture(t)
+	createAuditedIngredient(t, fixture, "Projection")
+	denyGet := audit.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
+		if action == auditauthz.ActionGet {
+			return apperrors.Permissionf("denied")
+		}
+		return nil
+	}}
+	presenter := NewPresenter(fixture.App, Dependencies{Executor: ui.InlineExecutor{}, Dispatcher: ui.InlineDispatcher{}, Projector: &denyGet})
+	presenter.Refresh()
+	presenter.Select(0)
+	testutil.ErrorIf(t, presenter.State().Selected != nil, "%v", "get-denied row opened")
+
+	want := stderrors.New("policy evaluator unavailable")
+	failing := audit.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
+	presenter = NewPresenter(fixture.App, Dependencies{Executor: ui.InlineExecutor{}, Dispatcher: ui.InlineDispatcher{}, Projector: &failing})
+	testutil.ErrorIf(t, !stderrors.Is(presenter.State().Err, want), "projection error = %v, want %v", presenter.State().Err, want)
 }
 
 func auditPresenter(fixture *testutil.Fixture) *Presenter {

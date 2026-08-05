@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -60,7 +61,12 @@ func NewView(p *Presenter) *View {
 		values := []string{formatTime(r.Entry.StartedAt), formatTime(r.Entry.CompletedAt), formatDuration(r.Entry.StartedAt, r.Entry.CompletedAt), r.Entry.Action, r.Entry.Resource.String(), r.Entry.Principal.String(), strconv.FormatBool(r.Entry.Success), strconv.Itoa(len(r.Touches)), r.Entry.Error}
 		if id.Col == len(columns)-1 {
 			index := id.Row
-			ui.ShowCellActions(cell, []ui.RowAction{{Label: "View", Run: func() { p.Select(index) }}})
+			projected := r.Actions[audit.ControlView]
+			rowActions := []ui.RowAction{}
+			if projected.Visible {
+				rowActions = append(rowActions, ui.RowAction{Label: "View", Run: func() { p.Select(index) }})
+			}
+			ui.ShowCellActions(cell, rowActions)
 			return
 		}
 		ui.ShowCellText(cell, values[id.Col], false)
@@ -156,7 +162,8 @@ func (v *View) render(s State) {
 		Enable()
 		Disable()
 	}{v.scope, v.expression, v.apply, v.refresh} {
-		if s.Loading {
+		list := s.Actions[audit.ControlList]
+		if s.Loading || !list.Visible || !list.Enabled {
 			control.Disable()
 		} else {
 			control.Enable()

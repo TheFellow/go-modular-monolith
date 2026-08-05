@@ -6,8 +6,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 
 	"github.com/TheFellow/go-modular-monolith/app"
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
@@ -28,18 +30,26 @@ type ListViewModel struct {
 	next          paging.Cursor
 	history       []paging.Cursor
 	filter        *filterVM
+	projector     audit.ActionProjector
+	actions       map[actions.ID]actions.State
 	loadToken     uint64
 	width, height int
 }
 
 func NewListViewModel(session *app.Session) *ListViewModel {
-	m := &ListViewModel{app: session, keys: keys.Standard.ListView, formKeys: keys.Standard.Form, shell: tui.NewListDetail("Audit", "Loading audit entries...", styles.Standard.ListView), detail: NewDetailViewModel(styles.Standard.ListView), query: auditQuery{scope: scopeAll, limit: paging.DefaultLimit}}
+	m := &ListViewModel{app: session, keys: keys.Standard.ListView, formKeys: keys.Standard.Form, shell: tui.NewListDetail("Audit", "Loading audit entries...", styles.Standard.ListView), detail: NewDetailViewModel(styles.Standard.ListView), projector: audit.NewActionProjector(), query: auditQuery{scope: scopeAll, limit: paging.DefaultLimit}}
 	m.shell.SetLocalFiltering(false)
 	m.shell.SetLocalPagination(false)
+	m.syncActions()
 	m.updateTitle()
 	return m
 }
-func (m *ListViewModel) Init() tea.Cmd { return tea.Batch(m.shell.BeginLoading(), m.loadEntries()) }
+func (m *ListViewModel) Init() tea.Cmd {
+	if !m.actionEnabled(audit.ControlList) {
+		return nil
+	}
+	return tea.Batch(m.shell.BeginLoading(), m.loadEntries())
+}
 func (m *ListViewModel) Interaction() tui.Interaction {
 	return tui.Interaction{CapturesText: m.filter != nil, HandlesBack: m.filter != nil}
 }
@@ -73,16 +83,22 @@ func (m *ListViewModel) Update(message tea.Msg) (tui.ViewModel, tea.Cmd) {
 		}
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
+			if !m.actionEnabled(audit.ControlList) {
+				return m, nil
+			}
 			return m, tea.Batch(m.shell.BeginLoading(), m.loadEntries())
 		case msg.String() == "f":
+			if !m.actionEnabled(audit.ControlList) {
+				return m, nil
+			}
 			m.filter = newFilterVM(m.query)
 			m.filter.SetSize(m.width, m.height)
 			return m, m.filter.Init()
-		case msg.String() == "]" && m.next != "":
+		case msg.String() == "]" && m.next != "" && m.actionEnabled(audit.ControlList):
 			m.history = append(m.history, m.query.cursor)
 			m.query.cursor = m.next
 			return m, tea.Batch(m.shell.BeginLoading(), m.loadEntries())
-		case msg.String() == "[" && len(m.history) > 0:
+		case msg.String() == "[" && len(m.history) > 0 && m.actionEnabled(audit.ControlList):
 			i := len(m.history) - 1
 			m.query.cursor = m.history[i]
 			m.history = m.history[:i]
@@ -107,11 +123,13 @@ func (m *ListViewModel) Update(message tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.next = msg.Next
 		m.shell.SetResult(items, msg.Err)
 		selectAuditID(m.shell, selected)
+		m.syncActions()
 		m.syncDetail()
 		m.updateTitle()
 		return m, nil
 	}
 	cmd := m.shell.Update(message)
+	m.syncActions()
 	m.syncDetail()
 	return m, cmd
 }
@@ -122,10 +140,18 @@ func (m *ListViewModel) View() string {
 	return m.shell.View(m.detail.View())
 }
 func (m *ListViewModel) ShortHelp() []key.Binding {
-	return []key.Binding{m.keys.Up, m.keys.Down, m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage, m.keys.Refresh, m.keys.Back}
+	help := []key.Binding{m.keys.Up, m.keys.Down, m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage}
+	if m.actionEnabled(audit.ControlList) {
+		help = append(help, m.keys.Refresh)
+	}
+	return append(help, m.keys.Back)
 }
 func (m *ListViewModel) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{m.keys.Up, m.keys.Down, m.keys.Enter}, {m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage}, {m.keys.Refresh, m.keys.Back}}
+	last := []key.Binding{m.keys.Back}
+	if m.actionEnabled(audit.ControlList) {
+		last = append([]key.Binding{m.keys.Refresh}, last...)
+	}
+	return [][]key.Binding{{m.keys.Up, m.keys.Down, m.keys.Enter}, {m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage}, last}
 }
 func (m *ListViewModel) loadEntries() tea.Cmd {
 	m.loadToken++
@@ -156,12 +182,41 @@ func (m *ListViewModel) setSize(width, height int) {
 	m.detail.SetSize(detailWidth, height)
 }
 func (m *ListViewModel) syncDetail() {
+	if !m.actionEnabled(audit.ControlView) {
+		m.detail.SetEntry(optional.None[auditmodels.AuditEntry]())
+		return
+	}
 	item, ok := m.shell.SelectedItem().(auditItem)
 	if !ok {
 		m.detail.SetEntry(optional.None[auditmodels.AuditEntry]())
 		return
 	}
 	m.detail.SetEntry(optional.Some(item.Value))
+}
+func (m *ListViewModel) syncActions() {
+	var selected *auditmodels.AuditEntry
+	if item, ok := m.shell.SelectedItem().(auditItem); ok {
+		entry := item.Value
+		selected = &entry
+	}
+	states, err := m.projector.Project(m.app.Context(), m.app.Context().Principal(), selected)
+	if err != nil {
+		m.actions = nil
+		m.detail.SetEntry(optional.None[auditmodels.AuditEntry]())
+		m.shell.SetResult(m.shell.Items(), err)
+		return
+	}
+	m.actions = make(map[actions.ID]actions.State, len(states))
+	for _, state := range states {
+		m.actions[state.ID] = state
+	}
+	if selected == nil && !m.actionEnabled(audit.ControlList) {
+		m.shell.SetResult(nil, nil)
+	}
+}
+func (m *ListViewModel) actionEnabled(id actions.ID) bool {
+	state, ok := m.actions[id]
+	return ok && state.Visible && state.Enabled
 }
 func (m *ListViewModel) context() *middleware.Context { return m.app.Context() }
 func (m *ListViewModel) updateTitle() {
