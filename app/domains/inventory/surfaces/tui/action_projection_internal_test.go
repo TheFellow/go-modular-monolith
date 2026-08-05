@@ -38,10 +38,22 @@ func TestInventoryProjectionEvaluatorErrorsSurface(t *testing.T) {
 	vm := NewListViewModel(fix.App)
 	vm.rows = []InventoryRow{{Inventory: projectedInventory()}}
 	vm.table.SetRows([]table.Row{{"stock"}})
-	vm.projector = inventory.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
+	failing := true
+	vm.projector = inventory.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error {
+		if failing {
+			return want
+		}
+		return nil
+	}}
 	vm.syncActions()
-	testutil.ErrorIf(t, !stderrors.Is(vm.err, want), "projection error = %v, want %v", vm.err, want)
+	testutil.ErrorIf(t, !stderrors.Is(vm.actionErr, want), "projection error = %v, want %v", vm.actionErr, want)
 	testutil.Equals(t, len(vm.actions), 0)
+	loadErr := stderrors.New("load still failed")
+	vm.err, failing = loadErr, false
+	vm.syncActions()
+	testutil.Equals(t, vm.actionErr, nil)
+	testutil.ErrorIf(t, !stderrors.Is(vm.err, loadErr), "load error was clobbered: %v", vm.err)
+	testutil.Equals(t, vm.actionEnabled(inventory.ControlList), true)
 }
 
 func projectedInventory() models.Inventory {

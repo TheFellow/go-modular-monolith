@@ -57,7 +57,29 @@ func TestPresenterSurfacesProjectionEvaluatorFailure(t *testing.T) {
 	p.projector = inventory.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
 	p.Load()
 	state := p.Snapshot()
-	testutil.ErrorIf(t, state.Status != toolkit.Failed || !stderrors.Is(state.Err, want) || len(state.Actions) != 0, "failed projection state = %#v", state)
+	testutil.ErrorIf(t, state.Status != toolkit.Failed || !stderrors.Is(state.Err, want), "failed projection state = %#v", state)
+}
+
+func TestPresenterProjectionFailureCanRecover(t *testing.T) {
+	fix, _ := inventoryFixture(t)
+	want := stderrors.New("policy evaluator unavailable")
+	failing := true
+	p := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{})
+	p.projector = inventory.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error {
+		if failing {
+			return want
+		}
+		return nil
+	}}
+	p.mu.Lock()
+	err := p.permissionsLocked()
+	failing = false
+	recovered := p.permissionsLocked()
+	state := cloneState(p.state)
+	p.mu.Unlock()
+	testutil.ErrorIf(t, !stderrors.Is(err, want), "projection error = %v", err)
+	testutil.Ok(t, recovered)
+	testutil.Equals(t, actionEnabled(state.Actions, inventory.ControlList), true)
 }
 
 func TestInventoryDetailLabelsIncludeExactLastUpdated(t *testing.T) {

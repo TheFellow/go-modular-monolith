@@ -262,6 +262,7 @@ func (v *View) render(s State) {
 	v.adjust.Hidden = s.Selected == nil || !actionVisible(s.Actions, inventory.ControlAdjust)
 	v.set.Hidden = s.Selected == nil || !actionVisible(s.Actions, inventory.ControlSet)
 	v.tagAction.Hidden = s.Selected == nil || !actionVisible(s.Actions, inventory.ControlTags)
+	v.refresh.Hidden = !actionVisible(s.Actions, inventory.ControlList)
 	if s.Submitting || !s.Dirty {
 		v.save.Disable()
 		v.cancel.Disable()

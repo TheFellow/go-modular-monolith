@@ -81,6 +81,7 @@ type State struct {
 	CanAdjust    bool
 	CanSet       bool
 	CanTag       bool
+	CanList      bool
 	Actions      map[actions.ID]actions.State
 	FormInstance uint64
 }
@@ -109,6 +110,10 @@ func NewPresenter(session *app.Session, executor toolkit.Executor, dispatcher to
 	}
 	p.load = toolkit.NewLatestRequest[loadResult](executor, dispatcher)
 	p.submit = toolkit.NewSubmission(executor, dispatcher)
+	if err := p.permissionsLocked(); err != nil {
+		p.state.Err = toolkit.PresentError(err)
+		toolkit.ShowPresentation(p.dialogs, err)
+	}
 	return p
 }
 
@@ -117,6 +122,10 @@ func (p *Presenter) Snapshot() State              { p.mu.Lock(); defer p.mu.Unlo
 
 func (p *Presenter) Load() {
 	p.mu.Lock()
+	if !actionEnabled(p.state.Actions, inventory.ControlList) {
+		p.mu.Unlock()
+		return
+	}
 	p.state.Cursor, p.state.Next, p.state.History = "", "", nil
 	p.mu.Unlock()
 	p.loadPage(false)
@@ -192,6 +201,10 @@ func (p *Presenter) Filter(stock StockMode, expression string, lowStock float64,
 		limit = toolkit.PageLimit
 	}
 	p.mu.Lock()
+	if !actionEnabled(p.state.Actions, inventory.ControlList) {
+		p.mu.Unlock()
+		return false
+	}
 	if lowStock < 0 {
 		p.state.Err = toolkit.PresentError(apperrors.Invalidf("low-stock threshold must be >= 0"))
 		p.publishLocked()
@@ -206,7 +219,7 @@ func (p *Presenter) Filter(stock StockMode, expression string, lowStock float64,
 }
 func (p *Presenter) NextPage() {
 	p.mu.Lock()
-	if p.state.Next == "" {
+	if p.state.Next == "" || !actionEnabled(p.state.Actions, inventory.ControlList) {
 		p.mu.Unlock()
 		return
 	}
@@ -217,7 +230,7 @@ func (p *Presenter) NextPage() {
 }
 func (p *Presenter) PreviousPage() {
 	p.mu.Lock()
-	if len(p.state.History) == 0 {
+	if len(p.state.History) == 0 || !actionEnabled(p.state.Actions, inventory.ControlList) {
 		p.mu.Unlock()
 		return
 	}
@@ -288,15 +301,17 @@ func (p *Presenter) leaveDetail(reset bool) {
 
 func (p *Presenter) permissionsLocked() error {
 	p.state.Actions = nil
-	p.state.CanAdjust, p.state.CanSet, p.state.CanTag = false, false, false
-	if p.state.Selected == nil {
-		return nil
+	p.state.CanList, p.state.CanAdjust, p.state.CanSet, p.state.CanTag = false, false, false, false
+	var selected *inventorymodels.Inventory
+	if p.state.Selected != nil {
+		selected = &p.state.Selected.Inventory
 	}
-	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), &p.state.Selected.Inventory)
+	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), selected)
 	if err != nil {
 		return err
 	}
 	p.state.Actions = indexActions(states)
+	p.state.CanList = actionVisible(p.state.Actions, inventory.ControlList)
 	p.state.CanAdjust = actionVisible(p.state.Actions, inventory.ControlAdjust)
 	p.state.CanSet = actionVisible(p.state.Actions, inventory.ControlSet)
 	p.state.CanTag = actionVisible(p.state.Actions, inventory.ControlTags)

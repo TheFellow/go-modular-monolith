@@ -29,7 +29,7 @@ func TestInventoryActionProjectorUsesStableIndependentCapabilities(t *testing.T)
 	}}
 	states, err := projector.Project(context.Background(), authn.Owner(), stock)
 	testutil.Ok(t, err)
-	want := []actions.ID{inventory.ControlAdjust, inventory.ControlSet, inventory.ControlTags}
+	want := []actions.ID{inventory.ControlList, inventory.ControlAdjust, inventory.ControlSet, inventory.ControlTags}
 	got := make([]actions.ID, len(states))
 	byID := map[actions.ID]actions.State{}
 	for i, state := range states {
@@ -50,7 +50,7 @@ func TestInventoryActionProjectorSelectionAndEvaluatorFailure(t *testing.T) {
 	t.Parallel()
 	states, err := inventory.NewActionProjector().Project(context.Background(), authn.Owner(), nil)
 	testutil.Ok(t, err)
-	testutil.Equals(t, states, []actions.State{})
+	testutil.Equals(t, states, []actions.State{{ID: inventory.ControlList, Visible: true, Enabled: true}})
 	want := errors.New("policy evaluator unavailable")
 	projector := inventory.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
 	_, err = projector.Project(context.Background(), authn.Owner(), testStock())
