@@ -14,15 +14,14 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
-	ingredientauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	pkgAuthz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -63,6 +62,7 @@ type State struct {
 	CanDelete    bool
 	CanTag       bool
 	CanCreate    bool
+	Actions      map[actions.ID]actions.State
 	FormInstance uint64
 }
 
@@ -74,18 +74,26 @@ type Presenter struct {
 	loads      *toolkit.LatestRequest[loadResult]
 	mutation   *toolkit.Submission
 
-	mu      sync.Mutex
-	state   State
-	changed func(State)
+	mu        sync.Mutex
+	state     State
+	changed   func(State)
+	projector ingredients.ActionProjector
 }
 type loadResult struct {
 	items []models.Ingredient
 	next  paging.Cursor
 }
 
-func NewPresenter(session *app.Session, executor toolkit.Executor, dispatcher toolkit.Dispatcher, dialogs toolkit.Dialogs) *Presenter {
-	p := &Presenter{app: session, executor: executor, dispatcher: dispatcher, dialogs: dialogs, state: State{Limit: toolkit.PageLimit}}
-	p.state.CanCreate = pkgAuthz.AuthorizeWithEntity(session.Context().Principal(), ingredientauthz.ActionCreate, (models.Ingredient{}).CedarEntity()) == nil
+func NewPresenter(session *app.Session, executor toolkit.Executor, dispatcher toolkit.Dispatcher, dialogs toolkit.Dialogs, projectors ...ingredients.ActionProjector) *Presenter {
+	projector := ingredients.NewActionProjector()
+	if len(projectors) > 0 {
+		projector = projectors[0]
+	}
+	p := &Presenter{app: session, executor: executor, dispatcher: dispatcher, dialogs: dialogs, projector: projector, state: State{Limit: toolkit.PageLimit}}
+	if err := p.permissionsForLocked(nil); err != nil {
+		p.state.Err = toolkit.PresentError(err)
+		toolkit.ShowPresentation(dialogs, err)
+	}
 	p.loads = toolkit.NewLatestRequest[loadResult](executor, dispatcher)
 	p.mutation = toolkit.NewSubmission(executor, dispatcher)
 	return p
@@ -193,9 +201,10 @@ func (p *Presenter) Select(id entity.IngredientID) {
 	if p.state.Selected != nil {
 		p.state.FormInstance++
 		p.state.Form = formFromIngredient(p.state.Selected)
-		p.state.CanUpdate = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), ingredientauthz.ActionUpdate, p.state.Selected.CedarEntity()) == nil
-		p.state.CanDelete = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), ingredientauthz.ActionDelete, p.state.Selected.CedarEntity()) == nil
-		p.state.CanTag = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), ingredientauthz.ActionTag, p.state.Selected.CedarEntity()) == nil
+		if err := p.permissionsForLocked(p.state.Selected); err != nil {
+			p.state.Err = toolkit.PresentError(err)
+			toolkit.ShowPresentation(p.dialogs, err)
+		}
 		if p.state.CanUpdate {
 			p.state.Mode = Edit
 		} else {
@@ -250,7 +259,7 @@ func (p *Presenter) leaveDetail(reset bool) {
 
 func (p *Presenter) StartCreate() {
 	p.mu.Lock()
-	if !p.state.CanCreate {
+	if !p.actionEnabledLocked(ingredients.ControlCreate) {
 		p.mu.Unlock()
 		return
 	}
@@ -262,8 +271,11 @@ func (p *Presenter) StartCreate() {
 func (p *Presenter) StartEdit() {
 	p.mu.Lock()
 	if selected := p.state.Selected; selected != nil {
-		p.state.CanUpdate = pkgAuthz.AuthorizeWithEntity(p.app.Context().Principal(), ingredientauthz.ActionUpdate, selected.CedarEntity()) == nil
-		if p.state.CanUpdate {
+		if err := p.permissionsForLocked(selected); err != nil {
+			p.state.Err = toolkit.PresentError(err)
+			toolkit.ShowPresentation(p.dialogs, err)
+		}
+		if p.actionEnabledLocked(ingredients.ControlEdit) {
 			p.state.Mode = Edit
 		} else {
 			p.state.Mode = Viewing
@@ -277,7 +289,7 @@ func (p *Presenter) StartEdit() {
 
 func (p *Presenter) StartTags() {
 	p.mu.Lock()
-	if selected := p.state.Selected; selected != nil {
+	if selected := p.state.Selected; selected != nil && p.actionEnabledLocked(ingredients.ControlTags) {
 		p.state.Mode = Tags
 		p.state.Form = Form{Tags: selected.Tags.Canonical().String()}
 		p.state.Err = nil
@@ -318,7 +330,9 @@ func (p *Presenter) Submit(form Form) bool {
 	if mode == Edit && selected != nil {
 		p.state.Dirty = !reflect.DeepEqual(form, formFromIngredient(selected))
 	}
-	if mode == Edit && (!p.state.CanUpdate || !p.state.Dirty) {
+	if mode == Create && !p.actionEnabledLocked(ingredients.ControlCreate) ||
+		mode == Edit && (!p.actionEnabledLocked(ingredients.ControlEdit) || !p.state.Dirty) ||
+		mode == Tags && !p.actionEnabledLocked(ingredients.ControlTags) {
 		p.mu.Unlock()
 		return false
 	}
@@ -415,8 +429,9 @@ func (p *Presenter) Submit(form Form) bool {
 func (p *Presenter) RequestDelete() {
 	p.mu.Lock()
 	target := p.state.Selected
+	allowed := p.actionEnabledLocked(ingredients.ControlDelete)
 	p.mu.Unlock()
-	if target == nil {
+	if target == nil || !allowed {
 		return
 	}
 	p.executor.Execute(func() {
@@ -519,9 +534,37 @@ func (p *Presenter) publishLocked() {
 	}
 }
 
+func (p *Presenter) permissionsForLocked(ingredient *models.Ingredient) error {
+	p.state.Actions = nil
+	p.state.CanCreate, p.state.CanUpdate, p.state.CanDelete, p.state.CanTag = false, false, false, false
+	states, err := p.projector.Project(p.app.Context(), p.app.Context().Principal(), ingredient)
+	if err != nil {
+		return err
+	}
+	p.state.Actions = make(map[actions.ID]actions.State, len(states))
+	for _, state := range states {
+		p.state.Actions[state.ID] = state
+	}
+	p.state.CanCreate = p.state.Actions[ingredients.ControlCreate].Visible
+	p.state.CanUpdate = p.state.Actions[ingredients.ControlEdit].Visible
+	p.state.CanDelete = p.state.Actions[ingredients.ControlDelete].Visible
+	p.state.CanTag = p.state.Actions[ingredients.ControlTags].Visible
+	return nil
+}
+
+func (p *Presenter) actionEnabledLocked(id actions.ID) bool {
+	state, ok := p.state.Actions[id]
+	return ok && state.Visible && state.Enabled
+}
+
 func cloneState(state State) State {
 	state.Items = append([]models.Ingredient(nil), state.Items...)
 	state.History = append([]paging.Cursor(nil), state.History...)
+	actionsCopy := make(map[actions.ID]actions.State, len(state.Actions))
+	for id, action := range state.Actions {
+		actionsCopy[id] = action
+	}
+	state.Actions = actionsCopy
 	if state.Selected != nil {
 		selected := *state.Selected
 		state.Selected = &selected

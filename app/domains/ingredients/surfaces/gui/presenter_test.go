@@ -2,6 +2,8 @@
 package gui
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -19,6 +21,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/fynetest"
 	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
+	cedar "github.com/cedar-policy/cedar-go"
 )
 
 func ingredientFixture(t *testing.T) (*testutil.Fixture, *models.Ingredient, *models.Ingredient) {
@@ -27,6 +30,30 @@ func ingredientFixture(t *testing.T) (*testutil.Fixture, *models.Ingredient, *mo
 	gin := testutil.CreateIngredient(t, fix, models.Ingredient{Name: "London Gin", Category: models.CategorySpirit, Unit: measurement.UnitOz, Description: "Juniper"})
 	lime := testutil.CreateIngredient(t, fix, models.Ingredient{Name: "Lime Juice", Category: models.CategoryJuice, Unit: measurement.UnitMl, Description: "Fresh"})
 	return fix, gin, lime
+}
+
+func TestPresenterProjectsActionsAndReportsEvaluatorFailure(t *testing.T) {
+	fix := testutil.NewFixture(t)
+	want := errors.New("authorization service unavailable")
+	projector := ingredients.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
+	dialogs := &fynetest.Dialogs{}
+	presenter := NewPresenter(fix.App, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{}, dialogs, projector)
+	state := presenter.Snapshot()
+	testutil.ErrorIf(t, state.Err == nil || len(state.Actions) != 0 || state.CanCreate, "failed projection state = %#v", state)
+	testutil.ErrorIf(t, len(dialogs.Errors()) != 1, "evaluator dialogs = %#v", dialogs.Errors())
+}
+
+func TestPresenterProjectionCannotBypassAuthoritativeCommandAuthorization(t *testing.T) {
+	fix := testutil.NewFixture(t)
+	denied := application.NewSession(fix.ActorContext("bartender"), fix.App.App)
+	projector := ingredients.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return nil }}
+	dialogs := &fynetest.Dialogs{}
+	presenter := NewPresenter(denied, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{}, dialogs, projector)
+	presenter.StartCreate()
+	accepted := presenter.Submit(Form{Name: "Forbidden", Category: models.CategoryOther, Unit: measurement.UnitOz})
+	state := presenter.Snapshot()
+	testutil.ErrorIf(t, !accepted || state.Err == nil || state.Mode != Create, "authoritative denial state = %#v", state)
+	testutil.ErrorIsPermission(t, state.Err)
 }
 
 func newTestPresenter(session *application.Session, executor toolkit.Executor) (*Presenter, *fynetest.Dialogs) {
@@ -265,7 +292,10 @@ func TestPresenterDeleteRequiresConfirmationAndPersists(t *testing.T) {
 func TestPresenterDeletePermissionFailureIsShownAndDoesNotMutate(t *testing.T) {
 	fix, gin, _ := ingredientFixture(t)
 	denied := application.NewSession(fix.ActorContext("bartender"), fix.App.App)
-	presenter, dialogs := newTestPresenter(denied, toolkit.InlineExecutor{})
+	dialogs := &fynetest.Dialogs{}
+	// Simulate a capability projection that became stale before the command.
+	projector := ingredients.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return nil }}
+	presenter := NewPresenter(denied, toolkit.InlineExecutor{}, toolkit.InlineDispatcher{}, dialogs, projector)
 	presenter.Load()
 	presenter.Select(gin.ID)
 	presenter.RequestDelete()
@@ -322,7 +352,7 @@ func TestViewDrivesRealWidgetsAndShowsCompleteDetail(t *testing.T) {
 		selected := presenter.Snapshot().Selected
 		testutil.ErrorIf(t, selected == nil || selected.ID != gin.ID, "real list button did not select ingredient: %#v", selected)
 	}
-	driver.Tap("ingredients-create")
+	driver.Tap(ControlCreate)
 	frameworktest.Type(view.name, "Soda")
 	view.formCategory.SetSelected(string(models.CategoryMixer))
 	view.formUnit.SetSelected(string(measurement.UnitMl))
