@@ -1055,6 +1055,19 @@ func (m *ListViewModel) syncActions() {
 	for _, state := range states {
 		m.actions[state.ID] = state
 	}
+	if menu := m.selectedMenu(); menu != nil {
+		report, reportErr := m.app.Menus.Readiness(m.context(), menu.ID)
+		if reportErr != nil {
+			m.actionErr, m.err = reportErr, reportErr
+		} else if report.HasBlockers() {
+			state := m.actions[menus.ControlPublish]
+			if state.Visible && state.Enabled {
+				state.Enabled = false
+				state.DisabledReason = "Resolve menu readiness blockers before publishing."
+				m.actions[menus.ControlPublish] = state
+			}
+		}
+	}
 	m.detail.SetActions(m.actions)
 	if !m.actionEnabled(menus.ControlList) {
 		m.list.SetItems(nil)

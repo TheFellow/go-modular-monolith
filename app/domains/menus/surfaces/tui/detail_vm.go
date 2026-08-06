@@ -63,6 +63,19 @@ func (d *DetailViewModel) View() string {
 	if publishedAt, ok := menu.PublishedAt.Unwrap(); ok {
 		lines = append(lines, d.styles.Muted.Render("Published: "+formatMenuTime(publishedAt)))
 	}
+	if d.app != nil {
+		report, err := d.app.Menus.Readiness(d.app.Context(), menu.ID)
+		if err != nil {
+			lines = append(lines, d.styles.ErrorText.Render("Readiness: "+err.Error()))
+		} else if len(report.Findings) == 0 {
+			lines = append(lines, d.styles.Subtitle.Render("Readiness: ready"))
+		} else {
+			lines = append(lines, "", d.styles.Subtitle.Render("Readiness"))
+			for _, finding := range report.Findings {
+				lines = append(lines, d.styles.Muted.Render(fmt.Sprintf("- %s: %s", finding.Severity, finding.Message)))
+			}
+		}
+	}
 
 	if strings.TrimSpace(menu.Description) != "" {
 		lines = append(lines, "", d.styles.Subtitle.Render("Description"), menu.Description)

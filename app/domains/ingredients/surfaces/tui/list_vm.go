@@ -39,6 +39,7 @@ const (
 	listModeTagging
 	listModeConfirmingDelete
 	listModeFiltering
+	listModeRetiring
 )
 
 // ListViewModel renders the ingredients list and detail panes.
@@ -60,6 +61,7 @@ type ListViewModel struct {
 	tags      *components.TagEditor[cedar.EntityUID, tag.Tags]
 	dialog    *dialog.ConfirmDialog
 	filter    *filterVM
+	retire    *RetireIngredientVM
 	request   ingredients.ListRequest
 	next      paging.Cursor
 	history   []paging.Cursor
@@ -106,7 +108,7 @@ func (m *ListViewModel) Init() tea.Cmd {
 func (m *ListViewModel) Interaction() tui.Interaction {
 	return tui.Interaction{
 		HandlesBack:  m.mode != listModeBrowsing,
-		CapturesText: m.mode == listModeFiltering || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging,
+		CapturesText: m.mode == listModeFiltering || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging || m.mode == listModeRetiring,
 	}
 }
 
@@ -126,6 +128,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 			m.dialog.SetWidth(m.width)
 		case listModeFiltering:
 			m.filter.form.SetWidth(m.detailWidth)
+		case listModeRetiring:
+			m.retire.SetWidth(m.detailWidth)
 		}
 		return m, nil
 	case IngredientCreatedMsg:
@@ -145,6 +149,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	case IngredientDeletedMsg:
 		m.mode = listModeBrowsing
 		m.dialog = nil
+		m.retire = nil
 		m.deleteTarget = nil
 		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(m.request.Cursor))
 	case DeleteErrorMsg:
@@ -209,6 +214,11 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 				m.mode, m.filter = listModeBrowsing, nil
 				return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(""))
 			}
+		case listModeRetiring:
+			if key.Matches(msg, m.keys.Back) && !m.retire.IsEditing() {
+				m.mode, m.retire = listModeBrowsing, nil
+				return m, nil
+			}
 		}
 		if m.mode != listModeBrowsing {
 			break
@@ -250,6 +260,17 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 				return m, nil
 			}
 			return m, m.startDelete()
+		case key.Matches(msg, m.keys.Replace):
+			if !m.actionEnabled(ingredients.ControlDelete) {
+				return m, nil
+			}
+			ingredient := m.selectedIngredient()
+			if ingredient == nil {
+				return m, nil
+			}
+			m.mode, m.retire = listModeRetiring, NewRetireIngredientVM(m.app, ingredient)
+			m.retire.SetWidth(m.detailWidth)
+			return m, m.retire.Init()
 		case key.Matches(msg, m.keys.Tags):
 			if !m.actionEnabled(ingredients.ControlTags) {
 				return m, nil
@@ -299,6 +320,10 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		return m, cmd
 	case listModeFiltering:
 		return m, m.filter.Update(msg)
+	case listModeRetiring:
+		var cmd tea.Cmd
+		m.retire, cmd = m.retire.Update(msg)
+		return m, cmd
 	}
 
 	cmd := m.shell.Update(msg)
@@ -330,6 +355,8 @@ func (m *ListViewModel) View() string {
 		detailView = m.create.View()
 	case listModeEditing:
 		detailView = m.edit.View()
+	case listModeRetiring:
+		detailView = m.retire.View()
 	case listModeFiltering:
 	}
 	return m.shell.View(detailView)
@@ -341,7 +368,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
 	case listModeTagging:
 		return []key.Binding{m.formKeys.Submit, m.keys.Back}
-	case listModeCreating, listModeEditing:
+	case listModeCreating, listModeEditing, listModeRetiring:
 		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
 		bindings := []key.Binding{}
@@ -367,7 +394,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 		}
 	case listModeTagging:
 		return [][]key.Binding{{m.formKeys.Submit, m.keys.Back}}
-	case listModeCreating, listModeEditing:
+	case listModeCreating, listModeEditing, listModeRetiring:
 		return [][]key.Binding{
 			{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit},
 			{m.keys.Back},
@@ -462,6 +489,7 @@ func (m *ListViewModel) visibleBindings() []key.Binding {
 		{ingredients.ControlCreate, m.keys.Create},
 		{ingredients.ControlEdit, m.keys.Edit},
 		{ingredients.ControlDelete, m.keys.Delete},
+		{ingredients.ControlDelete, m.keys.Replace},
 		{ingredients.ControlTags, m.keys.Tags},
 	}
 	bindings := make([]key.Binding, 0, len(pairs))

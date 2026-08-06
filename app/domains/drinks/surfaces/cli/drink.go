@@ -16,6 +16,7 @@ type Drink struct {
 	Name        string               `json:"name"`
 	Category    string               `json:"category,omitempty"`
 	Glass       string               `json:"glass,omitempty"`
+	Status      string               `json:"status,omitempty"`
 	Description string               `json:"description,omitempty"`
 	Recipe      Recipe               `json:"recipe"`
 	Tags        tag.CanonicalStrings `json:"tags"`
@@ -27,6 +28,7 @@ func FromDomainDrink(d models.Drink) Drink {
 		Name:        d.Name,
 		Category:    string(d.Category),
 		Glass:       string(d.Glass),
+		Status:      string(d.Status),
 		Description: d.Description,
 		Recipe:      FromDomainRecipe(d.Recipe),
 		Tags:        d.Tags.Canonical(),

@@ -35,26 +35,26 @@ const (
 )
 
 type View struct {
-	presenter                                  *Presenter
-	root, browse, formPanel, tagsPanel         *framework.Container
-	list                                       *widget.Table
-	listStack                                  *framework.Container
-	empty                                      *framework.Container
-	expression                                 *ui.SemanticEntry
-	formCategory, formUnit                     *widget.Select
-	name, description                          *ui.SemanticEntry
-	tags, tagOnly                              *ui.TagTokenEditor
-	save, cancel, refresh, create              *ui.SemanticButton
-	tagSave, tagCancel                         *ui.SemanticButton
-	tagAction, delete                          *ui.SemanticButton
-	status, formStatus, detailTitle, crumbName *widget.Label
-	tagStatus                                  *widget.Label
-	rendering                                  bool
-	renderedMode                               Mode
-	renderedForm                               Form
-	renderedInstance                           uint64
-	state                                      State
-	tagNaturalWidth                            float32
+	presenter                                          *Presenter
+	root, browse, formPanel, tagsPanel                 *framework.Container
+	list                                               *widget.Table
+	listStack                                          *framework.Container
+	empty                                              *framework.Container
+	expression                                         *ui.SemanticEntry
+	formCategory, formUnit                             *widget.Select
+	name, description, replacementID, replacementRatio *ui.SemanticEntry
+	tags, tagOnly                                      *ui.TagTokenEditor
+	save, cancel, refresh, create                      *ui.SemanticButton
+	tagSave, tagCancel                                 *ui.SemanticButton
+	tagAction, delete                                  *ui.SemanticButton
+	status, formStatus, detailTitle, crumbName         *widget.Label
+	tagStatus                                          *widget.Label
+	rendering                                          bool
+	renderedMode                                       Mode
+	renderedForm                                       Form
+	renderedInstance                                   uint64
+	state                                              State
+	tagNaturalWidth                                    float32
 }
 
 var _ ui.View = (*View)(nil)
@@ -101,7 +101,13 @@ func NewView(p *Presenter) *View {
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New ingredient", p.StartCreate), ui.IconAdd))
 	v.tagAction = ui.WithIcon(ui.NewButton(ControlTags, "Tags", p.StartTags), ui.IconTag)
-	v.delete = ui.Destructive(ui.WithIcon(ui.NewButton(ControlDelete, "Retire", p.RequestDelete), ui.IconDelete))
+	v.replacementID = ui.NewEntry(ControlDelete + ".replacement")
+	v.replacementID.PlaceHolder = "Optional active ingredient ID"
+	v.replacementRatio = ui.NewEntry(ControlDelete + ".ratio")
+	v.replacementRatio.PlaceHolder = "1"
+	v.delete = ui.Destructive(ui.WithIcon(ui.NewButton(ControlDelete, "Retire", func() {
+		p.RequestRetire(v.replacementID.Text, v.replacementRatio.Text)
+	}), ui.IconDelete))
 	v.status = widget.NewLabel("")
 	v.browse = ui.StandardListPage(ui.ListPage{Title: "Ingredients", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, v.refresh}, List: v.listStack, Status: v.status, ListRatio: .35}).(*framework.Container)
 
@@ -125,7 +131,7 @@ func NewView(p *Presenter) *View {
 	v.detailTitle = widget.NewLabel("Ingredient")
 	v.crumbName = widget.NewLabel("")
 	v.formStatus = widget.NewLabel("")
-	fields := ui.DetailForm(ui.DetailField("Name", v.name), ui.DetailField("Category", v.formCategory), ui.DetailField("Unit", v.formUnit), ui.DetailField("Description", v.description), ui.DetailField("Tags", v.tags.Content))
+	fields := ui.DetailForm(ui.DetailField("Name", v.name), ui.DetailField("Category", v.formCategory), ui.DetailField("Unit", v.formUnit), ui.DetailField("Description", v.description), ui.DetailField("Tags", v.tags.Content), ui.DetailField("Permanent replacement", v.replacementID), ui.DetailField("Replacement ratio", v.replacementRatio))
 	breadcrumb := container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Ingredients", p.ResetList), widget.NewLabel(">"), v.crumbName, v.tagAction, v.delete)
 	v.formPanel = ui.StandardFormPage(ui.FormPage{TitleLabel: v.detailTitle, Breadcrumb: breadcrumb, Fields: fields, Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
 	v.tagOnly = ui.NewTagTokenEditor(ControlFormTags, "")

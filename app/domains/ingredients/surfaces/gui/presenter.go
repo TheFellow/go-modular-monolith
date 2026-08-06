@@ -7,6 +7,7 @@ import (
 	"maps"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -429,12 +430,35 @@ func (p *Presenter) Submit(form Form) bool {
 }
 
 func (p *Presenter) RequestDelete() {
+	p.RequestRetire("", "")
+}
+
+func (p *Presenter) RequestRetire(replacementID, replacementRatio string) {
 	p.mu.Lock()
 	target := p.state.Selected
 	allowed := p.actionEnabledLocked(ingredients.ControlDelete)
 	p.mu.Unlock()
 	if target == nil || !allowed {
 		return
+	}
+	retirement := models.Retirement{}
+	replacementID = strings.TrimSpace(replacementID)
+	replacementRatio = strings.TrimSpace(replacementRatio)
+	if replacementID != "" {
+		parsed, err := entity.ParseIngredientID(replacementID)
+		if err != nil {
+			p.presentRetirementError(err)
+			return
+		}
+		retirement.ReplacementID = parsed
+		if replacementRatio != "" {
+			ratio, err := strconv.ParseFloat(replacementRatio, 64)
+			if err != nil {
+				p.presentRetirementError(errors.Invalidf("invalid replacement ratio %q", replacementRatio))
+				return
+			}
+			retirement.Ratio = ratio
+		}
 	}
 	p.executor.Execute(func() {
 		count, err := p.countDrinksUsing(target.ID)
@@ -453,20 +477,28 @@ func (p *Presenter) RequestDelete() {
 			}
 			p.dialogs.Confirm("Retire Ingredient", message, func(confirmed bool) {
 				if confirmed {
-					p.delete(target.ID)
+					p.retire(target.ID, retirement)
 				}
 			})
 		})
 	})
 }
 
-func (p *Presenter) delete(id entity.IngredientID) bool {
+func (p *Presenter) presentRetirementError(err error) {
+	p.mu.Lock()
+	p.state.Err = toolkit.PresentError(err)
+	p.publishLocked()
+	p.mu.Unlock()
+	toolkit.ShowPresentation(p.dialogs, err)
+}
+
+func (p *Presenter) retire(id entity.IngredientID, retirement models.Retirement) bool {
 	p.mu.Lock()
 	p.state.Submitting = true
 	p.publishLocked()
 	p.mu.Unlock()
 	accepted := p.mutation.Submit(func() error {
-		_, err := p.app.Ingredients.Delete(p.app.Context(), id)
+		_, err := p.app.Ingredients.Retire(p.app.Context(), id, retirement)
 		return err
 	}, func(err error) {
 		p.mu.Lock()

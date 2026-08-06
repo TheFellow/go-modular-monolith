@@ -261,13 +261,22 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Flags: []cli.Flag{
 					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Ingredient ID", Required: true},
+					&cli.StringFlag{Name: "replacement-id", Usage: "Explicit permanent replacement ingredient ID"},
+					&cli.Float64Flag{Name: "replacement-ratio", Usage: "Replacement quantity ratio (defaults to 1)"},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					ingredientID, err := entity.ParseIngredientID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
-					res, err := c.app.Ingredients.Delete(ctx, ingredientID)
+					retirement := models.Retirement{Ratio: cmd.Float64("replacement-ratio")}
+					if replacement := strings.TrimSpace(cmd.String("replacement-id")); replacement != "" {
+						retirement.ReplacementID, err = entity.ParseIngredientID(replacement)
+						if err != nil {
+							return err
+						}
+					}
+					res, err := c.app.Ingredients.Retire(ctx, ingredientID, retirement)
 					if err != nil {
 						return err
 					}

@@ -9,10 +9,13 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	menuauthz "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	menustui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
@@ -38,6 +41,7 @@ func newMenuDriver(t *testing.T, f *testutil.Fixture) *tuitest.Driver {
 func createMenuTUIDrink(t *testing.T, f *testutil.Fixture, name string) *drinksmodels.Drink {
 	t.Helper()
 	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: name + " Base", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+	testutil.SetInventory(t, f, inventorymodels.Update{IngredientID: ingredient.ID, Amount: measurement.MustAmount(10, ingredient.Unit), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
 	return testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name: name, Category: drinksmodels.DrinkCategoryCocktail,
 		Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)}}, Steps: []string{"Build"}},
@@ -78,6 +82,17 @@ func TestMenuTUIAddsAndRemovesResolvedCommaBearingDrink(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(got.Items), 0)
 	testutil.AuditTouches(t, f.LatestAuditEntry(menuauthz.ActionRemoveDrink), menu.EntityUID())
+}
+
+func TestMenuTUIShowsReadinessBlockerAndDisablesPublish(t *testing.T) {
+	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Unavailable Base", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{Name: "Unavailable Drink", Category: drinksmodels.DrinkCategoryCocktail, Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, ingredient.Unit)}}, Steps: []string{"Build"}}})
+	testutil.CreateMenu(t, f, "Blocked Menu", testutil.WithDrink(drink))
+	driver := newMenuDriver(t, f)
+	driver.RequireText("Readiness")
+	driver.RequireText("blocker")
+	driver.RequireText("Resolve menu readiness blockers before")
 }
 
 func TestMenuTUIRemoveConfirmationCancelDoesNotMutate(t *testing.T) {
