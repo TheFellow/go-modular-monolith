@@ -1055,8 +1055,11 @@ func (m *ListViewModel) syncActions() {
 	for _, state := range states {
 		m.actions[state.ID] = state
 	}
-	if menu := m.selectedMenu(); menu != nil {
+	m.detail.SetReadiness(nil, nil)
+	readinessState := m.actions[menus.ControlReadiness]
+	if menu := m.selectedMenu(); menu != nil && readinessState.Visible && readinessState.Enabled {
 		report, reportErr := m.app.Menus.Readiness(m.context(), menu.ID)
+		m.detail.SetReadiness(&report, reportErr)
 		if reportErr != nil {
 			m.actionErr, m.err = reportErr, reportErr
 		} else if report.HasBlockers() {

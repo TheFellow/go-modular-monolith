@@ -20,12 +20,14 @@ import (
 
 // DetailViewModel renders a menu detail pane.
 type DetailViewModel struct {
-	styles  tui.ListViewStyles
-	width   int
-	height  int
-	menu    optional.Value[models.Menu]
-	app     *app.Session
-	actions map[actions.ID]actions.State
+	styles       tui.ListViewStyles
+	width        int
+	height       int
+	menu         optional.Value[models.Menu]
+	app          *app.Session
+	actions      map[actions.ID]actions.State
+	readiness    *models.ReadinessReport
+	readinessErr error
 }
 
 func NewDetailViewModel(styles tui.ListViewStyles, app *app.Session) *DetailViewModel {
@@ -45,6 +47,9 @@ func (d *DetailViewModel) SetMenu(menu optional.Value[models.Menu]) {
 }
 
 func (d *DetailViewModel) SetActions(states map[actions.ID]actions.State) { d.actions = states }
+func (d *DetailViewModel) SetReadiness(report *models.ReadinessReport, err error) {
+	d.readiness, d.readinessErr = report, err
+}
 
 func (d *DetailViewModel) View() string {
 	menu, ok := d.menu.Unwrap()
@@ -63,15 +68,14 @@ func (d *DetailViewModel) View() string {
 	if publishedAt, ok := menu.PublishedAt.Unwrap(); ok {
 		lines = append(lines, d.styles.Muted.Render("Published: "+formatMenuTime(publishedAt)))
 	}
-	if d.app != nil {
-		report, err := d.app.Menus.Readiness(d.app.Context(), menu.ID)
-		if err != nil {
-			lines = append(lines, d.styles.ErrorText.Render("Readiness: "+err.Error()))
-		} else if len(report.Findings) == 0 {
+	if d.readinessErr != nil {
+		lines = append(lines, d.styles.ErrorText.Render("Readiness: "+d.readinessErr.Error()))
+	} else if d.readiness != nil {
+		if len(d.readiness.Findings) == 0 {
 			lines = append(lines, d.styles.Subtitle.Render("Readiness: ready"))
 		} else {
 			lines = append(lines, "", d.styles.Subtitle.Render("Readiness"))
-			for _, finding := range report.Findings {
+			for _, finding := range d.readiness.Findings {
 				lines = append(lines, d.styles.Muted.Render(fmt.Sprintf("- %s: %s", finding.Severity, finding.Message)))
 			}
 		}

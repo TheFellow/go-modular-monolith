@@ -4,8 +4,7 @@ permit(
     principal,
     action in [
         Mixology::Menu::Action::"list",
-        Mixology::Menu::Action::"get",
-        Mixology::Menu::Action::"readiness"
+        Mixology::Menu::Action::"get"
     ],
     resource
 );
@@ -21,6 +20,7 @@ permit(
         Mixology::Menu::Action::"remove_drink",
         Mixology::Menu::Action::"publish",
         Mixology::Menu::Action::"draft",
+        Mixology::Menu::Action::"readiness",
         Mixology::Menu::Action::"tag",
         Mixology::Menu::Action::"untag"
     ],

@@ -48,7 +48,7 @@ func TestMenuActionProjectorAuthorizationAndLifecycle(t *testing.T) {
 					testutil.Ok(t, err)
 					byID := indexStates(states)
 					for id, state := range byID {
-						visible := actor.visible || id == menus.ControlList || id == menus.ControlReadiness
+						visible := actor.visible || id == menus.ControlList
 						testutil.Equals(t, state.Visible, visible)
 						if !visible {
 							testutil.Equals(t, state.Enabled, false)

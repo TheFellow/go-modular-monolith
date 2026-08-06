@@ -104,13 +104,17 @@ Drink `review_required`; an optional reference is removed, and a retired substit
 discarded. `--replacement-id` records explicit permanent product intent: category and unit
 compatibility are validated and affected canonical recipes are rewritten transactionally. The
 system never infers a permanent replacement from a temporary substitution rule.
+Category compatibility is intentionally coarse in this teaching model: the authorized manager's
+explicit approval supplies the product-family judgment (for example, comparable tequila brands),
+while the application prevents cross-category and dimensionally invalid rewrites.
 
 Published Menus remain published when real-world changes degrade them. Their item availability and
 the `menus readiness` report explain blockers and warnings. A temporary substitute can make a
 review-required Drink limited rather than unavailable, but it remains a publication blocker until
 the canonical recipe is approved. Draft publication rejects review-required Drinks, unavailable
 items, retired/missing requirements, and temporary substitutions; ordinary low stock is a warning.
-The same report and blocked-action reason are available in CLI, TUI, and GUI.
+The manager-only report and blocked-action reason are available in CLI, TUI, and GUI without
+exposing draft operational findings to read-only personas.
 
 Editing a Drink with a valid replacement recipe returns it to `active`; existing Orders retain the
 usage snapshot accepted when they were placed.

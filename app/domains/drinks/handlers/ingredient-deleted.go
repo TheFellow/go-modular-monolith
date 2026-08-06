@@ -48,9 +48,13 @@ func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, _e ingredient
 		rewritten := make([]drinksmodels.RecipeIngredient, 0, len(review.Recipe.Ingredients))
 		requiresReview := false
 		for _, recipeIngredient := range review.Recipe.Ingredients {
-			recipeIngredient.Substitutes = slices.DeleteFunc(slices.Clone(recipeIngredient.Substitutes), func(id entity.IngredientID) bool {
-				return id == _e.Ingredient.ID
-			})
+			substitutes := slices.Clone(recipeIngredient.Substitutes)
+			for i, id := range substitutes {
+				if id == _e.Ingredient.ID && _e.Replacement != nil {
+					substitutes[i] = _e.Replacement.ID
+				}
+			}
+			recipeIngredient.Substitutes = compactSubstitutes(substitutes, recipeIngredient.IngredientID, _e.Ingredient.ID)
 			if recipeIngredient.IngredientID != _e.Ingredient.ID {
 				rewritten = append(rewritten, recipeIngredient)
 				continue
@@ -86,4 +90,20 @@ func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, _e ingredient
 		ctx.TouchEntity(review.ID.EntityUID())
 	}
 	return nil
+}
+
+func compactSubstitutes(ids []entity.IngredientID, primary entity.IngredientID, retired entity.IngredientID) []entity.IngredientID {
+	seen := make(map[string]struct{}, len(ids))
+	out := ids[:0]
+	for _, id := range ids {
+		if id == retired || id == primary {
+			continue
+		}
+		if _, ok := seen[id.String()]; ok {
+			continue
+		}
+		seen[id.String()] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }
