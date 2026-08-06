@@ -1,6 +1,7 @@
 package ingredients_test
 
 import (
+	"math"
 	"testing"
 
 	drinksM "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
@@ -80,4 +81,10 @@ func TestIngredients_RetireRejectsIncompatibleReplacement(t *testing.T) {
 	testutil.ErrorIf(t, err == nil, "expected incompatible replacement error")
 	_, getErr := f.Ingredients.Get(ctx, spirit.ID)
 	testutil.Ok(t, getErr)
+
+	compatible := testutil.CreateIngredient(t, f, ingredientsM.Ingredient{Name: "Compatible", Category: ingredientsM.CategorySpirit, Unit: measurement.UnitOz})
+	for _, ratio := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
+		_, ratioErr := f.Ingredients.Retire(ctx, spirit.ID, ingredientsM.Retirement{ReplacementID: compatible.ID, Ratio: ratio})
+		testutil.ErrorIf(t, ratioErr == nil, "non-finite replacement ratio accepted")
+	}
 }

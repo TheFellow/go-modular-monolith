@@ -1,11 +1,14 @@
 package commands
 
 import (
+	"math"
 	"time"
 
+	ingredientauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	pkgAuthz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -39,14 +42,17 @@ func (c *Commands) Retire(ctx *middleware.Context, target RetirementTarget) (*mo
 		if err != nil {
 			return nil, errors.Invalidf("replacement ingredient %s must exist and be active: %w", target.Retirement.ReplacementID.String(), err)
 		}
+		if err := pkgAuthz.AuthorizeWithEntity(ctx.Principal(), ingredientauthz.ActionGet, replacement.CedarEntity()); err != nil {
+			return nil, err
+		}
 		if replacement.Category != ingredient.Category {
 			return nil, errors.Invalidf("replacement category %q is incompatible with retired category %q", replacement.Category, ingredient.Category)
 		}
 		if ratio == 0 {
 			ratio = 1
 		}
-		if ratio <= 0 {
-			return nil, errors.Invalidf("replacement ratio must be greater than zero")
+		if ratio <= 0 || math.IsNaN(ratio) || math.IsInf(ratio, 0) {
+			return nil, errors.Invalidf("replacement ratio must be a finite number greater than zero")
 		}
 		amount, err := measurement.NewAmount(1, ingredient.Unit)
 		if err != nil {

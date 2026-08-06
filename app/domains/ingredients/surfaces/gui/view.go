@@ -204,6 +204,8 @@ func (v *View) populate(f Form) {
 	v.formUnit.SetSelected(string(f.Unit))
 	v.description.SetText(f.Description)
 	v.tags.SetCSV(f.Tags)
+	v.replacementID.SetText("")
+	v.replacementRatio.SetText("1")
 }
 
 func (v *View) render(s State) {

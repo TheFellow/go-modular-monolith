@@ -68,6 +68,13 @@ func TestPermissions_Menu(t *testing.T) {
 			_, err = a.Menus.Get(ctx, menuForAdd.ID)
 			testutil.Ok(t, err)
 
+			_, err = a.Menus.Readiness(ctx, menuForAdd.ID)
+			if tc.canWrite {
+				testutil.Ok(t, err)
+			} else {
+				testutil.ErrorIsPermission(t, err)
+			}
+
 			_, err = a.Menus.Create(ctx, &menuM.Menu{Name: "Created Permissions Menu"})
 			if tc.canWrite {
 				testutil.Ok(t, err)

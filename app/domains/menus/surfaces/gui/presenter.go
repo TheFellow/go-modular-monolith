@@ -702,6 +702,10 @@ func (p *Presenter) loadReadiness() {
 	if p.state.Selected == nil {
 		return
 	}
+	state := p.state.Actions[menus.ControlReadiness]
+	if !state.Visible || !state.Enabled {
+		return
+	}
 	report, err := p.app.Menus.Readiness(p.app.Context(), p.state.Selected.ID)
 	if err != nil {
 		p.state.Err = ui.PresentError(err)

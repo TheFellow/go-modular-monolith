@@ -77,6 +77,13 @@ func TestIngredientRetirementWithExplicitReplacementRewritesCanonicalRecipe(t *t
 			{IngredientID: retired.ID, Amount: measurement.MustAmount(1, measurement.UnitOz), Substitutes: []entity.IngredientID{replacement.ID}},
 		}, Steps: []string{"Shake"}},
 	})
+	base := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Base spirit", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+	substituteOnly := testutil.CreateDrink(t, f, drinksmodels.Drink{
+		Name: "Alternate Margarita", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe,
+		Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{
+			{IngredientID: base.ID, Amount: measurement.MustAmount(1, measurement.UnitOz), Substitutes: []entity.IngredientID{retired.ID}},
+		}, Steps: []string{"Shake"}},
+	})
 
 	_, err := f.Ingredients.Retire(ctx, retired.ID, ingredientsmodels.Retirement{ReplacementID: replacement.ID, Ratio: 1})
 	testutil.Ok(t, err)
@@ -86,6 +93,9 @@ func TestIngredientRetirementWithExplicitReplacementRewritesCanonicalRecipe(t *t
 	testutil.Equals(t, got.Recipe.Ingredients[0].IngredientID, replacement.ID)
 	testutil.Equals(t, got.Recipe.Ingredients[0].Amount.Unit(), measurement.UnitMl)
 	testutil.Equals(t, len(got.Recipe.Ingredients[0].Substitutes), 0)
+	gotSubstituteOnly, err := f.Drinks.Get(ctx, substituteOnly.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, gotSubstituteOnly.Recipe.Ingredients[0].Substitutes, []entity.IngredientID{replacement.ID})
 }
 
 func TestIngredientRetirementRemovesOptionalAndSubstituteReferencesWithoutReview(t *testing.T) {
