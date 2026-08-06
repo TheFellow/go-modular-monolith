@@ -64,6 +64,54 @@ func TestIngredientRetirementMarksDependentsForReviewAndPreservesRelationships(t
 	)
 }
 
+func TestIngredientRetirementWithExplicitReplacementRewritesCanonicalRecipe(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ctx := f.OwnerContext()
+
+	retired := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Herradura", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+	replacement := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Hornitos", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitMl})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
+		Name: "House Margarita", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe,
+		Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{
+			{IngredientID: retired.ID, Amount: measurement.MustAmount(1, measurement.UnitOz), Substitutes: []entity.IngredientID{replacement.ID}},
+		}, Steps: []string{"Shake"}},
+	})
+
+	_, err := f.Ingredients.Retire(ctx, retired.ID, ingredientsmodels.Retirement{ReplacementID: replacement.ID, Ratio: 1})
+	testutil.Ok(t, err)
+	got, err := f.Drinks.Get(ctx, drink.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, got.Status, drinksmodels.StatusActive)
+	testutil.Equals(t, got.Recipe.Ingredients[0].IngredientID, replacement.ID)
+	testutil.Equals(t, got.Recipe.Ingredients[0].Amount.Unit(), measurement.UnitMl)
+	testutil.Equals(t, len(got.Recipe.Ingredients[0].Substitutes), 0)
+}
+
+func TestIngredientRetirementRemovesOptionalAndSubstituteReferencesWithoutReview(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ctx := f.OwnerContext()
+
+	base := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Base", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
+	optional := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Optional", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
+		Name: "Flexible", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe,
+		Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{
+			{IngredientID: base.ID, Amount: measurement.MustAmount(1, measurement.UnitOz), Substitutes: []entity.IngredientID{optional.ID}},
+			{IngredientID: optional.ID, Amount: measurement.MustAmount(1, measurement.UnitOz), Optional: true},
+		}, Steps: []string{"Mix"}},
+	})
+
+	_, err := f.Ingredients.Retire(ctx, optional.ID, ingredientsmodels.Retirement{})
+	testutil.Ok(t, err)
+	got, err := f.Drinks.Get(ctx, drink.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, got.Status, drinksmodels.StatusActive)
+	testutil.Equals(t, len(got.Recipe.Ingredients), 1)
+	testutil.Equals(t, len(got.Recipe.Ingredients[0].Substitutes), 0)
+}
+
 func menuAvailability(menu *menumodels.Menu, id entity.DrinkID) menumodels.Availability {
 	for _, item := range menu.Items {
 		if item.DrinkID == id {

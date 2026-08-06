@@ -26,6 +26,16 @@ type Ingredient struct {
 	Tags        tag.Tags
 }
 
+// Retirement describes a deliberate ingredient lifecycle transition. A
+// permanent replacement is explicit product intent; temporary substitutions
+// are fulfillment options and are never promoted by this operation.
+type Retirement struct {
+	ReplacementID entity.IngredientID
+	Ratio         float64
+}
+
+func (r Retirement) HasReplacement() bool { return !r.ReplacementID.IsZero() }
+
 func (i Ingredient) EntityUID() cedar.EntityUID {
 	return i.ID.EntityUID()
 }

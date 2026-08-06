@@ -68,3 +68,16 @@ func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
 	testutil.Equals(t, len(gotMenu.Items), 1)
 	testutil.Equals(t, gotMenu.Items[0].Availability, menuM.AvailabilityUnavailable)
 }
+
+func TestIngredients_RetireRejectsIncompatibleReplacement(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ctx := f.OwnerContext()
+	spirit := testutil.CreateIngredient(t, f, ingredientsM.Ingredient{Name: "Spirit", Category: ingredientsM.CategorySpirit, Unit: measurement.UnitOz})
+	garnish := testutil.CreateIngredient(t, f, ingredientsM.Ingredient{Name: "Garnish", Category: ingredientsM.CategoryGarnish, Unit: measurement.UnitPiece})
+
+	_, err := f.Ingredients.Retire(ctx, spirit.ID, ingredientsM.Retirement{ReplacementID: garnish.ID, Ratio: 1})
+	testutil.ErrorIf(t, err == nil, "expected incompatible replacement error")
+	_, getErr := f.Ingredients.Get(ctx, spirit.ID)
+	testutil.Ok(t, getErr)
+}
