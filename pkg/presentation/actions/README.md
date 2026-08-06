@@ -4,6 +4,18 @@
 web adapters. It deliberately does not execute commands: command middleware remains the security
 boundary, and presentation evaluation only improves what the user sees.
 
+```mermaid
+flowchart LR
+    Projector[Domain action projector] --> Evaluate[actions.Evaluate]
+    Evaluate --> State[Visible / enabled state]
+    State --> Adapters[GUI, TUI, or web adapter]
+    Adapters --> Command[Command or query]
+    Command --> Enforcement[Authorization middleware<br/>and domain invariants]
+```
+
+The projection guides rendering, while the command or query path independently enforces current
+authorization and invariants.
+
 A surface declares stable control IDs in `Group`s. The group's permission is inherited by nested
 groups and controls; `Require` replaces that permission and `Public` explicitly removes it. This
 makes broad rules concise while supporting exceptional actions such as publish:
