@@ -97,6 +97,7 @@ func (c *AvailabilityCalculator) Readiness(ctx store.Context, menu *models.Menu)
 			})
 		}
 		switch detail.Status {
+		case models.AvailabilityAvailable:
 		case models.AvailabilityUnavailable:
 			report.Findings = append(report.Findings, models.ReadinessFinding{
 				Severity: models.ReadinessBlocker, Code: models.ReadinessUnavailable, DrinkID: drink.ID,

@@ -12,6 +12,7 @@ import (
 )
 
 func TestToModelRejectsInvalidPersistedStatusAsInternal(t *testing.T) {
+	t.Parallel()
 	_, err := toModel(DrinkRow{ID: "corrupt", Status: "surprising"})
 	require.Error(t, err)
 	require.True(t, apperrors.IsInternal(err))
@@ -19,6 +20,7 @@ func TestToModelRejectsInvalidPersistedStatusAsInternal(t *testing.T) {
 }
 
 func TestRegisterExplicitlyBackfillsLegacyStatus(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	s, err := store.Open(ctx, t.TempDir()+"/legacy.db")
 	require.NoError(t, err)
