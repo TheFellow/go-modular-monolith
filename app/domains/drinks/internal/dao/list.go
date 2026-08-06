@@ -39,7 +39,10 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Drink
 				return err
 			}
 			for _, row := range rows {
-				drink := toModel(row)
+				drink, err := toModel(row)
+				if err != nil {
+					return err
+				}
 				drink.Tags = tagsByTarget[drink.EntityUID()]
 				matched, err := filter.Expression.Match(listFilterView(row, drink.Tags.Strings()))
 				if err != nil {
@@ -91,7 +94,10 @@ func (d *DAO) ListByIngredient(ctx store.Context, ingredientID entity.Ingredient
 		}
 		drinks := make([]*models.Drink, 0, len(rows))
 		for _, r := range rows {
-			d := toModel(r)
+			d, err := toModel(r)
+			if err != nil {
+				return err
+			}
 			d.Tags = tagsByTarget[d.EntityUID()]
 			drinks = append(drinks, &d)
 		}
@@ -127,12 +133,8 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[DrinkRow] {
 }
 
 func listFilterView(r DrinkRow, tags []string) models.ListFilterView {
-	status := r.Status
-	if status == "" {
-		status = string(models.StatusActive)
-	}
 	return models.ListFilterView{
-		ID: r.ID, Name: r.Name, Category: r.Category, Glass: r.Glass, Status: status, Description: r.Description, Tags: tags,
+		ID: r.ID, Name: r.Name, Category: r.Category, Glass: r.Glass, Status: r.Status, Description: r.Description, Tags: tags,
 		Recipe: models.RecipeFilterView{Garnish: r.Recipe.Garnish},
 	}
 }

@@ -28,7 +28,10 @@ func (d *DAO) Get(ctx store.Context, id entity.DrinkID) (*models.Drink, error) {
 	if row.DeletedAt != nil {
 		return nil, errors.NotFoundf("drink %s not found", id.String())
 	}
-	drink := toModel(row)
+	drink, err := toModel(row)
+	if err != nil {
+		return nil, err
+	}
 	drink.Tags = tagsByTarget[id.EntityUID()]
 	return &drink, nil
 }

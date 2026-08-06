@@ -6,6 +6,7 @@ import (
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -27,7 +28,7 @@ func toRow(d drinksmodels.Drink) DrinkRow {
 	}
 }
 
-func toModel(r DrinkRow) drinksmodels.Drink {
+func toModel(r DrinkRow) (drinksmodels.Drink, error) {
 	var deletedAt optional.Value[time.Time]
 	if r.DeletedAt != nil {
 		deletedAt = optional.Some(*r.DeletedAt)
@@ -35,8 +36,8 @@ func toModel(r DrinkRow) drinksmodels.Drink {
 		deletedAt = optional.None[time.Time]()
 	}
 	status := drinksmodels.Status(r.Status)
-	if status == "" {
-		status = drinksmodels.StatusActive
+	if err := status.Validate(); err != nil {
+		return drinksmodels.Drink{}, errors.Internalf("drink %q has invalid persisted status %q: %w", r.ID, r.Status, err)
 	}
 	return drinksmodels.Drink{
 		ID:          drinksmodels.NewDrinkID(r.ID),
@@ -47,7 +48,7 @@ func toModel(r DrinkRow) drinksmodels.Drink {
 		Description: r.Description,
 		Status:      status,
 		DeletedAt:   deletedAt,
-	}
+	}, nil
 }
 
 func toRecipeRow(r drinksmodels.Recipe) RecipeRow {
