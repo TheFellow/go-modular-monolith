@@ -8,8 +8,11 @@ import (
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -48,6 +51,7 @@ func TestPlaceVMLoadsEveryPublishedMenuPage(t *testing.T) {
 	}
 	testutil.CreateMenu(t, fix, "Unpublished")
 	testutil.CreateMenu(t, fix, "Unavailable Published", testutil.WithDrink(unavailable), testutil.Published())
+	testutil.SetInventory(t, fix, inventorymodels.Update{IngredientID: ingredient.ID, Amount: measurement.MustAmount(0, ingredient.Unit), CostPerUnit: money.NewPriceFromCents(0, currency.USD)})
 
 	v := newPlaceVM(fix.App, 1)
 	msg := v.loadCatalog()().(placeCatalogLoadedMsg)

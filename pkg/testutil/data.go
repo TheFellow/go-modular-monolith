@@ -71,6 +71,24 @@ func CreateMenu(t testing.TB, f *Fixture, name string, opts ...MenuOption) *menu
 		Ok(t, err)
 	}
 	if options.published {
+		// Published test fixtures represent a known-good starting state. When a
+		// test has not modeled Inventory at all, provision ample primary stock so
+		// the production publication-readiness rule is satisfied. Tests that set
+		// any stock retain full control over degraded/substitution scenarios.
+		stockCount, countErr := f.Inventory.Count(f.OwnerContext(), inventorydomain.ListRequest{})
+		Ok(t, countErr)
+		if stockCount == 0 {
+			for _, drink := range options.drinks {
+				for _, requirement := range drink.Recipe.Ingredients {
+					if requirement.Optional {
+						continue
+					}
+					ingredient, getErr := f.Ingredients.Get(f.OwnerContext(), requirement.IngredientID)
+					Ok(t, getErr)
+					SetInventory(t, f, inventorymodels.Update{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1_000_000, ingredient.Unit), CostPerUnit: money.NewPriceFromCents(0, currency.USD)})
+				}
+			}
+		}
 		menu, err = f.Menus.Publish(f.OwnerContext(), &menumodels.Menu{ID: menu.ID})
 		Ok(t, err)
 	}

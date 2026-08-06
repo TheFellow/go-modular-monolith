@@ -20,7 +20,7 @@ func TestRetireIngredientVMAppliesExplicitReplacement(t *testing.T) {
 	testutil.Ok(t, vm.ratio.SetValue("1"))
 	msg := vm.submit()()
 	if failure, ok := msg.(DeleteErrorMsg); ok {
-		t.Fatalf("retirement failed: %v", failure.Err)
+		testutil.Fail(t, "retirement failed: %v", failure.Err)
 	}
 	got, err := f.Drinks.Get(f.OwnerContext(), drink.ID)
 	testutil.Ok(t, err)

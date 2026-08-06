@@ -99,9 +99,21 @@ published Menu availability, while Inventory adjustment events change Order fulf
 Every indirect mutation is part of the originating transaction and appears in its audit touches.
 
 Retiring an ingredient (`ingredients retire`; `delete` remains a compatibility alias) removes its
-stock but preserves dependent Drinks and Menu curation. Affected Drinks become `review_required`
-and their Menu items become unavailable. Editing a Drink with a valid replacement recipe returns
-it to `active`; existing Orders retain the usage snapshot accepted when they were placed.
+stock but preserves dependent Drinks and Menu curation. A required canonical reference makes its
+Drink `review_required`; an optional reference is removed, and a retired substitute candidate is
+discarded. `--replacement-id` records explicit permanent product intent: category and unit
+compatibility are validated and affected canonical recipes are rewritten transactionally. The
+system never infers a permanent replacement from a temporary substitution rule.
+
+Published Menus remain published when real-world changes degrade them. Their item availability and
+the `menus readiness` report explain blockers and warnings. A temporary substitute can make a
+review-required Drink limited rather than unavailable, but it remains a publication blocker until
+the canonical recipe is approved. Draft publication rejects review-required Drinks, unavailable
+items, retired/missing requirements, and temporary substitutions; ordinary low stock is a warning.
+The same report and blocked-action reason are available in CLI, TUI, and GUI.
+
+Editing a Drink with a valid replacement recipe returns it to `active`; existing Orders retain the
+usage snapshot accepted when they were placed.
 Pending Orders reserved against the retired ingredient become `blocked`; they preserve that
 historical requirement and may still be cancelled to release the reservation.
 

@@ -30,6 +30,7 @@ func TestCompleteOrderUsesCatalogRatioForExplicitSubstitute(t *testing.T) {
 		Name: "Honey Syrup", Category: ingredientsmodels.CategorySyrup, Unit: measurement.UnitOz,
 	})
 	substituteStock := testutil.SetInventory(t, f, fulfillmentStock(substitute, 3))
+	testutil.SetInventory(t, f, fulfillmentStock(primary, 10))
 	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name: "Honey Sour", Category: drinksmodels.DrinkCategorySour, Glass: drinksmodels.GlassTypeCoupe,
 		Recipe: drinksmodels.Recipe{
@@ -42,6 +43,9 @@ func TestCompleteOrderUsesCatalogRatioForExplicitSubstitute(t *testing.T) {
 		},
 	})
 	menu := testutil.CreateMenu(t, f, "Substitution Menu", testutil.WithDrink(drink), testutil.Published())
+	testutil.SetInventory(t, f, fulfillmentStock(primary, 0))
+	menu, err := f.Menus.Get(ctx, menu.ID)
+	testutil.Ok(t, err)
 	testutil.Equals(t, orderMenuAvailability(menu, drink.ID), menumodels.AvailabilityLimited)
 	order := testutil.PlaceOrder(t, f, ordersmodels.Order{
 		MenuID: menu.ID,
@@ -53,8 +57,9 @@ func TestCompleteOrderUsesCatalogRatioForExplicitSubstitute(t *testing.T) {
 	testutil.Equals(t, completed.Status, ordersmodels.OrderStatusCompleted)
 	testutil.IsTrue(t, completed.CompletedAt.IsSome())
 
-	_, err = f.Inventory.Get(ctx, primary.ID)
-	testutil.ErrorIsNotFound(t, err)
+	primaryRemaining, err := f.Inventory.Get(ctx, primary.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, primaryRemaining.Amount, measurement.MustAmount(0, primary.Unit))
 	remaining, err := f.Inventory.Get(ctx, substitute.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, remaining.Amount, measurement.MustAmount(0, substitute.Unit))
@@ -82,6 +87,7 @@ func TestCompleteOrderPrefersHigherQualityCatalogSubstitute(t *testing.T) {
 	})
 	ryeStock := testutil.SetInventory(t, f, fulfillmentStock(rye, 5))
 	scotchStock := testutil.SetInventory(t, f, fulfillmentStock(scotch, 10))
+	testutil.SetInventory(t, f, fulfillmentStock(primary, 10))
 	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name: "Whiskey Cocktail", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeRocks,
 		Recipe: drinksmodels.Recipe{
@@ -94,13 +100,16 @@ func TestCompleteOrderPrefersHigherQualityCatalogSubstitute(t *testing.T) {
 		},
 	})
 	menu := testutil.CreateMenu(t, f, "Quality Menu", testutil.WithDrink(drink), testutil.Published())
-	testutil.Equals(t, orderMenuAvailability(menu, drink.ID), menumodels.AvailabilityAvailable)
+	testutil.SetInventory(t, f, fulfillmentStock(primary, 0))
+	menu, err := f.Menus.Get(ctx, menu.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, orderMenuAvailability(menu, drink.ID), menumodels.AvailabilityLimited)
 	order := testutil.PlaceOrder(t, f, ordersmodels.Order{
 		MenuID: menu.ID,
 		Items:  []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 2}},
 	})
 
-	_, err := f.Orders.Complete(ctx, &ordersmodels.Order{ID: order.ID})
+	_, err = f.Orders.Complete(ctx, &ordersmodels.Order{ID: order.ID})
 	testutil.Ok(t, err)
 	remainingRye, err := f.Inventory.Get(ctx, rye.ID)
 	testutil.Ok(t, err)
@@ -127,6 +136,8 @@ func TestCompleteOrderBacktracksWhenPreferredSubstituteIsShared(t *testing.T) {
 	fallback := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Reservation Fallback", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
 	testutil.SetInventory(t, f, fulfillmentStock(shared, 1.5))
 	testutil.SetInventory(t, f, fulfillmentStock(fallback, 1))
+	testutil.SetInventory(t, f, fulfillmentStock(first, 10))
+	testutil.SetInventory(t, f, fulfillmentStock(second, 10))
 	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name: "Reservation Cocktail", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe,
 		Recipe: drinksmodels.Recipe{
@@ -138,6 +149,8 @@ func TestCompleteOrderBacktracksWhenPreferredSubstituteIsShared(t *testing.T) {
 		},
 	})
 	menu := testutil.CreateMenu(t, f, "Reservation Menu", testutil.WithDrink(drink), testutil.Published())
+	testutil.SetInventory(t, f, fulfillmentStock(first, 0))
+	testutil.SetInventory(t, f, fulfillmentStock(second, 0))
 	order := testutil.PlaceOrder(t, f, ordersmodels.Order{
 		MenuID: menu.ID,
 		Items:  []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
@@ -161,6 +174,8 @@ func TestMenuAvailabilityReservesSharedSubstitute(t *testing.T) {
 	second := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Unavailable Second", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
 	shared := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Unavailable Shared", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
 	testutil.SetInventory(t, f, fulfillmentStock(shared, 1.5))
+	testutil.SetInventory(t, f, fulfillmentStock(first, 10))
+	testutil.SetInventory(t, f, fulfillmentStock(second, 10))
 	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name: "Unavailable Shared Cocktail", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe,
 		Recipe: drinksmodels.Recipe{
@@ -173,6 +188,10 @@ func TestMenuAvailabilityReservesSharedSubstitute(t *testing.T) {
 	})
 
 	menu := testutil.CreateMenu(t, f, "Unavailable Shared Menu", testutil.WithDrink(drink), testutil.Published())
+	testutil.SetInventory(t, f, fulfillmentStock(first, 0))
+	testutil.SetInventory(t, f, fulfillmentStock(second, 0))
+	menu, err := f.Menus.Get(f.OwnerContext(), menu.ID)
+	testutil.Ok(t, err)
 	testutil.Equals(t, orderMenuAvailability(menu, drink.ID), menumodels.AvailabilityUnavailable)
 }
 

@@ -83,6 +83,19 @@ Order placement demonstrates why preparation and transactional fan-out matter: o
 touch several inventory rows and menus, and any reservation failure rolls back the Order and every
 handler mutation. Handler changes are recorded as audit touches on the initiating operation.
 
+Ingredient retirement is another deliberate fan-out. Ingredients owns validation of an optional
+explicit permanent replacement. Drinks owns canonical recipe rewrite or `review_required` state;
+Inventory removes unusable stock; Menus preserves published curation while recalculating degraded
+availability; Orders blocks historical snapshots rather than rewriting an accepted order. Optional
+recipe references and substitute candidates follow less destructive rules than required canonical
+references. These are leaf reactions in one transaction and do not emit follow-up events.
+
+Menus owns a computed, authorized readiness report. It is evaluated both as a query and inside the
+authoritative Publish command. Findings distinguish blockers (invalid canonical state, unavailable
+items, or temporary substitution) from operational warnings such as low stock. This permits an
+already-published Menu to represent degradation honestly while preventing a draft from being
+promoted into a state the application already knows is unsuitable.
+
 ## Authorization
 
 Each domain owns a Cedar schema and policies; the shared
