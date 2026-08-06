@@ -240,6 +240,21 @@ func TestEmptyDraftPublishIsVisibleDisabledWithProjectedReason(t *testing.T) {
 	testutil.Equals(t, v.publish.Disabled(), true)
 }
 
+func TestReadinessBlockerIsVisibleAndDisablesPublish(t *testing.T) {
+	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, ingredientmodels.Ingredient{Name: "Unavailable base", Category: ingredientmodels.CategoryOther, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, drinkmodels.Drink{Name: "Unavailable drink", Category: drinkmodels.DrinkCategoryMocktail, Glass: drinkmodels.GlassTypeHighball, Recipe: drinkmodels.Recipe{Ingredients: []drinkmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, ingredient.Unit)}}, Steps: []string{"Build"}}})
+	menu := testutil.CreateMenu(t, f, "Blocked readiness", testutil.WithDrink(drink))
+	p := NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}})
+	p.state.Items = []*models.Menu{menu}
+	p.Select(0)
+	state := p.State()
+	testutil.ErrorIf(t, state.Readiness == nil || !state.Readiness.HasBlockers(), "readiness blockers not projected")
+	testutil.Equals(t, state.Actions[menus.ControlPublish].Enabled, false)
+	v := NewView(p)
+	testutil.Equals(t, v.publish.Disabled(), true)
+}
+
 func TestPublishPermissionIsIndependentOfUpdateAndEvaluatorErrorsSurface(t *testing.T) {
 	f := testutil.NewFixture(t)
 	drink := menuDrink(t, f, "Independent publish")
@@ -715,5 +730,6 @@ func TestCLIWorkflowAndFyneShareMenuPersistenceContract(t *testing.T) {
 func menuDrink(t *testing.T, f *testutil.Fixture, name string) *drinkmodels.Drink {
 	t.Helper()
 	ingredient := testutil.CreateIngredient(t, f, ingredientmodels.Ingredient{Name: "Base", Category: ingredientmodels.CategoryOther, Unit: measurement.UnitOz})
+	testutil.SetInventory(t, f, inventorymodels.Update{IngredientID: ingredient.ID, Amount: measurement.MustAmount(10, ingredient.Unit), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
 	return testutil.CreateDrink(t, f, drinkmodels.Drink{Name: name, Category: drinkmodels.DrinkCategoryMocktail, Glass: drinkmodels.GlassTypeHighball, Recipe: drinkmodels.Recipe{Ingredients: []drinkmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)}}, Steps: []string{"Build"}}})
 }

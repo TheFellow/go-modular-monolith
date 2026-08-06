@@ -258,6 +258,19 @@ func (v *View) buildDetail(s State) *framework.Container {
 		}
 		meta := ui.DetailForm(ui.DetailField("Status", readonly(string(m.Status))), ui.DetailField("Created", readonly(formatTime(m.CreatedAt))), ui.DetailField("Published", readonly(published)))
 		fields.Add(meta)
+		if s.Readiness != nil {
+			if len(s.Readiness.Findings) == 0 {
+				fields.Add(widget.NewLabel("Readiness: ready"))
+			} else {
+				lines := []string{"Readiness:"}
+				for _, finding := range s.Readiness.Findings {
+					lines = append(lines, fmt.Sprintf("• %s: %s", finding.Severity, finding.Message))
+				}
+				label := widget.NewLabel(strings.Join(lines, "\n"))
+				label.Wrapping = framework.TextWrapWord
+				fields.Add(label)
+			}
+		}
 		fields.Add(widget.NewLabelWithStyle(fmt.Sprintf("Drinks (%d)", len(m.Items)), framework.TextAlignLeading, framework.TextStyle{Bold: true}))
 		items := append([]models.MenuItem(nil), m.Items...)
 		sort.SliceStable(items, func(i, j int) bool { return items[i].SortOrder < items[j].SortOrder })

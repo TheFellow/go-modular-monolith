@@ -68,6 +68,7 @@ type State struct {
 	Drinks                          []DrinkOption
 	AnalysisForm                    AnalysisForm
 	Analysis                        *queries.MenuAnalytics
+	Readiness                       *models.ReadinessReport
 	Err                             error
 	Dirty                           bool
 	CanUpdate, CanDelete, CanTag    bool
@@ -236,6 +237,7 @@ func (p *Presenter) Select(index int) {
 		p.state.FormInstance++
 		p.state.Form = formFromMenu(p.state.Selected)
 		p.permissions()
+		p.loadReadiness()
 		if p.state.CanUpdate && p.state.Selected.Status == models.MenuStatusDraft {
 			p.state.Mode = Editing
 		} else {
@@ -695,6 +697,26 @@ func (p *Presenter) permissions() {
 		ui.ShowPresentation(p.dialogs, err)
 	}
 }
+func (p *Presenter) loadReadiness() {
+	p.state.Readiness = nil
+	if p.state.Selected == nil {
+		return
+	}
+	report, err := p.app.Menus.Readiness(p.app.Context(), p.state.Selected.ID)
+	if err != nil {
+		p.state.Err = ui.PresentError(err)
+		return
+	}
+	p.state.Readiness = &report
+	if report.HasBlockers() {
+		state := p.state.Actions[menus.ControlPublish]
+		if state.Visible && state.Enabled {
+			state.Enabled = false
+			state.DisabledReason = "Resolve menu readiness blockers before publishing."
+			p.state.Actions[menus.ControlPublish] = state
+		}
+	}
+}
 func (p *Presenter) permissionsFor(menu *models.Menu) error {
 	p.state.Actions = nil
 	p.state.CanList, p.state.CanCreate, p.state.CanUpdate, p.state.CanDelete, p.state.CanTag = false, false, false, false, false
@@ -757,6 +779,7 @@ func (p *Presenter) reselect() {
 		if len(p.state.Items) > 0 {
 			p.state.Selected = cloneMenu(p.state.Items[0])
 			p.permissions()
+			p.loadReadiness()
 		}
 		return
 	}
@@ -765,11 +788,13 @@ func (p *Presenter) reselect() {
 		if item.ID == id {
 			p.state.Selected = cloneMenu(item)
 			p.permissions()
+			p.loadReadiness()
 			return
 		}
 	}
 	p.state.Selected = nil
 	p.permissions()
+	p.state.Readiness = nil
 }
 func cloneMenu(in *models.Menu) *models.Menu {
 	if in == nil {
@@ -801,6 +826,11 @@ func cloneState(in State) State {
 	if in.Analysis != nil {
 		value := cloneAnalysis(*in.Analysis)
 		in.Analysis = &value
+	}
+	if in.Readiness != nil {
+		value := *in.Readiness
+		value.Findings = slices.Clone(in.Readiness.Findings)
+		in.Readiness = &value
 	}
 	return in
 }

@@ -289,6 +289,22 @@ func TestPresenterDeleteRequiresConfirmationAndPersists(t *testing.T) {
 	}
 }
 
+func TestPresenterRetireWithExplicitReplacementRewritesDrink(t *testing.T) {
+	fix := testutil.NewFixture(t)
+	replacement := testutil.CreateIngredient(t, fix, models.Ingredient{Name: "Hornitos", Category: models.CategorySpirit, Unit: measurement.UnitOz})
+	retired := testutil.CreateIngredient(t, fix, models.Ingredient{Name: "Herradura", Category: models.CategorySpirit, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, fix, drinksmodels.Drink{Name: "House Margarita", Category: drinksmodels.DrinkCategoryCocktail, Glass: drinksmodels.GlassTypeCoupe, Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: retired.ID, Amount: measurement.MustAmount(1, retired.Unit)}}, Steps: []string{"Shake"}}})
+	presenter, dialogs := newTestPresenter(fix.App, toolkit.InlineExecutor{})
+	presenter.Load()
+	presenter.Select(retired.ID)
+	presenter.RequestRetire(replacement.ID.String(), "1")
+	dialogs.Confirmations()[0].Respond(true)
+	got, err := fix.Drinks.Get(fix.OwnerContext(), drink.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, got.Recipe.Ingredients[0].IngredientID, replacement.ID)
+	testutil.Equals(t, got.Status, drinksmodels.StatusActive)
+}
+
 func TestPresenterDeletePermissionFailureIsShownAndDoesNotMutate(t *testing.T) {
 	fix, gin, _ := ingredientFixture(t)
 	denied := application.NewSession(fix.ActorContext("bartender"), fix.App.App)

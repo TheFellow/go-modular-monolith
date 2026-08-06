@@ -22,6 +22,34 @@ func (c *CLI) menuCommands() *cli.Command {
 		Usage: "Curate drink menus",
 		Commands: []*cli.Command{
 			{
+				Name:  "readiness",
+				Usage: "Report publication blockers and operational warnings",
+				Flags: []cli.Flag{clitoolkit.JSONFlag, &cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true}},
+				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+					menuID, err := entity.ParseMenuID(cmd.String("id"))
+					if err != nil {
+						return err
+					}
+					report, err := c.app.Menus.Readiness(ctx, menuID)
+					if err != nil {
+						return err
+					}
+					if cmd.Bool("json") {
+						return clitoolkit.WriteJSON(cmd.Writer, report)
+					}
+					if len(report.Findings) == 0 {
+						_, err = fmt.Fprintln(cmd.Writer, "ready: no findings")
+						return err
+					}
+					for _, finding := range report.Findings {
+						if _, err := fmt.Fprintf(cmd.Writer, "%s\t%s\t%s\n", finding.Severity, finding.Code, finding.Message); err != nil {
+							return err
+						}
+					}
+					return nil
+				}),
+			},
+			{
 				Name:  "list",
 				Usage: "List menus",
 				Flags: appendFilterFlags(append([]cli.Flag{

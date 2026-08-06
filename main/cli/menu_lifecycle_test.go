@@ -102,6 +102,14 @@ func TestMenusCLIUpdateAndDeleteEnforceValidationAuthorizationStateAndAtomicTags
 	testutil.Ok(t, drink.Err)
 	drinkID := strings.TrimSpace(drink.Stdout)
 	testutil.Ok(t, cli.Run("menus", "add-drink", "--menu-id", menu.ID, "--drink-id", drinkID).Err)
+	notReady := cli.Run("menus", "readiness", "--id", menu.ID)
+	testutil.Ok(t, notReady.Err)
+	testutil.StringContains(t, notReady.Stdout, "blocker")
+	testutil.ErrorIf(t, cli.Run("menus", "publish", "--id", menu.ID).Err == nil, "unavailable menu published")
+	testutil.Ok(t, cli.Run("inventory", "set", "--ingredient-id", ingredientID, "--quantity", "10", "--cost-per-unit", "$1.00").Err)
+	ready := cli.Run("menus", "readiness", "--id", menu.ID)
+	testutil.Ok(t, ready.Err)
+	testutil.StringContains(t, ready.Stdout, "ready: no findings")
 	testutil.Ok(t, cli.Run("menus", "publish", "--id", menu.ID).Err)
 	for _, result := range []cliResult{
 		cli.Run("menus", "update", "--id", menu.ID, "--name", "Published Change"),
