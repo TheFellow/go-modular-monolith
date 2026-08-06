@@ -2,6 +2,7 @@ package menus
 
 import (
 	"context"
+	"maps"
 
 	menusauthz "github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
@@ -30,6 +31,23 @@ const (
 // flight; each UI composes those local constraints with this domain state.
 type ActionProjector struct {
 	Authorize pkgAuthz.EntityAuthorizer
+}
+
+// ApplyReadiness composes authoritative readiness into already-authorized
+// presentation actions. It returns a clone so adapters cannot accidentally
+// mutate the projector's snapshot or diverge in blocker wording.
+func ApplyReadiness(states map[actions.ID]actions.State, report models.ReadinessReport) map[actions.ID]actions.State {
+	out := maps.Clone(states)
+	if !report.HasBlockers() {
+		return out
+	}
+	state := out[ControlPublish]
+	if state.Visible && state.Enabled {
+		state.Enabled = false
+		state.DisabledReason = "Resolve menu readiness blockers before publishing."
+		out[ControlPublish] = state
+	}
+	return out
 }
 
 // NewActionProjector returns a projector backed by the application's Cedar

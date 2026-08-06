@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 )
 
@@ -11,6 +12,7 @@ type MenusLoadedMsg struct {
 	Err   error
 	Next  paging.Cursor
 	Token uint64
+	Names map[entity.DrinkID]string
 }
 
 // MenuDeletedMsg is sent when a menu has been deleted.

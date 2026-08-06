@@ -9,6 +9,7 @@ import (
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	menustui "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/tui"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -45,6 +46,7 @@ func TestDetailViewModel_ShowsMenuDetails(t *testing.T) {
 	)
 	detail.SetSize(80, 40)
 	detail.SetMenu(optional.Some(*menu))
+	detail.SetDrinkNames(map[entity.DrinkID]string{drink.ID: drink.Name})
 
 	view := detail.View()
 	testutil.ErrorIf(t, !strings.Contains(view, "Summer Menu"), "expected view to contain menu name, got:\n%s", view)
@@ -55,6 +57,19 @@ func TestDetailViewModel_ShowsMenuDetails(t *testing.T) {
 	for _, exact := range []string{"Created: 2025-02-03T04:05:06Z", "Published: 2025-02-04T05:06:07Z", "Drink ID: " + drink.ID.String(), "Sort order: 7"} {
 		testutil.ErrorIf(t, !strings.Contains(view, exact), "expected %q in view, got:\n%s", exact, view)
 	}
+}
+
+func TestDetailViewIsPureAfterProjection(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Pure base", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{Name: "Projected name", Category: drinksmodels.DrinkCategoryCocktail, Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, ingredient.Unit)}}, Steps: []string{"Mix"}}})
+	menu := testutil.CreateMenu(t, f, "Pure detail", testutil.WithDrink(drink))
+	detail := menustui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles](), f.App)
+	detail.SetMenu(optional.Some(*menu))
+	detail.SetDrinkNames(map[entity.DrinkID]string{drink.ID: drink.Name})
+	testutil.Ok(t, f.Close())
+	testutil.StringContains(t, detail.View(), drink.Name)
 }
 
 func TestDetailViewModel_OmitsAbsentPublishedAtAndSortsItems(t *testing.T) {
@@ -69,6 +84,7 @@ func TestDetailViewModel_OmitsAbsentPublishedAtAndSortsItems(t *testing.T) {
 	menu.Items[0].SortOrder, menu.Items[1].SortOrder = 20, 10
 	detail := menustui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles](), f.App)
 	detail.SetMenu(optional.Some(*menu))
+	detail.SetDrinkNames(map[entity.DrinkID]string{first.ID: first.Name, second.ID: second.Name})
 	view := detail.View()
 	testutil.ErrorIf(t, strings.Contains(view, "Published:"), "absent published timestamp rendered: %s", view)
 	testutil.ErrorIf(t, strings.Index(view, "Second") > strings.Index(view, "First"), "items not sorted: %s", view)

@@ -86,5 +86,9 @@ func TestIngredients_RetireRejectsIncompatibleReplacement(t *testing.T) {
 	for _, ratio := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
 		_, ratioErr := f.Ingredients.Retire(ctx, spirit.ID, ingredientsM.Retirement{ReplacementID: compatible.ID, Ratio: ratio})
 		testutil.ErrorIf(t, ratioErr == nil, "non-finite replacement ratio accepted")
+		_, sourceErr := f.Ingredients.Get(ctx, spirit.ID)
+		testutil.Ok(t, sourceErr)
+		_, replacementErr := f.Ingredients.Get(ctx, compatible.ID)
+		testutil.Ok(t, replacementErr)
 	}
 }

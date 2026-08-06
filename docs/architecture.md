@@ -8,7 +8,7 @@ queries, persistence, Cedar policies, events, and transport adapters. Compositio
 
 | Context     | Owns                                                 | Synchronous dependencies              | Events produced                                  |
 | ----------- | ---------------------------------------------------- | ------------------------------------- | ------------------------------------------------ |
-| Ingredients | ingredient catalog                                   | —                                     | created, updated, deleted                        |
+| Ingredients | ingredient catalog and retirement                    | —                                     | created, updated, retired                        |
 | Drinks      | recipes                                              | Ingredients                           | created, updated, deleted                        |
 | Inventory   | stock                                                | Ingredients                           | stock adjusted                                   |
 | Menus       | curation and publication                             | Drinks, Ingredients, Inventory        | created, drink added/removed, published, drafted |

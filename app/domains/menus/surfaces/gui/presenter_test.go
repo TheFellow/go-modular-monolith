@@ -255,6 +255,28 @@ func TestReadinessBlockerIsVisibleAndDisablesPublish(t *testing.T) {
 	testutil.Equals(t, v.publish.Disabled(), true)
 }
 
+func TestReadinessSelectionLoadRejectsStaleCompletion(t *testing.T) {
+	f := testutil.NewFixture(t)
+	first := testutil.CreateMenu(t, f, "First readiness")
+	second := testutil.CreateMenu(t, f, "Second readiness")
+	executor, dispatcher := &fynetest.ManualExecutor{}, &fynetest.ManualDispatcher{}
+	p := NewPresenter(f.App, Dependencies{
+		Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{},
+		ReadinessExecutor: executor, ReadinessDispatcher: dispatcher,
+	})
+	p.state.Items = []*models.Menu{first, second}
+	p.Select(0)
+	p.Select(1)
+	testutil.Equals(t, executor.Pending(), 2)
+	testutil.Equals(t, executor.Run(0), true)
+	dispatcher.Drain()
+	testutil.Equals(t, p.State().Readiness == nil, true)
+	testutil.Equals(t, executor.RunNext(), true)
+	dispatcher.Drain()
+	testutil.ErrorIf(t, p.State().Readiness == nil, "latest readiness result was not applied")
+	testutil.Equals(t, p.State().Selected.ID, second.ID)
+}
+
 func TestPublishPermissionIsIndependentOfUpdateAndEvaluatorErrorsSurface(t *testing.T) {
 	f := testutil.NewFixture(t)
 	drink := menuDrink(t, f, "Independent publish")

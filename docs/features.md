@@ -104,6 +104,8 @@ Drink `review_required`; an optional reference is removed, and a retired substit
 discarded. `--replacement-id` records explicit permanent product intent: category and unit
 compatibility are validated and affected canonical recipes are rewritten transactionally. The
 system never infers a permanent replacement from a temporary substitution rule.
+Retirement has its own Cedar action and audit vocabulary; both the retired and replacement
+ingredients are recorded as material participants in a successful replacement operation.
 Category compatibility is intentionally coarse in this teaching model: the authorized manager's
 explicit approval supplies the product-family judgment (for example, comparable tequila brands),
 while the application prevents cross-category and dimensionally invalid rewrites.
