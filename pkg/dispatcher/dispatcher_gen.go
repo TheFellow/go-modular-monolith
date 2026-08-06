@@ -11,6 +11,7 @@ import (
 	menus_events "github.com/TheFellow/go-modular-monolith/app/domains/menus/events"
 	menus_handlers "github.com/TheFellow/go-modular-monolith/app/domains/menus/handlers"
 	orders_events "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
+	orders_handlers "github.com/TheFellow/go-modular-monolith/app/domains/orders/handlers"
 	middleware "github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -39,6 +40,7 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 		drinksHandler := drinks_handlers.NewIngredientDeleted(d.store, d.tags)
 		inventoryHandler := inventory_handlers.NewIngredientDeleted(d.store, d.tags)
 		menusHandler := menus_handlers.NewIngredientDeleted(d.store, d.tags)
+		ordersHandler := orders_handlers.NewIngredientDeleted(d.store, d.tags)
 		if err := drinksHandler.Handling(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
@@ -64,6 +66,11 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 				return herr
 			}
 		}
+		if err := ordersHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 	case ingredients_events.IngredientUpdated:
 		drinksHandler := drinks_handlers.NewIngredientUpdated(d.store, d.tags)
 		menusHandler := menus_handlers.NewIngredientUpdated(d.store, d.tags)
@@ -79,7 +86,13 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 		}
 	case inventory_events.StockAdjusted:
 		menusHandler := menus_handlers.NewStockAdjusted(d.store, d.tags)
+		ordersHandler := orders_handlers.NewStockAdjusted(d.store, d.tags)
 		if err := menusHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := ordersHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
@@ -91,9 +104,35 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 				return herr
 			}
 		}
+	case orders_events.OrderCancelled:
+		inventoryHandler := inventory_handlers.NewOrderCancelled(d.store, d.tags)
+		menusHandler := menus_handlers.NewOrderCancelled(d.store, d.tags)
+		if err := inventoryHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := menusHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 	case orders_events.OrderCompleted:
 		inventoryHandler := inventory_handlers.NewOrderCompleted(d.store, d.tags)
 		menusHandler := menus_handlers.NewOrderCompleted(d.store, d.tags)
+		if err := inventoryHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := menusHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+	case orders_events.OrderPlaced:
+		inventoryHandler := inventory_handlers.NewOrderPlaced(d.store, d.tags)
+		menusHandler := menus_handlers.NewOrderPlaced(d.store, d.tags)
 		if err := inventoryHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr

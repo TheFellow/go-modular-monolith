@@ -14,6 +14,8 @@ func orderStatusLabel(status models.OrderStatus) string {
 	switch status {
 	case models.OrderStatusPending:
 		return "Pending"
+	case models.OrderStatusBlocked:
+		return "Blocked"
 	case models.OrderStatusCompleted:
 		return "Completed"
 	case models.OrderStatusCancelled:
@@ -27,6 +29,8 @@ func orderStatusStyle(status models.OrderStatus, styles tui.ListViewStyles) lipg
 	switch status {
 	case models.OrderStatusPending:
 		return styles.WarningText
+	case models.OrderStatusBlocked:
+		return styles.ErrorText
 	case models.OrderStatusCompleted:
 		return styles.Subtitle
 	case models.OrderStatusCancelled:

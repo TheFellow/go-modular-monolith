@@ -447,11 +447,11 @@ func (p *Presenter) RequestDelete() {
 				toolkit.ShowPresentation(p.dialogs, err)
 				return
 			}
-			message := fmt.Sprintf("Delete %q?", target.Name)
+			message := fmt.Sprintf("Retire %q?", target.Name)
 			if count > 0 {
-				message = fmt.Sprintf("Delete %q?\n\nThis will also delete %d drink(s) that use this ingredient.", target.Name, count)
+				message = fmt.Sprintf("Retire %q?\n\nThis will mark %d dependent drink(s) for review and make their menu items unavailable.", target.Name, count)
 			}
-			p.dialogs.Confirm("Delete Ingredient", message, func(confirmed bool) {
+			p.dialogs.Confirm("Retire Ingredient", message, func(confirmed bool) {
 				if confirmed {
 					p.delete(target.ID)
 				}

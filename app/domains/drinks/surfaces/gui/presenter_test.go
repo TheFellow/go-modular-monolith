@@ -466,8 +466,8 @@ func TestDrinksViewCatalogAndDetailContract(t *testing.T) {
 	testutil.ErrorIf(t, v.filterBar.Advanced != nil, "%v", "drinks filter unexpectedly uses a disclosure row")
 	rows, columns := v.list.Length()
 	testutil.Equals(t, rows, 1)
-	testutil.Equals(t, columns, 6)
-	for column, want := range []string{"Name", "Category", "Glass", "Ingredients", "Tags", "Actions"} {
+	testutil.Equals(t, columns, 7)
+	for column, want := range []string{"Name", "Category", "Glass", "Status", "Ingredients", "Tags", "Actions"} {
 		header := v.list.CreateHeader()
 		v.list.UpdateHeader(widget.TableCellID{Row: -1, Col: column}, header)
 		testutil.Equals(t, header.(*widget.Button).Text, want)

@@ -70,9 +70,14 @@ func (c *Commands) Set(ctx *middleware.Context, update *models.Update) (*models.
 	}
 
 	ctx.TouchEntity(updated.EntityUID())
+	reserved, err := c.dao.ReservedAmount(ctx, updated.IngredientID)
+	if err != nil {
+		return nil, err
+	}
 	ctx.AddEvent(events.StockAdjusted{
 		Inventory: updated,
 		Reason:    "set",
+		Shortage:  updated.Amount.Value() < reserved.Value(),
 	})
 
 	return &updated, nil

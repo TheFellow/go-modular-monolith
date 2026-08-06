@@ -153,6 +153,6 @@ func TestApp_RestartPreservesCompletedOrderWorkflowAndAudit(t *testing.T) {
 	testutil.IsFalse(t, entry.CompletedAt.IsZero())
 	testutil.IsFalse(t, entry.CompletedAt.Before(entry.StartedAt))
 	testutil.AuditTouches(t, entry,
-		completed.ID.EntityUID(), depletedStock.EntityUID(), completedMenu.ID.EntityUID(),
+		completed.ID.EntityUID(), depletedStock.EntityUID(),
 	)
 }

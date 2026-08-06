@@ -63,7 +63,9 @@ func TestPlaceOrderRunsThroughRealBubbleTeaProgram(t *testing.T) {
 	testutil.Equals(t, stored.Items, []models.OrderItem{{DrinkID: drink.ID, Quantity: 2, Notes: "less ice\nlemon twist"}})
 	testutil.Equals(t, stored.Notes, "table seven\nanniversary")
 	testutil.Equals(t, stored.Tags.Canonical().String(), "channel=tui,featured")
-	testutil.AuditTouches(t, fix.LatestAuditEntry(authz.ActionPlace), stored.EntityUID())
+	stock, err := fix.Inventory.Get(fix.OwnerContext(), ingredient.ID)
+	testutil.Ok(t, err)
+	testutil.AuditTouches(t, fix.LatestAuditEntry(authz.ActionPlace), stored.EntityUID(), stock.EntityUID())
 	listVM := NewListViewModel(fix.App)
 	listVM.completeTarget = stored
 	listVM.dialog = components.NewTaggedConfirm(stored.Tags.Canonical().String(), tag.ParseCollection, dialog.NewConfirmDialog("Complete", "Complete?"))

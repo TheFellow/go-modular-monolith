@@ -5,9 +5,12 @@ import (
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
@@ -28,6 +31,7 @@ func TestOrders_PlaceTrimsNotesBeforePersistence(t *testing.T) {
 	base := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
 		Name: "Place Notes Base", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz,
 	})
+	testutil.SetInventory(t, f, inventorymodels.Update{IngredientID: base.ID, Amount: measurement.MustAmount(10, base.Unit), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
 	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 		Name:     "Place Notes Drink",
 		Category: drinksmodels.DrinkCategoryCocktail,

@@ -124,7 +124,7 @@ func TestSessionDashboardLoaderMatchesRealApplicationCountsAndAudit(t *testing.T
 		Name: "Dashboard Gin", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz,
 	})
 	testutil.SetInventory(t, f, inventorymodels.Update{
-		IngredientID: ingredient.ID, Amount: measurement.MustAmount(0, measurement.UnitOz),
+		IngredientID: ingredient.ID, Amount: measurement.MustAmount(10, measurement.UnitOz),
 		CostPerUnit: money.NewPriceFromCents(100, currency.USD),
 	})
 	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{

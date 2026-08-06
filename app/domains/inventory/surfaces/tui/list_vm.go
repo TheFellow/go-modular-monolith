@@ -402,7 +402,7 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 			if value, ok := req.LowStock.Unwrap(); ok {
 				threshold = value
 			}
-			status := stockStatus(item.Amount, threshold)
+			status := stockStatus(item.Available(), threshold)
 
 			rows = append(rows, InventoryRow{
 				Inventory:  *item,

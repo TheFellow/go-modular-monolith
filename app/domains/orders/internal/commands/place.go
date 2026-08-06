@@ -62,6 +62,11 @@ func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.
 	created.Status = models.OrderStatusPending
 	created.CreatedAt = now
 	created.CompletedAt = optional.None[time.Time]()
+	usage, err := c.fulfillmentSnapshot(ctx, created)
+	if err != nil {
+		return nil, err
+	}
+	created.IngredientUsage = usage
 
 	if err := created.Validate(); err != nil {
 		return nil, err

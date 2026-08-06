@@ -127,8 +127,12 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[DrinkRow] {
 }
 
 func listFilterView(r DrinkRow, tags []string) models.ListFilterView {
+	status := r.Status
+	if status == "" {
+		status = string(models.StatusActive)
+	}
 	return models.ListFilterView{
-		ID: r.ID, Name: r.Name, Category: r.Category, Glass: r.Glass, Description: r.Description, Tags: tags,
+		ID: r.ID, Name: r.Name, Category: r.Category, Glass: r.Glass, Status: status, Description: r.Description, Tags: tags,
 		Recipe: models.RecipeFilterView{Garnish: r.Recipe.Garnish},
 	}
 }

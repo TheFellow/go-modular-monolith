@@ -550,10 +550,14 @@ func (p *Presenter) ConfirmCancel() {
 	}
 }
 func (p *Presenter) confirm(title string, status models.OrderStatus) {
-	if p.busy() || p.state.Selected == nil || p.state.Selected.Order.Status != models.OrderStatusPending {
+	if p.busy() || p.state.Selected == nil {
 		return
 	}
 	target := p.state.Selected.Order
+	canCancelBlocked := status == models.OrderStatusCancelled && target.Status == models.OrderStatusBlocked
+	if target.Status != models.OrderStatusPending && !canCancelBlocked {
+		return
+	}
 	p.confirmTarget = cloneOrder(&target)
 	p.state.Confirming = true
 	p.publish()

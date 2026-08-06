@@ -157,19 +157,19 @@ func NewView(p *Presenter) *View {
 	v.filterExpression = bar.Expression
 	v.filterBar = bar
 	filters := bar.Content
-	columns := []string{"Name", "Category", "Glass", "Ingredients", "Tags", "Actions"}
+	columns := []string{"Name", "Category", "Glass", "Status", "Ingredients", "Tags", "Actions"}
 	v.list = ui.NewAutoPagingRowTable(func() (int, int) { return len(p.State().Items), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, o framework.CanvasObject) {
 		cell := o
 		item := p.State().Items[id.Row]
-		values := []string{item.Name, string(item.Category), string(item.Glass), strconv.Itoa(len(item.Recipe.Ingredients)), item.Tags.Canonical().String()}
+		values := []string{item.Name, string(item.Category), string(item.Glass), string(item.Status), strconv.Itoa(len(item.Recipe.Ingredients)), item.Tags.Canonical().String()}
 		if id.Col == len(columns)-1 {
 			index := id.Row
 			ui.ShowCellActions(cell, []ui.RowAction{{Label: "View", Run: func() { p.Select(index) }}})
 			return
 		}
-		if id.Col == 4 {
+		if id.Col == 5 {
 			ui.ShowCellTags(cell, values[id.Col])
 			return
 		}
@@ -181,7 +181,7 @@ func NewView(p *Presenter) *View {
 			p.Select(id.Row)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 190}, {Title: "Category", Width: 110}, {Title: "Glass", Width: 110}, {Title: "Ingredients", Width: 125}, {Title: "Tags", Width: 190}, {Title: "Actions", Width: 120}}, nil)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 190}, {Title: "Category", Width: 110}, {Title: "Glass", Width: 110}, {Title: "Status", Width: 125}, {Title: "Ingredients", Width: 125}, {Title: "Tags", Width: 190}, {Title: "Actions", Width: 120}}, nil)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New drink", p.StartCreate), ui.IconAdd))
 	edit := ui.NewButton(ControlEdit, "Edit", p.StartEdit)

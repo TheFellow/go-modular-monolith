@@ -50,7 +50,7 @@ authorization, transaction, event, and audit pipelines against an isolated datab
 | If you want to…                                                                | Start here                                                                         |
 | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | Understand bounded contexts, pipelines, events, authz, and enforced boundaries | [Architecture](docs/architecture.md)                                               |
-| Use filters, tags, audit history, IDs, or authorization personas               | [Application features](docs/features.md)                                           |
+| Use fulfillment, retirement, filters, tags, audit, IDs, or personas            | [Application features](docs/features.md)                                           |
 | Work on an executable and its composition layer                                | [CLI](main/cli/README.md), [TUI](main/tui/README.md), or [GUI](main/gui/README.md) |
 | Reuse or extend presentation mechanics                                         | [Presentation toolkits](pkg/toolkits/readme.md)                                    |
 | Add a domain-owned presentation adapter                                        | [Domain surfaces](app/domains/readme.md#presentation-surfaces)                     |

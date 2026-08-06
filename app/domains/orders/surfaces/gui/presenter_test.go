@@ -261,7 +261,9 @@ func TestPlaceCatalogPreservesDirtyFormRejectsStaleAndPlacesOnlyAvailableDrink(t
 	testutil.Equals(t, created.Notes, "counter")
 	testutil.Equals(t, created.Items[0].Quantity, 2)
 	testutil.Equals(t, created.Items[0].Notes, "first")
-	testutil.AuditTouches(t, f.LatestAuditEntry(authz.ActionPlace), created.EntityUID())
+	stock, err := f.Inventory.Get(f.OwnerContext(), drink.Recipe.Ingredients[0].IngredientID)
+	testutil.Ok(t, err)
+	testutil.AuditTouches(t, f.LatestAuditEntry(authz.ActionPlace), created.EntityUID(), stock.EntityUID())
 }
 
 func TestPlaceValidationTagsAndTerminalConfirmationsPersist(t *testing.T) {
@@ -434,7 +436,9 @@ func TestCancelUsesStableTargetEvenWhenSelectionChanges(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.Equals(t, one.Status, models.OrderStatusCancelled)
 	testutil.Equals(t, two.Status, models.OrderStatusPending)
-	testutil.AuditTouches(t, f.LatestAuditEntry(authz.ActionCancel), first.EntityUID())
+	stock, err := f.Inventory.Get(f.OwnerContext(), drink.Recipe.Ingredients[0].IngredientID)
+	testutil.Ok(t, err)
+	testutil.AuditTouches(t, f.LatestAuditEntry(authz.ActionCancel), first.EntityUID(), stock.EntityUID())
 }
 
 func TestHeadlessWidgetsPlaceOrderAndRetainCommaNames(t *testing.T) {

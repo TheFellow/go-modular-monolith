@@ -21,13 +21,17 @@ func NewOrderCompleted(s *store.Store, tags tag.Repository) *OrderCompleted {
 }
 
 func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.OrderCompleted) error {
-	if len(e.IngredientUsage) == 0 {
+	reservations, err := h.dao.ReservationsForOrder(ctx, e.Order.ID)
+	if err != nil {
+		return err
+	}
+	if len(reservations) == 0 {
 		return nil
 	}
 
 	now := time.Now().UTC()
 
-	for _, usage := range e.IngredientUsage {
+	for _, usage := range reservations {
 		ingredientID := usage.IngredientID.String()
 		existing, err := h.dao.Get(ctx, usage.IngredientID)
 		if err != nil {
@@ -59,5 +63,5 @@ func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.O
 		ctx.TouchEntity(updated.EntityUID())
 	}
 
-	return nil
+	return h.dao.DeleteReservations(ctx, e.Order.ID)
 }

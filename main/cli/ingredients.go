@@ -255,8 +255,9 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				}),
 			},
 			{
-				Name:  "delete",
-				Usage: "Delete an ingredient by ID",
+				Name:    "retire",
+				Aliases: []string{"delete"},
+				Usage:   "Retire an ingredient and mark dependent drinks for review",
 				Flags: []cli.Flag{
 					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Ingredient ID", Required: true},

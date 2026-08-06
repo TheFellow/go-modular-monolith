@@ -5,4 +5,5 @@ import "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 type StockAdjusted struct {
 	Inventory models.Inventory
 	Reason    string
+	Shortage  bool
 }

@@ -46,26 +46,42 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 		return actions.Evaluate(ctx, declaration)
 	}
 	resource := selected.CedarEntity()
-	pending := pendingCondition(selected)
 	declaration.Controls = append(declaration.Controls,
-		actions.Control{ID: ControlComplete, Permission: permission(ordersauthz.ActionComplete, resource), Conditions: []actions.Condition{pending}},
-		actions.Control{ID: ControlCancel, Permission: permission(ordersauthz.ActionCancel, resource), Conditions: []actions.Condition{pending}},
+		actions.Control{ID: ControlComplete, Permission: permission(ordersauthz.ActionComplete, resource), Conditions: []actions.Condition{completeCondition(selected)}},
+		actions.Control{ID: ControlCancel, Permission: permission(ordersauthz.ActionCancel, resource), Conditions: []actions.Condition{cancelCondition(selected)}},
 		actions.Control{ID: ControlTags, Permission: permission(ordersauthz.ActionTag, resource)},
 	)
 	return actions.Evaluate(ctx, declaration)
 }
 
-func pendingCondition(order *models.Order) actions.Condition {
+func completeCondition(order *models.Order) actions.Condition {
 	return func(context.Context) (bool, string, error) {
 		switch order.Status {
 		case models.OrderStatusPending:
 			return true, "", nil
+		case models.OrderStatusBlocked:
+			return false, "Reserved stock is short; restock the blocked ingredients before completing this order.", nil
 		case models.OrderStatusCompleted:
 			return false, "Available only while the order is pending; this order is completed.", nil
 		case models.OrderStatusCancelled:
 			return false, "Available only while the order is pending; this order is cancelled.", nil
 		default:
 			return false, "Available only while the order is pending.", nil
+		}
+	}
+}
+
+func cancelCondition(order *models.Order) actions.Condition {
+	return func(context.Context) (bool, string, error) {
+		switch order.Status {
+		case models.OrderStatusPending, models.OrderStatusBlocked:
+			return true, "", nil
+		case models.OrderStatusCompleted:
+			return false, "A completed order cannot be cancelled.", nil
+		case models.OrderStatusCancelled:
+			return false, "This order is already cancelled.", nil
+		default:
+			return false, "This order cannot be cancelled in its current state.", nil
 		}
 	}
 }

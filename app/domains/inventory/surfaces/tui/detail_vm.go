@@ -49,6 +49,8 @@ func (d *DetailViewModel) View() string {
 		d.styles.Subtitle.Render("Unit: ") + string(row.Ingredient.Unit),
 		"",
 		d.styles.Subtitle.Render("Quantity: ") + row.Quantity,
+		d.styles.Subtitle.Render("Reserved: ") + row.Inventory.ReservedAmount().String(),
+		d.styles.Subtitle.Render("Available: ") + row.Inventory.Available().String(),
 		d.styles.Subtitle.Render("Cost per unit: ") + row.Cost,
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
 		d.styles.Subtitle.Render("Last updated: ") + formatInventoryTime(row.Inventory.LastUpdated),

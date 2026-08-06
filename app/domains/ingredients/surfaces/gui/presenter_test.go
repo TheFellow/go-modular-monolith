@@ -330,7 +330,7 @@ func TestCountDrinksUsingTraversesEveryPage(t *testing.T) {
 	presenter.Select(gin.ID)
 	presenter.RequestDelete()
 	confirmations := dialogs.Confirmations()
-	testutil.ErrorIf(t, len(confirmations) != 1 || !strings.Contains(confirmations[0].Message, "101 drink(s)"), "delete confirmation did not report exhaustive dependency count: %#v", confirmations)
+	testutil.ErrorIf(t, len(confirmations) != 1 || !strings.Contains(confirmations[0].Message, "101 dependent drink(s)"), "retire confirmation did not report exhaustive dependency count: %#v", confirmations)
 }
 
 func TestViewDrivesRealWidgetsAndShowsCompleteDetail(t *testing.T) {

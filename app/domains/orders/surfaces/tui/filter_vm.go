@@ -31,6 +31,7 @@ func newFilterVM(req orders.ListRequest) *filterVM {
 		status: forms.NewSelectField("Status", []forms.SelectOption{
 			{Label: "all", Value: models.OrderStatus("")},
 			{Label: string(models.OrderStatusPending), Value: models.OrderStatusPending},
+			{Label: string(models.OrderStatusBlocked), Value: models.OrderStatusBlocked},
 			{Label: string(models.OrderStatusCompleted), Value: models.OrderStatusCompleted},
 			{Label: string(models.OrderStatusCancelled), Value: models.OrderStatusCancelled},
 		}, forms.WithInitialValue(req.Status)),

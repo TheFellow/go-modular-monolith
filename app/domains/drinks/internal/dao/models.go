@@ -13,6 +13,7 @@ type DrinkRow struct {
 	Glass       string `bstore:"index"`
 	Recipe      RecipeRow
 	Description string
+	Status      string `bstore:"index"`
 	DeletedAt   *time.Time
 }
 

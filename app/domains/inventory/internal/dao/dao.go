@@ -15,5 +15,5 @@ type DAO struct {
 func New(s *store.Store, tags tag.Repository) *DAO { return &DAO{store: s, tags: tags} }
 
 func Register(ctx context.Context, s *store.Store) {
-	s.Register(ctx, StockRow{})
+	s.Register(ctx, StockRow{}, ReservationRow{})
 }

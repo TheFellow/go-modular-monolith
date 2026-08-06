@@ -509,20 +509,20 @@ func (m *ListViewModel) showDeleteConfirm(ingredient *models.Ingredient) tea.Cmd
 			return DeleteErrorMsg{Err: err}
 		}
 		drinkCount := countDrinksUsingIngredient(drinks, ingredient.ID)
-		message := fmt.Sprintf("Delete %q?", ingredient.Name)
+		message := fmt.Sprintf("Retire %q?", ingredient.Name)
 		if drinkCount > 0 {
 			message = fmt.Sprintf(
-				"Delete %q?\n\nThis will also delete %d drink(s) that use this ingredient.",
+				"Retire %q?\n\nThis will mark %d dependent drink(s) for review and make their menu items unavailable.",
 				ingredient.Name,
 				drinkCount,
 			)
 		}
 		confirm := dialog.NewConfirmDialog(
-			"Delete Ingredient",
+			"Retire Ingredient",
 			message,
 			dialog.WithDangerous(),
 			dialog.WithFocusCancel(),
-			dialog.WithConfirmText("Delete"),
+			dialog.WithConfirmText("Retire"),
 			dialog.WithStyles(m.dialogStyles),
 			dialog.WithKeys(m.dialogKeys),
 		)

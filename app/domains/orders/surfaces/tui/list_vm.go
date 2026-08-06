@@ -607,6 +607,8 @@ func (m *ListViewModel) showCompleteConfirm(order *ordersmodels.Order) tea.Cmd {
 	return func() tea.Msg {
 		switch order.Status {
 		case ordersmodels.OrderStatusPending:
+		case ordersmodels.OrderStatusBlocked:
+			return CompleteErrorMsg{Err: errors.FailedPreconditionf("reserved stock is short")}
 		case ordersmodels.OrderStatusCompleted:
 			return CompleteErrorMsg{Err: errors.Invalidf("order is already completed")}
 		case ordersmodels.OrderStatusCancelled:
@@ -659,14 +661,14 @@ func (m *ListViewModel) showCancelConfirm(order *ordersmodels.Order) tea.Cmd {
 	}
 	return func() tea.Msg {
 		switch order.Status {
-		case ordersmodels.OrderStatusPending:
+		case ordersmodels.OrderStatusPending, ordersmodels.OrderStatusBlocked:
 		case ordersmodels.OrderStatusCompleted:
 			return CancelErrorMsg{Err: errors.Invalidf("cannot cancel a completed order")}
 		case ordersmodels.OrderStatusCancelled:
 			return CancelErrorMsg{Err: errors.Invalidf("order is already cancelled")}
 		}
 		message := fmt.Sprintf(
-			"Cancel order #%s?\n\nThis order has %d item(s).\nNo inventory changes will be made.",
+			"Cancel order #%s?\n\nThis order has %d item(s).\nReserved inventory will be released.",
 			truncateID(order.ID.String()),
 			len(order.Items),
 		)
