@@ -7,6 +7,8 @@ import (
 )
 
 type IngredientDeleted struct {
-	Ingredient models.Ingredient
-	DeletedAt  time.Time
+	Ingredient       models.Ingredient
+	DeletedAt        time.Time
+	Replacement      *models.Ingredient
+	ReplacementRatio float64
 }
