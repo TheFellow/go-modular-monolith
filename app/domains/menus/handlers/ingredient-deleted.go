@@ -5,6 +5,7 @@ import (
 
 	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	ingredientsevents "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
+	menuavailability "github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/availability"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
@@ -14,8 +15,9 @@ import (
 )
 
 type IngredientDeleted struct {
-	dao    *dao.DAO
-	drinks *drinksq.Queries
+	dao          *dao.DAO
+	drinks       *drinksq.Queries
+	availability *menuavailability.AvailabilityCalculator
 
 	affectedMenus   []*models.Menu
 	affectedDrinkID set.Set[string]
@@ -23,8 +25,9 @@ type IngredientDeleted struct {
 
 func NewIngredientDeleted(s *store.Store, tags tag.Repository) *IngredientDeleted {
 	return &IngredientDeleted{
-		dao:    dao.New(s, tags),
-		drinks: drinksq.New(s, tags),
+		dao:          dao.New(s, tags),
+		drinks:       drinksq.New(s, tags),
+		availability: menuavailability.New(s, tags),
 	}
 }
 
@@ -78,8 +81,12 @@ func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, _ ingredients
 
 		changed := false
 		for i := range updated.Items {
-			if h.affectedDrinkID.Contains(updated.Items[i].DrinkID.String()) && updated.Items[i].Availability != models.AvailabilityUnavailable {
-				updated.Items[i].Availability = models.AvailabilityUnavailable
+			if h.affectedDrinkID.Contains(updated.Items[i].DrinkID.String()) {
+				availability := h.availability.Calculate(ctx, updated.Items[i].DrinkID)
+				if updated.Items[i].Availability == availability {
+					continue
+				}
+				updated.Items[i].Availability = availability
 				changed = true
 			}
 		}

@@ -5,9 +5,12 @@ import (
 
 	drinksM "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsM "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventoryM "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	menuM "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
@@ -42,6 +45,7 @@ func TestPermissions_Menu(t *testing.T) {
 			base := testutil.CreateIngredient(t, f, ingredientsM.Ingredient{
 				Name: "Menu Permissions Base", Category: ingredientsM.CategoryOther, Unit: measurement.UnitOz,
 			})
+			testutil.SetInventory(t, f, inventoryM.Update{IngredientID: base.ID, Amount: measurement.MustAmount(10, base.Unit), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
 			drink := testutil.CreateDrink(t, f, drinksM.Drink{
 				Name:     "Menu Permissions Drink",
 				Category: drinksM.DrinkCategoryCocktail,

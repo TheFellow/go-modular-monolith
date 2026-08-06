@@ -4,7 +4,8 @@ permit(
     principal,
     action in [
         Mixology::Menu::Action::"list",
-        Mixology::Menu::Action::"get"
+        Mixology::Menu::Action::"get",
+        Mixology::Menu::Action::"readiness"
     ],
     resource
 );

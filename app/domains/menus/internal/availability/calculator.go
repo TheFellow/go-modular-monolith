@@ -62,14 +62,64 @@ type AppliedSubstitution struct {
 	QualityImpact ingredientsmodels.Quality
 }
 
+func (c *AvailabilityCalculator) Readiness(ctx store.Context, menu *models.Menu) (models.ReadinessReport, error) {
+	report := models.ReadinessReport{MenuID: menu.ID, Status: menu.Status}
+	for _, item := range menu.Items {
+		drink, err := c.drinks.Get(ctx, item.DrinkID)
+		if err != nil {
+			return models.ReadinessReport{}, err
+		}
+		if drink.Status == drinksmodels.StatusReviewRequired {
+			report.Findings = append(report.Findings, models.ReadinessFinding{
+				Severity: models.ReadinessBlocker, Code: models.ReadinessReviewRequired, DrinkID: drink.ID,
+				Message: "drink " + drink.ID.String() + " requires recipe review",
+			})
+		}
+		detail, err := c.CalculateDetail(ctx, drink.ID)
+		if err != nil {
+			return models.ReadinessReport{}, err
+		}
+		for _, missing := range detail.Missing {
+			if _, ingredientErr := c.ingredients.Get(ctx, missing.IngredientID); ingredientErr != nil {
+				if !errors.IsNotFound(ingredientErr) {
+					return models.ReadinessReport{}, ingredientErr
+				}
+				report.Findings = append(report.Findings, models.ReadinessFinding{
+					Severity: models.ReadinessBlocker, Code: models.ReadinessRetiredIngredient, DrinkID: drink.ID, IngredientID: missing.IngredientID,
+					Message: "drink " + drink.ID.String() + " references retired or missing ingredient " + missing.IngredientID.String(),
+				})
+			}
+		}
+		for _, substitution := range detail.Substitutions {
+			report.Findings = append(report.Findings, models.ReadinessFinding{
+				Severity: models.ReadinessBlocker, Code: models.ReadinessTemporarySubstitution, DrinkID: drink.ID, IngredientID: substitution.Original,
+				Message: "drink " + drink.ID.String() + " relies on temporary substitution " + substitution.Substitute.String() + " for " + substitution.Original.String(),
+			})
+		}
+		switch detail.Status {
+		case models.AvailabilityUnavailable:
+			report.Findings = append(report.Findings, models.ReadinessFinding{
+				Severity: models.ReadinessBlocker, Code: models.ReadinessUnavailable, DrinkID: drink.ID,
+				Message: "drink " + drink.ID.String() + " is unavailable",
+			})
+		case models.AvailabilityLimited:
+			if len(detail.Substitutions) == 0 {
+				report.Findings = append(report.Findings, models.ReadinessFinding{
+					Severity: models.ReadinessWarning, Code: models.ReadinessLowStock, DrinkID: drink.ID,
+					Message: "drink " + drink.ID.String() + " has low stock",
+				})
+			}
+		}
+	}
+	return report, nil
+}
+
 func (c *AvailabilityCalculator) CalculateDetail(ctx store.Context, drinkID entity.DrinkID) (Detail, error) {
 	drink, err := c.drinks.Get(ctx, drinkID)
 	if err != nil {
 		return Detail{}, err
 	}
-	if drink.Status == drinksmodels.StatusReviewRequired {
-		return Detail{Status: models.AvailabilityUnavailable}, nil
-	}
+	reviewRequired := drink.Status == drinksmodels.StatusReviewRequired
 
 	limited := false
 	var missing []MissingIngredient
@@ -118,7 +168,9 @@ func (c *AvailabilityCalculator) CalculateDetail(ctx store.Context, drinkID enti
 		}
 	}
 
-	if limited {
+	// A temporary substitute may keep a review-required Drink achievable, but
+	// it cannot silently approve a permanent recipe change.
+	if limited || reviewRequired || len(substitutions) > 0 {
 		return Detail{Status: models.AvailabilityLimited, Missing: nil, Substitutions: substitutions}, nil
 	}
 	return Detail{Status: models.AvailabilityAvailable, Missing: nil, Substitutions: substitutions}, nil
@@ -253,10 +305,12 @@ func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drin
 	var rules []ingredientsmodels.SubstitutionRule
 	if c.ingredients != nil {
 		resolved, err := c.ingredients.SubstitutionsFor(ctx, req.IngredientID)
-		if err != nil {
+		if err != nil && !errors.IsNotFound(err) {
 			return nil, err
 		}
-		rules = resolved
+		if err == nil {
+			rules = resolved
+		}
 		sort.Slice(rules, func(i, j int) bool {
 			if rules[i].QualityImpact.Rank() != rules[j].QualityImpact.Rank() {
 				return rules[i].QualityImpact.Rank() > rules[j].QualityImpact.Rank()

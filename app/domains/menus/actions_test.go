@@ -48,7 +48,7 @@ func TestMenuActionProjectorAuthorizationAndLifecycle(t *testing.T) {
 					testutil.Ok(t, err)
 					byID := indexStates(states)
 					for id, state := range byID {
-						visible := actor.visible || id == menus.ControlList
+						visible := actor.visible || id == menus.ControlList || id == menus.ControlReadiness
 						testutil.Equals(t, state.Visible, visible)
 						if !visible {
 							testutil.Equals(t, state.Enabled, false)
@@ -126,7 +126,7 @@ func TestMenuActionStatesHaveStableJSONReadyIDs(t *testing.T) {
 	states, err := menus.NewActionProjector().Project(context.Background(), authn.Owner(), actionMenu(models.MenuStatusDraft, 1))
 	testutil.Ok(t, err)
 	wantIDs := []actions.ID{
-		menus.ControlList, menus.ControlCreate, menus.ControlEdit, menus.ControlDelete, menus.ControlTags,
+		menus.ControlList, menus.ControlCreate, menus.ControlReadiness, menus.ControlEdit, menus.ControlDelete, menus.ControlTags,
 		menus.ControlAddDrink, menus.ControlRemoveDrink, menus.ControlPublish, menus.ControlDraft,
 	}
 	gotIDs := make([]actions.ID, len(states))
