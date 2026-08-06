@@ -22,6 +22,7 @@ const (
 	ControlRemoveDrink actions.ID = "menus.drink.remove"
 	ControlPublish     actions.ID = "menus.publish"
 	ControlDraft       actions.ID = "menus.draft"
+	ControlReadiness   actions.ID = "menus.readiness"
 )
 
 // ActionProjector produces framework-neutral menu control state. It does not
@@ -84,6 +85,9 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 			}},
 		},
 	}}
+	declaration.Controls = append(declaration.Controls, actions.Control{
+		ID: ControlReadiness, Permission: permission(menusauthz.ActionReadiness, resource),
+	})
 
 	return actions.Evaluate(ctx, declaration)
 }

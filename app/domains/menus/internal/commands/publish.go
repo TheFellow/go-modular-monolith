@@ -17,6 +17,13 @@ func (c *Commands) Publish(ctx *middleware.Context, menu *models.Menu) (*models.
 	if err := menu.RequirePublishable(); err != nil {
 		return nil, err
 	}
+	report, err := c.availability.Readiness(ctx, menu)
+	if err != nil {
+		return nil, err
+	}
+	if err := report.RequireReady(); err != nil {
+		return nil, err
+	}
 	now := time.Now().UTC()
 	updated := *menu
 	updated.Status = models.MenuStatusPublished
