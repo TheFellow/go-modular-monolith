@@ -142,6 +142,16 @@ func TestMenuActionStatesHaveStableJSONReadyIDs(t *testing.T) {
 	testutil.Equals(t, roundTrip, states)
 }
 
+func TestApplyReadinessDisablesOnlyAuthorizedPublish(t *testing.T) {
+	t.Parallel()
+	states := map[actions.ID]actions.State{menus.ControlPublish: {ID: menus.ControlPublish, Visible: true, Enabled: true}}
+	report := models.ReadinessReport{Findings: []models.ReadinessFinding{{Severity: models.ReadinessBlocker}}}
+	composed := menus.ApplyReadiness(states, report)
+	testutil.Equals(t, states[menus.ControlPublish].Enabled, true)
+	testutil.Equals(t, composed[menus.ControlPublish].Enabled, false)
+	testutil.Equals(t, composed[menus.ControlPublish].DisabledReason, "Resolve menu readiness blockers before publishing.")
+}
+
 func actionMenu(status models.MenuStatus, itemCount int) *models.Menu {
 	menu := &models.Menu{ID: models.NewMenuID("menu-actions"), Name: "Actions", Status: status}
 	for range itemCount {

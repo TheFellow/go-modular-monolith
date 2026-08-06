@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -28,6 +30,13 @@ import (
 )
 
 type listMode int
+
+type detailLoadedMsg struct {
+	menuID    entity.MenuID
+	token     uint64
+	readiness *menusmodels.ReadinessReport
+	err       error
+}
 
 const (
 	listModeBrowsing listMode = iota
@@ -86,6 +95,7 @@ type ListViewModel struct {
 	next         paging.Cursor
 	history      []paging.Cursor
 	loadToken    uint64
+	detailToken  uint64
 	workflowID   uint64
 	spinner      tui.Spinner
 	loading      bool
@@ -466,7 +476,21 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.list.SetItems(items)
 		selectMenuID(&m.list, selected)
 		m.syncDetail()
+		m.detail.SetDrinkNames(msg.Names)
 		m.syncActions()
+		return m, m.loadDetail()
+	case detailLoadedMsg:
+		selected := m.selectedMenu()
+		if selected == nil || selected.ID != msg.menuID || msg.token != m.detailToken {
+			return m, nil
+		}
+		m.detail.SetReadiness(msg.readiness, msg.err)
+		if msg.err != nil {
+			m.err = msg.err
+		} else if msg.readiness != nil {
+			m.actions = menus.ApplyReadiness(m.actions, *msg.readiness)
+			m.detail.SetActions(m.actions)
+		}
 		return m, nil
 	}
 
@@ -543,7 +567,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	m.list, cmd = m.list.Update(msg)
 	m.syncDetail()
 	m.syncActions()
-	return m, cmd
+	return m, tea.Batch(cmd, m.loadDetail())
 }
 
 func (m *ListViewModel) View() string {
@@ -691,14 +715,26 @@ func (m *ListViewModel) loadMenus(cursor paging.Cursor) tea.Cmd {
 		}
 
 		menus := make([]menusmodels.Menu, 0, len(page.Items))
+		names := make(map[entity.DrinkID]string)
 		for i, menu := range page.Items {
 			if menu == nil {
 				return MenusLoadedMsg{Err: errors.Internalf("menu %d missing", i), Token: token}
 			}
 			menus = append(menus, *menu)
+			for _, item := range menu.Items {
+				if name, ok := item.DisplayName.Unwrap(); ok && strings.TrimSpace(name) != "" {
+					names[item.DrinkID] = strings.TrimSpace(name)
+					continue
+				}
+				drink, getErr := m.app.Drinks.Get(m.context(), item.DrinkID)
+				if getErr != nil {
+					return MenusLoadedMsg{Err: getErr, Token: token}
+				}
+				names[item.DrinkID] = drink.Name
+			}
 		}
 
-		return MenusLoadedMsg{Menus: menus, Next: page.Next, Token: token}
+		return MenusLoadedMsg{Menus: menus, Next: page.Next, Token: token, Names: names}
 	}
 }
 
@@ -1030,6 +1066,7 @@ func (m *ListViewModel) setSize(width, height int) {
 }
 
 func (m *ListViewModel) syncDetail() {
+	m.detail.SetReadiness(nil, nil)
 	item, ok := m.list.SelectedItem().(menuItem)
 	if !ok {
 		m.detail.SetMenu(optional.None[menusmodels.Menu]())
@@ -1056,25 +1093,34 @@ func (m *ListViewModel) syncActions() {
 		m.actions[state.ID] = state
 	}
 	m.detail.SetReadiness(nil, nil)
-	readinessState := m.actions[menus.ControlReadiness]
-	if menu := m.selectedMenu(); menu != nil && readinessState.Visible && readinessState.Enabled {
-		report, reportErr := m.app.Menus.Readiness(m.context(), menu.ID)
-		m.detail.SetReadiness(&report, reportErr)
-		if reportErr != nil {
-			m.actionErr, m.err = reportErr, reportErr
-		} else if report.HasBlockers() {
-			state := m.actions[menus.ControlPublish]
-			if state.Visible && state.Enabled {
-				state.Enabled = false
-				state.DisabledReason = "Resolve menu readiness blockers before publishing."
-				m.actions[menus.ControlPublish] = state
-			}
-		}
-	}
 	m.detail.SetActions(m.actions)
 	if !m.actionEnabled(menus.ControlList) {
 		m.list.SetItems(nil)
 		m.syncDetail()
+	}
+}
+
+func (m *ListViewModel) loadDetail() tea.Cmd {
+	m.detailToken++
+	token := m.detailToken
+	menu := m.selectedMenu()
+	if menu == nil {
+		m.detail.SetDrinkNames(nil)
+		m.detail.SetReadiness(nil, nil)
+		return nil
+	}
+	target := *menu
+	readiness := m.actions[menus.ControlReadiness]
+	return func() tea.Msg {
+		var report *menusmodels.ReadinessReport
+		if readiness.Visible && readiness.Enabled {
+			value, err := m.app.Menus.Readiness(m.context(), target.ID)
+			if err != nil {
+				return detailLoadedMsg{menuID: target.ID, token: token, err: err}
+			}
+			report = &value
+		}
+		return detailLoadedMsg{menuID: target.ID, token: token, readiness: report}
 	}
 }
 

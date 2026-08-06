@@ -80,10 +80,12 @@ type State struct {
 	FormInstance                    uint64
 }
 type Dependencies struct {
-	Executor   ui.Executor
-	Dispatcher ui.Dispatcher
-	Dialogs    ui.Dialogs
-	Projector  *menus.ActionProjector
+	Executor            ui.Executor
+	Dispatcher          ui.Dispatcher
+	ReadinessExecutor   ui.Executor
+	ReadinessDispatcher ui.Dispatcher
+	Dialogs             ui.Dialogs
+	Projector           *menus.ActionProjector
 }
 type catalog struct {
 	menus []*models.Menu
@@ -97,6 +99,7 @@ type Presenter struct {
 	load          *ui.LatestRequest[catalog]
 	choices       *ui.LatestRequest[[]DrinkOption]
 	analysis      *ui.LatestRequest[queries.MenuAnalytics]
+	readiness     *ui.LatestRequest[models.ReadinessReport]
 	submit        *ui.Submission
 	state         State
 	names         map[entity.DrinkID]string
@@ -119,6 +122,14 @@ func NewPresenter(session *app.Session, d Dependencies) *Presenter {
 	p.load = ui.NewLatestRequest[catalog](d.Executor, d.Dispatcher)
 	p.choices = ui.NewLatestRequest[[]DrinkOption](d.Executor, d.Dispatcher)
 	p.analysis = ui.NewLatestRequest[queries.MenuAnalytics](d.Executor, d.Dispatcher)
+	readinessExecutor, readinessDispatcher := d.ReadinessExecutor, d.ReadinessDispatcher
+	if readinessExecutor == nil {
+		readinessExecutor = ui.InlineExecutor{}
+	}
+	if readinessDispatcher == nil {
+		readinessDispatcher = ui.InlineDispatcher{}
+	}
+	p.readiness = ui.NewLatestRequest[models.ReadinessReport](readinessExecutor, readinessDispatcher)
 	p.submit = ui.NewSubmission(d.Executor, d.Dispatcher)
 	return p
 }
@@ -700,26 +711,31 @@ func (p *Presenter) permissions() {
 func (p *Presenter) loadReadiness() {
 	p.state.Readiness = nil
 	if p.state.Selected == nil {
+		p.readiness.Invalidate()
 		return
 	}
 	state := p.state.Actions[menus.ControlReadiness]
 	if !state.Visible || !state.Enabled {
 		return
 	}
-	report, err := p.app.Menus.Readiness(p.app.Context(), p.state.Selected.ID)
-	if err != nil {
-		p.state.Err = ui.PresentError(err)
-		return
-	}
-	p.state.Readiness = &report
-	if report.HasBlockers() {
-		state := p.state.Actions[menus.ControlPublish]
-		if state.Visible && state.Enabled {
-			state.Enabled = false
-			state.DisabledReason = "Resolve menu readiness blockers before publishing."
-			p.state.Actions[menus.ControlPublish] = state
+	id := p.state.Selected.ID
+	p.readiness.LoadContext(p.app.Context(), func(ctx context.Context) (models.ReadinessReport, error) {
+		return p.app.Menus.Readiness(p.app.ContextFrom(ctx), id)
+	}, func(result ui.LoadState[models.ReadinessReport]) {
+		switch result.Status {
+		case ui.Idle, ui.Loading:
+		case ui.Loaded:
+			p.state.Readiness = &result.Value
+			p.state.Actions = menus.ApplyReadiness(p.state.Actions, result.Value)
+		case ui.Failed:
+			if errors.IsPermission(result.Err) {
+				return
+			}
+			p.state.Err = ui.PresentError(result.Err)
+			ui.ShowPresentation(p.dialogs, result.Err)
 		}
-	}
+		p.publish()
+	})
 }
 func (p *Presenter) permissionsFor(menu *models.Menu) error {
 	p.state.Actions = nil
@@ -732,6 +748,9 @@ func (p *Presenter) permissionsFor(menu *models.Menu) error {
 	}
 	p.clearProjectionError()
 	p.state.Actions = indexActions(states)
+	if p.state.Readiness != nil {
+		p.state.Actions = menus.ApplyReadiness(p.state.Actions, *p.state.Readiness)
+	}
 	state := func(id actions.ID) actions.State { return p.state.Actions[id] }
 	p.state.CanList = state(menus.ControlList).Visible
 	p.state.CanCreate = state(menus.ControlCreate).Visible

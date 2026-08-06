@@ -338,7 +338,7 @@ func openDesktopWithDependencies(ctx context.Context, fyneApp framework.App, con
 			return inventorygui.NewView(presenter)
 		})},
 		{ID: workspaceMenus.routeID(), Label: "Menus", Icon: gui.IconMenus, Build: owned(workspaceMenus, func() gui.View {
-			presenter := menusgui.NewPresenter(d.session, menusgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, Dialogs: dialogs()})
+			presenter := menusgui.NewPresenter(d.session, menusgui.Dependencies{Executor: deps.executor, Dispatcher: deps.dispatcher, ReadinessExecutor: deps.executor, ReadinessDispatcher: deps.dispatcher, Dialogs: dialogs()})
 			d.presenters[workspaceMenus.routeID()] = presenter
 			return menusgui.NewView(presenter)
 		})},

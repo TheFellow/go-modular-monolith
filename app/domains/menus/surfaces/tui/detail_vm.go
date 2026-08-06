@@ -3,6 +3,7 @@ package tui
 import (
 	"cmp"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"time"
@@ -10,8 +11,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app"
 	menus "github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
@@ -24,16 +24,16 @@ type DetailViewModel struct {
 	width        int
 	height       int
 	menu         optional.Value[models.Menu]
-	app          *app.Session
 	actions      map[actions.ID]actions.State
 	readiness    *models.ReadinessReport
 	readinessErr error
+	names        map[entity.DrinkID]string
 }
 
-func NewDetailViewModel(styles tui.ListViewStyles, app *app.Session) *DetailViewModel {
+func NewDetailViewModel(styles tui.ListViewStyles, _ *app.Session) *DetailViewModel {
 	return &DetailViewModel{
 		styles: styles,
-		app:    app,
+		names:  make(map[entity.DrinkID]string),
 	}
 }
 
@@ -50,6 +50,7 @@ func (d *DetailViewModel) SetActions(states map[actions.ID]actions.State) { d.ac
 func (d *DetailViewModel) SetReadiness(report *models.ReadinessReport, err error) {
 	d.readiness, d.readinessErr = report, err
 }
+func (d *DetailViewModel) SetDrinkNames(names map[entity.DrinkID]string) { d.names = maps.Clone(names) }
 
 func (d *DetailViewModel) View() string {
 	menu, ok := d.menu.Unwrap()
@@ -175,22 +176,10 @@ func (d *DetailViewModel) itemName(item models.MenuItem) (string, error) {
 		}
 	}
 
-	drink, err := d.app.Drinks.Get(d.context(), item.DrinkID)
-	if err != nil {
-		return "", errors.Internalf("load drink %s: %w", item.DrinkID.String(), err)
+	if name := strings.TrimSpace(d.names[item.DrinkID]); name != "" {
+		return name, nil
 	}
-	if drink == nil {
-		return "", errors.Internalf("drink %s missing", item.DrinkID.String())
-	}
-	name := strings.TrimSpace(drink.Name)
-	if name == "" {
-		return "", errors.Internalf("drink %s missing name", item.DrinkID.String())
-	}
-	return name, nil
-}
-
-func (d *DetailViewModel) context() *middleware.Context {
-	return d.app.Context()
+	return item.DrinkID.String(), nil
 }
 
 func menuAvailabilityLabel(avail models.Availability) string {
