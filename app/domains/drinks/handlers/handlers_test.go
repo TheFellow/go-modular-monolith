@@ -57,7 +57,7 @@ func TestIngredientRetirementMarksDependentsForReviewAndPreservesRelationships(t
 	testutil.Ok(t, err)
 	testutil.Equals(t, gotUnrelatedMenu, unrelatedMenu, cmpopts.EquateEmpty())
 
-	entry := f.LatestAuditEntry(ingredientsauthz.ActionDelete)
+	entry := f.LatestAuditEntry(ingredientsauthz.ActionRetire)
 	testutil.AuditTouches(t, entry,
 		target.ID.EntityUID(), affectedA.ID.EntityUID(), affectedB.ID.EntityUID(),
 		targetStock.EntityUID(), affectedMenu.ID.EntityUID(),
@@ -96,6 +96,7 @@ func TestIngredientRetirementWithExplicitReplacementRewritesCanonicalRecipe(t *t
 	gotSubstituteOnly, err := f.Drinks.Get(ctx, substituteOnly.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, gotSubstituteOnly.Recipe.Ingredients[0].Substitutes, []entity.IngredientID{replacement.ID})
+	testutil.AuditTouches(t, f.LatestAuditEntry(ingredientsauthz.ActionRetire), retired.ID.EntityUID(), replacement.ID.EntityUID(), drink.ID.EntityUID(), substituteOnly.ID.EntityUID())
 }
 
 func TestIngredientRetirementRemovesOptionalAndSubstituteReferencesWithoutReview(t *testing.T) {

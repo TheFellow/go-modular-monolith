@@ -16,7 +16,7 @@ permit(
     action in [
         Mixology::Ingredient::Action::"create",
         Mixology::Ingredient::Action::"update",
-        Mixology::Ingredient::Action::"delete",
+        Mixology::Ingredient::Action::"retire",
         Mixology::Ingredient::Action::"tag",
         Mixology::Ingredient::Action::"untag"
     ],

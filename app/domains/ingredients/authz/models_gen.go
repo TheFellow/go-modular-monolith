@@ -48,9 +48,9 @@ func ValidateEntity(entity cedar.Entity) error {
 
 var (
 	ActionCreate = cedar.NewEntityUID(ActionType, "create")
-	ActionDelete = cedar.NewEntityUID(ActionType, "delete")
 	ActionGet    = cedar.NewEntityUID(ActionType, "get")
 	ActionList   = cedar.NewEntityUID(ActionType, "list")
+	ActionRetire = cedar.NewEntityUID(ActionType, "retire")
 	ActionTag    = cedar.NewEntityUID(ActionType, "tag")
 	ActionUntag  = cedar.NewEntityUID(ActionType, "untag")
 	ActionUpdate = cedar.NewEntityUID(ActionType, "update")

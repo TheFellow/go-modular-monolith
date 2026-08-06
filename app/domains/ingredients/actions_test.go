@@ -59,7 +59,7 @@ func TestIngredientActionProjectorWithoutSelectionReturnsCreateOnly(t *testing.T
 func TestIngredientActionProjectorPermissionsAreIndependent(t *testing.T) {
 	t.Parallel()
 	projector := ingredients.ActionProjector{Authorize: func(_ context.Context, _ cedar.EntityUID, action cedar.EntityUID, _ cedar.Entity) error {
-		if action == ingredientauthz.ActionDelete {
+		if action == ingredientauthz.ActionRetire {
 			return errors.Permissionf("delete denied")
 		}
 		return nil

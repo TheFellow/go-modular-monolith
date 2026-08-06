@@ -325,7 +325,7 @@ func TestAudit_ListExpressionFilters(t *testing.T) {
 
 	var target, failed *auditmodels.AuditEntry
 	for _, entry := range page.Items {
-		if entry.Action == ingredientsauthz.ActionDelete.String() {
+		if entry.Action == ingredientsauthz.ActionRetire.String() {
 			target = entry
 		}
 		if !entry.Success {
