@@ -7,6 +7,12 @@ one process and embedded database while keeping their commands, queries, persist
 events, and presentation adapters explicit. The same application is exposed as a CLI, Bubble Tea
 TUI, and Fyne desktop client.
 
+The sample is intentionally stateful rather than a collection of isolated CRUD screens. Orders
+reserve Inventory, stock changes can block Orders and degrade published Menus, and ingredient
+retirement either puts dependent Drinks under review or explicitly replaces compatible recipe
+references. Draft publication consults a queryable readiness report, so the reciprocal event and
+consistency boundaries remain visible across all three front ends.
+
 ## Five-minute start
 
 Go `1.26.5` or newer is required. From the repository root:
