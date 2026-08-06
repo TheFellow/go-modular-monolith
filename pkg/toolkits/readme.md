@@ -20,7 +20,7 @@ app/domains/*/surfaces/*    domain-aware presentation adapters
 pkg/toolkits/<surface>      reusable framework mechanics
 ```
 
-The framework-neutral [action presentation model](../presentation/actions/readme.md) sits outside
+The framework-neutral [action presentation model](../presentation/actions/README.md) sits outside
 the surface-specific toolkits. A domain-owned projector declares stable control IDs, permission
 inheritance or overrides, and business conditions once. Each surface maps the resulting
 visible/enabled states into native widgets or key bindings and adds only its transient interaction

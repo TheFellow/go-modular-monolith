@@ -18,7 +18,7 @@ and workflows.
   toolkit never imports application types.
 - [forms](forms/readme.md), [dialog](dialog/readme.md), and [keyname](keyname/readme.md) provide the
   reusable interaction primitives used by domain workflows.
-- Domain view models may consume framework-neutral [`actions.State`](../../presentation/actions/readme.md) values.
+- Domain view models may consume framework-neutral [`actions.State`](../../presentation/actions/README.md) values.
   Denied bindings are omitted; authorized but unavailable actions can remain visible as disabled
   detail with a reason. The view model adds transient form and request state before handling keys.
 

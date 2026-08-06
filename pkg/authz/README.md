@@ -65,7 +65,7 @@ remains the enforcement point.
 
 For a set of UI actions, prefer a domain-owned action projector over scattered authorization calls
 in widgets. The projector maps generated Cedar actions and the current resource into the shared
-[`actions` presentation model](../presentation/actions/readme.md), where permission denials become hidden controls
+[`actions` presentation model](../presentation/actions/README.md), where permission denials become hidden controls
 and authorized actions can still be disabled by domain prerequisites. Controls may inherit a
 surface permission or replace it with their own operation; Publish, for example, need not depend on
 Edit. Evaluator and infrastructure errors are returned and must be presented as errors, never
