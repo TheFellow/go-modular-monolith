@@ -52,6 +52,11 @@ graph TD
   GUI adapters. Denied actions disappear from keys/help; permitted actions blocked by entity state
   are described under unavailable actions. View models add transient workflow constraints and
   surface projection failures as errors. Commands still recheck authorization and invariants.
+- Ingredient retirement opens a focused workflow for an optional permanent replacement and ratio.
+  Menu details asynchronously load the authorized readiness report; its blockers disable Publish
+  without hiding an already-published menu that later becomes degraded.
+- Detail loads carry the selected entity and request token. Results for a previous selection are
+  discarded, and `View` remains a pure render path rather than performing database queries.
 - Extract shared behavior only after it has proven useful in multiple views.
 
 ### Interaction model

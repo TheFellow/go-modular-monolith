@@ -99,6 +99,12 @@ may override a page default—for example, Publish authorization is independent 
 errors are shown as application errors, and command execution rechecks all rules against current
 state.
 
+Ingredient retirement accepts an optional explicit permanent replacement and conversion ratio;
+leaving it blank preserves dependent recipes in a review-required state. Menu workspaces load the
+authorized readiness report separately from the base menu projection. Readiness blockers disable
+Publish and remain visible for examination, while an operational change may leave an existing
+published menu visible in a degraded state.
+
 Fyne does not currently provide complete cross-platform screen-reader
 semantics for every widget. Labels, form items, visible button text, native
 menus, keyboard traversal, status text, and disabled states improve usable
@@ -226,7 +232,8 @@ Asynchronous view models receive both `pkg/toolkits/gui.Executor` and
 `pkg/toolkits/gui.Dispatcher`; production uses background goroutines followed by the
 Fyne event loop. Tests use deterministic FIFO or out-of-order execution and semantic controls from
 [`pkg/testutil/fynetest`](../../pkg/testutil/README.md#fyne-tests) while interacting with real
-widgets.
+widgets. Menu readiness uses its own latest-request boundary so a slow result for a previously
+selected menu cannot overwrite the current workspace.
 
 ```sh
 go test -tags ci -race \

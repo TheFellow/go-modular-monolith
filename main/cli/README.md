@@ -28,12 +28,21 @@ go run ./main/cli --help
 go run ./main/cli ingredients list --filter-help
 go run ./main/cli ingredients list --limit 20 --json
 go run ./main/cli --actor bartender menus list
+go run ./main/cli ingredients retire --id ing-old --replacement-id ing-new --replacement-ratio 1
+go run ./main/cli --actor manager menus readiness --id mnu-example
 ```
 
 All list commands share paging and typed filter expressions. Mutation commands that accept a JSON
 document use `--file` or `--stdin` (which may receive a pipe); `--template` prints their expected shape.
 See the [feature guide](../../docs/features.md) for IDs, filters, tags, authorization personas, and
 audit examples.
+
+Retirement is a distinct authorized operation; `ingredients delete` remains a compatibility alias
+for retirement without replacement. An explicit replacement updates compatible future recipes,
+while omission preserves affected recipes for review. `menus readiness` reports publication
+blockers and warnings to authorized operators. Existing published menus may degrade in place, but
+the publish command rejects a draft with known blockers. These commands expose the same domain
+rules, event reactions, and audit touches as the TUI and GUI.
 
 ## Adding a command
 
