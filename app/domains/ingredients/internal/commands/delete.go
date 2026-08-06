@@ -74,6 +74,9 @@ func (c *Commands) Retire(ctx *middleware.Context, target RetirementTarget) (*mo
 	}
 
 	ctx.TouchEntity(deleted.ID.EntityUID())
+	if replacement != nil {
+		ctx.TouchEntity(replacement.ID.EntityUID())
+	}
 	ctx.AddEvent(events.IngredientDeleted{
 		Ingredient:       deleted,
 		DeletedAt:        now,

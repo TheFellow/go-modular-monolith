@@ -16,7 +16,9 @@ const (
 	ControlList   actions.ID = "ingredients.list"
 	ControlCreate actions.ID = "ingredients.create"
 	ControlEdit   actions.ID = "ingredients.edit"
-	ControlDelete actions.ID = "ingredients.delete"
+	ControlRetire actions.ID = "ingredients.retire"
+	// ControlDelete preserves source compatibility for presentation adapters.
+	ControlDelete            = ControlRetire
 	ControlTags   actions.ID = "ingredients.tags"
 )
 
@@ -57,7 +59,7 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 	resource := selected.CedarEntity()
 	declaration.Controls = append(declaration.Controls,
 		actions.Control{ID: ControlEdit, Permission: permission(ingredientauthz.ActionUpdate, resource)},
-		actions.Control{ID: ControlDelete, Permission: permission(ingredientauthz.ActionDelete, resource)},
+		actions.Control{ID: ControlRetire, Permission: permission(ingredientauthz.ActionRetire, resource)},
 		actions.Control{ID: ControlTags, Permission: permission(ingredientauthz.ActionTag, resource)},
 	)
 	return actions.Evaluate(ctx, declaration)
