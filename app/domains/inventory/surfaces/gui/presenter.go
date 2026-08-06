@@ -558,7 +558,7 @@ func makeRow(inv inventorymodels.Inventory, ingredient models.Ingredient, lowSto
 	if value, ok := inv.CostPerUnit.Unwrap(); ok {
 		cost = value.String()
 	}
-	return Row{Inventory: inv, Ingredient: ingredient, Quantity: fmt.Sprintf("%.2f %s", inv.Amount.Value(), inv.Amount.Unit()), Cost: cost, Status: StockStatus(inv.Amount, lowStock)}
+	return Row{Inventory: inv, Ingredient: ingredient, Quantity: fmt.Sprintf("%.2f %s", inv.Amount.Value(), inv.Amount.Unit()), Cost: cost, Status: StockStatus(inv.Available(), lowStock)}
 }
 func StockStatus(amount measurement.Amount, lowStock float64) string {
 	if amount == nil || amount.Value() <= 0 {

@@ -23,13 +23,14 @@ type OrderRow struct {
 }
 
 type OrderDetail struct {
-	ID          string               `table:"-" json:"id"`
-	MenuID      string               `table:"-" json:"menu_id"`
-	Status      string               `table:"-" json:"status"`
-	CreatedAt   string               `table:"-" json:"created_at"`
-	CompletedAt string               `table:"-" json:"completed_at,omitempty"`
-	Notes       string               `table:"-" json:"notes,omitempty"`
-	Tags        tag.CanonicalStrings `table:"-" json:"tags"`
+	ID                 string               `table:"-" json:"id"`
+	MenuID             string               `table:"-" json:"menu_id"`
+	Status             string               `table:"-" json:"status"`
+	CreatedAt          string               `table:"-" json:"created_at"`
+	CompletedAt        string               `table:"-" json:"completed_at,omitempty"`
+	Notes              string               `table:"-" json:"notes,omitempty"`
+	Tags               tag.CanonicalStrings `table:"-" json:"tags"`
+	BlockedIngredients []string             `table:"-" json:"blocked_ingredients,omitempty"`
 }
 
 type OrderItemRow struct {
@@ -40,7 +41,14 @@ type OrderItemRow struct {
 
 type OrderView struct {
 	OrderDetail
-	Items []OrderItemRow `json:"items"`
+	Items           []OrderItemRow       `json:"items"`
+	IngredientUsage []IngredientUsageRow `json:"ingredient_usage"`
+}
+
+type IngredientUsageRow struct {
+	IngredientID string `table:"INGREDIENT_ID" json:"ingredient_id"`
+	Name         string `table:"NAME" json:"name"`
+	Amount       string `table:"AMOUNT" json:"amount"`
 }
 
 type OrderInput struct {
@@ -89,14 +97,19 @@ func ToOrderDetail(o *models.Order) OrderDetail {
 	if t, ok := o.CompletedAt.Unwrap(); ok {
 		completed = formatTime(t)
 	}
+	blocked := make([]string, 0, len(o.BlockedIngredients))
+	for _, id := range o.BlockedIngredients {
+		blocked = append(blocked, id.String())
+	}
 	return OrderDetail{
-		ID:          o.ID.String(),
-		MenuID:      o.MenuID.String(),
-		Status:      string(o.Status),
-		CreatedAt:   formatTime(o.CreatedAt),
-		CompletedAt: completed,
-		Notes:       o.Notes,
-		Tags:        o.Tags.Canonical(),
+		ID:                 o.ID.String(),
+		MenuID:             o.MenuID.String(),
+		Status:             string(o.Status),
+		CreatedAt:          formatTime(o.CreatedAt),
+		CompletedAt:        completed,
+		Notes:              o.Notes,
+		Tags:               o.Tags.Canonical(),
+		BlockedIngredients: blocked,
 	}
 }
 
@@ -116,7 +129,11 @@ func ToOrderView(o *models.Order) OrderView {
 	if o == nil {
 		return OrderView{}
 	}
-	return OrderView{OrderDetail: ToOrderDetail(o), Items: ToOrderItemRows(o.Items)}
+	usage := make([]IngredientUsageRow, 0, len(o.IngredientUsage))
+	for _, u := range o.IngredientUsage {
+		usage = append(usage, IngredientUsageRow{IngredientID: u.IngredientID.String(), Name: u.Name, Amount: u.Amount.String()})
+	}
+	return OrderView{OrderDetail: ToOrderDetail(o), Items: ToOrderItemRows(o.Items), IngredientUsage: usage}
 }
 
 func TemplatePlace() OrderInput {

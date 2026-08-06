@@ -63,7 +63,7 @@ func TestCompleteOrderUsesCatalogRatioForExplicitSubstitute(t *testing.T) {
 	testutil.Equals(t, orderMenuAvailability(gotMenu, drink.ID), menumodels.AvailabilityUnavailable)
 
 	entry := f.LatestAuditEntry(ordersauthz.ActionComplete)
-	testutil.AuditTouches(t, entry, order.ID.EntityUID(), substituteStock.EntityUID(), menu.ID.EntityUID())
+	testutil.AuditTouches(t, entry, order.ID.EntityUID(), substituteStock.EntityUID())
 }
 
 func TestCompleteOrderPrefersHigherQualityCatalogSubstitute(t *testing.T) {
@@ -176,7 +176,7 @@ func TestMenuAvailabilityReservesSharedSubstitute(t *testing.T) {
 	testutil.Equals(t, orderMenuAvailability(menu, drink.ID), menumodels.AvailabilityUnavailable)
 }
 
-func TestCompleteOrderPreservesFulfillmentDependencyError(t *testing.T) {
+func TestPlaceOrderPreservesFulfillmentDependencyError(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
@@ -191,10 +191,6 @@ func TestCompleteOrderPreservesFulfillmentDependencyError(t *testing.T) {
 		},
 	})
 	menu := testutil.CreateMenu(t, f, "Cancellation Menu", testutil.WithDrink(drink), testutil.Published())
-	order := testutil.PlaceOrder(t, f, ordersmodels.Order{
-		MenuID: menu.ID,
-		Items:  []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 1}},
-	})
 	tx, err := f.Store.Begin(ctx, true)
 	testutil.Ok(t, err)
 	t.Cleanup(func() { testutil.Ok(t, f.Store.Rollback(tx)) })
@@ -202,7 +198,7 @@ func TestCompleteOrderPreservesFulfillmentDependencyError(t *testing.T) {
 	cancel()
 	cancelledCtx := middleware.NewContext(cancelledParent).WithTransaction(tx)
 
-	_, err = f.Orders.Complete(cancelledCtx, &ordersmodels.Order{ID: order.ID})
+	_, err = f.Orders.Place(cancelledCtx, &ordersmodels.Order{MenuID: menu.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 1}}})
 	testutil.ErrorIs(t, err, context.Canceled)
 }
 

@@ -6,6 +6,7 @@ import (
 	drinkauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
@@ -23,8 +24,25 @@ type Drink struct {
 	Glass       GlassType
 	Recipe      Recipe
 	Description string
+	Status      Status
 	DeletedAt   optional.Value[time.Time]
 	Tags        tag.Tags
+}
+
+type Status string
+
+const (
+	StatusActive         Status = "active"
+	StatusReviewRequired Status = "review_required"
+)
+
+func (s Status) Validate() error {
+	switch s {
+	case StatusActive, StatusReviewRequired:
+		return nil
+	default:
+		return errors.Invalidf("invalid drink status %q", s)
+	}
 }
 
 func (d Drink) EntityUID() cedar.EntityUID {

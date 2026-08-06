@@ -101,7 +101,7 @@ func NewView(p *Presenter) *View {
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New ingredient", p.StartCreate), ui.IconAdd))
 	v.tagAction = ui.WithIcon(ui.NewButton(ControlTags, "Tags", p.StartTags), ui.IconTag)
-	v.delete = ui.Destructive(ui.WithIcon(ui.NewButton(ControlDelete, "Delete", p.RequestDelete), ui.IconDelete))
+	v.delete = ui.Destructive(ui.WithIcon(ui.NewButton(ControlDelete, "Retire", p.RequestDelete), ui.IconDelete))
 	v.status = widget.NewLabel("")
 	v.browse = ui.StandardListPage(ui.ListPage{Title: "Ingredients", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, v.refresh}, List: v.listStack, Status: v.status, ListRatio: .35}).(*framework.Container)
 

@@ -7,7 +7,6 @@ import (
 	ingredientsevents "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
@@ -34,18 +33,18 @@ func (h *IngredientDeleted) Handling(ctx *middleware.HandlerContext, e ingredien
 	return nil
 }
 
-func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, e ingredientsevents.IngredientDeleted) error {
+func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, _e ingredientsevents.IngredientDeleted) error {
 	if len(h.affectedDrinks) == 0 {
 		return nil
 	}
 
 	for _, drink := range h.affectedDrinks {
-		deleted := *drink
-		deleted.DeletedAt = optional.Some(e.DeletedAt)
-		if err := h.drinkDAO.Update(ctx, deleted); err != nil {
+		review := *drink
+		review.Status = drinksmodels.StatusReviewRequired
+		if err := h.drinkDAO.Update(ctx, review); err != nil {
 			return err
 		}
-		ctx.TouchEntity(deleted.ID.EntityUID())
+		ctx.TouchEntity(review.ID.EntityUID())
 	}
 	return nil
 }

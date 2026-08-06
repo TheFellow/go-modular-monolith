@@ -67,13 +67,13 @@ func NewView(p *Presenter) *View {
 	v.expression = bar.Expression
 	// Mirrors the CLI inventory list except for the inventory record ID; the
 	// joined ingredient name makes the otherwise opaque ingredient ID useful.
-	columns := []string{"Ingredient", "Ingredient ID", "Quantity", "Unit", "Cost per unit", "Last updated", "Tags", "Status", "Actions"}
+	columns := []string{"Ingredient", "Ingredient ID", "On hand", "Reserved", "Available", "Unit", "Cost per unit", "Last updated", "Tags", "Status", "Actions"}
 	v.list = ui.NewAutoPagingRowTable(func() (int, int) { return len(v.state.Rows), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, object framework.CanvasObject) {
 		cell := object
 		r := v.state.Rows[id.Row]
-		values := []string{r.Ingredient.Name, r.Inventory.IngredientID.String(), fmt.Sprintf("%.2f", r.Inventory.Amount.Value()), string(r.Inventory.Amount.Unit()), r.Cost, formatInventoryTime(r.Inventory.LastUpdated), r.Inventory.Tags.Canonical().String(), r.Status}
+		values := []string{r.Ingredient.Name, r.Inventory.IngredientID.String(), fmt.Sprintf("%.2f", r.Inventory.Amount.Value()), fmt.Sprintf("%.2f", r.Inventory.ReservedAmount().Value()), fmt.Sprintf("%.2f", r.Inventory.Available().Value()), string(r.Inventory.Amount.Unit()), r.Cost, formatInventoryTime(r.Inventory.LastUpdated), r.Inventory.Tags.Canonical().String(), r.Status}
 		if id.Col == len(columns)-1 {
 			rowID := r.Inventory.ID
 			actions := []ui.RowAction{{Label: "View", Run: func() { p.Select(rowID) }}}
@@ -89,7 +89,7 @@ func NewView(p *Presenter) *View {
 			ui.ShowCellActions(cell, actions)
 			return
 		}
-		if id.Col == 6 {
+		if id.Col == 8 {
 			ui.ShowCellTags(cell, values[id.Col])
 			return
 		}
@@ -101,7 +101,7 @@ func NewView(p *Presenter) *View {
 			p.Select(v.state.Rows[id.Row].Inventory.ID)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Ingredient", Width: 180}, {Title: "Ingredient ID", Width: 230}, {Title: "Quantity", Width: 90}, {Title: "Unit", Width: 70}, {Title: "Cost per unit", Width: 120}, {Title: "Last updated", Width: 210}, {Title: "Tags", Width: 180}, {Title: "Status", Width: 70}, {Title: "Actions", Width: 120}}, nil)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Ingredient", Width: 180}, {Title: "Ingredient ID", Width: 230}, {Title: "On hand", Width: 90}, {Title: "Reserved", Width: 90}, {Title: "Available", Width: 90}, {Title: "Unit", Width: 70}, {Title: "Cost per unit", Width: 120}, {Title: "Last updated", Width: 210}, {Title: "Tags", Width: 180}, {Title: "Status", Width: 70}, {Title: "Actions", Width: 120}}, nil)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No inventory found", "Adjust the filter to find stock items.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)
@@ -187,7 +187,7 @@ func (v *View) detailFields(s State) framework.CanvasObject {
 		e.SetText(value)
 		return e
 	}
-	form := ui.DetailForm(ui.DetailField("Ingredient", entry(r.Ingredient.Name)), ui.DetailField("Category", entry(string(r.Ingredient.Category))), ui.DetailField("Quantity", entry(r.Quantity)), ui.DetailField("Cost per unit", entry(r.Cost)), ui.DetailField("Status", entry(r.Status)), ui.DetailField("Tags", ui.TagPillsCSV(r.Inventory.Tags.Canonical().String())), ui.DetailField("Last updated", entry(formatInventoryTime(r.Inventory.LastUpdated))))
+	form := ui.DetailForm(ui.DetailField("Ingredient", entry(r.Ingredient.Name)), ui.DetailField("Category", entry(string(r.Ingredient.Category))), ui.DetailField("On hand", entry(r.Quantity)), ui.DetailField("Reserved", entry(r.Inventory.ReservedAmount().String())), ui.DetailField("Available", entry(r.Inventory.Available().String())), ui.DetailField("Cost per unit", entry(r.Cost)), ui.DetailField("Status", entry(r.Status)), ui.DetailField("Tags", ui.TagPillsCSV(r.Inventory.Tags.Canonical().String())), ui.DetailField("Last updated", entry(formatInventoryTime(r.Inventory.LastUpdated))))
 	return container.NewVBox(ui.ActionBar(nil, []framework.CanvasObject{v.adjust, v.set, v.tagAction}), form)
 }
 
@@ -222,7 +222,7 @@ func (v *View) render(s State) {
 			values[i] = row.Inventory.Tags.Canonical().String()
 		}
 		if width := ui.TagPillColumnWidth(values, 180); width > v.tagNaturalWidth {
-			v.list.SetColumnWidth(6, width)
+			v.list.SetColumnWidth(8, width)
 			v.tagNaturalWidth = width
 		}
 	}

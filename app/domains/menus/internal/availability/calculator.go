@@ -67,6 +67,9 @@ func (c *AvailabilityCalculator) CalculateDetail(ctx store.Context, drinkID enti
 	if err != nil {
 		return Detail{}, err
 	}
+	if drink.Status == drinksmodels.StatusReviewRequired {
+		return Detail{Status: models.AvailabilityUnavailable}, nil
+	}
 
 	limited := false
 	var missing []MissingIngredient
@@ -286,7 +289,7 @@ func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drin
 			}
 			return nil, err
 		}
-		available, err := stock.Amount.Convert(cand.required.Unit())
+		available, err := stock.Available().Convert(cand.required.Unit())
 		if err != nil {
 			return nil, err
 		}

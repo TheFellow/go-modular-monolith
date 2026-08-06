@@ -18,9 +18,38 @@ type Inventory struct {
 	ID           entity.InventoryID
 	IngredientID entity.IngredientID
 	Amount       measurement.Amount
+	Reserved     measurement.Amount
 	CostPerUnit  optional.Value[money.Price]
 	LastUpdated  time.Time
 	Tags         tag.Tags
+}
+
+func (s Inventory) Available() measurement.Amount {
+	if s.Amount == nil {
+		return nil
+	}
+	if s.Reserved == nil {
+		return s.Amount
+	}
+	reserved, err := s.Reserved.Convert(s.Amount.Unit())
+	if err != nil {
+		return s.Amount
+	}
+	available, err := s.Amount.Sub(reserved)
+	if err != nil || available.Value() < 0 {
+		return measurement.MustAmount(0, s.Amount.Unit())
+	}
+	return available
+}
+
+func (s Inventory) ReservedAmount() measurement.Amount {
+	if s.Reserved != nil {
+		return s.Reserved
+	}
+	if s.Amount != nil {
+		return measurement.MustAmount(0, s.Amount.Unit())
+	}
+	return nil
 }
 
 func (s Inventory) EntityUID() cedar.EntityUID {

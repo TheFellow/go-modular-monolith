@@ -86,6 +86,25 @@ mixology audit list --filter 'principal.contains("owner") && success'
 mixology audit history Mixology::Drink::drk-abc123
 ```
 
+## Stateful fulfillment and retirement
+
+Placing an order captures its ingredient-usage snapshot and reserves that stock in Inventory.
+Inventory lists distinguish on-hand, reserved, and available quantities. Completing the order
+consumes its reservations; cancelling releases them. A later stock correction below the reserved
+total moves every affected pending order to `blocked`, and replenishment returns it to `pending`.
+Blocked orders remain cancellable but cannot be completed.
+
+This collaboration is deliberately reciprocal: Order events change Inventory reservations and
+published Menu availability, while Inventory adjustment events change Order fulfillment state.
+Every indirect mutation is part of the originating transaction and appears in its audit touches.
+
+Retiring an ingredient (`ingredients retire`; `delete` remains a compatibility alias) removes its
+stock but preserves dependent Drinks and Menu curation. Affected Drinks become `review_required`
+and their Menu items become unavailable. Editing a Drink with a valid replacement recipe returns
+it to `active`; existing Orders retain the usage snapshot accepted when they were placed.
+Pending Orders reserved against the retired ingredient become `blocked`; they preserve that
+historical requirement and may still be cancelled to release the reservation.
+
 ## Runtime configuration
 
 CLI, TUI, GUI, and seeder default to `data/mixology.db`; only one process can own the embedded file.

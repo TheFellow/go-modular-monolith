@@ -10,46 +10,36 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-type OrderCompleted struct {
+type OrderPlaced struct {
 	dao          *dao.DAO
 	availability *availability.AvailabilityCalculator
 }
 
-func NewOrderCompleted(s *store.Store, tags tag.Repository) *OrderCompleted {
-	return &OrderCompleted{
-		dao:          dao.New(s, tags),
-		availability: availability.New(s, tags),
-	}
+func NewOrderPlaced(s *store.Store, tags tag.Repository) *OrderPlaced {
+	return &OrderPlaced{dao: dao.New(s, tags), availability: availability.New(s, tags)}
 }
-
-func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.OrderCompleted) error {
-	if len(e.Order.IngredientUsage) == 0 {
-		return nil
-	}
-
+func (h *OrderPlaced) Handle(ctx *middleware.HandlerContext, _ ordersevents.OrderPlaced) error {
+	return h.recalculate(ctx)
+}
+func (h *OrderPlaced) recalculate(ctx *middleware.HandlerContext) error {
 	for menu, err := range h.dao.List(ctx, dao.ListFilter{Status: models.MenuStatusPublished}) {
 		if err != nil {
 			return err
 		}
 		changed := false
 		for i := range menu.Items {
-			item := menu.Items[i]
-			status := h.availability.Calculate(ctx, item.DrinkID)
-			if item.Availability == status {
-				continue
+			next := h.availability.Calculate(ctx, menu.Items[i].DrinkID)
+			if next != menu.Items[i].Availability {
+				menu.Items[i].Availability = next
+				changed = true
 			}
-			menu.Items[i].Availability = status
-			changed = true
 		}
-
-		if !changed {
-			continue
+		if changed {
+			if err := h.dao.Update(ctx, *menu); err != nil {
+				return err
+			}
+			ctx.TouchEntity(menu.ID.EntityUID())
 		}
-		if err := h.dao.Update(ctx, *menu); err != nil {
-			return err
-		}
-		ctx.TouchEntity(menu.ID.EntityUID())
 	}
-
 	return nil
 }

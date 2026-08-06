@@ -54,6 +54,7 @@ func (c *Commands) Update(ctx *middleware.Context, drink *models.Drink) (*models
 
 	updated := *drink
 	updated.Tags = existing.Tags
+	updated.Status = models.StatusActive
 	updated.Description = strings.TrimSpace(updated.Description)
 
 	if err := c.dao.Update(ctx, updated); err != nil {

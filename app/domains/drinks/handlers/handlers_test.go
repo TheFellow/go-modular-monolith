@@ -16,7 +16,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func TestIngredientDeletedHandlersRemoveDependentsAndPreserveUnrelatedEntities(t *testing.T) {
+func TestIngredientRetirementMarksDependentsForReviewAndPreservesRelationships(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
@@ -33,10 +33,12 @@ func TestIngredientDeletedHandlersRemoveDependentsAndPreserveUnrelatedEntities(t
 
 	_, err := f.Ingredients.Delete(ctx, target.ID)
 	testutil.Ok(t, err)
-	_, err = f.Drinks.Get(ctx, affectedA.ID)
-	testutil.ErrorIsNotFound(t, err)
-	_, err = f.Drinks.Get(ctx, affectedB.ID)
-	testutil.ErrorIsNotFound(t, err)
+	gotAffectedA, err := f.Drinks.Get(ctx, affectedA.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, gotAffectedA.Status, drinksmodels.StatusReviewRequired)
+	gotAffectedB, err := f.Drinks.Get(ctx, affectedB.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, gotAffectedB.Status, drinksmodels.StatusReviewRequired)
 	_, err = f.Inventory.Get(ctx, target.ID)
 	testutil.ErrorIsNotFound(t, err)
 	gotSurvivor, err := f.Drinks.Get(ctx, survivor.ID)
@@ -47,7 +49,10 @@ func TestIngredientDeletedHandlersRemoveDependentsAndPreserveUnrelatedEntities(t
 	testutil.Equals(t, gotOtherStock, otherStock)
 	gotMenu, err := f.Menus.Get(ctx, affectedMenu.ID)
 	testutil.Ok(t, err)
-	testutil.Equals(t, menuDrinkIDs(gotMenu), []entity.DrinkID{survivor.ID})
+	testutil.Equals(t, menuDrinkIDs(gotMenu), []entity.DrinkID{affectedA.ID, survivor.ID, affectedB.ID})
+	for _, id := range []entity.DrinkID{affectedA.ID, affectedB.ID} {
+		testutil.Equals(t, menuAvailability(gotMenu, id), menumodels.AvailabilityUnavailable)
+	}
 	gotUnrelatedMenu, err := f.Menus.Get(ctx, unrelatedMenu.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, gotUnrelatedMenu, unrelatedMenu, cmpopts.EquateEmpty())
@@ -57,6 +62,15 @@ func TestIngredientDeletedHandlersRemoveDependentsAndPreserveUnrelatedEntities(t
 		target.ID.EntityUID(), affectedA.ID.EntityUID(), affectedB.ID.EntityUID(),
 		targetStock.EntityUID(), affectedMenu.ID.EntityUID(),
 	)
+}
+
+func menuAvailability(menu *menumodels.Menu, id entity.DrinkID) menumodels.Availability {
+	for _, item := range menu.Items {
+		if item.DrinkID == id {
+			return item.Availability
+		}
+	}
+	return ""
 }
 
 func TestIngredientUpdatedHandlersAuditEveryDependentWithoutMutatingThem(t *testing.T) {

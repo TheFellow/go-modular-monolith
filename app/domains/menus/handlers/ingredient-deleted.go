@@ -17,8 +17,8 @@ type IngredientDeleted struct {
 	dao    *dao.DAO
 	drinks *drinksq.Queries
 
-	affectedMenus []*models.Menu
-	removeDrinkID set.Set[string]
+	affectedMenus   []*models.Menu
+	affectedDrinkID set.Set[string]
 }
 
 func NewIngredientDeleted(s *store.Store, tags tag.Repository) *IngredientDeleted {
@@ -64,29 +64,28 @@ func (h *IngredientDeleted) Handling(ctx *middleware.HandlerContext, e ingredien
 	}
 
 	h.affectedMenus = affectedMenus
-	h.removeDrinkID = remove
+	h.affectedDrinkID = remove
 	return nil
 }
 
 func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, _ ingredientsevents.IngredientDeleted) error {
-	if len(h.affectedMenus) == 0 || h.removeDrinkID.Len() == 0 {
+	if len(h.affectedMenus) == 0 || h.affectedDrinkID.Len() == 0 {
 		return nil
 	}
 
 	for _, menu := range h.affectedMenus {
 		updated := *menu
 
-		filtered := make([]models.MenuItem, 0, len(updated.Items))
-		for _, item := range updated.Items {
-			if h.removeDrinkID.Contains(item.DrinkID.String()) {
-				continue
+		changed := false
+		for i := range updated.Items {
+			if h.affectedDrinkID.Contains(updated.Items[i].DrinkID.String()) && updated.Items[i].Availability != models.AvailabilityUnavailable {
+				updated.Items[i].Availability = models.AvailabilityUnavailable
+				changed = true
 			}
-			filtered = append(filtered, item)
 		}
-		if len(filtered) == len(updated.Items) {
+		if !changed {
 			continue
 		}
-		updated.Items = filtered
 
 		if err := h.dao.Update(ctx, updated); err != nil {
 			return err

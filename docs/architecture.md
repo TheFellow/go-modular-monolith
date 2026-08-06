@@ -21,6 +21,13 @@ domain's public event; a command may emit only events owned by its own domain. T
 depend on a narrow repository port and register loaders with the tagging workflow, so tagging never
 reaches into private persistence.
 
+The graph is intentionally reciprocal without creating package cycles. Orders query catalog and
+stock contracts while Order events cause Inventory to reserve, consume, or release quantities.
+Inventory adjustment events can in turn block or unblock every pending Order whose reservation is
+affected. Both event families recalculate published Menu availability. Ingredient retirement fans
+out similarly: Drinks enter review rather than disappearing, Menu items become unavailable, and
+Inventory removes unusable stock while accepted Order snapshots remain historical truth.
+
 ## Package boundaries
 
 A regular context exposes its facade at the package root, read contracts in `models`/`queries`, and
@@ -71,6 +78,10 @@ existed when the original event was raised. Its later `Handle` call can use that
 another handler has since changed related state in the shared transaction. This two-phase protocol
 preserves the information that might otherwise require a follow-up, cascading event, without making
 correctness depend on handler order.
+
+Order placement demonstrates why preparation and transactional fan-out matter: one event may
+touch several inventory rows and menus, and any reservation failure rolls back the Order and every
+handler mutation. Handler changes are recorded as audit touches on the initiating operation.
 
 ## Authorization
 

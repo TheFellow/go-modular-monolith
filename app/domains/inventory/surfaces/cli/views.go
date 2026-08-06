@@ -19,6 +19,8 @@ type InventoryRow struct {
 	ID           string               `table:"ID" json:"id"`
 	IngredientID string               `table:"INGREDIENT_ID" json:"ingredient_id"`
 	Quantity     Quantity             `table:"QUANTITY" json:"quantity"`
+	Reserved     Quantity             `table:"RESERVED" json:"reserved"`
+	Available    Quantity             `table:"AVAILABLE" json:"available"`
 	Unit         string               `table:"UNIT" json:"unit"`
 	CostPerUnit  string               `table:"COST_PER_UNIT" json:"cost_per_unit,omitempty"`
 	LastUpdated  string               `table:"LAST_UPDATED" json:"last_updated"`
@@ -51,6 +53,8 @@ func ToInventoryRow(s *models.Inventory) InventoryRow {
 		ID:           s.ID.String(),
 		IngredientID: s.IngredientID.String(),
 		Quantity:     Quantity(s.Amount.Value()),
+		Reserved:     Quantity(s.ReservedAmount().Value()),
+		Available:    Quantity(s.Available().Value()),
 		Unit:         string(s.Amount.Unit()),
 		CostPerUnit:  costPerUnit,
 		LastUpdated:  formatTime(s.LastUpdated),

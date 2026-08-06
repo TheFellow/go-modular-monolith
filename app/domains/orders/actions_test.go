@@ -39,12 +39,12 @@ func TestActionProjectorIndependentlyAuthorizesAndProjectsLifecycle(t *testing.T
 func TestActionProjectorPendingLifecycle(t *testing.T) {
 	t.Parallel()
 	projector := orders.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return nil }}
-	for _, status := range []models.OrderStatus{models.OrderStatusPending, models.OrderStatusCompleted, models.OrderStatusCancelled} {
+	for _, status := range []models.OrderStatus{models.OrderStatusPending, models.OrderStatusBlocked, models.OrderStatusCompleted, models.OrderStatusCancelled} {
 		states, err := projector.Project(context.Background(), cedar.EntityUID{}, &models.Order{ID: entity.NewOrderID(), Status: status})
 		testutil.Ok(t, err)
 		got := actionMap(states)
 		testutil.Equals(t, got[orders.ControlComplete].Enabled, status == models.OrderStatusPending)
-		testutil.Equals(t, got[orders.ControlCancel].Enabled, status == models.OrderStatusPending)
+		testutil.Equals(t, got[orders.ControlCancel].Enabled, status == models.OrderStatusPending || status == models.OrderStatusBlocked)
 	}
 }
 

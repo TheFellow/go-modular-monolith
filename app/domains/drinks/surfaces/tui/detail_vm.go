@@ -77,7 +77,11 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("ID: " + drink.ID.String()),
 		d.styles.Subtitle.Render("Category: ") + string(drink.Category),
 		d.styles.Subtitle.Render("Glass: ") + string(drink.Glass),
+		d.styles.Subtitle.Render("Status: ") + string(drink.Status),
 		d.styles.Subtitle.Render("Tags: ") + cmp.Or(drink.Tags.Canonical().String(), "(none)"),
+	}
+	if drink.Status == models.StatusReviewRequired {
+		lines = append(lines, d.styles.WarningText.Render("Recipe requires review because an ingredient was retired."))
 	}
 
 	if drink.Description != "" {

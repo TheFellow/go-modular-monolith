@@ -99,7 +99,7 @@ func (v *View) render(s State) {
 
 func (v *View) browser(s State) framework.CanvasObject {
 	bar := ui.NewSingleRowFilterBar(ControlFilter, ControlApplyFilter, `Filter orders (for example: tags contains "featured")`, s.Filter.Expression,
-		[]ui.FilterPreset{{ID: "orders-status", Placeholder: "Status", Options: []ui.FilterOption{{Label: "Any status"}, {Label: "Pending", Expression: `status == "pending"`}, {Label: "Completed", Expression: `status == "completed"`}, {Label: "Cancelled", Expression: `status == "cancelled"`}}}},
+		[]ui.FilterPreset{{ID: "orders-status", Placeholder: "Status", Options: []ui.FilterOption{{Label: "Any status"}, {Label: "Pending", Expression: `status == "pending"`}, {Label: "Blocked", Expression: `status == "blocked"`}, {Label: "Completed", Expression: `status == "completed"`}, {Label: "Cancelled", Expression: `status == "cancelled"`}}}},
 		nil, func(expression string) { v.presenter.ApplyFilter(Filter{Expression: expression, Limit: ui.PageLimit}) })
 	v.expression = bar.Expression
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", v.presenter.Refresh), ui.IconRefresh)
@@ -225,6 +225,13 @@ func (v *View) detail(s State) framework.CanvasObject {
 		ui.DetailField("Status", readonly(string(r.Order.Status))), ui.DetailField("Created", readonly(formatTime(r.Order.CreatedAt))),
 		ui.DetailField("Completed", readonly(completed)), ui.DetailField("Tags", ui.TagPillsCSV(r.Order.Tags.Canonical().String())),
 		ui.DetailField("Notes", notes)), widget.NewLabelWithStyle("Items", framework.TextAlignLeading, framework.TextStyle{Bold: true}))
+	if len(r.Order.BlockedIngredients) > 0 {
+		ids := make([]string, 0, len(r.Order.BlockedIngredients))
+		for _, id := range r.Order.BlockedIngredients {
+			ids = append(ids, id.String())
+		}
+		fields.Add(widget.NewLabel("Short of reserved stock: " + strings.Join(ids, ", ")))
+	}
 	if len(r.Lines) == 0 {
 		fields.Add(ui.EmptyCollection(ui.IconEmpty, "No order items", "This order contains no line items."))
 	}

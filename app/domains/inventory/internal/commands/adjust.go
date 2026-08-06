@@ -111,9 +111,14 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch *models.Patch) (*models
 
 	ctx.TouchEntity(updated.EntityUID())
 	if hasDelta {
+		reserved, err := c.dao.ReservedAmount(ctx, updated.IngredientID)
+		if err != nil {
+			return nil, err
+		}
 		ctx.AddEvent(events.StockAdjusted{
 			Inventory: updated,
 			Reason:    string(patch.Reason),
+			Shortage:  updated.Amount.Value() < reserved.Value(),
 		})
 	}
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -38,6 +39,13 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Inven
 			}
 			for _, row := range rows {
 				stock := toModel(row)
+				reserved, err := reservedQuantityTx(tx, row.IngredientID)
+				if err != nil {
+					return err
+				}
+				if reserved > 0 {
+					stock.Reserved = measurement.MustAmount(reserved, stock.Amount.Unit())
+				}
 				stock.Tags = tagsByTarget[stock.EntityUID()]
 				matched, err := filter.Expression.Match(listFilterView(row, stock.Tags.Strings()))
 				if err != nil {

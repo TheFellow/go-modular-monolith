@@ -10,5 +10,5 @@ import (
 type drinkItem = tui.ListItem[models.Drink]
 
 func newDrinkItem(drink models.Drink) drinkItem {
-	return tui.NewListItem(drink, drink.Name, fmt.Sprintf("%s • %s", drink.Category, drink.Glass), drink.Name)
+	return tui.NewListItem(drink, drink.Name, fmt.Sprintf("%s • %s • %s", drink.Category, drink.Glass, drink.Status), drink.Name)
 }

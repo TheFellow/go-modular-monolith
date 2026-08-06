@@ -73,6 +73,13 @@ func (d *DetailViewModel) View() string {
 	if completedAt, ok := order.CompletedAt.Unwrap(); ok {
 		lines = append(lines, d.styles.Muted.Render("Completed: "+formatTime(completedAt)))
 	}
+	if len(order.BlockedIngredients) > 0 {
+		ids := make([]string, 0, len(order.BlockedIngredients))
+		for _, id := range order.BlockedIngredients {
+			ids = append(ids, id.String())
+		}
+		lines = append(lines, d.styles.ErrorText.Render("Short of reserved stock: "+strings.Join(ids, ", ")))
+	}
 
 	if strings.TrimSpace(order.Notes) != "" {
 		lines = append(lines, "", d.styles.Subtitle.Render("Notes"), order.Notes)

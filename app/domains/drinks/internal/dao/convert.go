@@ -22,6 +22,7 @@ func toRow(d drinksmodels.Drink) DrinkRow {
 		Glass:       string(d.Glass),
 		Recipe:      toRecipeRow(d.Recipe),
 		Description: d.Description,
+		Status:      string(d.Status),
 		DeletedAt:   deletedAt,
 	}
 }
@@ -33,6 +34,10 @@ func toModel(r DrinkRow) drinksmodels.Drink {
 	} else {
 		deletedAt = optional.None[time.Time]()
 	}
+	status := drinksmodels.Status(r.Status)
+	if status == "" {
+		status = drinksmodels.StatusActive
+	}
 	return drinksmodels.Drink{
 		ID:          drinksmodels.NewDrinkID(r.ID),
 		Name:        r.Name,
@@ -40,6 +45,7 @@ func toModel(r DrinkRow) drinksmodels.Drink {
 		Glass:       drinksmodels.GlassType(r.Glass),
 		Recipe:      toRecipeModel(r.Recipe),
 		Description: r.Description,
+		Status:      status,
 		DeletedAt:   deletedAt,
 	}
 }

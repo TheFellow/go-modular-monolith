@@ -5,6 +5,7 @@ import (
 
 	orderauthz "github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -18,15 +19,17 @@ func NewOrderID(id string) entity.OrderID {
 }
 
 type Order struct {
-	ID          entity.OrderID
-	MenuID      entity.MenuID
-	Items       []OrderItem
-	Status      OrderStatus
-	CreatedAt   time.Time
-	CompletedAt optional.Value[time.Time]
-	Notes       string
-	DeletedAt   optional.Value[time.Time]
-	Tags        tag.Tags
+	ID                 entity.OrderID
+	MenuID             entity.MenuID
+	Items              []OrderItem
+	IngredientUsage    []IngredientUsage
+	BlockedIngredients []entity.IngredientID
+	Status             OrderStatus
+	CreatedAt          time.Time
+	CompletedAt        optional.Value[time.Time]
+	Notes              string
+	DeletedAt          optional.Value[time.Time]
+	Tags               tag.Tags
 }
 
 func (o Order) EntityUID() cedar.EntityUID {
@@ -65,6 +68,15 @@ type OrderItem struct {
 	Notes    string
 }
 
+// IngredientUsage is the fulfillment snapshot captured when an order is placed.
+// It insulates an accepted order from later recipe edits and is the contract used
+// by Inventory to reserve, consume, and release stock.
+type IngredientUsage struct {
+	IngredientID entity.IngredientID
+	Name         string
+	Amount       measurement.Amount
+}
+
 func (i OrderItem) Validate() error {
 	if i.DrinkID.IsZero() {
 		return errors.Invalidf("drink id is required")
@@ -79,13 +91,14 @@ type OrderStatus string
 
 const (
 	OrderStatusPending   OrderStatus = "pending"
+	OrderStatusBlocked   OrderStatus = "blocked"
 	OrderStatusCompleted OrderStatus = "completed"
 	OrderStatusCancelled OrderStatus = "cancelled"
 )
 
 func (s OrderStatus) Validate() error {
 	switch s {
-	case OrderStatusPending, OrderStatusCompleted, OrderStatusCancelled:
+	case OrderStatusPending, OrderStatusBlocked, OrderStatusCompleted, OrderStatusCancelled:
 		return nil
 	default:
 		return errors.Invalidf("invalid status %q", string(s))

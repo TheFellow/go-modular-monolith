@@ -62,7 +62,7 @@ func TestOrderCompletedHandlersDepleteUsedStockAndPreserveUnrelatedStock(t *test
 	testutil.Equals(t, gotUnrelatedMenu, unrelatedMenu, cmpopts.EquateEmpty())
 
 	entry := f.LatestAuditEntry(ordersauthz.ActionComplete)
-	testutil.AuditTouches(t, entry, order.ID.EntityUID(), usedStock.EntityUID(), affectedMenu.ID.EntityUID())
+	testutil.AuditTouches(t, entry, order.ID.EntityUID(), usedStock.EntityUID())
 }
 
 func menuAvailability(menu *menumodels.Menu, drinkID entity.DrinkID) menumodels.Availability {
