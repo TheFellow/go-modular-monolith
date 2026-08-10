@@ -5,23 +5,17 @@ import (
 	"modernc.org/sqlite"
 )
 
-var (
-	ErrAbsent = errors.New("record absent")
-	ErrUnique = errors.New("unique constraint")
-	ErrZero   = errors.New("zero record")
-)
-
 func MapError(err error, format string, args ...any) error {
 	if err == nil {
 		return nil
 	}
-	if errors.Is(err, ErrAbsent) {
+	if errors.IsNotFound(err) {
 		return errors.NotFoundf(format, args...)
 	}
-	if errors.Is(err, ErrUnique) || isUniqueConstraint(err) {
+	if errors.IsConflict(err) || isUniqueConstraint(err) {
 		return errors.Conflictf(format, args...)
 	}
-	if errors.Is(err, ErrZero) {
+	if errors.IsInvalid(err) {
 		return errors.Invalidf(format, args...)
 	}
 	return errors.Internalf(format+": %w", append(args, err)...)

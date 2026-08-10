@@ -10,17 +10,17 @@ import (
 	"strings"
 	"time"
 
-	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 )
 
 func rowInfo(value any) (reflect.Value, reflect.Type, reflect.Value, error) {
 	v := reflect.ValueOf(value)
 	if v.Kind() != reflect.Pointer || v.IsNil() {
-		return reflect.Value{}, nil, reflect.Value{}, ErrZero
+		return reflect.Value{}, nil, reflect.Value{}, errors.Invalidf("record must be a non-nil pointer")
 	}
 	v = v.Elem()
 	if v.Kind() != reflect.Struct || v.NumField() == 0 {
-		return reflect.Value{}, nil, reflect.Value{}, ErrZero
+		return reflect.Value{}, nil, reflect.Value{}, errors.Invalidf("record must point to a non-empty struct")
 	}
 	id := v.Field(0)
 	return v, v.Type(), id, nil
@@ -55,7 +55,7 @@ func (t *Tx) insert(value any) error {
 		}
 	}
 	if id.IsZero() {
-		return ErrZero
+		return errors.Invalidf("record ID is required")
 	}
 	data, err := json.Marshal(v.Interface())
 	if err != nil {
@@ -63,7 +63,7 @@ func (t *Tx) insert(value any) error {
 	}
 	_, err = t.tx.ExecContext(t.ctx, "INSERT INTO records(model,id,data) VALUES(?,?,?)", modelName(typ), idString(id), string(data))
 	if err != nil && isUniqueConstraint(err) {
-		return fmt.Errorf("%w: %w", ErrUnique, err)
+		return errors.Conflictf("unique constraint: %w", err)
 	}
 	return err
 }
@@ -74,7 +74,7 @@ func (t *Tx) Update(value any) error {
 		return err
 	}
 	if id.IsZero() {
-		return ErrZero
+		return errors.Invalidf("record ID is required")
 	}
 	data, err := json.Marshal(reflect.ValueOf(value).Elem().Interface())
 	if err != nil {
@@ -83,13 +83,13 @@ func (t *Tx) Update(value any) error {
 	r, err := t.tx.ExecContext(t.ctx, "UPDATE records SET data=? WHERE model=? AND id=?", string(data), modelName(typ), idString(id))
 	if err != nil {
 		if isUniqueConstraint(err) {
-			return fmt.Errorf("%w: %w", ErrUnique, err)
+			return errors.Conflictf("unique constraint: %w", err)
 		}
 		return err
 	}
 	n, _ := r.RowsAffected()
 	if n == 0 {
-		return ErrAbsent
+		return errors.NotFoundf("record absent")
 	}
 	return nil
 }
@@ -100,12 +100,12 @@ func (t *Tx) Get(value any) error {
 		return err
 	}
 	if id.IsZero() {
-		return ErrZero
+		return errors.Invalidf("record ID is required")
 	}
 	var data string
 	err = t.tx.QueryRowContext(t.ctx, "SELECT data FROM records WHERE model=? AND id=?", modelName(typ), idString(id)).Scan(&data)
-	if apperrors.Is(err, sql.ErrNoRows) {
-		return ErrAbsent
+	if errors.Is(err, sql.ErrNoRows) {
+		return errors.NotFoundf("record absent")
 	}
 	if err != nil {
 		return err
@@ -124,7 +124,7 @@ func (t *Tx) Delete(value any) error {
 	}
 	n, _ := r.RowsAffected()
 	if n == 0 {
-		return ErrAbsent
+		return errors.NotFoundf("record absent")
 	}
 	return nil
 }
@@ -311,7 +311,7 @@ func (q *Query[T]) Get() (T, error) {
 		return zero, err
 	}
 	if len(rows) == 0 {
-		return zero, ErrAbsent
+		return zero, errors.NotFoundf("record absent")
 	}
 	if len(rows) > 1 {
 		return zero, fmt.Errorf("query returned %s rows", strconv.Itoa(len(rows)))
