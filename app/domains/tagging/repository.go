@@ -153,7 +153,7 @@ func (r *Repository) Upsert(ctx store.Context, target cedar.EntityUID, value tag
 	changed := false
 	err := store.Write(ctx, func(tx *store.Tx) error {
 		row, err := findRow(tx, target, value.Key)
-		if errors.Is(err, store.ErrAbsent) {
+		if errors.IsNotFound(err) {
 			row = entityTagRow{
 				EntityType: string(target.Type),
 				EntityID:   string(target.ID),
@@ -262,7 +262,7 @@ func (r *Repository) Remove(ctx store.Context, target cedar.EntityUID, key strin
 	changed := false
 	err := store.Write(ctx, func(tx *store.Tx) error {
 		row, err := findRow(tx, target, key)
-		if errors.Is(err, store.ErrAbsent) {
+		if errors.IsNotFound(err) {
 			return nil
 		}
 		if err != nil {

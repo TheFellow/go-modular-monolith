@@ -66,8 +66,9 @@ Typed queries translate persisted-field equality, range, set-membership, orderin
 pushdowns into SQL over JSON fields. `FilterFn` is reserved for residual predicates that cannot be
 safely expressed in SQL.
 
-`MapError` converts `ErrAbsent`, `ErrUnique`, and `ErrZero` into the application's not-found,
-conflict, and invalid error kinds. Other failures become internal errors.
+Store operations return the application's typed not-found, conflict, and invalid errors directly.
+`MapError` adds operation-specific context while preserving that classification; other failures
+become internal errors.
 
 ## Migration policy
 

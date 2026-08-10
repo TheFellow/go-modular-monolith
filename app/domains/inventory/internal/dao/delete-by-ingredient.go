@@ -11,7 +11,7 @@ func (d *DAO) DeleteByIngredient(ctx store.Context, ingredientID entity.Ingredie
 	return store.Write(ctx, func(tx *store.Tx) error {
 		row := StockRow{IngredientID: ingredientID.String()}
 		if err := tx.Get(&row); err != nil {
-			if errors.Is(err, store.ErrAbsent) {
+			if errors.IsNotFound(err) {
 				return nil
 			}
 			return store.MapError(err, "delete stock for ingredient %s", ingredientID.String())
