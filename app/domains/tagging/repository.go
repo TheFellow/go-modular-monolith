@@ -9,7 +9,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 type association struct {
@@ -23,8 +22,8 @@ func (r *Repository) find(ctx store.Context, value tag.Tag, exact bool) ([]assoc
 		return nil, err
 	}
 	var result []association
-	err := r.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		query := bstore.QueryTx[entityTagRow](tx).FilterEqual("Key", value.Key)
+	err := r.store.ReadContext(ctx, func(tx *store.Tx) error {
+		query := store.QueryTx[entityTagRow](tx).FilterEqual("Key", value.Key)
 		if exact {
 			query.FilterEqual("Value", value.Value)
 		}
@@ -51,8 +50,8 @@ func (r *Repository) find(ctx store.Context, value tag.Tag, exact bool) ([]assoc
 // removing associations whose owning entity is no longer active.
 func (r *Repository) all(ctx store.Context) ([]association, error) {
 	var result []association
-	err := r.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		rows, err := bstore.QueryTx[entityTagRow](tx).SortAsc("Key", "Value", "EntityType", "EntityID").List()
+	err := r.store.ReadContext(ctx, func(tx *store.Tx) error {
+		rows, err := store.QueryTx[entityTagRow](tx).SortAsc("Key", "Value", "EntityType", "EntityID").List()
 		if err != nil {
 			return err
 		}
@@ -93,7 +92,7 @@ func (r *Repository) List(ctx store.Context, target cedar.EntityUID) (tag.Tags, 
 	}
 
 	var tagsByTarget map[cedar.EntityUID]tag.Tags
-	err := r.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+	err := r.store.ReadContext(ctx, func(tx *store.Tx) error {
 		var err error
 		tagsByTarget, err = r.ListTypeTx(tx, target.Type, []cedar.String{target.ID})
 		return err
@@ -107,7 +106,7 @@ func (r *Repository) List(ctx store.Context, target cedar.EntityUID) (tag.Tags, 
 // ListTypeTx reads tags for the requested entities with one type-scoped query.
 // The returned map only contains targets that have tags. Callers can use this
 // inside the read transaction that loaded their domain entities.
-func (r *Repository) ListTypeTx(tx *bstore.Tx, entityType cedar.EntityType, ids []cedar.String) (map[cedar.EntityUID]tag.Tags, error) {
+func (r *Repository) ListTypeTx(tx *store.Tx, entityType cedar.EntityType, ids []cedar.String) (map[cedar.EntityUID]tag.Tags, error) {
 	if tx == nil {
 		return nil, errors.Internalf("tag read transaction is required")
 	}
@@ -124,7 +123,7 @@ func (r *Repository) ListTypeTx(tx *bstore.Tx, entityType cedar.EntityType, ids 
 		values[i] = string(id)
 	}
 
-	rows, err := bstore.QueryTx[entityTagRow](tx).
+	rows, err := store.QueryTx[entityTagRow](tx).
 		FilterEqual("EntityType", string(entityType)).
 		FilterEqual("EntityID", values...).
 		SortAsc("EntityID", "Key").
@@ -152,9 +151,9 @@ func (r *Repository) Upsert(ctx store.Context, target cedar.EntityUID, value tag
 	}
 
 	changed := false
-	err := store.Write(ctx, func(tx *bstore.Tx) error {
+	err := store.Write(ctx, func(tx *store.Tx) error {
 		row, err := findRow(tx, target, value.Key)
-		if errors.Is(err, bstore.ErrAbsent) {
+		if errors.Is(err, store.ErrAbsent) {
 			row = entityTagRow{
 				EntityType: string(target.Type),
 				EntityID:   string(target.ID),
@@ -198,8 +197,8 @@ func (r *Repository) Replace(ctx store.Context, target cedar.EntityUID, desired 
 	desired = desired.Sorted()
 
 	changed := false
-	err := store.Write(ctx, func(tx *bstore.Tx) error {
-		rows, err := bstore.QueryTx[entityTagRow](tx).
+	err := store.Write(ctx, func(tx *store.Tx) error {
+		rows, err := store.QueryTx[entityTagRow](tx).
 			FilterEqual("EntityType", string(target.Type)).
 			FilterEqual("EntityID", string(target.ID)).
 			List()
@@ -261,9 +260,9 @@ func (r *Repository) Remove(ctx store.Context, target cedar.EntityUID, key strin
 	}
 
 	changed := false
-	err := store.Write(ctx, func(tx *bstore.Tx) error {
+	err := store.Write(ctx, func(tx *store.Tx) error {
 		row, err := findRow(tx, target, key)
-		if errors.Is(err, bstore.ErrAbsent) {
+		if errors.Is(err, store.ErrAbsent) {
 			return nil
 		}
 		if err != nil {
@@ -288,9 +287,9 @@ func (r *Repository) DeleteTarget(ctx store.Context, target cedar.EntityUID) (in
 	}
 
 	deleted := 0
-	err := store.Write(ctx, func(tx *bstore.Tx) error {
+	err := store.Write(ctx, func(tx *store.Tx) error {
 		var err error
-		deleted, err = bstore.QueryTx[entityTagRow](tx).
+		deleted, err = store.QueryTx[entityTagRow](tx).
 			FilterEqual("EntityType", string(target.Type)).
 			FilterEqual("EntityID", string(target.ID)).
 			Delete()
@@ -302,8 +301,8 @@ func (r *Repository) DeleteTarget(ctx store.Context, target cedar.EntityUID) (in
 	return deleted, nil
 }
 
-func findRow(tx *bstore.Tx, target cedar.EntityUID, key string) (entityTagRow, error) {
-	return bstore.QueryTx[entityTagRow](tx).
+func findRow(tx *store.Tx, target cedar.EntityUID, key string) (entityTagRow, error) {
+	return store.QueryTx[entityTagRow](tx).
 		FilterEqual("EntityType", string(target.Type)).
 		FilterEqual("EntityID", string(target.ID)).
 		FilterEqual("Key", key).

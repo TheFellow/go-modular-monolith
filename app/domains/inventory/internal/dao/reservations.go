@@ -7,7 +7,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
-	"github.com/mjl-/bstore"
 )
 
 type Reservation struct {
@@ -21,7 +20,7 @@ func reservationID(orderID entity.OrderID, ingredientID entity.IngredientID) str
 }
 
 func (d *DAO) Reserve(ctx store.Context, reservation Reservation) error {
-	return store.Write(ctx, func(tx *bstore.Tx) error {
+	return store.Write(ctx, func(tx *store.Tx) error {
 		stock := StockRow{IngredientID: reservation.IngredientID.String()}
 		if err := tx.Get(&stock); err != nil {
 			return store.MapError(err, "stock for ingredient %s not found", reservation.IngredientID.String())
@@ -30,7 +29,7 @@ func (d *DAO) Reserve(ctx store.Context, reservation Reservation) error {
 		if err != nil {
 			return err
 		}
-		rows, err := bstore.QueryTx[ReservationRow](tx).FilterEqual("IngredientID", reservation.IngredientID.String()).List()
+		rows, err := store.QueryTx[ReservationRow](tx).FilterEqual("IngredientID", reservation.IngredientID.String()).List()
 		if err != nil {
 			return store.MapError(err, "list reservations")
 		}
@@ -51,8 +50,8 @@ func (d *DAO) Reserve(ctx store.Context, reservation Reservation) error {
 
 func (d *DAO) ReservationsForOrder(ctx store.Context, orderID entity.OrderID) ([]Reservation, error) {
 	var result []Reservation
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		rows, err := bstore.QueryTx[ReservationRow](tx).FilterEqual("OrderID", orderID.String()).List()
+	err := d.store.ReadContext(ctx, func(tx *store.Tx) error {
+		rows, err := store.QueryTx[ReservationRow](tx).FilterEqual("OrderID", orderID.String()).List()
 		if err != nil {
 			return err
 		}
@@ -69,8 +68,8 @@ func (d *DAO) ReservationsForOrder(ctx store.Context, orderID entity.OrderID) ([
 }
 
 func (d *DAO) DeleteReservations(ctx store.Context, orderID entity.OrderID) error {
-	return store.Write(ctx, func(tx *bstore.Tx) error {
-		rows, err := bstore.QueryTx[ReservationRow](tx).FilterEqual("OrderID", orderID.String()).List()
+	return store.Write(ctx, func(tx *store.Tx) error {
+		rows, err := store.QueryTx[ReservationRow](tx).FilterEqual("OrderID", orderID.String()).List()
 		if err != nil {
 			return store.MapError(err, "list reservations")
 		}
@@ -89,8 +88,8 @@ func (d *DAO) ReservedAmount(ctx store.Context, ingredientID entity.IngredientID
 		return nil, err
 	}
 	var quantity float64
-	err = d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		rows, err := bstore.QueryTx[ReservationRow](tx).FilterEqual("IngredientID", ingredientID.String()).List()
+	err = d.store.ReadContext(ctx, func(tx *store.Tx) error {
+		rows, err := store.QueryTx[ReservationRow](tx).FilterEqual("IngredientID", ingredientID.String()).List()
 		if err != nil {
 			return err
 		}
@@ -102,8 +101,8 @@ func (d *DAO) ReservedAmount(ctx store.Context, ingredientID entity.IngredientID
 	return measurement.MustAmount(quantity, stock.Amount.Unit()), store.MapError(err, "sum reservations")
 }
 
-func reservedQuantityTx(tx *bstore.Tx, ingredientID string) (float64, error) {
-	rows, err := bstore.QueryTx[ReservationRow](tx).FilterEqual("IngredientID", ingredientID).List()
+func reservedQuantityTx(tx *store.Tx, ingredientID string) (float64, error) {
+	rows, err := store.QueryTx[ReservationRow](tx).FilterEqual("IngredientID", ingredientID).List()
 	if err != nil {
 		return 0, err
 	}

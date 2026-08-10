@@ -18,7 +18,7 @@ subpackage is an import-cycle escape hatch, not a second general assertion libra
 
 ## Application fixture
 
-`NewFixture(t)` creates a temporary bstore database, silent logger, in-memory metrics backend,
+`NewFixture(t)` creates a temporary SQLite database, silent logger, in-memory metrics backend,
 owner principal, production application, and session. It exposes the primary domain modules and
 registers cleanup with `t.Cleanup`, so tests do not need to close it explicitly.
 

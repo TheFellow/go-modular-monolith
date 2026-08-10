@@ -18,7 +18,7 @@ mixology audit list --limit 20 --cursor aud-...
 ```
 
 Schemas live beside public domain models. Parsing yields an application-owned tree: supported
-conjunctions are pushed into bstore while the full residual expression preserves exact semantics.
+conjunctions are pushed into SQLite while the full residual expression preserves exact semantics.
 Operational lists expose hydrated `tags`; match one canonical tag, not the serialized collection.
 
 ## Tags
@@ -125,7 +125,10 @@ historical requirement and may still be cancelled to release the reservation.
 
 ## Runtime configuration
 
-CLI, TUI, GUI, and seeder default to `data/mixology.db`; only one process can own the embedded file.
+CLI, TUI, GUI, and seeder default to `data/mixology.db`. Multiple processes on the same machine may
+open that local file: WAL permits concurrent readers, SQLite serializes writers, and a blocked
+operation waits up to 10 seconds before returning a busy error. Do not place the database on a
+network filesystem or share it between machines.
 Interactive entrypoints share `--db`, `--actor`, `--log-level`, `--log-format`, `--log-file`, and
 `--metrics`, with corresponding `MIXOLOGY_*` variables. The GUI adds `--data-dir`. Command-line
 options override environment values. The [telemetry guide](../pkg/telemetry/README.md) documents

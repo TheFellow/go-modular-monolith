@@ -40,7 +40,7 @@ The ordering is part of the application contract:
 - With a middleware-owned transaction, `TrackActivity` records the failed attempt in a separate
   managed transaction after rollback.
 - Logging and metrics observe the final result, including failures added while the chain unwinds.
-- `SerializeTransaction` prevents concurrent operations from using one caller-owned bstore
+- `SerializeTransaction` prevents concurrent operations from using one caller-owned SQLite
   transaction at the same time.
 
 Do not casually reorder the command chain. In particular, moving successful activity recording or
@@ -62,10 +62,10 @@ ctx := middleware.NewContext(
 )
 ```
 
-`WithTransaction` derives a context that participates in an existing bstore transaction. The
+`WithTransaction` derives a context that participates in an existing SQLite transaction. The
 caller retains commit and rollback ownership. It is mainly used by `UnitOfWork`, application-level
 composition, and transaction-focused tests; ordinary domain code should accept the context it is
-given. See the [store guide](../store/README.md#caller-owned-transactions) for the full lifecycle.
+given. See the [store guide](../store/README.md#transactions) for the full lifecycle.
 
 Event handlers receive `HandlerContext`, a deliberately smaller `store.Context`. It preserves the
 principal and transaction and permits `TouchEntity`, but exposes no `AddEvent`, enforcing the

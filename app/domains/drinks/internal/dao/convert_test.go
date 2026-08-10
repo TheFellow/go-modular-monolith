@@ -7,7 +7,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
-	"github.com/mjl-/bstore"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,12 +26,12 @@ func TestRegisterExplicitlyBackfillsLegacyStatus(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, s.Close()) })
 
 	s.Register(ctx, DrinkRow{})
-	require.NoError(t, s.Write(ctx, func(tx *bstore.Tx) error {
+	require.NoError(t, s.Write(ctx, func(tx *store.Tx) error {
 		return tx.Insert(&DrinkRow{ID: "legacy", Name: "Legacy"})
 	}))
 
 	require.NoError(t, backfillLegacyStatuses(ctx, s))
-	require.NoError(t, s.Read(ctx, func(tx *bstore.Tx) error {
+	require.NoError(t, s.Read(ctx, func(tx *store.Tx) error {
 		row := DrinkRow{ID: "legacy"}
 		require.NoError(t, tx.Get(&row))
 		require.Equal(t, string(models.StatusActive), row.Status)

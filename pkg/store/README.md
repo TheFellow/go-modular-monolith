@@ -1,169 +1,76 @@
 # Store
 
-`pkg/store` is Mixology's persistence boundary around
-[`github.com/mjl-/bstore`](https://pkg.go.dev/github.com/mjl-/bstore). It owns database lifecycle,
-domain-model registration, transaction participation, storage-error translation, and read/write
-duration metrics. Domain packages still own their private row types and queries; this package does
-not provide a shared repository or application-wide persistence model.
+`pkg/store` is the application's embedded persistence boundary. It uses
+[`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite), a CGO-free SQLite driver, and exposes
+only application-owned `Store`, `Tx`, and typed `Query` APIs.
 
-## How it fits
+> Existing bstore/bbolt database files are not SQLite files and cannot be opened after this change.
+> Reseed disposable data, or export it with the previous application version and import it into a
+> fresh SQLite database before upgrading. Keep a backup until the imported data is verified.
 
-```text
-bootstrap: Open -> app.New -> domain constructors -> Register private row types
+## Deployment and concurrency
 
-query:   middleware context -> DAO.ReadContext -> existing transaction or managed read transaction
-command: middleware unit of work -> Store.Write -> transaction-bearing context
-                                             -> DAO store.Write -> bstore transaction
-```
+`Open` creates a missing parent directory, applies versioned migrations, and configures every
+connection for:
 
-`app.New` is the normal schema-composition point. Audit and tagging register first, then each domain
-constructor registers its own DAO rows. Registration has no package-import side effects, and an
-invalid schema panic prevents bootstrap from returning a usable application.
-See the [architecture guide](../../docs/architecture.md#package-boundaries) for the surrounding
-domain and pipeline boundaries.
+- WAL journaling, so readers can continue while another connection commits;
+- foreign-key enforcement;
+- a 10-second busy timeout;
+- `synchronous=NORMAL`;
+- immediate write transactions, preventing deferred read-to-write upgrade races.
 
-## Lifecycle and schema registration
+Several application processes on the same machine may open the same database file. SQLite still
+permits only one writer at a time; keep command transactions short. The database must live on a
+local filesystem. Do not share it between machines over NFS, SMB, or similar network filesystems.
 
-Open one store for the application and close it when the process or test fixture ends:
+Each process observes committed changes made by the CLI, GUI, or another process on its next query.
+Live UI refresh/notification is a presentation concern layered above this consistency guarantee.
 
-```go
-ctx := context.Background()
-s, err := store.Open(ctx, filepath.Join("data", "mixology.db"))
-if err != nil {
-	return err
-}
+## Schema and domain rows
 
-application := app.New(ctx, app.Config{Store: s})
-defer application.Close()
-```
-
-`Open` creates a missing parent directory. A domain adds a private bstore row in its explicit
-bootstrap hook:
+The bootstrap migration creates `schema_migrations` and the record store. Domain modules explicitly
+register their private row types during construction. Registration is idempotent and creates any
+declared SQLite expression indexes, so concurrent process startup is safe:
 
 ```go
-type widgetRow struct {
-	ID   string
-	Name string `bstore:"unique"`
+type DrinkRow struct {
+    ID   string
+    Name string `store:"unique"`
 }
 
 func Register(ctx context.Context, s *store.Store) {
-	s.Register(ctx, widgetRow{})
+    s.Register(ctx, DrinkRow{})
 }
 ```
 
-Call `Register` before serving operations. It deliberately has no error return: registration
-failures panic and are treated as programming or startup errors. Keep bstore tags, indexes, and
-row-to-domain conversion in the owning domain's DAO package.
+For a compound invariant, name all fields on one tag, for example
+`store:"unique=EntityType+EntityID+Key"`. These are database constraints, not check-then-insert
+conventions, so competing writers cannot violate them.
 
-## Repository pattern
+## Transactions
 
-Repository methods accept `store.Context`, which combines `context.Context` with access to the
-current transaction. Reads use `ReadContext` so a query can run independently while also seeing
-uncommitted changes when it participates in a larger operation:
+Reads use `Store.Read` or `Store.ReadContext`. Commands enter through unit-of-work middleware and
+use the caller-owned transaction from `store.Context`:
 
 ```go
-func (r *Repository) Get(ctx store.Context, id string) (widgetRow, error) {
-	row := widgetRow{ID: id}
-	err := r.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		return tx.Get(&row)
-	})
-	if err != nil {
-		return widgetRow{}, store.MapError(err, "widget %q not found", id)
-	}
-	return row, nil
-}
+return store.Write(ctx, func(tx *store.Tx) error {
+    return tx.Insert(&row)
+})
 ```
 
-Writes use the package function `store.Write`, not the similarly named method on `*Store`:
+Event handlers, audit persistence, and the command mutation share that transaction. An error rolls
+all of them back. `middleware.SerializeTransaction` prevents concurrent goroutines from using one
+`*store.Tx`; SQLite coordinates separate transactions and processes.
 
-```go
-func (r *Repository) Insert(ctx store.Context, row widgetRow) error {
-	return store.Write(ctx, func(tx *bstore.Tx) error {
-		return store.MapError(tx.Insert(&row), "insert widget %q", row.Name)
-	})
-}
-```
+Typed queries translate persisted-field equality, range, set-membership, ordering, and filter
+pushdowns into SQL over JSON fields. `FilterFn` is reserved for residual predicates that cannot be
+safely expressed in SQL.
 
-This distinction is intentional:
+`MapError` converts `ErrAbsent`, `ErrUnique`, and `ErrZero` into the application's not-found,
+conflict, and invalid error kinds. Other failures become internal errors.
 
-| API                           | Role                                                                                |
-| ----------------------------- | ----------------------------------------------------------------------------------- |
-| `(*Store).Read`               | Always opens a managed read transaction and records its duration.                   |
-| `(*Store).ReadContext`        | Reuses the context transaction when present; otherwise delegates to `Read`.         |
-| `(*Store).Write`              | Opens and owns a managed write transaction and records its duration.                |
-| `store.Write`                 | Requires and reuses the context transaction; a missing transaction is an error.     |
-| `Begin` + `Commit`/`Rollback` | Supports an explicitly caller-owned transaction spanning several application calls. |
+## Migration policy
 
-The [command pipeline](../middleware/README.md#default-pipelines) normally supplies the write
-transaction. Requiring one in `store.Write` prevents a DAO mutation from silently escaping the unit
-of work that also contains event handlers and the successful audit entry. See the
-[dispatcher guide](../dispatcher/README.md#dispatch-path) for that atomic event path.
-Application-level composition that truly needs to create a unit of work should use
-`(*Store).Write` and pass a transaction-bearing derived middleware context to every nested
-operation, as [`app.RunTaggedMutation`](../../app/tagged_mutation.go) does.
-
-## Error mapping
-
-`MapError` converts bstore failures into the transport-neutral kinds documented by
-[`pkg/errors`](../errors/README.md):
-
-| bstore error       | Application error kind |
-| ------------------ | ---------------------- |
-| `bstore.ErrAbsent` | not found              |
-| `bstore.ErrUnique` | conflict               |
-| `bstore.ErrZero`   | invalid                |
-| any other error    | internal               |
-
-A nil error remains nil. Supply an operation-specific message and identifiers at the DAO boundary;
-unexpected errors retain the original cause through wrapping.
-
-## Caller-owned transactions
-
-Most code should let middleware own transactions. When a workflow or focused integration test
-must span several calls, use the store wrappers for the complete lifecycle:
-
-```go
-tx, err := s.Begin(ctx, true)
-if err != nil {
-	return err
-}
-txCtx := middleware.NewContext(ctx).WithTransaction(tx)
-
-if err := compose(txCtx); err != nil {
-	_ = s.Rollback(tx)
-	return err
-}
-return s.Commit(tx)
-```
-
-Do not call `tx.Commit` or `tx.Rollback` directly for a transaction created by `Store.Begin`.
-`Store.Commit` and `Store.Rollback` also release the transaction's serialization state.
-`LockTransaction` is the low-level mutex used by middleware when operations share a caller-owned
-transaction; ordinary DAOs should not acquire it themselves.
-
-## Filtering, metrics, and tests
-
-This package does not interpret list expressions. DAOs build typed bstore queries and may apply the
-pushdowns described by [`pkg/filter`](../filter/README.md) before evaluating any residual
-expression.
-
-Managed `Store.Read` and `Store.Write` calls observe `mixology_store_read_duration_seconds` and
-`mixology_store_write_duration_seconds` through the metrics attached to the context. The
-[telemetry guide](../telemetry/README.md) covers backends and metric lifecycle. When an existing
-transaction came from `Store.Write`, work that reuses it is included in that outer operation's
-duration.
-
-Use `testutil.NewFixture(t)` for application behavior so tests exercise real authorization,
-transactions, event dispatch, audit recording, and an isolated temporary database. Direct store or
-DAO tests can open a path beneath `t.TempDir()`, register only their row types, and close the store
-with `t.Cleanup`.
-
-```sh
-go test ./pkg/store ./pkg/middleware
-go test ./app/domains/...
-```
-
-Only one process can own the embedded database at a time. Close the CLI, TUI, or GUI before opening
-the same database from another process; the
-[desktop lifecycle guide](../../main/gui/README.md#persistence-and-lifecycle) shows the user-facing
-convention.
+Add ordered, idempotent statements to `Store.migrate` and record a new integer version in
+`schema_migrations`. Never rewrite an already-released migration. Domain data backfills should run
+after registration and remain safe to execute more than once.

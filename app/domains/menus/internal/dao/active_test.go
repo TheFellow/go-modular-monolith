@@ -11,14 +11,13 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	testutil "github.com/TheFellow/go-modular-monolith/pkg/testutil/assert"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 type activeIDsTestContext struct {
 	context.Context
 }
 
-func (activeIDsTestContext) Transaction() (*bstore.Tx, bool) { return nil, false }
+func (activeIDsTestContext) Transaction() (*store.Tx, bool) { return nil, false }
 
 func TestActiveIDsFiltersAndDeduplicatesRequestedIDs(t *testing.T) {
 	t.Parallel()
@@ -33,7 +32,7 @@ func TestActiveIDsFiltersAndDeduplicatesRequestedIDs(t *testing.T) {
 	Register(ctx, s)
 
 	deletedAt := time.Now()
-	err = s.Write(ctx, func(tx *bstore.Tx) error {
+	err = s.Write(ctx, func(tx *store.Tx) error {
 		return tx.Insert(
 			&MenuRow{ID: "active", Name: "Active"},
 			&MenuRow{ID: "deleted", Name: "Deleted", DeletedAt: &deletedAt},

@@ -4,13 +4,12 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
-	"github.com/mjl-/bstore"
 )
 
 func (d *DAO) ListByDrink(ctx store.Context, drinkID entity.DrinkID) ([]*models.Menu, error) {
 	var out []*models.Menu
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		rows, err := bstore.QueryTx[MenuRow](tx).FilterFn(func(r MenuRow) bool {
+	err := d.store.ReadContext(ctx, func(tx *store.Tx) error {
+		rows, err := store.QueryTx[MenuRow](tx).FilterFn(func(r MenuRow) bool {
 			if r.DeletedAt != nil {
 				return false
 			}

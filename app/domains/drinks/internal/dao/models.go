@@ -8,12 +8,12 @@ import (
 
 type DrinkRow struct {
 	ID          string
-	Name        string `bstore:"unique"`
-	Category    string `bstore:"index"`
-	Glass       string `bstore:"index"`
+	Name        string `store:"unique"`
+	Category    string `store:"index"`
+	Glass       string `store:"index"`
 	Recipe      RecipeRow
 	Description string
-	Status      string `bstore:"index"`
+	Status      string `store:"index"`
 	DeletedAt   *time.Time
 }
 

@@ -81,8 +81,9 @@ defer func() {
 }()
 ```
 
-The CLI, TUI, and GUI all follow this ownership pattern. Only one process can bind the default
-`:9090` address; runtime flags and environment behavior are listed in the
+The CLI, TUI, and GUI may share the local SQLite database, but each process owns its telemetry
+server. Only one process can bind the default `:9090` address, so concurrent surfaces that enable
+Prometheus must use distinct listen addresses. Runtime flags and environment behavior are listed in the
 [feature guide](../../docs/features.md#runtime-configuration).
 
 ## Current instrumentation

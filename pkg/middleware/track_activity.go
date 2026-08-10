@@ -5,7 +5,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 )
@@ -40,12 +39,12 @@ func TrackActivity(s *store.Store, recordActivity func(*Context, middlewareevent
 		if tx, ok := ctx.Transaction(); ok && tx != nil {
 			// The caller owns an injected transaction and its rollback policy. Keep
 			// the activity in that transaction rather than competing for a second
-			// bbolt write transaction while the caller's transaction is still open.
+			// SQLite write transaction while the caller's transaction is still open.
 			if rerr := record(ctx); rerr != nil {
 				return rerr
 			}
 		} else if s != nil {
-			if rerr := s.Write(ctx, func(tx *bstore.Tx) error {
+			if rerr := s.Write(ctx, func(tx *store.Tx) error {
 				txCtx := ctx.WithTransaction(tx)
 				return record(txCtx)
 			}); rerr != nil {

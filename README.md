@@ -3,7 +3,7 @@
 [![CI](https://github.com/TheFellow/go-modular-monolith/actions/workflows/ci.yml/badge.svg)](https://github.com/TheFellow/go-modular-monolith/actions/workflows/ci.yml)
 
 A working Go modular-monolith example built around a cocktail bar. Seven bounded contexts share
-one process and embedded database while keeping their commands, queries, persistence, policies,
+one application and embedded database while keeping their commands, queries, persistence, policies,
 events, and presentation adapters explicit. The same application is exposed as a CLI, Bubble Tea
 TUI, and Fyne desktop client.
 
@@ -21,11 +21,15 @@ Go `1.26.5` or newer is required. From the repository root:
 go run ./main/seed
 go run ./main/cli ingredients list
 go run ./main/tui
-# Close the TUI before starting the desktop client: the embedded database has one writer.
+# In another terminal, the desktop client can share the same local database.
 go run ./main/gui
 ```
 
 All entrypoints use `data/mixology.db` by default. Override it with `--db` or `MIXOLOGY_DB`.
+CLI, TUI, and GUI processes on the same machine may use that local file concurrently; SQLite
+serializes writes and waits up to 10 seconds for a busy writer.
+Database files created by the former bstore backend are incompatible; reseed them or export/import
+their data with the previous application version before opening this version.
 They also share actor, logging, and metrics options; run any entrypoint with `--help` for the full
 set. The desktop client has additional [native prerequisites](main/gui/README.md#run-from-source).
 

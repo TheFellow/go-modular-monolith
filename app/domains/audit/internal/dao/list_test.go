@@ -14,16 +14,15 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
-	"github.com/mjl-/bstore"
 	"github.com/segmentio/ksuid"
 )
 
 type testContext struct {
 	context.Context
-	tx *bstore.Tx
+	tx *store.Tx
 }
 
-func (c testContext) Transaction() (*bstore.Tx, bool) { return c.tx, c.tx != nil }
+func (c testContext) Transaction() (*store.Tx, bool) { return c.tx, c.tx != nil }
 
 func TestListOrdersSameSecondKSUIDsByValue(t *testing.T) {
 	t.Parallel()
@@ -80,7 +79,7 @@ func sameSecondIDs(t *testing.T, count int) []string {
 
 func insertEntries(t *testing.T, ctx testContext, s *store.Store, d *auditdao.DAO, ids ...string) {
 	t.Helper()
-	err := s.Write(ctx, func(tx *bstore.Tx) error {
+	err := s.Write(ctx, func(tx *store.Tx) error {
 		txCtx := testContext{Context: ctx.Context, tx: tx}
 		for _, rawID := range ids {
 			id, err := entity.ParseAuditEntryID(rawID)

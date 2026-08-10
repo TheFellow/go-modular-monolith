@@ -4,13 +4,12 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
-	"github.com/mjl-/bstore"
 )
 
 func (d *DAO) ListByIngredient(ctx store.Context, ingredientID entity.IngredientID) ([]*models.Order, error) {
 	var result []*models.Order
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		rows, err := bstore.QueryTx[OrderRow](tx).FilterFn(func(row OrderRow) bool {
+	err := d.store.ReadContext(ctx, func(tx *store.Tx) error {
+		rows, err := store.QueryTx[OrderRow](tx).FilterFn(func(row OrderRow) bool {
 			if row.Status != string(models.OrderStatusPending) && row.Status != string(models.OrderStatusBlocked) {
 				return false
 			}

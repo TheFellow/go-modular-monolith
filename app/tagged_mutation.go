@@ -3,8 +3,8 @@ package app
 import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 // TaggableEntity is the result contract for an application mutation whose
@@ -61,7 +61,7 @@ func RunTaggedMutation[T TaggableEntity](
 		return result, nil
 	}
 
-	err := application.Store.Write(ctx, func(tx *bstore.Tx) error {
+	err := application.Store.Write(ctx, func(tx *store.Tx) error {
 		return compose(ctx.WithTransaction(tx))
 	})
 	if err != nil {

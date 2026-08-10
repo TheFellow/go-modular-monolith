@@ -10,7 +10,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 // ListFilter specifies optional filters for listing stock rows.
@@ -24,7 +23,7 @@ type ListFilter struct {
 
 func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Inventory, error] {
 	return func(yield func(*models.Inventory, error) bool) {
-		err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+		err := d.store.ReadContext(ctx, func(tx *store.Tx) error {
 			rows, err := d.query(tx, filter).SortDesc("InventoryID").List()
 			if err != nil {
 				return store.MapError(err, "list stock")
@@ -66,8 +65,8 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Inven
 	}
 }
 
-func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[StockRow] {
-	q := bstore.QueryTx[StockRow](tx)
+func (d *DAO) query(tx *store.Tx, filter ListFilter) *store.Query[StockRow] {
+	q := store.QueryTx[StockRow](tx)
 
 	if !filter.IngredientID.IsZero() {
 		q = q.FilterID(filter.IngredientID.String())
@@ -81,7 +80,7 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[StockRow] {
 	if filter.BeforeID != "" {
 		q = q.FilterLess("InventoryID", filter.BeforeID)
 	}
-	q = appfilter.ApplyBstorePushdowns(q, filter.Expression)
+	q = appfilter.ApplySQLPushdowns(q, filter.Expression)
 
 	return q
 }
