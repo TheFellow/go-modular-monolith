@@ -11,15 +11,14 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 type testContext struct {
 	context.Context
-	tx *bstore.Tx
+	tx *store.Tx
 }
 
-func (c testContext) Transaction() (*bstore.Tx, bool) { return c.tx, c.tx != nil }
+func (c testContext) Transaction() (*store.Tx, bool) { return c.tx, c.tx != nil }
 
 func TestRepositoryUpsertIsDeterministicAndIsolatesTargets(t *testing.T) {
 	t.Parallel()
@@ -76,7 +75,7 @@ func TestRepositoryListTypeTxBatchesEntityReads(t *testing.T) {
 	upsert(t, s, ctx, repo, ingredient, tag.Tag{Key: "a", Value: "ingredient"})
 
 	var got map[cedar.EntityUID]tag.Tags
-	err := s.Read(ctx, func(tx *bstore.Tx) error {
+	err := s.Read(ctx, func(tx *store.Tx) error {
 		var err error
 		got, err = repo.ListTypeTx(tx, entity.TypeDrink, []cedar.String{
 			drinkB.ID, drinkWithoutTags.ID, drinkA.ID,
@@ -89,7 +88,7 @@ func TestRepositoryListTypeTxBatchesEntityReads(t *testing.T) {
 		drinkB: {{Key: "c", Value: "3"}},
 	})
 
-	err = s.Read(ctx, func(tx *bstore.Tx) error {
+	err = s.Read(ctx, func(tx *store.Tx) error {
 		empty, err := repo.ListTypeTx(tx, entity.TypeDrink, nil)
 		testutil.Equals(t, empty, map[cedar.EntityUID]tag.Tags{})
 		return err
@@ -166,7 +165,7 @@ func TestRepositoryReplaceValidatesBeforeMutation(t *testing.T) {
 	target := entity.NewDrinkID().EntityUID()
 	upsert(t, s, ctx, repo, target, tag.Tag{Key: "existing", Value: "safe"})
 
-	err := s.Write(ctx, func(tx *bstore.Tx) error {
+	err := s.Write(ctx, func(tx *store.Tx) error {
 		_, err := repo.Replace(testContext{Context: ctx, tx: tx}, target, tag.Tags{
 			{Key: "duplicate", Value: "first"},
 			{Key: "duplicate", Value: "second"},
@@ -220,7 +219,7 @@ func TestRepositoryValidatesTargetsAndTags(t *testing.T) {
 	for _, tt := range tests { //nolint:paralleltest // Subtests share one repository and store.
 		t.Run(tt.name, func(t *testing.T) {
 			var gotErr error
-			err := s.Write(ctx, func(tx *bstore.Tx) error {
+			err := s.Write(ctx, func(tx *store.Tx) error {
 				_, gotErr = repo.Upsert(testContext{Context: ctx, tx: tx}, tt.target, tt.value)
 				return nil
 			})
@@ -229,7 +228,7 @@ func TestRepositoryValidatesTargetsAndTags(t *testing.T) {
 		})
 	}
 
-	err := s.Write(ctx, func(tx *bstore.Tx) error {
+	err := s.Write(ctx, func(tx *store.Tx) error {
 		_, err := repo.Remove(testContext{Context: ctx, tx: tx}, validDrink, " invalid ")
 		return err
 	})
@@ -249,7 +248,7 @@ func newRepository(t *testing.T) (*tagging.Repository, *store.Store, testContext
 func upsert(t *testing.T, s *store.Store, ctx testContext, repo *tagging.Repository, target cedar.EntityUID, value tag.Tag) bool {
 	t.Helper()
 	changed := false
-	err := s.Write(ctx, func(tx *bstore.Tx) error {
+	err := s.Write(ctx, func(tx *store.Tx) error {
 		var err error
 		changed, err = repo.Upsert(testContext{Context: ctx, tx: tx}, target, value)
 		return err
@@ -261,7 +260,7 @@ func upsert(t *testing.T, s *store.Store, ctx testContext, repo *tagging.Reposit
 func remove(t *testing.T, s *store.Store, ctx testContext, repo *tagging.Repository, target cedar.EntityUID, key string) bool {
 	t.Helper()
 	changed := false
-	err := s.Write(ctx, func(tx *bstore.Tx) error {
+	err := s.Write(ctx, func(tx *store.Tx) error {
 		var err error
 		changed, err = repo.Remove(testContext{Context: ctx, tx: tx}, target, key)
 		return err
@@ -273,7 +272,7 @@ func remove(t *testing.T, s *store.Store, ctx testContext, repo *tagging.Reposit
 func replace(t *testing.T, s *store.Store, ctx testContext, repo *tagging.Repository, target cedar.EntityUID, desired tag.Tags) bool {
 	t.Helper()
 	changed := false
-	err := s.Write(ctx, func(tx *bstore.Tx) error {
+	err := s.Write(ctx, func(tx *store.Tx) error {
 		var err error
 		changed, err = repo.Replace(testContext{Context: ctx, tx: tx}, target, desired)
 		return err
@@ -285,7 +284,7 @@ func replace(t *testing.T, s *store.Store, ctx testContext, repo *tagging.Reposi
 func deleteTarget(t *testing.T, s *store.Store, ctx testContext, repo *tagging.Repository, target cedar.EntityUID) int {
 	t.Helper()
 	deleted := 0
-	err := s.Write(ctx, func(tx *bstore.Tx) error {
+	err := s.Write(ctx, func(tx *store.Tx) error {
 		var err error
 		deleted, err = repo.DeleteTarget(testContext{Context: ctx, tx: tx}, target)
 		return err

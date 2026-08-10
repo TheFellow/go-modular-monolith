@@ -18,7 +18,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 type testEntity struct {
@@ -70,7 +69,7 @@ func newTransactionTestStore(t *testing.T) (context.Context, *store.Store) {
 }
 
 func insertTransactionProbe(ctx store.Context, kind string) error {
-	return store.Write(ctx, func(tx *bstore.Tx) error {
+	return store.Write(ctx, func(tx *store.Tx) error {
 		return tx.Insert(&transactionProbe{Kind: kind})
 	})
 }
@@ -79,8 +78,8 @@ func transactionProbeKinds(t *testing.T, ctx context.Context, s *store.Store) []
 	t.Helper()
 
 	var kinds []string
-	err := s.Read(ctx, func(tx *bstore.Tx) error {
-		rows, err := bstore.QueryTx[transactionProbe](tx).List()
+	err := s.Read(ctx, func(tx *store.Tx) error {
+		rows, err := store.QueryTx[transactionProbe](tx).List()
 		if err != nil {
 			return err
 		}
@@ -179,7 +178,7 @@ func TestRunCommand_UsesCallerTransactionForBusinessAndSuccessActivity(t *testin
 		}
 	})
 
-	var recorderTx *bstore.Tx
+	var recorderTx *store.Tx
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
 		Store: s,
 		RecordActivity: func(ctx *middleware.Context, _ middlewareevents.Activity) error {
@@ -206,7 +205,7 @@ func TestRunCommand_UsesCallerTransactionForBusinessAndSuccessActivity(t *testin
 	)
 	testutil.Ok(t, err)
 	testutil.IsTrue(t, recorderTx == tx)
-	rows, err := bstore.QueryTx[transactionProbe](tx).List()
+	rows, err := store.QueryTx[transactionProbe](tx).List()
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(rows), 2)
 	testutil.Equals(t, []string{rows[0].Kind, rows[1].Kind}, []string{"business-write", "success-audit"})
@@ -374,7 +373,7 @@ func TestRunCommand_LoaderRunsInTransaction(t *testing.T) {
 		RecordActivity: func(*middleware.Context, middlewareevents.Activity) error { return nil },
 	})
 
-	var gotTx *bstore.Tx
+	var gotTx *store.Tx
 	_, err := middleware.RunCommand(pipeline, ctx, middleware.CommandSpec[testEntity, testEntity]{
 		Action: drinksauthz.ActionCreate,
 		Load: func(ctx *middleware.Context) (testEntity, error) {

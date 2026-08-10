@@ -10,11 +10,11 @@ import (
 
 type MenuRow struct {
 	ID          string
-	Name        string `bstore:"unique"`
+	Name        string `store:"unique"`
 	Description string
 	Items       []MenuItemRow
-	Status      string    `bstore:"index"`
-	CreatedAt   time.Time `bstore:"index"`
+	Status      string    `store:"index"`
+	CreatedAt   time.Time `store:"index"`
 	PublishedAt *time.Time
 	DeletedAt   *time.Time
 }

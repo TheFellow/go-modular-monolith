@@ -2,9 +2,9 @@ package tagging
 
 type entityTagRow struct {
 	ID         uint64
-	EntityType string `bstore:"unique EntityType+EntityID+Key,index EntityType+EntityID"`
+	EntityType string `store:"unique=EntityType+EntityID+Key"`
 	EntityID   string
-	Key        string `bstore:"index Key+Value"`
+	Key        string `store:"index"`
 	Value      string
 }
 

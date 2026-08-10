@@ -9,7 +9,6 @@ import (
 	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 // ListFilter specifies optional filters for listing audit entries.
@@ -23,11 +22,11 @@ type ListFilter struct {
 	Expression    *appfilter.Expression[models.ListFilterView]
 }
 
-// List returns an ordered sequence that remains inside its bstore read
+// List returns an ordered sequence that remains inside its SQLite read
 // transaction for the duration of iteration.
 func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.AuditEntry, error] {
 	return func(yield func(*models.AuditEntry, error) bool) {
-		err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+		err := d.store.ReadContext(ctx, func(tx *store.Tx) error {
 			for row, err := range d.query(tx, filter).All() {
 				if err != nil {
 					return store.MapError(err, "iterate audit entries")
@@ -45,8 +44,8 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Audit
 	}
 }
 
-func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[AuditEntryRow] {
-	q := bstore.QueryTx[AuditEntryRow](tx)
+func (d *DAO) query(tx *store.Tx, filter ListFilter) *store.Query[AuditEntryRow] {
+	q := store.QueryTx[AuditEntryRow](tx)
 	if !filter.Action.IsZero() {
 		q = q.FilterEqual("Action", filter.Action.String())
 	}
@@ -68,7 +67,7 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[AuditEntryRo
 			return matchesEntityFilterRow(filter.Entity, r)
 		})
 	}
-	q = appfilter.ApplyBstore(q, filter.Expression, func(r AuditEntryRow) models.ListFilterView {
+	q = appfilter.ApplySQL(q, filter.Expression, func(r AuditEntryRow) models.ListFilterView {
 		return models.ListFilterView{
 			ID: r.ID, Action: r.Action,
 			Resource:  cedar.EntityUID{Type: cedar.EntityType(r.ResourceType), ID: cedar.String(r.ResourceID)}.String(),

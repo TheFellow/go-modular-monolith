@@ -2,23 +2,45 @@ package store
 
 import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/mjl-/bstore"
+	"modernc.org/sqlite"
 )
 
-// MapError converts bstore errors to domain errors.
-// Use in DAO methods to ensure consistent error handling.
+var (
+	ErrAbsent = errors.New("record absent")
+	ErrUnique = errors.New("unique constraint")
+	ErrZero   = errors.New("zero record")
+)
+
 func MapError(err error, format string, args ...any) error {
 	if err == nil {
 		return nil
 	}
-	if errors.Is(err, bstore.ErrAbsent) {
+	if errors.Is(err, ErrAbsent) {
 		return errors.NotFoundf(format, args...)
 	}
-	if errors.Is(err, bstore.ErrUnique) {
+	if errors.Is(err, ErrUnique) || isUniqueConstraint(err) {
 		return errors.Conflictf(format, args...)
 	}
-	if errors.Is(err, bstore.ErrZero) {
+	if errors.Is(err, ErrZero) {
 		return errors.Invalidf(format, args...)
 	}
 	return errors.Internalf(format+": %w", append(args, err)...)
+}
+
+func isUniqueConstraint(err error) bool {
+	var sqliteErr *sqlite.Error
+	if !errors.As(err, &sqliteErr) {
+		return false
+	}
+	// SQLite extended result codes for PRIMARY KEY and UNIQUE constraints.
+	return sqliteErr.Code() == 1555 || sqliteErr.Code() == 2067
+}
+
+func isBusy(err error) bool {
+	var sqliteErr *sqlite.Error
+	if !errors.As(err, &sqliteErr) {
+		return false
+	}
+	primaryCode := sqliteErr.Code() & 0xff
+	return primaryCode == 5 || primaryCode == 6
 }

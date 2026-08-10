@@ -7,13 +7,12 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 func (d *DAO) Get(ctx store.Context, id entity.DrinkID) (*models.Drink, error) {
 	var row DrinkRow
 	var tagsByTarget map[cedar.EntityUID]tag.Tags
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+	err := d.store.ReadContext(ctx, func(tx *store.Tx) error {
 		row = DrinkRow{ID: id.String()}
 		if err := tx.Get(&row); err != nil {
 			return err

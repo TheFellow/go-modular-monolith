@@ -9,13 +9,12 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 // ListFilter specifies optional filters for listing ingredients.
 type ListFilter struct {
 	Category models.Category
-	Name     string // Exact match on Name (uses bstore unique index)
+	Name     string // Exact match on Name (uses SQLite unique index)
 	IDs      []entity.IngredientID
 	// IncludeDeleted includes soft-deleted rows (DeletedAt != nil).
 	IncludeDeleted bool
@@ -25,7 +24,7 @@ type ListFilter struct {
 
 func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Ingredient, error] {
 	return func(yield func(*models.Ingredient, error) bool) {
-		err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+		err := d.store.ReadContext(ctx, func(tx *store.Tx) error {
 			rows, err := d.query(tx, filter).SortDesc("ID").List()
 			if err != nil {
 				return store.MapError(err, "list ingredients")
@@ -60,8 +59,8 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Ingre
 	}
 }
 
-func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[IngredientRow] {
-	q := bstore.QueryTx[IngredientRow](tx)
+func (d *DAO) query(tx *store.Tx, filter ListFilter) *store.Query[IngredientRow] {
+	q := store.QueryTx[IngredientRow](tx)
 	if filter.Category != "" {
 		q = q.FilterEqual("Category", string(filter.Category))
 	}
@@ -85,7 +84,7 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[IngredientRo
 			return r.DeletedAt == nil
 		})
 	}
-	q = appfilter.ApplyBstorePushdowns(q, filter.Expression)
+	q = appfilter.ApplySQLPushdowns(q, filter.Expression)
 	return q
 }
 

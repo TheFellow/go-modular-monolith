@@ -67,8 +67,9 @@ The default desktop log locations are:
 | Windows  | `%AppData%\Mixology`                                            |
 | Linux    | `$XDG_CONFIG_HOME/Mixology`, or `~/.config/Mixology` when unset |
 
-Close every Mixology surface before moving or removing `data/mixology.db`,
-because the embedded database permits only one process to own it at a time.
+CLI, TUI, and GUI processes on the same machine may use `data/mixology.db` concurrently. WAL keeps
+reads available while SQLite serializes writes, with a 10-second busy timeout. Close every Mixology
+surface before moving or removing the file, and keep it on a local rather than network filesystem.
 The desktop log can be reset independently by moving or removing
 `mixology.log` from the directory above while the desktop application is
 closed.
@@ -262,6 +263,6 @@ graphics integration.
   absent or need accepting/updating.
 - `timeout: failed to run command ...` or display-server errors during tests
   usually mean headless tests were run without `-tags ci`.
-- `timeout` or an open failure for `mixology.db` usually means another
-  Mixology process still owns the embedded database. Close that process before
-  retrying.
+- A database busy error means another write did not finish within the 10-second timeout. Retry the
+  operation or investigate a long-running command; ordinary concurrent CLI, TUI, and GUI use does
+  not require closing another surface.

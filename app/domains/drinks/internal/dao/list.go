@@ -9,13 +9,12 @@ import (
 	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 // ListFilter specifies optional filters for listing drinks.
 type ListFilter struct {
-	Name     string               // Exact match on Name (uses bstore unique index)
-	Category models.DrinkCategory // Exact match on Category (uses bstore index)
+	Name     string               // Exact match on Name (uses SQLite unique index)
+	Category models.DrinkCategory // Exact match on Category (uses SQLite index)
 	Glass    models.GlassType     // Exact match on Glass
 	// IncludeDeleted includes soft-deleted rows (DeletedAt != nil).
 	IncludeDeleted bool
@@ -25,7 +24,7 @@ type ListFilter struct {
 
 func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Drink, error] {
 	return func(yield func(*models.Drink, error) bool) {
-		err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+		err := d.store.ReadContext(ctx, func(tx *store.Tx) error {
 			rows, err := d.query(tx, filter).SortDesc("ID").List()
 			if err != nil {
 				return store.MapError(err, "list drinks")
@@ -65,9 +64,9 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Drink
 
 func (d *DAO) ListByIngredient(ctx store.Context, ingredientID entity.IngredientID) ([]*models.Drink, error) {
 	var out []*models.Drink
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+	err := d.store.ReadContext(ctx, func(tx *store.Tx) error {
 		target := ingredientID.EntityUID()
-		rows, err := bstore.QueryTx[DrinkRow](tx).FilterFn(func(r DrinkRow) bool {
+		rows, err := store.QueryTx[DrinkRow](tx).FilterFn(func(r DrinkRow) bool {
 			if r.DeletedAt != nil {
 				return false
 			}
@@ -107,8 +106,8 @@ func (d *DAO) ListByIngredient(ctx store.Context, ingredientID entity.Ingredient
 	return out, err
 }
 
-func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[DrinkRow] {
-	q := bstore.QueryTx[DrinkRow](tx)
+func (d *DAO) query(tx *store.Tx, filter ListFilter) *store.Query[DrinkRow] {
+	q := store.QueryTx[DrinkRow](tx)
 
 	if filter.Name != "" {
 		q = q.FilterEqual("Name", filter.Name)
@@ -127,7 +126,7 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[DrinkRow] {
 			return r.DeletedAt == nil
 		})
 	}
-	q = appfilter.ApplyBstorePushdowns(q, filter.Expression)
+	q = appfilter.ApplySQLPushdowns(q, filter.Expression)
 
 	return q
 }

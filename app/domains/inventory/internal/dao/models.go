@@ -8,19 +8,19 @@ import (
 
 type StockRow struct {
 	IngredientID string
-	InventoryID  string `bstore:"index"`
+	InventoryID  string `store:"index"`
 	Quantity     float64
 	Unit         string
 	CostPerUnit  *money.Price
-	LastUpdated  time.Time `bstore:"index"`
+	LastUpdated  time.Time `store:"index"`
 }
 
 // ReservationRow is owned by Inventory. OrderID is an external correlation
 // identity; Inventory remains authoritative for how much stock is committed.
 type ReservationRow struct {
 	ID           string
-	OrderID      string `bstore:"index"`
-	IngredientID string `bstore:"index"`
+	OrderID      string `store:"index"`
+	IngredientID string `store:"index"`
 	Quantity     float64
 	Unit         string
 }

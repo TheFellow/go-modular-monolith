@@ -36,7 +36,7 @@ events but cannot import peer command implementations. Audit and tagging use sma
 profiles appropriate to their responsibilities.
 
 The shared [store](../pkg/store/README.md) is a required bootstrap dependency. Each context
-registers its private bstore models during construction; imports have no database-registration side
+registers its private SQLite models during construction; imports have no database-registration side
 effects. Invalid registration fails immediately.
 
 Presentation follows a second set of vertical boundaries documented under

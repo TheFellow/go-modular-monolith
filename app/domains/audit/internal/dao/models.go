@@ -9,19 +9,19 @@ import (
 type AuditEntryRow struct {
 	ID string
 
-	Action string `bstore:"index"`
+	Action string `store:"index"`
 
-	ResourceType string `bstore:"index"`
-	ResourceID   string `bstore:"index"`
+	ResourceType string `store:"index"`
+	ResourceID   string `store:"index"`
 
-	PrincipalType string `bstore:"index"`
-	PrincipalID   string `bstore:"index"`
+	PrincipalType string `store:"index"`
+	PrincipalID   string `store:"index"`
 
 	Touches []cedar.EntityUID
 
-	StartedAt   time.Time `bstore:"index"`
+	StartedAt   time.Time `store:"index"`
 	CompletedAt time.Time
 
-	Success bool `bstore:"index"`
+	Success bool `store:"index"`
 	Error   string
 }

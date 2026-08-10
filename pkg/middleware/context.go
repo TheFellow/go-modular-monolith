@@ -6,20 +6,20 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 type Context struct {
 	context.Context
 	events    []any
 	principal cedar.EntityUID
-	tx        *bstore.Tx
+	tx        *store.Tx
 	activity  *middlewareevents.Activity
 }
 
 func NewContext(parent context.Context) *Context {
-	var tx *bstore.Tx
+	var tx *store.Tx
 	if parentCtx, ok := parent.(*Context); ok {
 		tx = parentCtx.tx
 	}
@@ -35,7 +35,7 @@ func NewContext(parent context.Context) *Context {
 	return c
 }
 
-func (c *Context) WithTransaction(tx *bstore.Tx) *Context {
+func (c *Context) WithTransaction(tx *store.Tx) *Context {
 	derived := *c
 	derived.Context = c.Context
 	derived.events = make([]any, 0, 4)
@@ -71,7 +71,7 @@ func (c *Context) Principal() cedar.EntityUID {
 	return authn.Anonymous()
 }
 
-func (c *Context) Transaction() (*bstore.Tx, bool) {
+func (c *Context) Transaction() (*store.Tx, bool) {
 	if c == nil || c.tx == nil {
 		return nil, false
 	}
@@ -98,7 +98,7 @@ func NewHandlerContext(ctx *Context) *HandlerContext {
 	return &HandlerContext{Context: ctx.Context, ctx: ctx}
 }
 
-func (h *HandlerContext) Transaction() (*bstore.Tx, bool) {
+func (h *HandlerContext) Transaction() (*store.Tx, bool) {
 	return h.ctx.Transaction()
 }
 

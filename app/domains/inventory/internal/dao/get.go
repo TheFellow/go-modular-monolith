@@ -7,14 +7,13 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 func (d *DAO) Get(ctx store.Context, ingredientID entity.IngredientID) (*models.Inventory, error) {
 	var row StockRow
 	var tagsByTarget map[cedar.EntityUID]tag.Tags
 	var reserved float64
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+	err := d.store.ReadContext(ctx, func(tx *store.Tx) error {
 		var err error
 		row = StockRow{IngredientID: ingredientID.String()}
 		if err := tx.Get(&row); err != nil {

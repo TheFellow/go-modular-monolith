@@ -4,7 +4,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 func (d *DAO) ActiveIDs(ctx store.Context, ids []cedar.String) (set.Set[cedar.String], error) {
@@ -13,8 +12,8 @@ func (d *DAO) ActiveIDs(ctx store.Context, ids []cedar.String) (set.Set[cedar.St
 		return result, nil
 	}
 	values := activeIDValues(ids)
-	err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
-		rows, err := bstore.QueryTx[IngredientRow](tx).FilterIDs(values).List()
+	err := d.store.ReadContext(ctx, func(tx *store.Tx) error {
+		rows, err := store.QueryTx[IngredientRow](tx).FilterIDs(values).List()
 		if err != nil {
 			return err
 		}

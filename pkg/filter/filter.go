@@ -34,7 +34,7 @@ type Schema[T any] struct {
 }
 
 // NewSchema builds a schema from exported fields tagged with expr. A filter
-// tag supplies help text and filter-column opts a top-level field into bstore
+// tag supplies help text and filter-column opts a top-level field into SQLite
 // pushdown.
 func NewSchema[T any](examples ...string) Schema[T] {
 	var zero T

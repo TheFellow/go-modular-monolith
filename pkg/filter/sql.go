@@ -4,14 +4,14 @@ import (
 	"reflect"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/set"
-	"github.com/mjl-/bstore"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-// ApplyBstore adds an expression to a bstore query. Persisted-field predicates
-// implied by the expression are pushed into native bstore filters; the complete
+// ApplySQL adds an expression to a SQLite query. Persisted-field predicates
+// implied by the expression are pushed into native SQLite filters; the complete
 // expression is retained as FilterFn so every supported construct stays exact.
-func ApplyBstore[Row, View any](q *bstore.Query[Row], expression *Expression[View], project func(Row) View) *bstore.Query[Row] {
-	q = ApplyBstorePushdowns(q, expression)
+func ApplySQL[Row, View any](q *store.Query[Row], expression *Expression[View], project func(Row) View) *store.Query[Row] {
+	q = ApplySQLPushdowns(q, expression)
 	if expression == nil {
 		return q
 	}
@@ -27,11 +27,11 @@ func ApplyBstore[Row, View any](q *bstore.Query[Row], expression *Expression[Vie
 	})
 }
 
-// ApplyBstorePushdowns adds only the safe persisted-field constraints from an
-// expression to a bstore query. Callers use this staged form when the complete
+// ApplySQLPushdowns adds only the safe persisted-field constraints from an
+// expression to a SQLite query. Callers use this staged form when the complete
 // filter view depends on data that must be hydrated after rows are fetched.
 // They must subsequently call Expression.Match with that complete view.
-func ApplyBstorePushdowns[Row, View any](q *bstore.Query[Row], expression *Expression[View]) *bstore.Query[Row] {
+func ApplySQLPushdowns[Row, View any](q *store.Query[Row], expression *Expression[View]) *store.Query[Row] {
 	if expression == nil {
 		return q
 	}

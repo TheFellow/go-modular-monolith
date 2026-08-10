@@ -8,7 +8,6 @@ import (
 	appfilter "github.com/TheFellow/go-modular-monolith/pkg/filter"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
-	"github.com/mjl-/bstore"
 )
 
 // ListFilter specifies optional filters for listing orders.
@@ -23,7 +22,7 @@ type ListFilter struct {
 
 func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Order, error] {
 	return func(yield func(*models.Order, error) bool) {
-		err := d.store.ReadContext(ctx, func(tx *bstore.Tx) error {
+		err := d.store.ReadContext(ctx, func(tx *store.Tx) error {
 			rows, err := d.query(tx, filter).SortDesc("ID").List()
 			if err != nil {
 				return store.MapError(err, "list orders")
@@ -58,8 +57,8 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Order
 	}
 }
 
-func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[OrderRow] {
-	q := bstore.QueryTx[OrderRow](tx)
+func (d *DAO) query(tx *store.Tx, filter ListFilter) *store.Query[OrderRow] {
+	q := store.QueryTx[OrderRow](tx)
 	if filter.Status != "" {
 		q = q.FilterEqual("Status", string(filter.Status))
 	}
@@ -74,7 +73,7 @@ func (d *DAO) query(tx *bstore.Tx, filter ListFilter) *bstore.Query[OrderRow] {
 			return r.DeletedAt == nil
 		})
 	}
-	q = appfilter.ApplyBstorePushdowns(q, filter.Expression)
+	q = appfilter.ApplySQLPushdowns(q, filter.Expression)
 	return q
 }
 
