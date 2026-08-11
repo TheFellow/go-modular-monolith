@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"cmp"
 	"context"
 	"maps"
 	"sort"
@@ -88,6 +89,7 @@ type Presenter struct {
 	state     State
 	changed   func(State)
 	projector audit.ActionProjector
+	tableSort ui.TableSort
 }
 
 func NewPresenter(session *app.Session, deps Dependencies) *Presenter {
@@ -156,12 +158,58 @@ func (p *Presenter) loadPage(appendPage bool) {
 			} else {
 				p.state.Rows = cloneRows(result.Value.rows)
 			}
+			p.sortRows()
 			p.state.Next, p.state.Err = result.Value.next, nil
 			if p.state.Mode == Viewing {
 				p.state.Selected = findRow(p.state.Rows, selectedID(p.state.Selected))
 			}
 		}
 		p.publish()
+	})
+}
+
+func (p *Presenter) SortRows(column int, direction ui.SortDirection) {
+	if column < 0 || column > 8 {
+		return
+	}
+	p.tableSort = ui.TableSort{Column: column, Direction: direction}
+	p.sortRows()
+	if p.state.Mode == Viewing {
+		p.state.Selected = findRow(p.state.Rows, selectedID(p.state.Selected))
+	}
+	p.publish()
+}
+
+func (p *Presenter) sortRows() {
+	ui.ApplyTableSort(p.state.Rows, p.tableSort, func(column int, left, right Row) int {
+		switch column {
+		case 0:
+			return left.Entry.StartedAt.Compare(right.Entry.StartedAt)
+		case 1:
+			return left.Entry.CompletedAt.Compare(right.Entry.CompletedAt)
+		case 2:
+			return cmp.Compare(left.Entry.CompletedAt.Sub(left.Entry.StartedAt), right.Entry.CompletedAt.Sub(right.Entry.StartedAt))
+		case 3:
+			return cmp.Compare(left.Entry.Action, right.Entry.Action)
+		case 4:
+			return cmp.Compare(left.Entry.Resource.String(), right.Entry.Resource.String())
+		case 5:
+			return cmp.Compare(left.Entry.Principal.String(), right.Entry.Principal.String())
+		case 6:
+			if left.Entry.Success == right.Entry.Success {
+				return 0
+			}
+			if left.Entry.Success {
+				return 1
+			}
+			return -1
+		case 7:
+			return cmp.Compare(len(left.Touches), len(right.Touches))
+		case 8:
+			return cmp.Compare(left.Entry.Error, right.Entry.Error)
+		default:
+			return 0
+		}
 	})
 }
 

@@ -181,7 +181,7 @@ func NewView(p *Presenter) *View {
 			p.Select(id.Row)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 190}, {Title: "Category", Width: 110}, {Title: "Glass", Width: 110}, {Title: "Status", Width: 125}, {Title: "Ingredients", Width: 125}, {Title: "Tags", Width: 190}, {Title: "Actions", Width: 120}}, nil)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 190, Sortable: true}, {Title: "Category", Width: 110, Sortable: true}, {Title: "Glass", Width: 110, Sortable: true}, {Title: "Status", Width: 125, Sortable: true}, {Title: "Ingredients", Width: 125, Sortable: true}, {Title: "Tags", Width: 190, Sortable: true}, {Title: "Actions", Width: 120}}, p.SortItems)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New drink", p.StartCreate), ui.IconAdd))
 	edit := ui.NewButton(ControlEdit, "Edit", p.StartEdit)

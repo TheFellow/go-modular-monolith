@@ -597,6 +597,18 @@ func newInlinePresenter(f *testutil.Fixture) *Presenter {
 	return NewPresenter(f.App, Dependencies{Executor: appgui.InlineExecutor{}, Dispatcher: appgui.InlineDispatcher{}, Dialogs: &fynetest.Dialogs{}})
 }
 
+func TestSortRowsUsesNumericOrderForDisplayedTotals(t *testing.T) {
+	p := &Presenter{state: State{Rows: []Row{
+		{Order: models.Order{ID: models.NewOrderID("ten")}, Total: "$10.00"},
+		{Order: models.Order{ID: models.NewOrderID("two")}, Total: "$2.00"},
+		{Order: models.Order{ID: models.NewOrderID("unknown")}, Total: "N/A"},
+	}}}
+	p.SortRows(5, appgui.SortAscending)
+	testutil.Equals(t, []string{p.state.Rows[0].Total, p.state.Rows[1].Total, p.state.Rows[2].Total}, []string{"N/A", "$2.00", "$10.00"})
+	p.SortRows(5, appgui.SortDescending)
+	testutil.Equals(t, []string{p.state.Rows[0].Total, p.state.Rows[1].Total, p.state.Rows[2].Total}, []string{"$10.00", "$2.00", "N/A"})
+}
+
 func availableDrink(t *testing.T, f *testutil.Fixture, name string) *drinkmodels.Drink {
 	t.Helper()
 	ingredient := testutil.CreateIngredient(t, f, ingredientmodels.Ingredient{Name: name + " base", Category: ingredientmodels.CategoryOther, Unit: measurement.UnitOz})

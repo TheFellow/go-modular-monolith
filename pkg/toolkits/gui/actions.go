@@ -22,6 +22,30 @@ type TableColumn struct {
 	Sortable bool
 }
 
+// TableSort retains a table's active in-memory ordering while more cursor
+// pages are appended.
+type TableSort struct {
+	Column    int
+	Direction SortDirection
+}
+
+func (s TableSort) Active() bool {
+	return s.Column >= 0 && (s.Direction == SortAscending || s.Direction == SortDescending)
+}
+
+func ApplyTableSort[T any](rows []T, state TableSort, compare func(column int, left, right T) int) {
+	if !state.Active() || compare == nil {
+		return
+	}
+	slices.SortStableFunc(rows, func(left, right T) int {
+		result := compare(state.Column, left, right)
+		if state.Direction == SortDescending {
+			return -result
+		}
+		return result
+	})
+}
+
 // ConfigureRowTable adds Fyne's native sticky header row. Native headers carry
 // the column-divider drag affordances, so widths remain attached to the table
 // for its entire lifetime (including refresh, filtering and detail/back).
@@ -49,7 +73,10 @@ func ConfigureRowTable(table *widget.Table, columns []TableColumn, onSort func(i
 		button.SetText(text)
 		button.OnTapped = nil
 		if !column.Sortable || onSort == nil {
-			button.Disable()
+			// A disabled Fyne button renders low-contrast text. Header cells that
+			// are informational rather than sortable remain enabled with no tap
+			// callback so their labels use the normal foreground color.
+			button.Enable()
 			return
 		}
 		button.Enable()

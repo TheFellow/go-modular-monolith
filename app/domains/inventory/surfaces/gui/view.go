@@ -101,7 +101,7 @@ func NewView(p *Presenter) *View {
 			p.Select(v.state.Rows[id.Row].Inventory.ID)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Ingredient", Width: 180}, {Title: "Ingredient ID", Width: 230}, {Title: "On hand", Width: 90}, {Title: "Reserved", Width: 90}, {Title: "Available", Width: 90}, {Title: "Unit", Width: 70}, {Title: "Cost per unit", Width: 120}, {Title: "Last updated", Width: 210}, {Title: "Tags", Width: 180}, {Title: "Status", Width: 70}, {Title: "Actions", Width: 120}}, nil)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Ingredient", Width: 180, Sortable: true}, {Title: "Ingredient ID", Width: 230, Sortable: true}, {Title: "On hand", Width: 90, Sortable: true}, {Title: "Reserved", Width: 90, Sortable: true}, {Title: "Available", Width: 90, Sortable: true}, {Title: "Unit", Width: 70, Sortable: true}, {Title: "Cost per unit", Width: 120, Sortable: true}, {Title: "Last updated", Width: 210, Sortable: true}, {Title: "Tags", Width: 180, Sortable: true}, {Title: "Status", Width: 70, Sortable: true}, {Title: "Actions", Width: 120}}, p.SortRows)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No inventory found", "Adjust the filter to find stock items.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)

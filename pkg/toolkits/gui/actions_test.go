@@ -147,5 +147,14 @@ func TestConfiguredRowTableUsesResizableNativeHeadersAndTogglesSort(t *testing.T
 	table.UpdateHeader(widget.TableCellID{Row: -1, Col: 0}, header)
 	testutil.ErrorIf(t, button.Text != "Name  ↓", "sorted header = %q", button.Text)
 	table.UpdateHeader(widget.TableCellID{Row: -1, Col: 1}, header)
-	testutil.ErrorIf(t, !button.Disabled(), "%v", "unsupported column should remain visibly non-sortable")
+	testutil.ErrorIf(t, button.Disabled() || button.OnTapped != nil, "%v", "informational header should remain readable and non-interactive")
+}
+
+func TestApplyTableSortRetainsDirection(t *testing.T) {
+	t.Parallel()
+	rows := []int{2, 1, 3}
+	ApplyTableSort(rows, TableSort{Column: 0, Direction: SortDescending}, func(_ int, left, right int) int {
+		return left - right
+	})
+	testutil.Equals(t, rows, []int{3, 2, 1})
 }
