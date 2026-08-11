@@ -44,6 +44,7 @@ type Shell struct {
 	views            map[string]View
 	current          string
 	title            *widget.Label
+	brand            *widget.Label
 	identity         *widget.Label
 	body             *framework.Container
 	content          framework.CanvasObject
@@ -65,13 +66,14 @@ func NewShell(routes []Route, initialRoute string) (*Shell, error) {
 		navigation: make(map[string]*widget.Button, len(routes)),
 		stale:      make(map[string]bool, len(routes)),
 		title:      widget.NewLabel(""),
-		identity:   widget.NewLabel("Mixology\nSigned in"),
+		brand:      widget.NewLabel("Mixology"),
+		identity:   widget.NewLabel("Signed in"),
 		body:       container.NewStack(),
 	}
 	s.title.TextStyle = framework.TextStyle{Bold: true}
+	s.brand.TextStyle = framework.TextStyle{Bold: true}
 
-	buttons := make([]framework.CanvasObject, 0, len(routes)+1)
-	buttons = append(buttons, s.identity)
+	buttons := make([]framework.CanvasObject, 0, len(routes))
 	for _, route := range routes {
 		if route.ID == "" || route.Label == "" || route.Build == nil {
 			return nil, fmt.Errorf("fyne shell route must have id, label, and builder")
@@ -90,7 +92,10 @@ func NewShell(routes []Route, initialRoute string) (*Shell, error) {
 		buttons = append(buttons, button)
 	}
 
-	navigation := container.NewGridWrap(framework.NewSize(184, 42), buttons...)
+	navigation := container.NewVBox(
+		container.NewVBox(s.brand, s.identity),
+		container.NewGridWrap(framework.NewSize(184, 42), buttons...),
+	)
 	s.content = container.NewBorder(
 		nil, nil,
 		container.NewPadded(container.NewVBox(navigation, layout.NewSpacer())), nil,
@@ -107,7 +112,8 @@ func (s *Shell) Content() framework.CanvasObject { return s.content }
 
 // SetIdentity keeps application and actor/role context visible across routes.
 func (s *Shell) SetIdentity(application, actor, role string) {
-	s.identity.SetText(fmt.Sprintf("%s\n%s · %s", application, actor, role))
+	s.brand.SetText(application)
+	s.identity.SetText(fmt.Sprintf("%s · %s", actor, role))
 }
 
 // SetAbandonConfirmation installs the application-owned confirmation prompt.

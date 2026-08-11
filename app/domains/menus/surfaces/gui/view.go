@@ -137,10 +137,9 @@ func NewView(p *Presenter) *View {
 	v.status = widget.NewLabel("")
 	v.browse = ui.StandardListPage(ui.ListPage{Title: "Menus", Subtitle: "Browse menus and select one for complete details.", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, v.refresh}, List: v.listStack, Status: v.status}).(*framework.Container)
 
-	v.name, v.description = ui.NewEntry(ControlName), ui.NewEntry(ControlDescription)
+	v.name, v.description = ui.NewEntry(ControlName), ui.NewMultiLineEntry(ControlDescription)
 	v.tags = ui.NewTagTokenEditor(ControlTagValues, "")
 	v.tags.Normalize = tag.UpsertCollection
-	v.description.MultiLine = true
 	v.save = ui.WithIcon(ui.NewButton(ControlSave, "Save", func() { v.readForm(); p.Save() }), ui.IconSave)
 	v.cancel = ui.WithIcon(ui.NewButton(ControlCancel, "Cancel", p.Cancel), ui.IconCancel)
 	v.formStatus = widget.NewLabel("")
@@ -180,7 +179,7 @@ func NewView(p *Presenter) *View {
 }
 
 func (v *View) breadcrumb(name string) framework.CanvasObject {
-	return container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", v.p.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Menus", v.p.ResetList), widget.NewLabel(">"), widget.NewLabel(name))
+	return container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", v.p.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Menus", v.p.ResetList), widget.NewLabel("›"), widget.NewLabel(name))
 }
 func (v *View) Title() string                   { return "Menus" }
 func (v *View) Content() framework.CanvasObject { return v.root }

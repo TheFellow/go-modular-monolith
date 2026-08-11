@@ -94,7 +94,7 @@ func NewView(p *Presenter) *View {
 		v.detailFields = append(v.detailFields, entry)
 		items = append(items, ui.DetailField(label, entry))
 	}
-	breadcrumb := container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Audit", p.ResetList), widget.NewLabel(">"), v.crumbName)
+	breadcrumb := container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Audit", p.ResetList), widget.NewLabel("›"), v.crumbName)
 	v.detailPanel = ui.StandardFormPage(ui.FormPage{TitleLabel: v.detailTitle, Breadcrumb: breadcrumb, Fields: ui.DetailForm(items...), Status: v.detailStatus}).(*framework.Container)
 	v.root = container.NewStack(v.browse, v.detailPanel)
 	p.Observe(v.render)

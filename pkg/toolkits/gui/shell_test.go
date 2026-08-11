@@ -122,7 +122,8 @@ func TestShellShowsPersistentIdentityAndExplicitRouteIcon(t *testing.T) {
 	shell, err := NewShell([]Route{{ID: "home", Label: "Home", Icon: IconDashboard, Build: func() View { return &testView{title: "Home", content: widget.NewLabel("home")} }}}, "home")
 	testutil.ErrorIf(t, err != nil, "%v", err)
 	shell.SetIdentity("Mixology", "Local user", "manager")
-	testutil.ErrorIf(t, shell.identity.Text != "Mixology\nLocal user · manager", "identity = %q", shell.identity.Text)
+	testutil.ErrorIf(t, shell.brand.Text != "Mixology", "brand = %q", shell.brand.Text)
+	testutil.ErrorIf(t, shell.identity.Text != "Local user · manager", "identity = %q", shell.identity.Text)
 	testutil.ErrorIf(t, shell.navigation["home"].Icon != IconResource(IconDashboard), "%v", "route did not use its enumerated icon")
 	{
 		err := shell.Navigate("home")

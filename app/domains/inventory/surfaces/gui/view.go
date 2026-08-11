@@ -132,7 +132,7 @@ func NewView(p *Presenter) *View {
 }
 
 func (v *View) breadcrumb(name string) framework.CanvasObject {
-	return container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", v.presenter.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Inventory", v.presenter.ResetList), widget.NewLabel(">"), widget.NewLabel(name))
+	return container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", v.presenter.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Inventory", v.presenter.ResetList), widget.NewLabel("›"), widget.NewLabel(name))
 }
 
 func (v *View) Title() string                   { return "Inventory" }

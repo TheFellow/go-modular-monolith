@@ -87,7 +87,7 @@ func NewView(p *Presenter) *View {
 
 	v.detailTitle, v.crumbName = widget.NewLabel("Tag"), widget.NewLabel("")
 	v.resultRows = container.NewVBox()
-	breadcrumb := container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", func() { p.Back() }), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Tags", p.ResetList), widget.NewLabel(">"), v.crumbName)
+	breadcrumb := container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", func() { p.Back() }), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Tags", p.ResetList), widget.NewLabel("›"), v.crumbName)
 	detailAdd := ui.WithIcon(ui.NewButton(ControlAdd+".detail", "Tag entity", func() { p.Start(Add) }), ui.IconTag)
 	detailRemove := ui.WithIcon(ui.NewButton(ControlRemove+".detail", "Untag entity", func() { p.Start(Remove) }), ui.IconDelete)
 	detailHeader := container.NewVBox(breadcrumb, v.detailTitle, container.NewHBox(layout.NewSpacer(), detailAdd, detailRemove))
