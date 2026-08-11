@@ -66,7 +66,11 @@ func (m *ChangeMonitor) Close() {
 
 func (m *ChangeMonitor) run(ctx context.Context, conn *sql.Conn, version uint64) {
 	defer close(m.done)
-	defer func() { _ = conn.Close() }()
+	defer func() {
+		if conn != nil {
+			_ = conn.Close()
+		}
+	}()
 	timer := time.NewTimer(m.interval)
 	defer timer.Stop()
 
@@ -80,10 +84,11 @@ func (m *ChangeMonitor) run(ctx context.Context, conn *sql.Conn, version uint64)
 		current, err := dataVersion(ctx, conn)
 		if err != nil {
 			_ = conn.Close()
-			conn, version, err = m.reconnect(ctx)
-			if err != nil {
+			nextConn, nextVersion, reconnectErr := m.reconnect(ctx)
+			if reconnectErr != nil {
 				return
 			}
+			conn, version = nextConn, nextVersion
 			// Changes may have committed while the old connection was unusable.
 			m.publish()
 		} else if current != version {
