@@ -186,7 +186,7 @@ func (v *View) browser(s State) framework.CanvasObject {
 }
 
 func (v *View) breadcrumb(name string) framework.CanvasObject {
-	return container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", v.presenter.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Orders", v.presenter.ResetList), widget.NewLabel(">"), widget.NewLabel(name))
+	return container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", v.presenter.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Orders", v.presenter.ResetList), widget.NewLabel("›"), widget.NewLabel(name))
 }
 func orderTitle(r *Row) string {
 	if r == nil {
@@ -196,6 +196,7 @@ func orderTitle(r *Row) string {
 }
 func readonly(value string) *widget.Entry {
 	e := widget.NewEntry()
+	e.Scroll = framework.ScrollNone
 	restoring := false
 	e.OnChanged = func(changed string) {
 		if restoring || changed == value {
@@ -220,6 +221,7 @@ func (v *View) detail(s State) framework.CanvasObject {
 	}
 	notes := readonly(r.Order.Notes)
 	notes.MultiLine = true
+	notes.Scroll = framework.ScrollVerticalOnly
 	fields := container.NewVBox(ui.DetailForm(
 		ui.DetailField("Order ID", readonly(r.Order.ID.String())), ui.DetailField("Menu", readonly(r.MenuName)),
 		ui.DetailField("Status", readonly(string(r.Order.Status))), ui.DetailField("Created", readonly(formatTime(r.Order.CreatedAt))),
@@ -316,8 +318,7 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	v.drinks = widget.NewSelect(drinkLabels, nil)
 	v.quantity = ui.NewEntry(ControlQuantity)
 	v.quantity.SetPlaceHolder("Quantity")
-	v.itemNotes = ui.NewEntry(ControlItemNotes)
-	v.itemNotes.MultiLine = true
+	v.itemNotes = ui.NewMultiLineEntry(ControlItemNotes)
 	v.itemNotes.SetPlaceHolder("Item notes (optional)")
 	add := ui.WithIcon(ui.NewButton(ControlAddItem, "Add item", func() {
 		qty, err := strconv.Atoi(strings.TrimSpace(v.quantity.Text))
@@ -352,8 +353,7 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	if len(s.Form.Items) == 0 {
 		items.Add(ui.EmptyCollection(ui.IconEmpty, "No items yet", "Choose an available drink and add it to the order."))
 	}
-	v.orderNotes = ui.NewEntry(ControlOrderNotes)
-	v.orderNotes.MultiLine = true
+	v.orderNotes = ui.NewMultiLineEntry(ControlOrderNotes)
 	v.orderNotes.SetPlaceHolder("Order notes (optional)")
 	v.orderNotes.SetText(s.Form.Notes)
 	v.orderNotes.OnChanged = v.presenter.SetPlaceNotes
@@ -386,7 +386,7 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 		message = "Error: " + s.Err.Error()
 	}
 	fields := container.NewVBox(container.NewBorder(nil, nil, nil, searchMenus, v.menuQuery), widget.NewLabel("Published menu"), v.menus, container.NewBorder(nil, nil, nil, searchDrinks, v.drinkQuery), widget.NewLabel("Available drink"), v.drinks, widget.NewLabel("Quantity"), v.quantity, widget.NewLabel("Item notes"), v.itemNotes, container.NewHBox(layout.NewSpacer(), add), widget.NewLabelWithStyle("Order items", framework.TextAlignLeading, framework.TextStyle{Bold: true}), items, widget.NewLabel("Order notes"), v.orderNotes, widget.NewLabel("Tags"), v.tags.Content)
-	return ui.StandardFormPage(ui.FormPage{Title: "Place order", Breadcrumb: container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", v.presenter.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Orders", v.presenter.ResetList), widget.NewLabel(">"), widget.NewLabel("Place order")), Subtitle: "Choose a published menu, add drinks, then place the order.", Fields: fields, Status: widget.NewLabel(message), Save: v.save, Cancel: v.cancel})
+	return ui.StandardFormPage(ui.FormPage{Title: "Place order", Breadcrumb: container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", v.presenter.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Orders", v.presenter.ResetList), widget.NewLabel("›"), widget.NewLabel("Place order")), Subtitle: "Choose a published menu, add drinks, then place the order.", Fields: fields, Status: widget.NewLabel(message), Save: v.save, Cancel: v.cancel})
 }
 func (v *View) tagForm(s State) framework.CanvasObject {
 	v.tags = ui.NewTagTokenEditor(ControlTagValues, s.Form.Tags)

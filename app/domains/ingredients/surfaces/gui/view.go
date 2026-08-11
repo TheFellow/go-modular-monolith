@@ -112,8 +112,7 @@ func NewView(p *Presenter) *View {
 	v.browse = ui.StandardListPage(ui.ListPage{Title: "Ingredients", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, v.refresh}, List: v.listStack, Status: v.status, ListRatio: .35}).(*framework.Container)
 
 	v.name = ui.NewEntry(ControlName)
-	v.description = ui.NewEntry(ControlDescription)
-	v.description.MultiLine = true
+	v.description = ui.NewMultiLineEntry(ControlDescription)
 	v.tags = ui.NewTagTokenEditor(ControlMutationTags, "")
 	v.tags.Normalize = tag.UpsertCollection
 	categories := make([]string, 0, len(models.AllCategories()))
@@ -132,7 +131,7 @@ func NewView(p *Presenter) *View {
 	v.crumbName = widget.NewLabel("")
 	v.formStatus = widget.NewLabel("")
 	fields := ui.DetailForm(ui.DetailField("Name", v.name), ui.DetailField("Category", v.formCategory), ui.DetailField("Unit", v.formUnit), ui.DetailField("Description", v.description), ui.DetailField("Tags", v.tags.Content), ui.DetailField("Permanent replacement", v.replacementID), ui.DetailField("Replacement ratio", v.replacementRatio))
-	breadcrumb := container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Ingredients", p.ResetList), widget.NewLabel(">"), v.crumbName, v.tagAction, v.delete)
+	breadcrumb := container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Ingredients", p.ResetList), widget.NewLabel("›"), v.crumbName, v.tagAction, v.delete)
 	v.formPanel = ui.StandardFormPage(ui.FormPage{TitleLabel: v.detailTitle, Breadcrumb: breadcrumb, Fields: fields, Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
 	v.tagOnly = ui.NewTagTokenEditor(ControlFormTags, "")
 	v.tagOnly.Normalize = tag.UpsertCollection

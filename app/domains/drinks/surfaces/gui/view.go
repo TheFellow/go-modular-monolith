@@ -198,10 +198,8 @@ func NewView(p *Presenter) *View {
 	v.name = ui.NewEntry(ControlName)
 	v.category = newSelect(ControlCategory, categoryOptions())
 	v.glass = newSelect(ControlGlass, glassOptions())
-	v.description = ui.NewEntry(ControlDescription)
-	v.description.MultiLine = true
-	v.steps = ui.NewEntry(ControlSteps)
-	v.steps.MultiLine = true
+	v.description = ui.NewMultiLineEntry(ControlDescription)
+	v.steps = ui.NewMultiLineEntry(ControlSteps)
 	v.garnish = ui.NewEntry(ControlGarnish)
 	v.mutationTags = ui.NewTagTokenEditor(ControlTagValues+".mutation", "")
 	v.mutationTags.Normalize = tag.UpsertCollection
@@ -225,7 +223,7 @@ func NewView(p *Presenter) *View {
 	edit.Hide()
 	tagsAction.Hide()
 	deleteAction.Hide()
-	breadcrumb := container.NewHBox(back, crumb, widget.NewLabel(">"), v.crumbName, edit, tagsAction, deleteAction)
+	breadcrumb := container.NewHBox(back, crumb, widget.NewLabel("›"), v.crumbName, edit, tagsAction, deleteAction)
 	v.formPanel = ui.StandardFormPage(ui.FormPage{TitleLabel: v.detailTitle, Breadcrumb: breadcrumb, Fields: fields, Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
 	v.tags = ui.NewTagTokenEditor(ControlTagValues, "")
 	v.tags.Normalize = tag.UpsertCollection
@@ -399,7 +397,7 @@ func (v *View) render(state State) {
 	}
 	v.list.Refresh()
 	for _, action := range v.detailActions {
-		allowed := state.Selected != nil
+		allowed := state.Selected != nil && state.Mode != Creating
 		switch action.SemanticID() {
 		case ControlTags:
 			allowed = allowed && state.CanTag
