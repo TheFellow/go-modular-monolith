@@ -84,7 +84,7 @@ func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, _e ingredient
 		if requiresReview {
 			review.Status = drinksmodels.StatusReviewRequired
 		}
-		if err := h.drinkDAO.Update(ctx, review); err != nil {
+		if err := h.drinkDAO.Update(ctx, &review); err != nil {
 			return err
 		}
 		ctx.TouchEntity(review.ID.EntityUID())

@@ -40,7 +40,7 @@ func (c *Commands) Create(ctx *middleware.Context, menu *models.Menu) (*models.M
 		return nil, err
 	}
 
-	if err := c.dao.Insert(ctx, created); err != nil {
+	if err := c.dao.Insert(ctx, &created); err != nil {
 		return nil, err
 	}
 

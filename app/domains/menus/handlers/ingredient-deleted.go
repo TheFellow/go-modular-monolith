@@ -94,7 +94,7 @@ func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, _ ingredients
 			continue
 		}
 
-		if err := h.dao.Update(ctx, updated); err != nil {
+		if err := h.dao.Update(ctx, &updated); err != nil {
 			return err
 		}
 		ctx.TouchEntity(updated.ID.EntityUID())

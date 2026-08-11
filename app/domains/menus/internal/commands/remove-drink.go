@@ -44,7 +44,7 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, patch *models.MenuPatch)
 		return nil, err
 	}
 
-	if err := c.dao.Update(ctx, updated); err != nil {
+	if err := c.dao.Update(ctx, &updated); err != nil {
 		return nil, err
 	}
 

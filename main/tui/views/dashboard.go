@@ -23,10 +23,11 @@ type Dashboard struct {
 	width  int
 	height int
 
-	loading bool
-	spinner tui.Spinner
-	data    *app.Dashboard
-	err     error
+	loading   bool
+	spinner   tui.Spinner
+	data      *app.Dashboard
+	err       error
+	loadToken uint64
 }
 
 const (
@@ -35,8 +36,9 @@ const (
 )
 
 type DashboardLoadedMsg struct {
-	Data *app.Dashboard
-	Err  error
+	Data  *app.Dashboard
+	Err   error
+	Token uint64
 }
 
 // NewDashboard creates a new Dashboard view.
@@ -62,6 +64,9 @@ func (d *Dashboard) Interaction() tui.Interaction { return tui.Interaction{} }
 // Update implements ViewModel.
 func (d *Dashboard) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tui.DataInvalidatedMsg:
+		d.loading, d.err = true, nil
+		return d, tea.Batch(d.spinner.Init(), d.loadData())
 	case tea.WindowSizeMsg:
 		d.width = msg.Width
 		d.height = msg.Height
@@ -87,6 +92,9 @@ func (d *Dashboard) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 			return d, tea.Batch(d.spinner.Init(), d.loadData())
 		}
 	case DashboardLoadedMsg:
+		if msg.Token != d.loadToken {
+			return d, nil
+		}
 		d.loading = false
 		d.data = msg.Data
 		d.err = msg.Err
@@ -167,12 +175,14 @@ type dashboardCard struct {
 }
 
 func (d *Dashboard) loadData() tea.Cmd {
+	d.loadToken++
+	token := d.loadToken
 	return func() tea.Msg {
 		if d.app == nil {
-			return DashboardLoadedMsg{Err: errors.New("dashboard requires app")}
+			return DashboardLoadedMsg{Err: errors.New("dashboard requires app"), Token: token}
 		}
 		aggregate, err := d.app.Dashboard()
-		return DashboardLoadedMsg{Data: &aggregate, Err: err}
+		return DashboardLoadedMsg{Data: &aggregate, Err: err, Token: token}
 	}
 }
 

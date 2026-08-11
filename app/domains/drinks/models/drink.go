@@ -19,6 +19,7 @@ func NewDrinkID(id string) entity.DrinkID {
 
 type Drink struct {
 	ID          entity.DrinkID
+	Revision    uint64 `json:"revision"`
 	Name        string
 	Category    DrinkCategory
 	Glass       GlassType

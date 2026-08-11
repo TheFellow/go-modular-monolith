@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -54,7 +55,7 @@ func TestMenusCLIUpdateStructuredInputAndTemplate(t *testing.T) {
 	var menu menucli.Menu
 	testutil.Ok(t, json.Unmarshal([]byte(created.Stdout), &menu))
 	input := filepath.Join(dir, "update.json")
-	testutil.Ok(t, os.WriteFile(input, []byte(`{"id":"`+menu.ID+`","name":"Garden Patio","description":"Outside"}`), 0o600))
+	testutil.Ok(t, os.WriteFile(input, []byte(`{"id":"`+menu.ID+`","revision":`+strconv.FormatUint(menu.Revision, 10)+`,"name":"Garden Patio","description":"Outside"}`), 0o600))
 	updated := cli.Run("menus", "update", "--file", input, "--json")
 	testutil.Ok(t, updated.Err)
 	testutil.StringContains(t, updated.Stdout, `"name": "Garden Patio"`)

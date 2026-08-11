@@ -45,7 +45,7 @@ func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.O
 		if !changed {
 			continue
 		}
-		if err := h.dao.Update(ctx, *menu); err != nil {
+		if err := h.dao.Update(ctx, menu); err != nil {
 			return err
 		}
 		ctx.TouchEntity(menu.ID.EntityUID())

@@ -13,6 +13,7 @@ import (
 
 type Drink struct {
 	ID          string               `json:"id"`
+	Revision    uint64               `json:"revision"`
 	Name        string               `json:"name"`
 	Category    string               `json:"category,omitempty"`
 	Glass       string               `json:"glass,omitempty"`
@@ -25,6 +26,7 @@ type Drink struct {
 func FromDomainDrink(d models.Drink) Drink {
 	return Drink{
 		ID:          d.ID.String(),
+		Revision:    d.Revision,
 		Name:        d.Name,
 		Category:    string(d.Category),
 		Glass:       string(d.Glass),
@@ -38,6 +40,7 @@ func FromDomainDrink(d models.Drink) Drink {
 func TemplateUpdateDrink() Drink {
 	return Drink{
 		ID:          "drk-abc123",
+		Revision:    1,
 		Name:        "Margarita",
 		Category:    string(models.DrinkCategoryCocktail),
 		Glass:       string(models.GlassTypeCoupe),
@@ -71,6 +74,7 @@ func (d Drink) ToDomainForUpdate() (models.Drink, error) {
 
 	out := models.Drink{
 		ID:          parsedID,
+		Revision:    d.Revision,
 		Name:        d.Name,
 		Category:    models.DrinkCategory(d.Category),
 		Glass:       models.GlassType(d.Glass),

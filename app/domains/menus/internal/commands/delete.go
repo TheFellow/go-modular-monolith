@@ -30,7 +30,7 @@ func (c *Commands) Delete(ctx *middleware.Context, menu *models.Menu) (*models.M
 	deleted.DeletedAt = optional.Some(now)
 	deleted.Status = models.MenuStatusArchived
 
-	if err := c.dao.Update(ctx, deleted); err != nil {
+	if err := c.dao.Update(ctx, &deleted); err != nil {
 		return nil, err
 	}
 

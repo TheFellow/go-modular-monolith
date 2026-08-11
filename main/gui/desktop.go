@@ -66,6 +66,8 @@ type desktop struct {
 	metricsShutdown func(context.Context) error
 	closeOnce       sync.Once
 	closeErr        error
+	changes         *store.ChangeMonitor
+	changeWork      sync.WaitGroup
 	dashboard       *dashboardViewModel
 	views           map[string]gui.View
 	presenters      map[string]any
@@ -143,6 +145,7 @@ func (d *desktop) registerShortcuts() {
 type desktopDependencies struct {
 	executor        gui.Executor
 	dispatcher      gui.Dispatcher
+	monitorChanges  bool
 	dialogs         func(framework.Window) gui.Dialogs
 	showInformation func(title, message string, window framework.Window)
 	openURL         func(*url.URL) error
@@ -215,7 +218,7 @@ func openDesktop(ctx context.Context, fyneApp framework.App, config desktopConfi
 	executor := gui.NewManagedExecutor()
 	dispatcher := gui.NewGatedDispatcher(gui.MainDispatcher{})
 	return openDesktopWithDependencies(ctx, fyneApp, config, desktopDependencies{
-		executor: executor, dispatcher: dispatcher,
+		executor: executor, dispatcher: dispatcher, monitorChanges: true,
 		dialogs:         func(window framework.Window) gui.Dialogs { return gui.WindowDialogs{Window: window} },
 		showInformation: dialog.ShowInformation,
 		openURL:         fyneApp.OpenURL,
@@ -382,8 +385,33 @@ func openDesktopWithDependencies(ctx context.Context, fyneApp framework.App, con
 	d.registerShortcuts()
 	d.showInformation = deps.showInformation
 	d.openURL = deps.openURL
+	if deps.monitorChanges {
+		d.changes, err = s.MonitorChanges(ctx, store.DefaultChangePollInterval)
+		if err != nil {
+			_ = d.Close()
+			return nil, err
+		}
+		d.changeWork.Add(1)
+		go d.watchDatabaseChanges(deps.dispatcher)
+	}
 	d.shell.ActivateCurrent()
 	return d, nil
+}
+
+func (d *desktop) watchDatabaseChanges(dispatcher gui.Dispatcher) {
+	defer d.changeWork.Done()
+	for {
+		select {
+		case <-d.changes.Done():
+			return
+		case <-d.changes.Signals():
+			dispatcher.Dispatch(func() {
+				if d.shell != nil {
+					d.shell.InvalidateCurrent()
+				}
+			})
+		}
+	}
 }
 
 // closeWindow is kept separate from composition so lifecycle behavior can be
@@ -398,6 +426,10 @@ func (d *desktop) closeWindow() {
 func (d *desktop) Close() error {
 	d.closeOnce.Do(func() {
 		var appErr, logErr error
+		if d.changes != nil {
+			d.changes.Close()
+			d.changeWork.Wait()
+		}
 		// Stop the separately owned dashboard lifecycle before closing executor
 		// admission. Otherwise a concurrent activation can account work that the
 		// executor rejects, leaving dashboard shutdown waiting forever.

@@ -32,6 +32,32 @@ type dirtyTestView struct {
 	dirty bool
 }
 
+type invalidationTestView struct {
+	testView
+	dirty       bool
+	refreshes   int
+	activations int
+}
+
+func (v *invalidationTestView) HasUnsavedChanges() bool { return v.dirty }
+func (v *invalidationTestView) Activate()               { v.activations++ }
+func (v *invalidationTestView) ExecuteCommand(command Command) bool {
+	switch command {
+	case CommandRefresh:
+		if v.dirty {
+			return false
+		}
+		v.refreshes++
+		return true
+	case CommandCancel:
+		v.dirty = false
+		return true
+	case CommandNew, CommandSave:
+		return false
+	}
+	return false
+}
+
 func (v *dirtyTestView) HasUnsavedChanges() bool { return v.dirty }
 
 func (v *commandTestView) ExecuteCommand(command Command) bool {
@@ -73,6 +99,22 @@ func TestShellNavigatesLazilyAndPreservesViews(t *testing.T) {
 		testutil.ErrorIf(t, err != nil, "%v", err)
 	}
 	testutil.ErrorIf(t, builds["home"] != 1 || builds["drinks"] != 1, "views were not preserved: %v", builds)
+}
+
+func TestShellInvalidationRefreshesBrowsingAndDefersDirtyEditor(t *testing.T) {
+	startTestApp(t)
+	view := &invalidationTestView{testView: testView{title: "Editor", content: widget.NewLabel("editor")}}
+	shell, err := NewShell([]Route{{ID: "editor", Label: "Editor", Build: func() View { return view }}}, "editor")
+	testutil.ErrorIf(t, err != nil, "%v", err)
+
+	shell.InvalidateCurrent()
+	testutil.ErrorIf(t, view.refreshes != 1, "browsing refreshes = %d", view.refreshes)
+
+	view.dirty = true
+	shell.InvalidateCurrent()
+	testutil.ErrorIf(t, view.refreshes != 1 || !shell.stale["editor"], "dirty invalidation was not deferred")
+	shell.ExecuteCommand(CommandCancel)
+	testutil.ErrorIf(t, view.dirty || shell.stale["editor"] || view.activations != 1, "deferred invalidation was not refreshed after cancel")
 }
 
 func TestShellShowsPersistentIdentityAndExplicitRouteIcon(t *testing.T) {

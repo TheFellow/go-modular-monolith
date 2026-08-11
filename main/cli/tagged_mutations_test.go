@@ -122,6 +122,7 @@ func TestDomainMutationTagsFilterAcrossEveryOperationalDomain(t *testing.T) {
 	drinkFile := filepath.Join(dir, "drink.json")
 	drinkJSON := fmt.Sprintf(`{
   "id": %q,
+  "revision": %d,
   "name": "CLI Highball",
   "category": "highball",
   "glass": "highball",
@@ -129,7 +130,7 @@ func TestDomainMutationTagsFilterAcrossEveryOperationalDomain(t *testing.T) {
     "ingredients": [{"ingredient_id": %q, "amount": 1, "unit": "oz"}],
     "steps": ["build"]
   }
-}`, targets.drink, targets.ingredientID)
+}`, targets.drink, targets.drinkRevision, targets.ingredientID)
 	testutil.Ok(t, os.WriteFile(drinkFile, []byte(drinkJSON), 0o600))
 
 	mutations := [][]string{
@@ -192,7 +193,7 @@ func TestTaggedMutationRollsBackWhenTagReplacementFails(t *testing.T) {
 	testutil.Ok(t, command.Set("tags", "region=east"))
 	_, err = runTaggedMutation(c, ctx, command, func(txCtx *middleware.Context) (*rejectedTagTarget, error) {
 		_, updateErr := a.Ingredients.Update(txCtx, &models.Ingredient{
-			ID: created.ID, Name: "After", Category: models.CategorySpirit, Unit: "oz",
+			ID: created.ID, Revision: created.Revision, Name: "After", Category: models.CategorySpirit, Unit: "oz",
 		})
 		return &rejectedTagTarget{}, updateErr
 	})

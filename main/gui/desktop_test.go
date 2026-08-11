@@ -108,6 +108,41 @@ func TestOpenDesktopBuildsHeadlessShellAndOwnsPersistenceLifecycle(t *testing.T)
 	}
 }
 
+func TestDesktopAutomaticallyRefreshesAfterExternalCommit(t *testing.T) {
+	dataDirectory := t.TempDir()
+	databasePath := filepath.Join(dataDirectory, databaseFilename)
+	gui := test.NewApp()
+	t.Cleanup(gui.Quit)
+	deps := deterministicDesktopDependencies(nil)
+	deps.monitorChanges = true
+	desktop, err := openDesktopWithDependencies(context.Background(), gui, desktopConfig{
+		dataDirectory: dataDirectory, actor: "owner",
+	}, deps)
+	testutil.ErrorIf(t, err != nil, "%v", err)
+	t.Cleanup(func() { _ = desktop.Close() })
+	testutil.ErrorIf(t, desktop.shell.Navigate("ingredients") != nil, "navigate ingredients")
+
+	externalStore, err := store.Open(desktop.session.Context(), databasePath)
+	testutil.ErrorIf(t, err != nil, "open external store: %v", err)
+	external := application.New(desktop.session.Context(), application.Config{Store: externalStore})
+	_, err = external.Ingredients.Create(desktop.session.Context(), &ingredientsmodels.Ingredient{
+		Name: "External Reactive Soda", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
+	})
+	testutil.ErrorIf(t, err != nil, "external create: %v", err)
+	testutil.ErrorIf(t, external.Close() != nil, "close external app")
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		state := desktop.presenters["ingredients"].(*ingredientsgui.Presenter).Snapshot()
+		if len(state.Items) == 1 && state.Items[0].Name == "External Reactive Soda" {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	state := desktop.presenters["ingredients"].(*ingredientsgui.Presenter).Snapshot()
+	testutil.ErrorIf(t, true, "desktop did not react to external commit: %#v", state.Items)
+}
+
 func TestDesktopDashboardWorkflowNavigatesAllWorkspacesAndPreservesState(t *testing.T) {
 	gui := test.NewApp()
 	t.Cleanup(gui.Quit)

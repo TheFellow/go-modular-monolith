@@ -22,7 +22,7 @@ func (c *Commands) Delete(ctx *middleware.Context, drink *models.Drink) (*models
 	deleted := *drink
 	deleted.DeletedAt = optional.Some(now)
 
-	if err := c.dao.Update(ctx, deleted); err != nil {
+	if err := c.dao.Update(ctx, &deleted); err != nil {
 		return nil, err
 	}
 

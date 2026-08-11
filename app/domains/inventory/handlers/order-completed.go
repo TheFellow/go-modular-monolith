@@ -56,7 +56,7 @@ func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.O
 		updated.Amount = newAmount
 		updated.LastUpdated = now
 
-		if err := h.dao.Upsert(ctx, updated); err != nil {
+		if err := h.dao.Upsert(ctx, &updated); err != nil {
 			return err
 		}
 

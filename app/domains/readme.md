@@ -25,3 +25,7 @@ Responsibilities are split as follows:
 To add a surface operation, expose it from the module first, implement the domain adapter next,
 then wire it at the entrypoint. This keeps every adapter independently testable and prevents the
 executable from accumulating domain behavior.
+
+Mutable public models expose an opaque `Revision` so replace-style editors and document adapters
+can round-trip the version they read. Surfaces transport that value but do not compare or increment
+it; private DAO rows mark it with `store:"revision"`, and the store owns the atomic conflict check.

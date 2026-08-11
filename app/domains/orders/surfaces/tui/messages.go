@@ -8,6 +8,7 @@ type OrdersLoadedMsg struct {
 	Orders []models.Order
 	Next   paging.Cursor
 	Err    error
+	Token  uint64
 }
 
 // OrderCompletedMsg is sent when an order is completed.

@@ -55,7 +55,7 @@ func (c *Commands) Create(ctx *middleware.Context, drink *models.Drink) (*models
 	created.ID = entity.NewDrinkID()
 	created.Status = models.StatusActive
 
-	if err := c.dao.Insert(ctx, created); err != nil {
+	if err := c.dao.Insert(ctx, &created); err != nil {
 		return nil, err
 	}
 

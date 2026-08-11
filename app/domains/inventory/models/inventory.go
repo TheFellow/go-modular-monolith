@@ -16,6 +16,7 @@ const InventoryEntityType = entity.TypeInventory
 
 type Inventory struct {
 	ID           entity.InventoryID
+	Revision     uint64 `json:"revision"`
 	IngredientID entity.IngredientID
 	Amount       measurement.Amount
 	Reserved     measurement.Amount

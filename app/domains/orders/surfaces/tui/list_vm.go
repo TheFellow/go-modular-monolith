@@ -66,6 +66,7 @@ type ListViewModel struct {
 	filter    *filterVM
 	place     *placeVM
 	workflow  uint64
+	loadToken uint64
 	spinner   tui.Spinner
 	loading   bool
 	mutating  bool
@@ -138,6 +139,12 @@ func (m *ListViewModel) Interaction() tui.Interaction {
 
 func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tui.DataInvalidatedMsg:
+		if m.mode != listModeBrowsing || !m.actionEnabled(orders.ControlList) {
+			return m, nil
+		}
+		m.loading, m.err = true, nil
+		return m, tea.Batch(m.spinner.Init(), m.loadOrders())
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 		if m.mode.isConfirming() {
@@ -339,6 +346,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 			return m, tea.Batch(m.spinner.Init(), m.loadOrders())
 		}
 	case OrdersLoadedMsg:
+		if msg.Token != m.loadToken {
+			return m, nil
+		}
 		m.loading = false
 		m.err = msg.Err
 		if msg.Err != nil {
@@ -545,21 +555,23 @@ func (m *ListViewModel) visibleBindingGroups(in [][]key.Binding) [][]key.Binding
 }
 
 func (m *ListViewModel) loadOrders() tea.Cmd {
+	m.loadToken++
+	token := m.loadToken
 	return func() tea.Msg {
 		ordersList, err := m.app.Orders.List(m.context(), m.request)
 		if err != nil {
-			return OrdersLoadedMsg{Err: err}
+			return OrdersLoadedMsg{Err: err, Token: token}
 		}
 
 		orders := make([]ordersmodels.Order, 0, len(ordersList.Items))
 		for i, order := range ordersList.Items {
 			if order == nil {
-				return OrdersLoadedMsg{Err: errors.Internalf("order %d missing", i)}
+				return OrdersLoadedMsg{Err: errors.Internalf("order %d missing", i), Token: token}
 			}
 			orders = append(orders, *order)
 		}
 
-		return OrdersLoadedMsg{Orders: orders, Next: ordersList.Next}
+		return OrdersLoadedMsg{Orders: orders, Next: ordersList.Next, Token: token}
 	}
 }
 

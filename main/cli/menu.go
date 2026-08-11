@@ -301,7 +301,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						if err != nil {
 							return err
 						}
-						input = &menumodels.Menu{ID: menuID, Name: row.Name, Description: row.Desc}
+						input = &menumodels.Menu{ID: menuID, Revision: row.Revision, Name: row.Name, Description: row.Desc}
 					} else {
 						rawID := strings.TrimSpace(cmd.String("id"))
 						if rawID == "" {
@@ -318,7 +318,7 @@ func (c *CLI) menuCommands() *cli.Command {
 						if err != nil {
 							return err
 						}
-						input = &menumodels.Menu{ID: menuID, Name: existing.Name, Description: existing.Description}
+						input = &menumodels.Menu{ID: menuID, Revision: existing.Revision, Name: existing.Name, Description: existing.Description}
 						if cmd.IsSet("name") {
 							input.Name = cmd.String("name")
 						}

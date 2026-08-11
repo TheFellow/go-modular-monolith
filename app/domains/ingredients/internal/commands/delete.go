@@ -69,7 +69,7 @@ func (c *Commands) Retire(ctx *middleware.Context, target RetirementTarget) (*mo
 	deleted := *ingredient
 	deleted.DeletedAt = optional.Some(now)
 
-	if err := c.dao.Update(ctx, deleted); err != nil {
+	if err := c.dao.Update(ctx, &deleted); err != nil {
 		return nil, err
 	}
 

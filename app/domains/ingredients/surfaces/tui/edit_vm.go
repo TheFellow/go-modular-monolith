@@ -174,6 +174,7 @@ func (m *EditIngredientVM) submit() tea.Cmd {
 
 	updated := &models.Ingredient{
 		ID:          m.ingredient.ID,
+		Revision:    m.ingredient.Revision,
 		Name:        strings.TrimSpace(toString(m.nameField.Value())),
 		Category:    toCategory(m.category.Value()),
 		Unit:        toUnit(m.unit.Value()),

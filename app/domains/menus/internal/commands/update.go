@@ -15,7 +15,6 @@ func (c *Commands) Update(ctx *middleware.Context, menu *models.Menu) (*models.M
 	if menu.ID.IsZero() {
 		return nil, errors.Invalidf("id is required")
 	}
-
 	existing, err := c.dao.Get(ctx, menu.ID)
 	if err != nil {
 		return nil, err
@@ -25,6 +24,7 @@ func (c *Commands) Update(ctx *middleware.Context, menu *models.Menu) (*models.M
 	}
 
 	updated := *existing
+	updated.Revision = menu.Revision
 	name := strings.TrimSpace(menu.Name)
 	if name == "" {
 		return nil, errors.Invalidf("name is required")
@@ -38,7 +38,7 @@ func (c *Commands) Update(ctx *middleware.Context, menu *models.Menu) (*models.M
 		return nil, err
 	}
 
-	if err := c.dao.Update(ctx, updated); err != nil {
+	if err := c.dao.Update(ctx, &updated); err != nil {
 		return nil, err
 	}
 

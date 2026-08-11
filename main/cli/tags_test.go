@@ -41,13 +41,14 @@ func TestCLIE2EFixtureCapturesExitAndSeparateOutputStreams(t *testing.T) {
 }
 
 type cliTagTargets struct {
-	drink        string
-	ingredient   string
-	inventory    string
-	menu         string
-	order        string
-	ingredientID string
-	auditEntry   string
+	drink         string
+	drinkRevision uint64
+	ingredient    string
+	inventory     string
+	menu          string
+	order         string
+	ingredientID  string
+	auditEntry    string
 }
 
 //nolint:paralleltest // urfave CLI flags hold parse state; this test intentionally exercises separate invocations.
@@ -251,7 +252,7 @@ func seedCLITagTargets(t *testing.T, dbPath string) cliTagTargets {
 	testutil.Ok(t, a.Close())
 
 	return cliTagTargets{
-		drink: drink.ID.String(), ingredient: ingredient.ID.String(), inventory: stock.ID.String(),
+		drink: drink.ID.String(), drinkRevision: drink.Revision, ingredient: ingredient.ID.String(), inventory: stock.ID.String(),
 		menu: menu.ID.String(), order: order.ID.String(), ingredientID: ingredient.ID.String(),
 		auditEntry: entity.NewAuditEntryID().String(),
 	}

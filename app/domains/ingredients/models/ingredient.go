@@ -18,6 +18,7 @@ const IngredientEntityType = entity.TypeIngredient
 
 type Ingredient struct {
 	ID          entity.IngredientID
+	Revision    uint64 `json:"revision"`
 	Name        string
 	Category    Category
 	Unit        measurement.Unit
