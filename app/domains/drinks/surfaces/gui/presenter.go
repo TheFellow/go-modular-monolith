@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"maps"
@@ -95,6 +96,7 @@ type Presenter struct {
 	changed          func(State)
 	confirmingDelete bool
 	projector        domain.ActionProjector
+	sort             ui.TableSort
 }
 
 func NewPresenter(session *app.Session, d Dependencies) *Presenter {
@@ -157,11 +159,41 @@ func (p *Presenter) loadPage(appendPage bool) {
 			} else {
 				p.state.Items = cloneDrinks(r.Value.drinks)
 			}
+			p.sortItems()
 			p.state.Next = r.Value.next
 			p.state.Ingredients = append([]IngredientOption(nil), r.Value.ingredients...)
 			p.reselect()
 		}
 		p.publish()
+	})
+}
+
+func (p *Presenter) SortItems(column int, direction ui.SortDirection) {
+	if column < 0 || column > 5 {
+		return
+	}
+	p.sort = ui.TableSort{Column: column, Direction: direction}
+	p.sortItems()
+	p.publish()
+}
+
+func (p *Presenter) sortItems() {
+	ui.ApplyTableSort(p.state.Items, p.sort, func(column int, left, right *models.Drink) int {
+		switch column {
+		case 0:
+			return cmp.Compare(left.Name, right.Name)
+		case 1:
+			return cmp.Compare(left.Category, right.Category)
+		case 2:
+			return cmp.Compare(left.Glass, right.Glass)
+		case 3:
+			return cmp.Compare(left.Status, right.Status)
+		case 4:
+			return cmp.Compare(len(left.Recipe.Ingredients), len(right.Recipe.Ingredients))
+		case 5:
+			return cmp.Compare(left.Tags.Canonical().String(), right.Tags.Canonical().String())
+		}
+		return 0
 	})
 }
 func (p *Presenter) NextPage() {

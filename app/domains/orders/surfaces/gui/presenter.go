@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"maps"
@@ -115,6 +116,7 @@ type Presenter struct {
 	confirmTarget *models.Order
 	projector     orders.ActionProjector
 	actionErr     error
+	tableSort     ui.TableSort
 }
 
 func NewPresenter(session *app.Session, deps Dependencies, projectors ...orders.ActionProjector) *Presenter {
@@ -180,12 +182,96 @@ func (p *Presenter) loadPage(appendPage bool) {
 			} else {
 				p.state.Rows = cloneRows(r.Value.rows)
 			}
+			p.sortRows()
 			p.state.Next, p.state.Err = r.Value.next, nil
 			p.state.Selected = findRow(p.state.Rows, selected)
 			p.permissions()
 		}
 		p.publish()
 	})
+}
+
+func (p *Presenter) SortRows(column int, direction ui.SortDirection) {
+	if column < 0 || column > 8 {
+		return
+	}
+	p.tableSort = ui.TableSort{Column: column, Direction: direction}
+	p.sortRows()
+	p.state.Selected = findRow(p.state.Rows, selectedID(p.state.Selected))
+	p.publish()
+}
+
+func (p *Presenter) sortRows() {
+	ui.ApplyTableSort(p.state.Rows, p.tableSort, func(column int, left, right Row) int {
+		switch column {
+		case 0:
+			return cmp.Compare(left.MenuName, right.MenuName)
+		case 1:
+			return cmp.Compare(left.Order.MenuID.String(), right.Order.MenuID.String())
+		case 2:
+			return cmp.Compare(left.Order.Status, right.Order.Status)
+		case 3:
+			return cmp.Compare(len(left.Order.Items), len(right.Order.Items))
+		case 4:
+			return cmp.Compare(orderQuantity(left.Order), orderQuantity(right.Order))
+		case 5:
+			return compareOrderTotals(left.Total, right.Total)
+		case 6:
+			return left.Order.CreatedAt.Compare(right.Order.CreatedAt)
+		case 7:
+			leftTime, leftOK := left.Order.CompletedAt.Unwrap()
+			rightTime, rightOK := right.Order.CompletedAt.Unwrap()
+			if leftOK != rightOK {
+				if leftOK {
+					return 1
+				}
+				return -1
+			}
+			return leftTime.Compare(rightTime)
+		case 8:
+			return cmp.Compare(left.Order.Tags.Canonical().String(), right.Order.Tags.Canonical().String())
+		default:
+			return 0
+		}
+	})
+}
+
+func compareOrderTotals(left, right string) int {
+	parse := func(value string) (string, decimal.Decimal, bool) {
+		value = strings.TrimSpace(value)
+		currency := ""
+		switch {
+		case strings.HasPrefix(value, "$"):
+			currency, value = "USD", strings.TrimPrefix(value, "$")
+		case strings.HasSuffix(value, "€"):
+			currency, value = "EUR", strings.TrimSuffix(value, "€")
+		}
+		amount, err := decimal.Parse(strings.TrimSpace(value))
+		return currency, amount, err == nil
+	}
+	leftCurrency, leftAmount, leftOK := parse(left)
+	rightCurrency, rightAmount, rightOK := parse(right)
+	if leftOK != rightOK {
+		if leftOK {
+			return 1
+		}
+		return -1
+	}
+	if !leftOK {
+		return cmp.Compare(left, right)
+	}
+	if result := cmp.Compare(leftCurrency, rightCurrency); result != 0 {
+		return result
+	}
+	return leftAmount.Cmp(rightAmount)
+}
+
+func orderQuantity(order models.Order) int {
+	total := 0
+	for _, item := range order.Items {
+		total += item.Quantity
+	}
+	return total
 }
 func (p *Presenter) ApplyFilter(filter Filter) bool {
 	if p.busy() || !actionEnabled(p.state.Actions, orders.ControlList) {

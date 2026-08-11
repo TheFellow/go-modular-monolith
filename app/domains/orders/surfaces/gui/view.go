@@ -155,7 +155,7 @@ func (v *View) browser(s State) framework.CanvasObject {
 				v.presenter.Select(id.Row)
 			}
 		}
-		ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Menu", Width: 190}, {Title: "Menu ID", Width: 240}, {Title: "Status", Width: 100}, {Title: "Items", Width: 65}, {Title: "Total quantity", Width: 100}, {Title: "Total", Width: 90}, {Title: "Created", Width: 175}, {Title: "Completed", Width: 175}, {Title: "Tags", Width: 180}, {Title: "Actions", Width: 140}}, nil)
+		ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Menu", Width: 190, Sortable: true}, {Title: "Menu ID", Width: 240, Sortable: true}, {Title: "Status", Width: 100, Sortable: true}, {Title: "Items", Width: 65, Sortable: true}, {Title: "Total quantity", Width: 100, Sortable: true}, {Title: "Total", Width: 90, Sortable: true}, {Title: "Created", Width: 175, Sortable: true}, {Title: "Completed", Width: 175, Sortable: true}, {Title: "Tags", Width: 180, Sortable: true}, {Title: "Actions", Width: 140}}, v.presenter.SortRows)
 	}
 	if len(s.Rows) > 0 {
 		values := make([]string, len(s.Rows))

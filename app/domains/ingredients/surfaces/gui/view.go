@@ -95,7 +95,7 @@ func NewView(p *Presenter) *View {
 			p.Select(v.state.Items[id.Row].ID)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 180}, {Title: "Category", Width: 110}, {Title: "Unit", Width: 85}, {Title: "Description", Width: 260}, {Title: "Tags", Width: 180}, {Title: "Actions", Width: 120}}, nil)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 180, Sortable: true}, {Title: "Category", Width: 110, Sortable: true}, {Title: "Unit", Width: 85, Sortable: true}, {Title: "Description", Width: 260, Sortable: true}, {Title: "Tags", Width: 180, Sortable: true}, {Title: "Actions", Width: 120}}, p.SortItems)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No ingredients found", "Adjust the filter or create a new ingredient.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)

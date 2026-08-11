@@ -77,7 +77,7 @@ func NewView(p *Presenter) *View {
 			p.Select(id.Row)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Started", Width: 170}, {Title: "Completed", Width: 170}, {Title: "Duration", Width: 90}, {Title: "Action", Width: 210}, {Title: "Resource", Width: 220}, {Title: "Principal", Width: 190}, {Title: "Success", Width: 70}, {Title: "Touches", Width: 65}, {Title: "Error", Width: 240}, {Title: "Actions", Width: 120}}, nil)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Started", Width: 170, Sortable: true}, {Title: "Completed", Width: 170, Sortable: true}, {Title: "Duration", Width: 90, Sortable: true}, {Title: "Action", Width: 210, Sortable: true}, {Title: "Resource", Width: 220, Sortable: true}, {Title: "Principal", Width: 190, Sortable: true}, {Title: "Success", Width: 70, Sortable: true}, {Title: "Touches", Width: 65, Sortable: true}, {Title: "Error", Width: 240, Sortable: true}, {Title: "Actions", Width: 120}}, p.SortRows)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No audit activity found", "Adjust the filter or return later after application activity occurs.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)

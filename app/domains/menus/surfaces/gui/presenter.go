@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"maps"
@@ -107,6 +108,7 @@ type Presenter struct {
 	confirming    bool
 	projector     menus.ActionProjector
 	projectionErr error
+	tableSort     ui.TableSort
 }
 
 func NewPresenter(session *app.Session, d Dependencies) *Presenter {
@@ -208,6 +210,7 @@ func (p *Presenter) loadPage(appendPage bool) {
 			} else {
 				p.state.Items = cloneMenus(r.Value.menus)
 			}
+			p.sortItems()
 			p.state.Next = r.Value.next
 			if appendPage {
 				maps.Copy(p.names, r.Value.names)
@@ -217,6 +220,45 @@ func (p *Presenter) loadPage(appendPage bool) {
 			p.reselect()
 		}
 		p.publish()
+	})
+}
+
+func (p *Presenter) SortItems(column int, direction ui.SortDirection) {
+	if column < 0 || column > 5 {
+		return
+	}
+	p.tableSort = ui.TableSort{Column: column, Direction: direction}
+	p.sortItems()
+	p.reselect()
+	p.publish()
+}
+
+func (p *Presenter) sortItems() {
+	ui.ApplyTableSort(p.state.Items, p.tableSort, func(column int, left, right *models.Menu) int {
+		switch column {
+		case 0:
+			return cmp.Compare(left.Name, right.Name)
+		case 1:
+			return cmp.Compare(left.Status, right.Status)
+		case 2:
+			return cmp.Compare(len(left.Items), len(right.Items))
+		case 3:
+			return left.CreatedAt.Compare(right.CreatedAt)
+		case 4:
+			leftTime, leftOK := left.PublishedAt.Unwrap()
+			rightTime, rightOK := right.PublishedAt.Unwrap()
+			if leftOK != rightOK {
+				if leftOK {
+					return 1
+				}
+				return -1
+			}
+			return leftTime.Compare(rightTime)
+		case 5:
+			return cmp.Compare(left.Tags.Canonical().String(), right.Tags.Canonical().String())
+		default:
+			return 0
+		}
 	})
 }
 func (p *Presenter) NextPage() {

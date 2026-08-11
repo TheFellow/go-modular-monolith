@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"maps"
@@ -101,6 +102,7 @@ type Presenter struct {
 	state     State
 	changed   func(State)
 	projector inventory.ActionProjector
+	sort      toolkit.TableSort
 }
 
 func NewPresenter(session *app.Session, executor toolkit.Executor, dispatcher toolkit.Dispatcher, dialogs ...toolkit.Dialogs) *Presenter {
@@ -180,6 +182,7 @@ func (p *Presenter) loadPage(appendPage bool) {
 			} else {
 				p.state.Rows = result.Value.rows
 			}
+			p.sortRowsLocked()
 			p.state.Next = result.Value.next
 			p.state.Selected = findRow(p.state.Rows, selected)
 			// Keep a latent selection for command compatibility; Browse still renders
@@ -194,6 +197,56 @@ func (p *Presenter) loadPage(appendPage bool) {
 		if result.Status == toolkit.Failed {
 			toolkit.ShowPresentation(p.dialogs, result.Err)
 		}
+	})
+}
+
+func (p *Presenter) SortRows(column int, direction toolkit.SortDirection) {
+	if column < 0 || column > 9 {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.sort = toolkit.TableSort{Column: column, Direction: direction}
+	p.sortRowsLocked()
+	p.publishLocked()
+}
+
+func (p *Presenter) sortRowsLocked() {
+	toolkit.ApplyTableSort(p.state.Rows, p.sort, func(column int, left, right Row) int {
+		switch column {
+		case 0:
+			return cmp.Compare(left.Ingredient.Name, right.Ingredient.Name)
+		case 1:
+			return cmp.Compare(left.Inventory.IngredientID.String(), right.Inventory.IngredientID.String())
+		case 2:
+			return cmp.Compare(left.Inventory.Amount.Value(), right.Inventory.Amount.Value())
+		case 3:
+			return cmp.Compare(left.Inventory.ReservedAmount().Value(), right.Inventory.ReservedAmount().Value())
+		case 4:
+			return cmp.Compare(left.Inventory.Available().Value(), right.Inventory.Available().Value())
+		case 5:
+			return cmp.Compare(left.Inventory.Amount.Unit(), right.Inventory.Amount.Unit())
+		case 6:
+			leftCost, leftOK := left.Inventory.CostPerUnit.Unwrap()
+			rightCost, rightOK := right.Inventory.CostPerUnit.Unwrap()
+			if leftOK != rightOK {
+				if leftOK {
+					return 1
+				}
+				return -1
+			}
+			if result := cmp.Compare(leftCost.Currency.Code, rightCost.Currency.Code); result != 0 {
+				return result
+			}
+			return leftCost.Amount.Cmp(rightCost.Amount)
+		case 7:
+			return left.Inventory.LastUpdated.Compare(right.Inventory.LastUpdated)
+		case 8:
+			return cmp.Compare(left.Inventory.Tags.Canonical().String(), right.Inventory.Tags.Canonical().String())
+		case 9:
+			return cmp.Compare(left.Status, right.Status)
+		}
+		return 0
 	})
 }
 

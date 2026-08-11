@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"maps"
@@ -81,6 +82,7 @@ type Presenter struct {
 	state     State
 	changed   func(State)
 	projector ingredients.ActionProjector
+	sort      toolkit.TableSort
 }
 type loadResult struct {
 	items []models.Ingredient
@@ -144,6 +146,7 @@ func (p *Presenter) loadPage(appendPage bool) {
 			} else {
 				p.state.Items = result.Value.items
 			}
+			p.sortItemsLocked()
 			p.state.Next = result.Value.next
 			p.state.Selected = findIngredient(p.state.Items, selected)
 		}
@@ -152,6 +155,35 @@ func (p *Presenter) loadPage(appendPage bool) {
 		if result.Status == toolkit.Failed {
 			toolkit.ShowPresentation(p.dialogs, result.Err)
 		}
+	})
+}
+
+func (p *Presenter) SortItems(column int, direction toolkit.SortDirection) {
+	if column < 0 || column > 4 {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.sort = toolkit.TableSort{Column: column, Direction: direction}
+	p.sortItemsLocked()
+	p.publishLocked()
+}
+
+func (p *Presenter) sortItemsLocked() {
+	toolkit.ApplyTableSort(p.state.Items, p.sort, func(column int, left, right models.Ingredient) int {
+		switch column {
+		case 0:
+			return cmp.Compare(left.Name, right.Name)
+		case 1:
+			return cmp.Compare(left.Category, right.Category)
+		case 2:
+			return cmp.Compare(left.Unit, right.Unit)
+		case 3:
+			return cmp.Compare(left.Description, right.Description)
+		case 4:
+			return cmp.Compare(left.Tags.Canonical().String(), right.Tags.Canonical().String())
+		}
+		return 0
 	})
 }
 

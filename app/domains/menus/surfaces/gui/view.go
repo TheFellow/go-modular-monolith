@@ -129,7 +129,7 @@ func NewView(p *Presenter) *View {
 			p.Select(id.Row)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 210}, {Title: "Status", Width: 100}, {Title: "Items", Width: 70}, {Title: "Created", Width: 190}, {Title: "Published", Width: 190}, {Title: "Tags", Width: 190}, {Title: "Actions", Width: 140}}, nil)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 210, Sortable: true}, {Title: "Status", Width: 100, Sortable: true}, {Title: "Items", Width: 70, Sortable: true}, {Title: "Created", Width: 190, Sortable: true}, {Title: "Published", Width: 190, Sortable: true}, {Title: "Tags", Width: 190, Sortable: true}, {Title: "Actions", Width: 140}}, p.SortItems)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No menus found", "Adjust the filter or create a menu.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
