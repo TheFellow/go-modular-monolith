@@ -26,6 +26,39 @@ func rowInfo(value any) (reflect.Value, reflect.Type, reflect.Value, error) {
 	return v, v.Type(), id, nil
 }
 
+func revisionField(v reflect.Value) (reflect.Value, bool) {
+	t := v.Type()
+	for i := range t.NumField() {
+		if t.Field(i).Tag.Get("store") == "revision" {
+			return v.Field(i), true
+		}
+	}
+	return reflect.Value{}, false
+}
+
+func revisionValue(v reflect.Value) (uint64, bool, error) {
+	field, ok := revisionField(v)
+	if !ok {
+		return 0, false, nil
+	}
+	if field.Kind() < reflect.Uint || field.Kind() > reflect.Uint64 {
+		return 0, true, errors.Invalidf("record revision must be an unsigned integer")
+	}
+	return field.Uint(), true, nil
+}
+
+func setRevision(v reflect.Value, revision uint64) error {
+	field, ok := revisionField(v)
+	if !ok {
+		return nil
+	}
+	if !field.CanSet() || field.Kind() < reflect.Uint || field.Kind() > reflect.Uint64 {
+		return errors.Invalidf("record revision must be a settable unsigned integer")
+	}
+	field.SetUint(revision)
+	return nil
+}
+
 func idString(id reflect.Value) string { return fmt.Sprint(id.Interface()) }
 
 func (t *Tx) Insert(values ...any) error {
@@ -57,30 +90,45 @@ func (t *Tx) insert(value any) error {
 	if id.IsZero() {
 		return errors.Invalidf("record ID is required")
 	}
+	if revision, ok, revisionErr := revisionValue(v); revisionErr != nil {
+		return revisionErr
+	} else if ok && revision != 0 {
+		return errors.Invalidf("new record revision must be zero")
+	}
 	data, err := json.Marshal(v.Interface())
 	if err != nil {
 		return err
 	}
-	_, err = t.tx.ExecContext(t.ctx, "INSERT INTO records(model,id,data) VALUES(?,?,?)", modelName(typ), idString(id), string(data))
+	_, err = t.tx.ExecContext(t.ctx, "INSERT INTO records(model,id,data,revision) VALUES(?,?,?,1)", modelName(typ), idString(id), string(data))
 	if err != nil && isUniqueConstraint(err) {
 		return errors.Conflictf("unique constraint: %w", err)
+	}
+	if err == nil {
+		err = setRevision(v, 1)
 	}
 	return err
 }
 
 func (t *Tx) Update(value any) error {
-	_, typ, id, err := rowInfo(value)
+	v, typ, id, err := rowInfo(value)
 	if err != nil {
 		return err
 	}
 	if id.IsZero() {
 		return errors.Invalidf("record ID is required")
 	}
+	revision, ok, err := revisionValue(v)
+	if err != nil {
+		return err
+	}
+	if !ok || revision == 0 {
+		return errors.Invalidf("record revision is required for update")
+	}
 	data, err := json.Marshal(reflect.ValueOf(value).Elem().Interface())
 	if err != nil {
 		return err
 	}
-	r, err := t.tx.ExecContext(t.ctx, "UPDATE records SET data=? WHERE model=? AND id=?", string(data), modelName(typ), idString(id))
+	r, err := t.tx.ExecContext(t.ctx, "UPDATE records SET data=?, revision=revision+1 WHERE model=? AND id=? AND revision=?", string(data), modelName(typ), idString(id), revision)
 	if err != nil {
 		if isUniqueConstraint(err) {
 			return errors.Conflictf("unique constraint: %w", err)
@@ -89,9 +137,17 @@ func (t *Tx) Update(value any) error {
 	}
 	n, _ := r.RowsAffected()
 	if n == 0 {
-		return errors.NotFoundf("record absent")
+		var current uint64
+		err := t.tx.QueryRowContext(t.ctx, "SELECT revision FROM records WHERE model=? AND id=?", modelName(typ), idString(id)).Scan(&current)
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.NotFoundf("record absent")
+		}
+		if err != nil {
+			return err
+		}
+		return errors.Conflictf("record changed: expected revision %d, current revision %d", revision, current)
 	}
-	return nil
+	return setRevision(v, revision+1)
 }
 
 func (t *Tx) Get(value any) error {
@@ -103,28 +159,50 @@ func (t *Tx) Get(value any) error {
 		return errors.Invalidf("record ID is required")
 	}
 	var data string
-	err = t.tx.QueryRowContext(t.ctx, "SELECT data FROM records WHERE model=? AND id=?", modelName(typ), idString(id)).Scan(&data)
+	var revision uint64
+	err = t.tx.QueryRowContext(t.ctx, "SELECT data,revision FROM records WHERE model=? AND id=?", modelName(typ), idString(id)).Scan(&data, &revision)
 	if errors.Is(err, sql.ErrNoRows) {
 		return errors.NotFoundf("record absent")
 	}
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal([]byte(data), value)
+	if err := json.Unmarshal([]byte(data), value); err != nil {
+		return err
+	}
+	return setRevision(reflect.ValueOf(value).Elem(), revision)
 }
 
 func (t *Tx) Delete(value any) error {
-	_, typ, id, err := rowInfo(value)
+	v, typ, id, err := rowInfo(value)
 	if err != nil {
 		return err
 	}
-	r, err := t.tx.ExecContext(t.ctx, "DELETE FROM records WHERE model=? AND id=?", modelName(typ), idString(id))
+	if id.IsZero() {
+		return errors.Invalidf("record ID is required")
+	}
+	revision, ok, err := revisionValue(v)
+	if err != nil {
+		return err
+	}
+	if !ok || revision == 0 {
+		return errors.Invalidf("record revision is required for delete")
+	}
+	r, err := t.tx.ExecContext(t.ctx, "DELETE FROM records WHERE model=? AND id=? AND revision=?", modelName(typ), idString(id), revision)
 	if err != nil {
 		return err
 	}
 	n, _ := r.RowsAffected()
 	if n == 0 {
-		return errors.NotFoundf("record absent")
+		var current uint64
+		err := t.tx.QueryRowContext(t.ctx, "SELECT revision FROM records WHERE model=? AND id=?", modelName(typ), idString(id)).Scan(&current)
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.NotFoundf("record absent")
+		}
+		if err != nil {
+			return err
+		}
+		return errors.Conflictf("record changed: expected revision %d, current revision %d", revision, current)
 	}
 	return nil
 }
@@ -227,7 +305,7 @@ func (q *Query[T]) sql() (string, []any) {
 	typ := reflect.TypeOf(z)
 	name := modelName(typ)
 	b := strings.Builder{}
-	b.WriteString("SELECT data FROM records WHERE model=?")
+	b.WriteString("SELECT data,revision FROM records WHERE model=?")
 	args := []any{name}
 	for _, p := range q.predicates {
 		path, timeField := queryFieldExpression(typ, p.field)
@@ -284,11 +362,15 @@ func (q *Query[T]) List() ([]T, error) {
 	out := []T{}
 	for rows.Next() {
 		var data string
-		if err := rows.Scan(&data); err != nil {
+		var revision uint64
+		if err := rows.Scan(&data, &revision); err != nil {
 			return nil, err
 		}
 		var v T
 		if err := json.Unmarshal([]byte(data), &v); err != nil {
+			return nil, err
+		}
+		if err := setRevision(reflect.ValueOf(&v).Elem(), revision); err != nil {
 			return nil, err
 		}
 		ok := true

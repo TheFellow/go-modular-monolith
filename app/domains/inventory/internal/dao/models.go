@@ -8,6 +8,7 @@ import (
 
 type StockRow struct {
 	IngredientID string
+	Revision     uint64 `json:"-" store:"revision"`
 	InventoryID  string `store:"index"`
 	Quantity     float64
 	Unit         string
@@ -19,6 +20,7 @@ type StockRow struct {
 // identity; Inventory remains authoritative for how much stock is committed.
 type ReservationRow struct {
 	ID           string
+	Revision     uint64 `json:"-" store:"revision"`
 	OrderID      string `store:"index"`
 	IngredientID string `store:"index"`
 	Quantity     float64

@@ -13,6 +13,7 @@ import (
 
 type IngredientRow struct {
 	ID       string               `table:"ID" json:"id,omitempty"`
+	Revision uint64               `table:"-" json:"revision,omitempty"`
 	Name     string               `table:"NAME" json:"name"`
 	Category string               `table:"CATEGORY" json:"category"`
 	Unit     string               `table:"UNIT" json:"unit"`
@@ -26,6 +27,7 @@ func ToIngredientRow(i *models.Ingredient) IngredientRow {
 	}
 	return IngredientRow{
 		ID:       i.ID.String(),
+		Revision: i.Revision,
 		Name:     i.Name,
 		Category: string(i.Category),
 		Unit:     string(i.Unit),
@@ -54,6 +56,7 @@ func TemplateCreate() IngredientRow {
 func TemplateUpdate() IngredientRow {
 	return IngredientRow{
 		ID:       "ing-abc123",
+		Revision: 1,
 		Name:     "Vodka",
 		Category: string(models.CategorySpirit),
 		Unit:     string(measurement.UnitOz),
@@ -88,6 +91,7 @@ func DecodeUpdate(r io.Reader) (*models.Ingredient, error) {
 	}
 	return &models.Ingredient{
 		ID:          parsedID,
+		Revision:    row.Revision,
 		Name:        row.Name,
 		Category:    models.Category(row.Category),
 		Unit:        measurement.Unit(row.Unit),

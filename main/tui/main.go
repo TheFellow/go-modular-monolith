@@ -112,8 +112,13 @@ func run(ctx context.Context, config tuiConfig, databasePath string) error {
 	}
 	application := app.New(ctx, app.Config{Store: database})
 	defer func() { _ = application.Close() }()
+	changes, err := database.MonitorChanges(ctx, store.DefaultChangePollInterval)
+	if err != nil {
+		return err
+	}
+	defer changes.Close()
 
-	program := tea.NewProgram(NewApp(app.NewSession(ctx, application)), tea.WithAltScreen())
+	program := tea.NewProgram(NewApp(app.NewSession(ctx, application), changes), tea.WithAltScreen())
 	_, err = program.Run()
 	return err
 }

@@ -168,7 +168,7 @@ func TestAudit_TouchesIncludeIngredientUpdateDrinks(t *testing.T) {
 	testutil.Ok(t, err)
 
 	_, err = f.Ingredients.Update(ctx, &ingredientsmodels.Ingredient{
-		ID:   ingredient.ID,
+		ID: ingredient.ID, Revision: ingredient.Revision,
 		Name: "Gin (Updated)",
 	})
 	testutil.Ok(t, err)
@@ -216,7 +216,7 @@ func TestAudit_TouchesIncludeIngredientUpdateMenus(t *testing.T) {
 	testutil.Ok(t, err)
 
 	_, err = f.Ingredients.Update(ctx, &ingredientsmodels.Ingredient{
-		ID:   ingredient.ID,
+		ID: ingredient.ID, Revision: ingredient.Revision,
 		Name: "Fresh Lime Juice",
 	})
 	testutil.Ok(t, err)
@@ -249,7 +249,7 @@ func TestAudit_ListFilters(t *testing.T) {
 	testutil.Ok(t, err)
 
 	_, err = f.Ingredients.Update(ctx, &ingredientsmodels.Ingredient{
-		ID:   ing1.ID,
+		ID: ing1.ID, Revision: ing1.Revision,
 		Name: "Bourbon (Updated)",
 	})
 	testutil.Ok(t, err)
@@ -315,7 +315,7 @@ func TestAudit_ListExpressionFilters(t *testing.T) {
 
 	missingID := entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, cedar.String("missing-filter-target")))
 	_, err = f.Ingredients.Update(f.OwnerContext(), &ingredientsmodels.Ingredient{
-		ID: missingID, Name: "Missing",
+		ID: missingID, Revision: 1, Name: "Missing",
 	})
 	testutil.ErrorIsNotFound(t, err)
 

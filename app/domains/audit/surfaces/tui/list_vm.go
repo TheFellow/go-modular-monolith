@@ -55,6 +55,11 @@ func (m *ListViewModel) Interaction() tui.Interaction {
 }
 func (m *ListViewModel) Update(message tea.Msg) (tui.ViewModel, tea.Cmd) {
 	switch msg := message.(type) {
+	case tui.DataInvalidatedMsg:
+		if !m.actionEnabled(audit.ControlList) {
+			return m, nil
+		}
+		return m, tea.Batch(m.shell.BeginLoading(), m.loadEntries())
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 		if m.filter != nil {

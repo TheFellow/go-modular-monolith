@@ -28,7 +28,7 @@ func (c *Commands) Cancel(ctx *middleware.Context, order *models.Order) (*models
 	updated.Status = models.OrderStatusCancelled
 	updated.CompletedAt = optional.None[time.Time]()
 
-	if err := c.dao.Update(ctx, updated); err != nil {
+	if err := c.dao.Update(ctx, &updated); err != nil {
 		return nil, err
 	}
 

@@ -404,7 +404,7 @@ func (p *Presenter) Submit(form Form) bool {
 				return errors.Invalidf("ingredient is required")
 			}
 			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Ingredient, error) {
-				return p.app.Ingredients.Update(ctx, &models.Ingredient{ID: selected.ID, Name: strings.TrimSpace(form.Name), Category: category, Unit: unit, Description: strings.TrimSpace(form.Description)})
+				return p.app.Ingredients.Update(ctx, &models.Ingredient{ID: selected.ID, Revision: selected.Revision, Name: strings.TrimSpace(form.Name), Category: category, Unit: unit, Description: strings.TrimSpace(form.Description)})
 			})
 		case Tags:
 			if selected == nil {

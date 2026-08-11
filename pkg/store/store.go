@@ -140,7 +140,9 @@ CREATE TABLE records (
   id TEXT NOT NULL,
   data TEXT NOT NULL CHECK(json_valid(data)),
   PRIMARY KEY(model, id)
-)`}
+)`, `
+ALTER TABLE records ADD COLUMN revision INTEGER NOT NULL DEFAULT 1 CHECK(revision > 0)
+`}
 
 // Register installs indexes declared by store tags on a domain's private row
 // type. It is idempotent and safe when several processes start concurrently.
@@ -153,7 +155,7 @@ func (s *Store) Register(ctx context.Context, models ...any) {
 		name := modelName(t)
 		for f := range t.Fields() {
 			tag := f.Tag.Get("store")
-			if tag == "" {
+			if tag == "" || tag == "revision" {
 				continue
 			}
 			unique := strings.Contains(tag, "unique")

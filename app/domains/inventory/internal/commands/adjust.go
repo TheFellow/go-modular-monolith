@@ -105,7 +105,7 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch *models.Patch) (*models
 	}
 	updated.LastUpdated = time.Now().UTC()
 
-	if err := c.dao.Upsert(ctx, updated); err != nil {
+	if err := c.dao.Upsert(ctx, &updated); err != nil {
 		return nil, err
 	}
 

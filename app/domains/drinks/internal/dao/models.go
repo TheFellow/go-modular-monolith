@@ -8,6 +8,7 @@ import (
 
 type DrinkRow struct {
 	ID          string
+	Revision    uint64 `json:"-" store:"revision"`
 	Name        string `store:"unique"`
 	Category    string `store:"index"`
 	Glass       string `store:"index"`

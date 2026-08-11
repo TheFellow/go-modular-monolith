@@ -17,6 +17,7 @@ func toRow(i models.Ingredient) IngredientRow {
 	}
 	return IngredientRow{
 		ID:          i.ID.String(),
+		Revision:    i.Revision,
 		Name:        i.Name,
 		Category:    string(i.Category),
 		Unit:        string(i.Unit),
@@ -34,6 +35,7 @@ func toModel(r IngredientRow) models.Ingredient {
 	}
 	return models.Ingredient{
 		ID:          entity.IngredientID(cedar.NewEntityUID(entity.TypeIngredient, cedar.String(r.ID))),
+		Revision:    r.Revision,
 		Name:        r.Name,
 		Category:    models.Category(r.Category),
 		Unit:        measurement.Unit(r.Unit),

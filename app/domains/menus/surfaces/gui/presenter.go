@@ -524,7 +524,7 @@ func (p *Presenter) Save() bool {
 				return errors.Invalidf("menu not selected")
 			}
 			_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) {
-				return p.app.Menus.Update(ctx, &models.Menu{ID: target.ID, Name: name, Description: description})
+				return p.app.Menus.Update(ctx, &models.Menu{ID: target.ID, Revision: target.Revision, Name: name, Description: description})
 			})
 			return err
 		})

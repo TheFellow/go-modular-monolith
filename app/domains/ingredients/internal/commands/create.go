@@ -34,7 +34,7 @@ func (c *Commands) Create(ctx *middleware.Context, ingredient *models.Ingredient
 	created.Name = name
 	created.Description = strings.TrimSpace(created.Description)
 
-	if err := c.dao.Insert(ctx, created); err != nil {
+	if err := c.dao.Insert(ctx, &created); err != nil {
 		return nil, err
 	}
 

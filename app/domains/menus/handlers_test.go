@@ -119,7 +119,7 @@ func TestMenuPublishedValidator_SetsAvailabilityFromInventory(t *testing.T) {
 	updated := *menu
 	updated.Status = menuM.MenuStatusPublished
 	updated.Items[0].Availability = menuM.AvailabilityAvailable
-	err = menuDAO.Update(txCtx, updated)
+	err = menuDAO.Update(txCtx, &updated)
 	testutil.Ok(t, err)
 	err = d.Dispatch(txCtx, menuevents.MenuPublished{Menu: updated})
 	testutil.Ok(t, err)

@@ -216,6 +216,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						}
 						input = &models.Ingredient{
 							ID:          ingredientID,
+							Revision:    row.Revision,
 							Name:        row.Name,
 							Category:    models.Category(row.Category),
 							Unit:        measurement.Unit(row.Unit),
@@ -230,8 +231,13 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						if err != nil {
 							return err
 						}
+						existing, err := c.app.Ingredients.Get(ctx, ingredientID)
+						if err != nil {
+							return err
+						}
 						input = &models.Ingredient{
 							ID:          ingredientID,
+							Revision:    existing.Revision,
 							Name:        cmd.String("name"),
 							Category:    models.Category(cmd.String("category")),
 							Unit:        measurement.Unit(cmd.String("unit")),

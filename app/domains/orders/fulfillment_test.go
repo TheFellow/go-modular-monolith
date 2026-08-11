@@ -116,6 +116,7 @@ func TestCompleteOrderPrefersHigherQualityCatalogSubstitute(t *testing.T) {
 	wantRye := *ryeStock
 	wantRye.Amount = measurement.MustAmount(3, rye.Unit)
 	wantRye.LastUpdated = remainingRye.LastUpdated
+	wantRye.Revision++
 	testutil.Equals(t, remainingRye, &wantRye)
 	remainingScotch, err := f.Inventory.Get(ctx, scotch.ID)
 	testutil.Ok(t, err)

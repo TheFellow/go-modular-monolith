@@ -22,7 +22,7 @@ func TestIngredients_Update_AllowsUnitChange(t *testing.T) {
 	testutil.Ok(t, err)
 
 	updated, err := f.Ingredients.Update(ctx, &models.Ingredient{
-		ID:   ingredient.ID,
+		ID: ingredient.ID, Revision: ingredient.Revision,
 		Unit: measurement.UnitMl,
 	})
 	testutil.Ok(t, err)
@@ -55,7 +55,7 @@ func TestIngredients_Update_AllowsUnitChangeWhenUsed(t *testing.T) {
 	testutil.Ok(t, err)
 
 	updated, err := f.Ingredients.Update(ctx, &models.Ingredient{
-		ID:   ingredient.ID,
+		ID: ingredient.ID, Revision: ingredient.Revision,
 		Unit: measurement.UnitMl,
 	})
 	testutil.Ok(t, err)
@@ -88,7 +88,7 @@ func TestIngredients_Update_AllowsOtherFieldsWhenUsed(t *testing.T) {
 	testutil.Ok(t, err)
 
 	updated, err := f.Ingredients.Update(ctx, &models.Ingredient{
-		ID:   ingredient.ID,
+		ID: ingredient.ID, Revision: ingredient.Revision,
 		Name: "Fresh Lime Juice",
 	})
 	testutil.Ok(t, err)

@@ -39,6 +39,7 @@ func toRow(m menumodels.Menu) MenuRow {
 
 	return MenuRow{
 		ID:          m.ID.String(),
+		Revision:    m.Revision,
 		Name:        m.Name,
 		Description: m.Description,
 		Items:       items,
@@ -83,6 +84,7 @@ func toModel(r MenuRow) menumodels.Menu {
 
 	return menumodels.Menu{
 		ID:          menumodels.NewMenuID(r.ID),
+		Revision:    r.Revision,
 		Name:        r.Name,
 		Description: r.Description,
 		Items:       items,

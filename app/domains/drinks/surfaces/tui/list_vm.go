@@ -131,6 +131,12 @@ func (m *ListViewModel) Interaction() tui.Interaction {
 
 func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tui.DataInvalidatedMsg:
+		if m.mode != listModeBrowsing || !m.actionEnabled(drinks.ControlList) {
+			return m, nil
+		}
+		m.loading, m.err = true, nil
+		return m, tea.Batch(m.spinner.Init(), m.loadDrinks(m.request.Cursor))
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 		switch m.mode {

@@ -2,12 +2,15 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
 
+	apperrors "github.com/TheFellow/go-modular-monolith/pkg/errors"
 	testutil "github.com/TheFellow/go-modular-monolith/pkg/testutil/assert"
 )
 
@@ -19,6 +22,48 @@ type transactionLifecycleRecord struct {
 type timeQueryRecord struct {
 	ID int
 	At time.Time `store:"index"`
+}
+
+type revisionedRecord struct {
+	ID       int
+	Revision uint64 `json:"-" store:"revision"`
+	Name     string
+}
+
+func TestOptimisticRevisionRejectsStaleUpdate(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "revisions.db")
+	first, err := Open(ctx, path)
+	testutil.ErrorIf(t, err != nil, "open first store: %v", err)
+	defer func() { _ = first.Close() }()
+	second, err := Open(ctx, path)
+	testutil.ErrorIf(t, err != nil, "open second store: %v", err)
+	defer func() { _ = second.Close() }()
+
+	record := revisionedRecord{ID: 1, Name: "original"}
+	err = first.Write(ctx, func(tx *Tx) error { return tx.Insert(&record) })
+	testutil.ErrorIf(t, err != nil || record.Revision != 1, "insert revision = %d, err = %v", record.Revision, err)
+
+	left, right := revisionedRecord{ID: 1}, revisionedRecord{ID: 1}
+	err = first.Read(ctx, func(tx *Tx) error { return tx.Get(&left) })
+	testutil.ErrorIf(t, err != nil, "read left: %v", err)
+	err = second.Read(ctx, func(tx *Tx) error { return tx.Get(&right) })
+	testutil.ErrorIf(t, err != nil, "read right: %v", err)
+
+	left.Name = "winner"
+	err = first.Write(ctx, func(tx *Tx) error { return tx.Update(&left) })
+	testutil.ErrorIf(t, err != nil || left.Revision != 2, "winning revision = %d, err = %v", left.Revision, err)
+
+	right.Name = "stale"
+	err = second.Write(ctx, func(tx *Tx) error { return tx.Update(&right) })
+	testutil.ErrorIf(t, !apperrors.IsConflict(err), "stale update error = %v, want conflict", err)
+	err = second.Write(ctx, func(tx *Tx) error { return tx.Delete(&right) })
+	testutil.ErrorIf(t, !apperrors.IsConflict(err), "stale delete error = %v, want conflict", err)
+
+	stored := revisionedRecord{ID: 1}
+	err = second.Read(ctx, func(tx *Tx) error { return tx.Get(&stored) })
+	testutil.ErrorIf(t, err != nil || stored.Name != "winner" || stored.Revision != 2, "stored = %#v, err = %v", stored, err)
 }
 
 func TestTimeMultiValuePredicatesAndOrdering(t *testing.T) {
@@ -66,6 +111,30 @@ func TestMigrationVersionBookkeepingAndFutureVersion(t *testing.T) {
 		_ = newer.Close()
 	}
 	testutil.ErrorIf(t, err == nil, "opening a future schema version unexpectedly succeeded")
+}
+
+func TestRevisionMigrationUpgradesExistingRows(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "revision-upgrade.db")
+	legacy, err := sql.Open("sqlite", path)
+	testutil.ErrorIf(t, err != nil, "open legacy database: %v", err)
+	_, err = legacy.ExecContext(ctx, `CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)`)
+	testutil.ErrorIf(t, err != nil, "create legacy migration ledger: %v", err)
+	_, err = legacy.ExecContext(ctx, `CREATE TABLE records (model TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL CHECK(json_valid(data)), PRIMARY KEY(model, id))`)
+	testutil.ErrorIf(t, err != nil, "create legacy records: %v", err)
+	_, err = legacy.ExecContext(ctx, `INSERT INTO schema_migrations(version, applied_at) VALUES (1, 'legacy')`)
+	testutil.ErrorIf(t, err != nil, "record legacy migration: %v", err)
+	_, err = legacy.ExecContext(ctx, `INSERT INTO records(model,id,data) VALUES (?, '1', '{"ID":1,"Name":"legacy"}')`, modelName(reflect.TypeFor[revisionedRecord]()))
+	testutil.ErrorIf(t, err != nil, "insert legacy row: %v", err)
+	testutil.ErrorIf(t, legacy.Close() != nil, "close legacy database")
+
+	upgraded, err := Open(ctx, path)
+	testutil.ErrorIf(t, err != nil, "upgrade database: %v", err)
+	defer func() { _ = upgraded.Close() }()
+	record := revisionedRecord{ID: 1}
+	err = upgraded.Read(ctx, func(tx *Tx) error { return tx.Get(&record) })
+	testutil.ErrorIf(t, err != nil || record.Name != "legacy" || record.Revision != 1, "upgraded row = %#v, err = %v", record, err)
 }
 
 func TestConcurrentMigrationInitialization(t *testing.T) {

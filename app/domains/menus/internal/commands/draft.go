@@ -27,7 +27,7 @@ func (c *Commands) Draft(ctx *middleware.Context, menu *models.Menu) (*models.Me
 		return nil, err
 	}
 
-	if err := c.dao.Update(ctx, updated); err != nil {
+	if err := c.dao.Update(ctx, &updated); err != nil {
 		return nil, err
 	}
 

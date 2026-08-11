@@ -45,7 +45,7 @@ func (h *StockAdjusted) Handle(ctx *middleware.HandlerContext, e inventoryevents
 		} else {
 			order.Status = models.OrderStatusBlocked
 		}
-		if err := h.dao.Update(ctx, *order); err != nil {
+		if err := h.dao.Update(ctx, order); err != nil {
 			return err
 		}
 		ctx.TouchEntity(order.ID.EntityUID())

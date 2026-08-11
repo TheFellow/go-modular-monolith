@@ -77,6 +77,22 @@ func TestE2E_DashboardAndTagResultTransitionsStayWithinViewport(t *testing.T) {
 	driver.RequireText("Mixology > Dashboard")
 }
 
+func TestDatabaseInvalidationReloadsCurrentTUIView(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	driver := tuitest.NewDriver(t, NewApp(f.App))
+	driver.Resize(100, 40)
+	driver.Press("2")
+	driver.RequireNoText("Reactive Tonic")
+
+	_, err := f.Ingredients.Create(f.OwnerContext(), &ingredientsmodels.Ingredient{
+		Name: "Reactive Tonic", Category: ingredientsmodels.CategoryMixer, Unit: measurement.UnitMl,
+	})
+	testutil.Ok(t, err)
+	driver.Send(databaseChangedMsg{epoch: 1})
+	driver.RequireText("Reactive Tonic")
+}
+
 type tagViewScenario struct {
 	name, nav, title string
 	model            func(testing.TB, *testutil.Fixture) (tui.ViewModel, cedar.EntityUID)

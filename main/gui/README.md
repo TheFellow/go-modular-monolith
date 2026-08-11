@@ -70,6 +70,11 @@ The default desktop log locations are:
 CLI, TUI, and GUI processes on the same machine may use `data/mixology.db` concurrently. WAL keeps
 reads available while SQLite serializes writes, with a 10-second busy timeout. Close every Mixology
 surface before moving or removing the file, and keep it on a local rather than network filesystem.
+The desktop watches SQLite's data version on a dedicated connection. A committed CLI, TUI, or other
+GUI write schedules the same authorized refresh used by the manual command. Signals are coalesced;
+they carry no domain data. An editor with unsaved changes is left intact and marked stale until it
+is cancelled or saved. If it saves after another writer changed the record, the store returns a
+conflict instead of silently replacing the newer revision.
 The desktop log can be reset independently by moving or removing
 `mixology.log` from the directory above while the desktop application is
 closed.

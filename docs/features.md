@@ -129,6 +129,11 @@ CLI, TUI, GUI, and seeder default to `data/mixology.db`. Multiple processes on t
 open that local file: WAL permits concurrent readers, SQLite serializes writers, and a blocked
 operation waits up to 10 seconds before returning a busy error. Do not place the database on a
 network filesystem or share it between machines.
+GUI and TUI processes poll SQLite's connection-local data version and re-query after committed
+changes, so a CLI write appears without manual refresh. Notifications are coalesced hints rather
+than a durable message stream. Editable records carry a revision token; stale saves fail as typed
+conflicts at the store boundary. An in-progress editor is preserved and refreshed only after the
+workflow ends.
 Interactive entrypoints share `--db`, `--actor`, `--log-level`, `--log-format`, `--log-file`, and
 `--metrics`, with corresponding `MIXOLOGY_*` variables. The GUI adds `--data-dir`. Command-line
 options override environment values. The [telemetry guide](../pkg/telemetry/README.md) documents

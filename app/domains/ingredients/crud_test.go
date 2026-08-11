@@ -30,12 +30,13 @@ func TestIngredients_CreateGetUpdateDelete(t *testing.T) {
 	testutil.Equals(t, got, created)
 
 	updated, err := f.Ingredients.Update(ctx, &models.Ingredient{
-		ID: created.ID, Name: "Fresh Lime Juice", Unit: measurement.UnitMl,
+		ID: created.ID, Revision: created.Revision, Name: "Fresh Lime Juice", Unit: measurement.UnitMl,
 	})
 	testutil.Ok(t, err)
 	wantUpdated := *created
 	wantUpdated.Name = "Fresh Lime Juice"
 	wantUpdated.Unit = measurement.UnitMl
+	wantUpdated.Revision++
 	testutil.Equals(t, updated, &wantUpdated)
 
 	got, err = f.Ingredients.Get(ctx, created.ID)

@@ -154,7 +154,7 @@ func TestPresenterSuppressesStaleOutOfOrderReads(t *testing.T) {
 func TestPresenterSnapshotsAreDefensiveAndTouchesSorted(t *testing.T) {
 	fixture := testutil.NewFixture(t)
 	ingredient := createAuditedIngredient(t, fixture, "Snapshot")
-	_, err := fixture.Ingredients.Update(fixture.OwnerContext(), &models.Ingredient{ID: ingredient.ID, Name: "Snapshot updated", Category: models.CategoryOther, Unit: measurement.UnitOz})
+	_, err := fixture.Ingredients.Update(fixture.OwnerContext(), &models.Ingredient{ID: ingredient.ID, Revision: ingredient.Revision, Name: "Snapshot updated", Category: models.CategoryOther, Unit: measurement.UnitOz})
 	testutil.Ok(t, err)
 	presenter := auditPresenter(fixture)
 	presenter.Refresh()

@@ -36,7 +36,7 @@ func (h *MenuPublished) Handle(ctx *middleware.HandlerContext, e events.MenuPubl
 		return nil
 	}
 
-	if err := h.dao.Update(ctx, menu); err != nil {
+	if err := h.dao.Update(ctx, &menu); err != nil {
 		return err
 	}
 	ctx.TouchEntity(menu.ID.EntityUID())

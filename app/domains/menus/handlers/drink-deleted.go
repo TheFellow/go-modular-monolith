@@ -35,7 +35,7 @@ func (h *DrinkDeleted) Handle(ctx *middleware.HandlerContext, e drinksevents.Dri
 			}
 		}
 		menu.Items = filtered
-		if err := h.dao.Update(ctx, *menu); err != nil {
+		if err := h.dao.Update(ctx, menu); err != nil {
 			return err
 		}
 		ctx.TouchEntity(menu.ID.EntityUID())

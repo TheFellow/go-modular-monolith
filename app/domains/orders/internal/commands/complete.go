@@ -34,7 +34,7 @@ func (c *Commands) Complete(ctx *middleware.Context, order *models.Order) (*mode
 	updated.Status = models.OrderStatusCompleted
 	updated.CompletedAt = optional.Some(now)
 
-	if err := c.dao.Update(ctx, updated); err != nil {
+	if err := c.dao.Update(ctx, &updated); err != nil {
 		return nil, err
 	}
 

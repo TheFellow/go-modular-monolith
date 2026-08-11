@@ -44,6 +44,7 @@ func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
 
 	updated, err := f.Drinks.Update(ctx, &models.Drink{
 		ID:       created.ID,
+		Revision: created.Revision,
 		Name:     "Margarita",
 		Category: models.DrinkCategoryCocktail,
 		Glass:    models.GlassTypeCoupe,

@@ -5,9 +5,13 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-func (d *DAO) Update(ctx store.Context, drink models.Drink) error {
+func (d *DAO) Update(ctx store.Context, drink *models.Drink) error {
 	return store.Write(ctx, func(tx *store.Tx) error {
-		row := toRow(drink)
-		return store.MapError(tx.Update(&row), "update drink %s", drink.ID.String())
+		row := toRow(*drink)
+		if err := store.MapError(tx.Update(&row), "update drink %s", drink.ID.String()); err != nil {
+			return err
+		}
+		drink.Revision = row.Revision
+		return nil
 	})
 }

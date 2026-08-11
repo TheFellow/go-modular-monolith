@@ -18,6 +18,7 @@ func toRow(d drinksmodels.Drink) DrinkRow {
 	}
 	return DrinkRow{
 		ID:          d.ID.String(),
+		Revision:    d.Revision,
 		Name:        d.Name,
 		Category:    string(d.Category),
 		Glass:       string(d.Glass),
@@ -41,6 +42,7 @@ func toModel(r DrinkRow) (drinksmodels.Drink, error) {
 	}
 	return drinksmodels.Drink{
 		ID:          drinksmodels.NewDrinkID(r.ID),
+		Revision:    r.Revision,
 		Name:        r.Name,
 		Category:    drinksmodels.DrinkCategory(r.Category),
 		Glass:       drinksmodels.GlassType(r.Glass),
