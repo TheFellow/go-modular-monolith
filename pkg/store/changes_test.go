@@ -50,3 +50,21 @@ func TestChangeMonitorSignalsCommittedWritesAndIgnoresRollback(t *testing.T) {
 	}
 	testutil.ErrorIf(t, rollbackSignal, "rolled-back write produced an invalidation")
 }
+
+func TestChangeMonitorShutdownToleratesMissingConnection(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	monitor := &ChangeMonitor{
+		interval: time.Hour, cancel: cancel,
+		done: make(chan struct{}), signals: make(chan struct{}, 1),
+	}
+	monitor.run(ctx, nil, 0)
+	finished := false
+	select {
+	case <-monitor.Done():
+		finished = true
+	default:
+	}
+	testutil.ErrorIf(t, !finished, "monitor did not finish shutdown")
+}
