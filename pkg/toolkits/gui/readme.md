@@ -21,6 +21,9 @@ Shell + Route + View
 - `Activated` refreshes a view on selection. `Commander` maps shell intents (`refresh`, `new`,
   `save`, `cancel`) to the active view so menus and shortcuts use the same controls as pointer
   input.
+- `Shell.InvalidateCurrent` adapts a payload-free external change hint to those same contracts. It
+  refreshes a clean commander, defers while `UnsavedChanges` is true, and activates the view after
+  cancellation. The toolkit does not subscribe to a database or carry domain records.
 - `SemanticButton`, `SemanticEntry`, `FilterSelect`, and `ActionSelect` expose stable IDs for real
   widget tests. `Trigger` and `SubmitOnEnter` preserve visible enabled/disabled guards.
 - Domain presenters may consume framework-neutral [`actions.State`](../../presentation/actions/README.md) values.
@@ -47,6 +50,8 @@ Shell + Route + View
 - `LatestRequest[T]` implements latest-wins loading, cancellation, and stale-publication rejection.
   `Submission` admits at most one mutation. `GatedDispatcher` drops publications after view or app
   shutdown. The desktop must close/drain its managed executor before closing the session.
+- External invalidations must enter through the injected `Dispatcher`; they can initiate normal
+  loaders but must never mutate Fyne widgets from the watcher goroutine.
 
 ## Fast path
 

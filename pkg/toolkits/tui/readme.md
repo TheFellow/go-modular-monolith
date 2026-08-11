@@ -13,6 +13,9 @@ and workflows.
 - Layout helpers calculate pane widths without duplicating Lip Gloss border/padding arithmetic.
 - `Spinner` and the small message/type contracts cover shared loading behavior.
 - `ViewModel` and `Interaction` define the shell-facing contract without knowing application routes.
+- `DataInvalidatedMsg` is a coalesced, payload-free hint from executable composition. Domain view
+  models handle it by starting their ordinary query command; input ownership and deferred refresh
+  policy remain responsibilities of the root shell.
 - [components](components/readme.md), [keys](keys/readme.md), and [styles](styles/readme.md) provide
   reusable controls and defaults. Tag controls receive parsing and persistence functions, so the
   toolkit never imports application types.
@@ -24,6 +27,10 @@ and workflows.
 
 Mixology route identity and navigation messages live in `main/tui/routes`; domain adapters own
 domain-specific labels and behavior. The toolkit has no imports of `app` or `main`.
+
+Reload commands should carry a monotonically increasing request token and ignore older results.
+This matters for both manual refresh and external invalidation because Bubble Tea commands may
+complete out of order.
 
 ## Fast path
 
