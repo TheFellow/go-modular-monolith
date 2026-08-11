@@ -37,6 +37,13 @@ document use `--file` or `--stdin` (which may receive a pipe); `--template` prin
 See the [feature guide](../../docs/features.md) for IDs, filters, tags, authorization personas, and
 audit examples.
 
+Replace-style update documents for drinks, ingredients, and menus must round-trip the positive
+`revision` returned by a read. The value is an opaque concurrency token: do not increment it in a
+script. A stale value returns the standard conflict exit code instead of overwriting another
+client's change. Flag-based ingredient and menu updates read the current revision immediately
+before submitting, while JSON input remains explicit so read/edit/write automation can detect
+concurrent changes.
+
 Retirement is a distinct authorized operation; `ingredients delete` remains a compatibility alias
 for retirement without replacement. An explicit replacement updates compatible future recipes,
 while omission preserves affected recipes for review. `menus readiness` reports publication
