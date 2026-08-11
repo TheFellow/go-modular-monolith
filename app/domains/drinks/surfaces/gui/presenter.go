@@ -587,6 +587,7 @@ func (p *Presenter) formDrink() (*models.Drink, error) {
 	d := &models.Drink{Name: name, Category: category, Glass: glass, Description: description, Recipe: recipe}
 	if p.state.Mode == Editing && p.state.Selected != nil {
 		d.ID = p.state.Selected.ID
+		d.Revision = p.state.Selected.Revision
 	}
 	return d, nil
 }

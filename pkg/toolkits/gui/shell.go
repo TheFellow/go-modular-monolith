@@ -48,6 +48,7 @@ type Shell struct {
 	body             *framework.Container
 	content          framework.CanvasObject
 	navigation       map[string]*widget.Button
+	stale            map[string]bool
 	initialActivated bool
 	confirmAbandon   func(func(bool))
 }
@@ -62,6 +63,7 @@ func NewShell(routes []Route, initialRoute string) (*Shell, error) {
 		routes:     make(map[string]Route, len(routes)),
 		views:      make(map[string]View, len(routes)),
 		navigation: make(map[string]*widget.Button, len(routes)),
+		stale:      make(map[string]bool, len(routes)),
 		title:      widget.NewLabel(""),
 		identity:   widget.NewLabel("Mixology\nSigned in"),
 		body:       container.NewStack(),
@@ -127,7 +129,36 @@ func (s *Shell) ExecuteCommand(command Command) bool {
 		return false
 	}
 	commander, ok := view.(Commander)
-	return ok && commander.ExecuteCommand(command)
+	handled := ok && commander.ExecuteCommand(command)
+	if handled && command == CommandCancel && s.stale[s.current] && !s.needsAbandonConfirmation() {
+		s.stale[s.current] = false
+		if activated, ok := view.(Activated); ok {
+			activated.Activate()
+		}
+	}
+	return handled
+}
+
+// InvalidateCurrent asks the selected read surface to refresh. Editable
+// surfaces may decline CommandRefresh while a workflow is active; the shell
+// remembers that state and refreshes after cancellation or reactivation.
+func (s *Shell) InvalidateCurrent() {
+	view, ok := s.views[s.current]
+	if !ok {
+		return
+	}
+	if commander, ok := view.(Commander); ok && commander.ExecuteCommand(CommandRefresh) {
+		s.stale[s.current] = false
+		return
+	}
+	if dirty, ok := view.(UnsavedChanges); ok && dirty.HasUnsavedChanges() {
+		s.stale[s.current] = true
+		return
+	}
+	if activated, ok := view.(Activated); ok {
+		activated.Activate()
+		s.stale[s.current] = false
+	}
 }
 
 // Navigate selects a route, constructing its view on first use.
@@ -213,6 +244,7 @@ func (s *Shell) navigate(id string, activate bool) error {
 	}
 	if activated, ok := view.(Activated); activate && ok {
 		activated.Activate()
+		s.stale[id] = false
 	}
 	return nil
 }

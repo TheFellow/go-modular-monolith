@@ -36,7 +36,7 @@ func (c *Commands) Publish(ctx *middleware.Context, menu *models.Menu) (*models.
 		return nil, err
 	}
 
-	if err := c.dao.Update(ctx, updated); err != nil {
+	if err := c.dao.Update(ctx, &updated); err != nil {
 		return nil, err
 	}
 

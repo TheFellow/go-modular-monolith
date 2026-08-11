@@ -7,6 +7,7 @@ import (
 
 type Menu struct {
 	ID          string               `json:"id"`
+	Revision    uint64               `json:"revision"`
 	Name        string               `json:"name"`
 	Description string               `json:"description,omitempty"`
 	Status      string               `json:"status"`
@@ -39,6 +40,7 @@ func FromDomainMenu(m models.Menu) Menu {
 
 	return Menu{
 		ID:          m.ID.String(),
+		Revision:    m.Revision,
 		Name:        m.Name,
 		Description: m.Description,
 		Status:      string(m.Status),

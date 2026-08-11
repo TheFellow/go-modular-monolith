@@ -146,7 +146,7 @@ func TestIngredientUpdatedHandlersAuditEveryDependentWithoutMutatingThem(t *test
 	menuB := testutil.CreateMenu(t, f, "Menu B", testutil.WithDrink(affectedA))
 	unrelatedMenu := testutil.CreateMenu(t, f, "Unrelated", testutil.WithDrink(survivor))
 
-	_, err := f.Ingredients.Update(ctx, &ingredientsmodels.Ingredient{ID: target.ID, Name: "Renamed Target"})
+	_, err := f.Ingredients.Update(ctx, &ingredientsmodels.Ingredient{ID: target.ID, Revision: target.Revision, Name: "Renamed Target"})
 	testutil.Ok(t, err)
 	for _, want := range []*drinksmodels.Drink{affectedA, affectedB, survivor} {
 		got, err := f.Drinks.Get(ctx, want.ID)

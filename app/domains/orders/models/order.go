@@ -20,6 +20,7 @@ func NewOrderID(id string) entity.OrderID {
 
 type Order struct {
 	ID                 entity.OrderID
+	Revision           uint64 `json:"revision"`
 	MenuID             entity.MenuID
 	Items              []OrderItem
 	IngredientUsage    []IngredientUsage

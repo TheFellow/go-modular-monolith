@@ -24,7 +24,11 @@ permits only one writer at a time; keep command transactions short. The database
 local filesystem. Do not share it between machines over NFS, SMB, or similar network filesystems.
 
 Each process observes committed changes made by the CLI, GUI, or another process on its next query.
-Live UI refresh/notification is a presentation concern layered above this consistency guarantee.
+Long-lived clients may call `Store.MonitorChanges` to turn a pinned connection's
+`PRAGMA data_version` into a coalesced invalidation signal. The signal is deliberately lossy and
+contains no records: consumers re-query through the application layer, preserving authorization,
+filtering, and hydration. Rolled-back writes do not signal. A monitor reconnect publishes an
+invalidation because commits may have occurred while its connection was unavailable.
 
 ## Schema and domain rows
 
@@ -34,8 +38,9 @@ declared SQLite expression indexes, so concurrent process startup is safe:
 
 ```go
 type DrinkRow struct {
-    ID   string
-    Name string `store:"unique"`
+    ID       string
+    Revision uint64 `json:"-" store:"revision"`
+    Name     string `store:"unique"`
 }
 
 func Register(ctx context.Context, s *store.Store) {
@@ -46,6 +51,18 @@ func Register(ctx context.Context, s *store.Store) {
 For a compound invariant, name all fields on one tag, for example
 `store:"unique=EntityType+EntityID+Key"`. These are database constraints, not check-then-insert
 conventions, so competing writers cannot violate them.
+
+The `revision` tag opts a row into optimistic concurrency. Insert requires revision zero and sets it
+to one. Reads populate the current revision. Update and delete include that revision in their SQL
+predicate; update increments it atomically, while a stale predicate returns a typed conflict. Public
+domain models and presentation DTOs must round-trip the token rather than calculating or comparing
+it themselves. This keeps the invariant at the persistence boundary and prevents a check-then-write
+race between processes.
+
+`ChangeMonitor.Signals` is an edge notification, while `ChangeMonitor.Epoch` is its monotonically
+increasing process-local level. The default 250 ms poll is intended for responsive thick clients,
+not as a durable event stream. Multiple commits may collapse into one signal, and consumers must
+always treat it as “query again,” never as evidence that a particular entity changed.
 
 ## Transactions
 

@@ -72,7 +72,7 @@ func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.
 		return nil, err
 	}
 
-	if err := c.dao.Insert(ctx, created); err != nil {
+	if err := c.dao.Insert(ctx, &created); err != nil {
 		return nil, err
 	}
 

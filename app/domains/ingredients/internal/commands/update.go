@@ -16,13 +16,13 @@ func (c *Commands) Update(ctx *middleware.Context, ingredient *models.Ingredient
 	if ingredient.ID.IsZero() {
 		return nil, errors.Invalidf("id is required")
 	}
-
 	existing, err := c.dao.Get(ctx, ingredient.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	updated := *existing
+	updated.Revision = ingredient.Revision
 	if name := strings.TrimSpace(ingredient.Name); name != "" {
 		updated.Name = name
 	}
@@ -47,7 +47,7 @@ func (c *Commands) Update(ctx *middleware.Context, ingredient *models.Ingredient
 	}
 	updated.Description = strings.TrimSpace(updated.Description)
 
-	if err := c.dao.Update(ctx, updated); err != nil {
+	if err := c.dao.Update(ctx, &updated); err != nil {
 		return nil, err
 	}
 

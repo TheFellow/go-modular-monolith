@@ -178,6 +178,9 @@ func (m *Tags) Interaction() tui.Interaction {
 
 func (m *Tags) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	switch typed := msg.(type) {
+	case tui.DataInvalidatedMsg:
+		// Browsing shows only operation choices; workflows re-query when entered.
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.setSize(typed.Width, typed.Height)
 		return m, nil

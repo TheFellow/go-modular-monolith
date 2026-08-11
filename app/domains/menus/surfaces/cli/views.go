@@ -13,6 +13,7 @@ import (
 
 type MenuRow struct {
 	ID          string               `table:"ID" json:"id,omitempty"`
+	Revision    uint64               `table:"-" json:"revision,omitempty"`
 	Name        string               `table:"NAME" json:"name"`
 	Status      string               `table:"STATUS" json:"status,omitempty"`
 	Items       string               `table:"ITEMS" json:"items,omitempty"`
@@ -41,6 +42,7 @@ func ToMenuRow(m *models.Menu) MenuRow {
 	}
 	return MenuRow{
 		ID:          m.ID.String(),
+		Revision:    m.Revision,
 		Name:        m.Name,
 		Status:      string(m.Status),
 		Items:       fmt.Sprintf("%d", len(m.Items)),
@@ -95,9 +97,10 @@ func TemplateCreate() MenuRow {
 
 func TemplateUpdate() MenuRow {
 	return MenuRow{
-		ID:   "mnu-...",
-		Name: "Summer Cocktails",
-		Desc: "Refreshing drinks for warm weather",
+		ID:       "mnu-...",
+		Revision: 1,
+		Name:     "Summer Cocktails",
+		Desc:     "Refreshing drinks for warm weather",
 	}
 }
 

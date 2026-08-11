@@ -27,7 +27,9 @@ go run ./main/gui
 
 All entrypoints use `data/mixology.db` by default. Override it with `--db` or `MIXOLOGY_DB`.
 CLI, TUI, and GUI processes on the same machine may use that local file concurrently; SQLite
-serializes writes and waits up to 10 seconds for a busy writer.
+serializes writes and waits up to 10 seconds for a busy writer. The GUI and TUI automatically
+re-query after another connection commits; stale edits are rejected with an optimistic-concurrency
+conflict rather than overwriting newer data.
 Database files created by the former bstore backend are incompatible; reseed them or export/import
 their data with the previous application version before opening this version.
 They also share actor, logging, and metrics options; run any entrypoint with `--help` for the full

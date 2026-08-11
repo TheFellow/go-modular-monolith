@@ -38,6 +38,7 @@ func toRow(o models.Order) OrderRow {
 	}
 	return OrderRow{
 		ID:                 o.ID.String(),
+		Revision:           o.Revision,
 		MenuID:             o.MenuID.String(),
 		Items:              items,
 		IngredientUsage:    usage,
@@ -93,6 +94,7 @@ func toModel(r OrderRow) models.Order {
 
 	return models.Order{
 		ID:                 models.NewOrderID(r.ID),
+		Revision:           r.Revision,
 		MenuID:             menumodels.NewMenuID(r.MenuID),
 		Items:              items,
 		IngredientUsage:    usage,

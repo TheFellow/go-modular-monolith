@@ -64,7 +64,7 @@ func TestRunTaggedMutationRollsBackDomainMutationWhenTagReplacementFails(t *test
 	desired := tag.Tags{{Key: "region", Value: "east"}}
 
 	_, err = app.RunTaggedMutation(f.App.App, f.OwnerContext(), &desired, func(ctx *middleware.Context) (*taggedIngredient, error) {
-		_, updateErr := f.App.Ingredients.Update(ctx, &models.Ingredient{ID: created.ID, Name: "After", Category: models.CategorySpirit, Unit: "oz"})
+		_, updateErr := f.App.Ingredients.Update(ctx, &models.Ingredient{ID: created.ID, Revision: created.Revision, Name: "After", Category: models.CategorySpirit, Unit: "oz"})
 		// A syntactically valid but nonexistent target forces replacement failure.
 		return &taggedIngredient{ID: entity.NewIngredientID()}, updateErr
 	})

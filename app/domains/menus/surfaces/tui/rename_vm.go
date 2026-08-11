@@ -130,6 +130,7 @@ func (m *RenameMenuVM) submit() tea.Cmd {
 
 	updated := &models.Menu{
 		ID:          m.menu.ID,
+		Revision:    m.menu.Revision,
 		Name:        name,
 		Description: strings.TrimSpace(toString(m.description.Value())),
 	}

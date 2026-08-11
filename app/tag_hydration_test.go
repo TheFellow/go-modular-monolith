@@ -79,7 +79,7 @@ func TestOperationalEntitiesHydrateTagsThroughGetListAndCedar(t *testing.T) {
 	assertHydrated(t, gotStock.Tags, gotStock.CedarEntity(), want)
 	assertHydrated(t, gotMenu.Tags, gotMenu.CedarEntity(), want)
 	assertHydrated(t, gotOrder.Tags, gotOrder.CedarEntity(), want)
-	updatedIngredient, err := f.Ingredients.Update(ctx, &ingredientsmodels.Ingredient{ID: ingredient.ID, Description: "updated"})
+	updatedIngredient, err := f.Ingredients.Update(ctx, &ingredientsmodels.Ingredient{ID: ingredient.ID, Revision: ingredient.Revision, Description: "updated"})
 	testutil.Ok(t, err)
 	assertHydrated(t, updatedIngredient.Tags, updatedIngredient.CedarEntity(), want)
 

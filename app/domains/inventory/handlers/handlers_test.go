@@ -49,6 +49,7 @@ func TestOrderCompletedHandlersDepleteUsedStockAndPreserveUnrelatedStock(t *test
 	wantUsedStock := *usedStock
 	wantUsedStock.Amount = measurement.MustAmount(0, used.Unit)
 	wantUsedStock.LastUpdated = gotUsedStock.LastUpdated
+	wantUsedStock.Revision++
 	testutil.Equals(t, gotUsedStock, &wantUsedStock)
 	gotOtherStock, err := f.Inventory.Get(ctx, other.ID)
 	testutil.Ok(t, err)

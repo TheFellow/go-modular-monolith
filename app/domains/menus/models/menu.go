@@ -18,6 +18,7 @@ func NewMenuID(id string) entity.MenuID {
 
 type Menu struct {
 	ID          entity.MenuID
+	Revision    uint64 `json:"revision"`
 	Name        string
 	Description string
 	Items       []MenuItem

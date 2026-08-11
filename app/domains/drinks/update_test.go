@@ -26,6 +26,7 @@ func TestDrinks_ABAC_SommelierCannotChangeWineToCocktail(t *testing.T) {
 
 	updated := drinkForPolicy(created.Name, models.DrinkCategoryCocktail, base.ID)
 	updated.ID = created.ID
+	updated.Revision = created.Revision
 	_, err = f.Drinks.Update(sommelier, &updated)
 	testutil.ErrorIsPermission(t, err)
 
@@ -51,9 +52,34 @@ func TestDrinks_ABAC_BartenderCanUpdateCocktail(t *testing.T) {
 
 	updated := drinkForPolicy(created.Name, models.DrinkCategoryCocktail, base.ID)
 	updated.ID = created.ID
+	updated.Revision = created.Revision
 	updated.Description = "Stirred, not shaken"
 
 	out, err := f.Drinks.Update(bartender, &updated)
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, out.Category != models.DrinkCategoryCocktail, "expected cocktail category")
+}
+
+func TestDrinks_UpdateRejectsStaleRevision(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ctx := f.OwnerContext()
+	base := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
+		Name: "Revision Base", Category: ingredientsmodels.CategoryOther, Unit: measurement.UnitOz,
+	})
+
+	created, err := f.Drinks.Create(ctx, new(drinkForPolicy("Original", models.DrinkCategoryCocktail, base.ID)))
+	testutil.Ok(t, err)
+	winner, stale := *created, *created
+	winner.Description = "winner"
+	committed, err := f.Drinks.Update(ctx, &winner)
+	testutil.Ok(t, err)
+	testutil.Equals(t, committed.Revision, created.Revision+1)
+
+	stale.Description = "stale"
+	_, err = f.Drinks.Update(ctx, &stale)
+	testutil.ErrorIsConflict(t, err)
+	current, err := f.Drinks.Get(ctx, created.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, current.Description, "winner")
 }

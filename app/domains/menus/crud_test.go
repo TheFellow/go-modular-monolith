@@ -51,12 +51,13 @@ func TestMenus_CreateGetUpdateItemsPublishDraftDelete(t *testing.T) {
 	testutil.Equals(t, got, created, cmpopts.EquateEmpty())
 
 	updated, err := f.Menus.Update(ctx, &models.Menu{
-		ID: created.ID, Name: "Late Dinner", Description: "After-hours menu",
+		ID: created.ID, Revision: created.Revision, Name: "Late Dinner", Description: "After-hours menu",
 	})
 	testutil.Ok(t, err)
 	wantUpdated := *created
 	wantUpdated.Name = "Late Dinner"
 	wantUpdated.Description = "After-hours menu"
+	wantUpdated.Revision++
 	testutil.Equals(t, updated, &wantUpdated, cmpopts.EquateEmpty())
 
 	updated, err = f.Menus.AddDrink(ctx, &models.MenuPatch{MenuID: created.ID, DrinkID: drink.ID})
@@ -65,6 +66,7 @@ func TestMenus_CreateGetUpdateItemsPublishDraftDelete(t *testing.T) {
 		DrinkID: drink.ID, DisplayName: optional.None[string](), Price: optional.None[models.Price](),
 		Availability: models.AvailabilityAvailable,
 	}}
+	wantUpdated.Revision++
 	testutil.Equals(t, updated, &wantUpdated, cmpopts.EquateEmpty())
 
 	updated, err = f.Menus.Publish(ctx, &models.Menu{ID: created.ID})
@@ -72,6 +74,7 @@ func TestMenus_CreateGetUpdateItemsPublishDraftDelete(t *testing.T) {
 	wantPublished := wantUpdated
 	wantPublished.Status = models.MenuStatusPublished
 	wantPublished.PublishedAt = updated.PublishedAt
+	wantPublished.Revision++
 	testutil.Equals(t, updated, &wantPublished, cmpopts.EquateEmpty())
 	got, err = f.Menus.Get(ctx, created.ID)
 	testutil.Ok(t, err)
@@ -82,6 +85,7 @@ func TestMenus_CreateGetUpdateItemsPublishDraftDelete(t *testing.T) {
 	wantDraft := wantPublished
 	wantDraft.Status = models.MenuStatusDraft
 	wantDraft.PublishedAt = optional.None[time.Time]()
+	wantDraft.Revision++
 	testutil.Equals(t, updated, &wantDraft, cmpopts.EquateEmpty())
 	got, err = f.Menus.Get(ctx, created.ID)
 	testutil.Ok(t, err)
@@ -90,6 +94,7 @@ func TestMenus_CreateGetUpdateItemsPublishDraftDelete(t *testing.T) {
 	updated, err = f.Menus.RemoveDrink(ctx, &models.MenuPatch{MenuID: created.ID, DrinkID: drink.ID})
 	testutil.Ok(t, err)
 	wantDraft.Items = nil
+	wantDraft.Revision++
 	testutil.Equals(t, updated, &wantDraft, cmpopts.EquateEmpty())
 
 	deleted, err := f.Menus.Delete(ctx, created.ID)
@@ -97,6 +102,7 @@ func TestMenus_CreateGetUpdateItemsPublishDraftDelete(t *testing.T) {
 	wantDeleted := wantDraft
 	wantDeleted.Status = models.MenuStatusArchived
 	wantDeleted.DeletedAt = deleted.DeletedAt
+	wantDeleted.Revision++
 	testutil.Equals(t, deleted, &wantDeleted, cmpopts.EquateEmpty())
 	_, err = f.Menus.Get(ctx, created.ID)
 	testutil.ErrorIsNotFound(t, err)

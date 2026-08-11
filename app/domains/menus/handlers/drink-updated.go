@@ -50,7 +50,7 @@ func (h *DrinkUpdated) Handle(ctx *middleware.HandlerContext, e drinksevents.Dri
 		if !changed {
 			continue
 		}
-		if err := h.dao.Update(ctx, *menu); err != nil {
+		if err := h.dao.Update(ctx, menu); err != nil {
 			return err
 		}
 		ctx.TouchEntity(menu.ID.EntityUID())

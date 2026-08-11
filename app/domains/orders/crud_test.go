@@ -48,6 +48,7 @@ func TestOrders_PlaceGetCancelAndComplete(t *testing.T) {
 	testutil.Equals(t, got, cancelledOrder)
 	wantCancelled := *cancelledOrder
 	wantCancelled.Status = models.OrderStatusCancelled
+	wantCancelled.Revision++
 	cancelledOrder, err = f.Orders.Cancel(ctx, &models.Order{ID: cancelledOrder.ID})
 	testutil.Ok(t, err)
 	testutil.Equals(t, cancelledOrder, &wantCancelled)
@@ -58,6 +59,7 @@ func TestOrders_PlaceGetCancelAndComplete(t *testing.T) {
 	})
 	wantCompleted := *completedOrder
 	wantCompleted.Status = models.OrderStatusCompleted
+	wantCompleted.Revision++
 	completedOrder, err = f.Orders.Complete(ctx, &models.Order{ID: completedOrder.ID})
 	testutil.Ok(t, err)
 	wantCompleted.CompletedAt = completedOrder.CompletedAt
@@ -71,6 +73,7 @@ func TestOrders_PlaceGetCancelAndComplete(t *testing.T) {
 	wantStock := *initialStock
 	wantStock.Amount = measurement.MustAmount(8, base.Unit)
 	wantStock.LastUpdated = stock.LastUpdated
+	wantStock.Revision++
 	testutil.Equals(t, stock, &wantStock)
 	count, err = f.Orders.Count(ctx, orders.ListRequest{})
 	testutil.Ok(t, err)

@@ -36,7 +36,7 @@ func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, e ingredients
 			return order.BlockedIngredients[i].String() < order.BlockedIngredients[j].String()
 		})
 		order.Status = models.OrderStatusBlocked
-		if err := h.dao.Update(ctx, *order); err != nil {
+		if err := h.dao.Update(ctx, order); err != nil {
 			return err
 		}
 		ctx.TouchEntity(order.ID.EntityUID())

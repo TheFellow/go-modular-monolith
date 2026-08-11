@@ -65,7 +65,7 @@ func (c *Commands) Set(ctx *middleware.Context, update *models.Update) (*models.
 	updated.CostPerUnit = optional.Some(update.CostPerUnit)
 	updated.LastUpdated = time.Now().UTC()
 
-	if err := c.dao.Upsert(ctx, updated); err != nil {
+	if err := c.dao.Upsert(ctx, &updated); err != nil {
 		return nil, err
 	}
 

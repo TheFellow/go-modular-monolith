@@ -18,6 +18,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/main/tui/routes"
 	tuiviews "github.com/TheFellow/go-modular-monolith/main/tui/views"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
@@ -34,6 +35,9 @@ type viewSizeMsg struct {
 	width  int
 	height int
 }
+
+type databaseChangedMsg struct{ epoch uint64 }
+type databaseMonitorClosedMsg struct{}
 
 // App is the root model for the TUI application.
 type App struct {
@@ -55,26 +59,34 @@ type App struct {
 
 	// Child views (lazy initialized)
 	views map[routes.View]tui.ViewModel
+
+	changes *store.ChangeMonitor
+	stale   map[routes.View]bool
 }
 
 // NewApp creates a new App with the given application.
-func NewApp(application *app.Session) *App {
+func NewApp(application *app.Session, monitors ...*store.ChangeMonitor) *App {
 	helpModel := help.New()
 	helpModel.ShowAll = false
 
-	return &App{
+	result := &App{
 		currentView: routes.ViewDashboard,
 		app:         application,
 		styles:      styles.Standard,
 		keys:        keys.Standard,
 		help:        helpModel,
 		views:       make(map[routes.View]tui.ViewModel),
+		stale:       make(map[routes.View]bool),
 	}
+	if len(monitors) > 0 {
+		result.changes = monitors[0]
+	}
+	return result
 }
 
 // Init implements tea.Model.
 func (a *App) Init() tea.Cmd {
-	return a.currentViewModel().Init()
+	return tea.Batch(a.currentViewModel().Init(), a.waitForDatabaseChange())
 }
 
 // Update implements tea.Model.
@@ -107,8 +119,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if interaction.HandlesBack {
 				vm, cmd := vm.Update(msg)
-				a.views[a.currentView] = vm
-				return a, cmd
+				return a, a.acceptViewUpdate(vm, cmd)
 			}
 			return a, a.navigateBack()
 		}
@@ -138,11 +149,60 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 		a.views[a.currentView] = vm
 		return a, cmd
+
+	case databaseChangedMsg:
+		wait := a.waitForDatabaseChange()
+		for view := range a.views {
+			if view != a.currentView {
+				a.stale[view] = true
+			}
+		}
+		vm := a.currentViewModel()
+		interaction := vm.Interaction()
+		if interaction.HandlesBack || interaction.CapturesText {
+			a.stale[a.currentView] = true
+			return a, wait
+		}
+		vm, cmd := vm.Update(tui.DataInvalidatedMsg{Epoch: msg.epoch})
+		a.views[a.currentView] = vm
+		return a, tea.Batch(wait, cmd)
+
+	case databaseMonitorClosedMsg:
+		return a, nil
 	}
 
 	vm, cmd := a.currentViewModel().Update(msg)
+	return a, a.acceptViewUpdate(vm, cmd)
+}
+
+func (a *App) waitForDatabaseChange() tea.Cmd {
+	if a.changes == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		select {
+		case <-a.changes.Done():
+			return databaseMonitorClosedMsg{}
+		case <-a.changes.Signals():
+			return databaseChangedMsg{epoch: a.changes.Epoch()}
+		}
+	}
+}
+
+func (a *App) acceptViewUpdate(vm tui.ViewModel, cmd tea.Cmd) tea.Cmd {
 	a.views[a.currentView] = vm
-	return a, cmd
+	interaction := vm.Interaction()
+	if !a.stale[a.currentView] || interaction.HandlesBack || interaction.CapturesText {
+		return cmd
+	}
+	a.stale[a.currentView] = false
+	epoch := uint64(0)
+	if a.changes != nil {
+		epoch = a.changes.Epoch()
+	}
+	vm, refresh := vm.Update(tui.DataInvalidatedMsg{Epoch: epoch})
+	a.views[a.currentView] = vm
+	return tea.Batch(cmd, refresh)
 }
 
 // View implements tea.Model.
@@ -215,6 +275,10 @@ func (a *App) navigateTo(target routes.View) tea.Cmd {
 	if a.currentView == routes.ViewDashboard {
 		delete(a.views, routes.ViewDashboard)
 	}
+	if a.stale[target] {
+		delete(a.views, target)
+		a.stale[target] = false
+	}
 
 	if _, ok := a.views[target]; ok {
 		return a.syncWindowCmd()
@@ -239,6 +303,11 @@ func (a *App) navigateBack() tea.Cmd {
 	a.prevViews = a.prevViews[:idx]
 	if a.currentView == routes.ViewDashboard {
 		delete(a.views, routes.ViewDashboard)
+		return a.initializeCurrentView()
+	}
+	if a.stale[a.currentView] {
+		delete(a.views, a.currentView)
+		a.stale[a.currentView] = false
 		return a.initializeCurrentView()
 	}
 	return a.syncWindowCmd()

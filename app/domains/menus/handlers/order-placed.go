@@ -35,7 +35,7 @@ func (h *OrderPlaced) recalculate(ctx *middleware.HandlerContext) error {
 			}
 		}
 		if changed {
-			if err := h.dao.Update(ctx, *menu); err != nil {
+			if err := h.dao.Update(ctx, menu); err != nil {
 				return err
 			}
 			ctx.TouchEntity(menu.ID.EntityUID())

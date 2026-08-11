@@ -33,6 +33,8 @@ graph TD
 - Always starts on the dashboard.
 - Owns navigation, view caching, and global UI state (help, status, title bar).
 - Uses `app.App` as the single source of truth for authentication.
+- Converts coalesced SQLite data-version signals into application-layer reloads. Cached views are
+  marked stale, and an active input workflow is allowed to finish before it reloads.
 
 ### ViewModels
 
@@ -102,5 +104,8 @@ for complete-model keyboard, command, render, viewport, and ANSI behavior.
 
 ## Notes
 
-- The dashboard is reloaded on refresh (`r`) and when returning to it.
+- The dashboard is reloaded on refresh (`r`), when returning to it, and after another database
+  connection commits.
+- Automatic reload commands use request tokens so an older asynchronous result cannot replace a
+  newer one. Notifications contain no domain payload and never bypass normal queries.
 - Keep view models small and focused; delegate domain logic to commands/queries.

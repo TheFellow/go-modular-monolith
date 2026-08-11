@@ -7,7 +7,8 @@ import (
 )
 
 type AuditEntryRow struct {
-	ID string
+	ID       string
+	Revision uint64 `json:"-" store:"revision"`
 
 	Action string `store:"index"`
 

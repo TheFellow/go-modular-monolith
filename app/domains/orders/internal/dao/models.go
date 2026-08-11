@@ -8,6 +8,7 @@ import (
 
 type OrderRow struct {
 	ID                 string
+	Revision           uint64 `json:"-" store:"revision"`
 	MenuID             string `store:"index"`
 	Items              []OrderItemRow
 	IngredientUsage    []IngredientUsageRow
