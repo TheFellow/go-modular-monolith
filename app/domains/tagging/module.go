@@ -14,13 +14,6 @@ import (
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type discoveryResult[T any] struct {
-	value  T
-	entity cedar.Entity
-}
-
-func (r discoveryResult[T]) CedarEntity() cedar.Entity { return r.entity }
-
 // Result is the current tag state after a mutation.
 type Result struct {
 	Target  cedar.EntityUID
@@ -61,12 +54,11 @@ func (m *Module) Upsert(ctx *middleware.Context, target cedar.EntityUID, value t
 	if err := value.Validate(); err != nil {
 		return Result{}, err
 	}
-	return middleware.RunCommand(m.pipeline, ctx, middleware.CommandSpec[targetState, Result]{
-		Action: registration.TagAction,
-		Load: func(ctx *middleware.Context) (targetState, error) {
+	return m.pipeline.LoadCommand(ctx, registration.TagAction,
+		func(ctx *middleware.Context) (targetState, error) {
 			return loadState(ctx, registration, target)
 		},
-		Handle: func(ctx *middleware.Context, _ targetState) (Result, error) {
+		func(ctx *middleware.Context, _ targetState) (Result, error) {
 			changed, err := m.repository.Upsert(ctx, target, value)
 			if err != nil {
 				return Result{}, err
@@ -80,7 +72,7 @@ func (m *Module) Upsert(ctx *middleware.Context, target cedar.EntityUID, value t
 			}
 			return resultFromState(state, changed), nil
 		},
-	})
+	)
 }
 
 // Set is an alias for Upsert for clients that describe key replacement as a
@@ -105,15 +97,11 @@ func (m *Module) Replace(ctx *middleware.Context, target cedar.EntityUID, desire
 	}
 	desired = desired.Sorted()
 
-	return middleware.RunCommand(m.pipeline, ctx, middleware.CommandSpec[targetState, Result]{
-		Action: registration.TagAction,
-		AuthorizationActions: func(current targetState) []cedar.EntityUID {
-			return replaceActions(registration, current.tags, desired)
-		},
-		Load: func(ctx *middleware.Context) (targetState, error) {
+	return m.pipeline.LoadCommandActions(ctx, registration.TagAction,
+		func(ctx *middleware.Context) (targetState, error) {
 			return loadState(ctx, registration, target)
 		},
-		Handle: func(ctx *middleware.Context, _ targetState) (Result, error) {
+		func(ctx *middleware.Context, _ targetState) (Result, error) {
 			changed, err := m.repository.Replace(ctx, target, desired)
 			if err != nil {
 				return Result{}, err
@@ -127,7 +115,10 @@ func (m *Module) Replace(ctx *middleware.Context, target cedar.EntityUID, desire
 			}
 			return resultFromState(state, changed), nil
 		},
-	})
+		func(current targetState) []cedar.EntityUID {
+			return replaceActions(registration, current.tags, desired)
+		},
+	)
 }
 
 // Remove deletes the tag identified by key. A missing key is a successful
@@ -140,12 +131,11 @@ func (m *Module) Remove(ctx *middleware.Context, target cedar.EntityUID, key str
 	if err := (tag.Tag{Key: key}).Validate(); err != nil {
 		return Result{}, err
 	}
-	return middleware.RunCommand(m.pipeline, ctx, middleware.CommandSpec[targetState, Result]{
-		Action: registration.UntagAction,
-		Load: func(ctx *middleware.Context) (targetState, error) {
+	return m.pipeline.LoadCommand(ctx, registration.UntagAction,
+		func(ctx *middleware.Context) (targetState, error) {
 			return loadState(ctx, registration, target)
 		},
-		Handle: func(ctx *middleware.Context, _ targetState) (Result, error) {
+		func(ctx *middleware.Context, _ targetState) (Result, error) {
 			changed, err := m.repository.Remove(ctx, target, key)
 			if err != nil {
 				return Result{}, err
@@ -159,7 +149,7 @@ func (m *Module) Remove(ctx *middleware.Context, target cedar.EntityUID, key str
 			}
 			return resultFromState(state, changed), nil
 		},
-	})
+	)
 }
 
 // List returns tags only after authorizing the owning domain's read action
@@ -169,10 +159,10 @@ func (m *Module) List(ctx *middleware.Context, target cedar.EntityUID) (tag.Tags
 	if err != nil {
 		return nil, err
 	}
-	state, err := middleware.RunEntityQuery(m.pipeline, ctx, registration.GetAction,
+	state, err := m.pipeline.Query(ctx, registration.GetAction, target,
 		func(queryCtx store.Context, _ cedar.EntityUID) (targetState, error) {
 			return loadState(queryCtx, registration, target)
-		}, target)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -190,15 +180,15 @@ func (m *Module) Show(ctx *middleware.Context, value tag.Tag, exact bool) ([]Ref
 		UID: cedar.NewEntityUID(taggingauthz.TagDiscoveryType, "show"),
 		Key: value.Key, Value: value.Value, Exact: exact,
 	}
-	result, err := middleware.RunEntityQuery(m.pipeline, ctx, taggingauthz.ActionShow,
-		func(queryCtx store.Context, _ struct{}) (discoveryResult[[]Reference], error) {
+	return m.pipeline.QueryResource(ctx, taggingauthz.ActionShow, resource.CedarEntity(), value,
+		func(queryCtx store.Context, _ tag.Tag) ([]Reference, error) {
 			associations, err := m.repository.find(queryCtx, value, exact)
 			if err != nil {
-				return discoveryResult[[]Reference]{}, err
+				return nil, err
 			}
 			active, err := m.activeAssociations(queryCtx, associations)
 			if err != nil {
-				return discoveryResult[[]Reference]{}, err
+				return nil, err
 			}
 			refs := make([]Reference, 0, len(active))
 			names := make(map[cedar.EntityUID]string)
@@ -207,11 +197,11 @@ func (m *Module) Show(ctx *middleware.Context, value tag.Tag, exact bool) ([]Ref
 				if !ok {
 					registration, resolveErr := m.registry.resolve(association.target.Type)
 					if resolveErr != nil {
-						return discoveryResult[[]Reference]{}, resolveErr
+						return nil, resolveErr
 					}
 					state, loadErr := loadState(queryCtx, registration, association.target)
 					if loadErr != nil {
-						return discoveryResult[[]Reference]{}, loadErr
+						return nil, loadErr
 					}
 					name = state.name
 					names[association.target] = name
@@ -223,12 +213,8 @@ func (m *Module) Show(ctx *middleware.Context, value tag.Tag, exact bool) ([]Ref
 					Tag:        association.tag.String(),
 				})
 			}
-			return discoveryResult[[]Reference]{value: refs, entity: resource.CedarEntity()}, nil
-		}, struct{}{})
-	if err != nil {
-		return nil, err
-	}
-	return result.value, nil
+			return refs, nil
+		})
 }
 
 // Summary aggregates active associations by canonical tag.
@@ -236,15 +222,15 @@ func (m *Module) Summary(ctx *middleware.Context) ([]Summary, error) {
 	resource := taggingauthz.TagDiscovery{
 		UID: cedar.NewEntityUID(taggingauthz.TagDiscoveryType, "summary"),
 	}
-	result, err := middleware.RunEntityQuery(m.pipeline, ctx, taggingauthz.ActionSummary,
-		func(queryCtx store.Context, _ struct{}) (discoveryResult[[]Summary], error) {
+	return m.pipeline.QueryResource(ctx, taggingauthz.ActionSummary, resource.CedarEntity(), struct{}{},
+		func(queryCtx store.Context, _ struct{}) ([]Summary, error) {
 			associations, err := m.repository.all(queryCtx)
 			if err != nil {
-				return discoveryResult[[]Summary]{}, err
+				return nil, err
 			}
 			active, err := m.activeAssociations(queryCtx, associations)
 			if err != nil {
-				return discoveryResult[[]Summary]{}, err
+				return nil, err
 			}
 			byTag := make(map[string]*Summary)
 			for _, association := range active {
@@ -278,12 +264,8 @@ func (m *Module) Summary(ctx *middleware.Context) ([]Summary, error) {
 				}
 				return rows[i].Tag < rows[j].Tag
 			})
-			return discoveryResult[[]Summary]{value: rows, entity: resource.CedarEntity()}, nil
-		}, struct{}{})
-	if err != nil {
-		return nil, err
-	}
-	return result.value, nil
+			return rows, nil
+		})
 }
 
 func (m *Module) activeAssociations(ctx store.Context, associations []association) ([]association, error) {

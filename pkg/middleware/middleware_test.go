@@ -36,10 +36,11 @@ func TestPageQuery_FillsPagePastDeniedEntities(t *testing.T) {
 		testDrink("wine-3", "wine"),
 	}
 
-	page, err := middleware.RunPageQuery(
-		pipeline,
+	page, err := pipeline.PageQuery(
 		fix.ActorContext("sommelier"),
 		drinksauthz.ActionList,
+		struct{}{},
+		paging.Request{Limit: 2},
 		func(store.Context, struct{}, paging.Cursor) iter.Seq2[testEntity, error] {
 			return func(yield func(testEntity, error) bool) {
 				for _, item := range items {
@@ -50,8 +51,6 @@ func TestPageQuery_FillsPagePastDeniedEntities(t *testing.T) {
 			}
 		},
 		func(item testEntity) paging.Cursor { return paging.Cursor(item.ID.ID) },
-		struct{}{},
-		paging.Request{Limit: 2},
 	)
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(page.Items), 2)
@@ -156,26 +155,21 @@ func TestChainExecute_IsolatesLogsAndActivityWhenContextIsReused(t *testing.T) {
 	})
 	resource := testDrink("operation-context", "beer")
 
-	_, err := middleware.RunCommand(pipeline, shared, middleware.CommandSpec[testEntity, testEntity]{
-		Action: drinksauthz.ActionCreate,
-		Load: func(*middleware.Context) (testEntity, error) {
-			return resource, nil
-		},
-		Handle: func(_ *middleware.Context, in testEntity) (testEntity, error) {
+	_, err := pipeline.Command(shared, drinksauthz.ActionCreate, resource,
+		func(_ *middleware.Context, in testEntity) (testEntity, error) {
 			return in, nil
 		},
-	})
+	)
 	testutil.Ok(t, err)
 	_, hasCallerActivity := shared.Activity()
 	testutil.IsFalse(t, hasCallerActivity)
 	testutil.Equals(t, len(shared.Events()), 0)
 
-	_, err = middleware.RunEntityQuery(
-		pipeline,
+	_, err = pipeline.Query(
 		shared,
 		drinksauthz.ActionUpdate,
-		func(store.Context, struct{}) (testEntity, error) { return resource, nil },
 		struct{}{},
+		func(store.Context, struct{}) (testEntity, error) { return resource, nil },
 	)
 	testutil.Ok(t, err)
 
@@ -317,7 +311,7 @@ func TestCommandLogging_PermissionError_LogsDenied(t *testing.T) {
 
 // --- Full Chain Integration Tests ---
 
-func TestEntityQuery_AuthorizesLoadedResult(t *testing.T) {
+func TestQuery_AuthorizesLoadedResult(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &testLogBuffer{}
@@ -326,17 +320,17 @@ func TestEntityQuery_AuthorizesLoadedResult(t *testing.T) {
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
 
 	executed := false
-	_, err := middleware.RunEntityQuery(pipeline, mctx, drinksauthz.ActionUpdate, func(_ store.Context, _ struct{}) (testEntity, error) {
+	_, err := pipeline.Query(mctx, drinksauthz.ActionUpdate, struct{}{}, func(_ store.Context, _ struct{}) (testEntity, error) {
 		executed = true
 		return testEntity{
 			ID: cedar.NewEntityUID(cedar.EntityType("Mixology::Drink"), cedar.String("stub")),
 		}, nil
-	}, struct{}{})
+	})
 	testutil.ErrorIsPermission(t, err)
 	testutil.IsTrue(t, executed)
 }
 
-func TestEntityQuery_ReturnsNotFoundWithoutAuthorization(t *testing.T) {
+func TestQuery_ReturnsNotFoundWithoutAuthorization(t *testing.T) {
 	t.Parallel()
 
 	logBuf := &testLogBuffer{}
@@ -344,10 +338,32 @@ func TestEntityQuery_ReturnsNotFoundWithoutAuthorization(t *testing.T) {
 	mctx := newTestContext(logBuf, mem)
 	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Metrics: mem})
 
-	_, err := middleware.RunEntityQuery(pipeline, mctx, drinksauthz.ActionUpdate, func(_ store.Context, _ struct{}) (testEntity, error) {
+	_, err := pipeline.Query(mctx, drinksauthz.ActionUpdate, struct{}{}, func(_ store.Context, _ struct{}) (testEntity, error) {
 		return testEntity{}, errors.NotFoundf("drink missing")
-	}, struct{}{})
+	})
 	testutil.ErrorIsNotFound(t, err)
+}
+
+func TestQueryResource_AuthorizesBeforeHandler(t *testing.T) {
+	t.Parallel()
+
+	fix := testutil.NewFixture(t)
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{Store: fix.Store})
+	resource := testDrink("query-resource", "beer").CedarEntity()
+	handled := false
+
+	_, err := pipeline.QueryResource(
+		fix.ActorContext("anonymous"),
+		drinksauthz.ActionUpdate,
+		resource,
+		"request",
+		func(store.Context, string) (string, error) {
+			handled = true
+			return "result", nil
+		},
+	)
+	testutil.ErrorIsPermission(t, err)
+	testutil.IsFalse(t, handled)
 }
 
 func TestTrackActivity_MissingCallbackFailsBeforeCommand(t *testing.T) {

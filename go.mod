@@ -1,6 +1,6 @@
 module github.com/TheFellow/go-modular-monolith
 
-go 1.26.5
+go 1.27.0
 
 tool github.com/TheFellow/arch-lint
 

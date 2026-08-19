@@ -50,12 +50,13 @@ no built-in authorization meaning; a policy gives a particular tag meaning, as d
 
 ## Evaluation API
 
-Most application code should use the middleware helpers rather than call the evaluator directly:
+Most application code should use the typed pipeline methods rather than call the evaluator directly:
 
-- `middleware.RunEntityQuery` authorizes a loaded entity before returning it.
-- `middleware.RunPageQuery` authorizes each row, omits permission-denied rows, and propagates
+- `Pipeline.Query` authorizes a loaded entity before returning it.
+- `Pipeline.QueryResource` authorizes an already-known resource before executing its handler.
+- `Pipeline.PageQuery` authorizes each row, omits permission-denied rows, and propagates
   evaluation or storage failures.
-- `middleware.RunCommand` authorizes the loaded and resulting resource states so policies can
+- Pipeline command methods authorize the loaded and resulting resource states so policies can
   constrain transitions.
 
 Those behaviors are documented in the

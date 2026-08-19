@@ -7,11 +7,5 @@ import (
 )
 
 func (m *Module) Set(ctx *middleware.Context, update *models.Update) (*models.Inventory, error) {
-	return middleware.RunCommand(m.pipeline, ctx, middleware.CommandSpec[*models.Update, *models.Inventory]{
-		Action: authz.ActionSet,
-		Load: func(*middleware.Context) (*models.Update, error) {
-			return update, nil
-		},
-		Handle: m.commands.Set,
-	})
+	return m.pipeline.Command(ctx, authz.ActionSet, update, m.commands.Set)
 }

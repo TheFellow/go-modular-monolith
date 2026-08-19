@@ -13,12 +13,11 @@ func (m *Module) Delete(ctx *middleware.Context, id entity.IngredientID) (*model
 }
 
 func (m *Module) Retire(ctx *middleware.Context, id entity.IngredientID, retirement models.Retirement) (*models.Ingredient, error) {
-	return middleware.RunCommand(m.pipeline, ctx, middleware.CommandSpec[commands.RetirementTarget, *models.Ingredient]{
-		Action: authz.ActionRetire,
-		Load: func(ctx *middleware.Context) (commands.RetirementTarget, error) {
+	return m.pipeline.LoadCommand(ctx, authz.ActionRetire,
+		func(ctx *middleware.Context) (commands.RetirementTarget, error) {
 			ingredient, err := m.queries.Get(ctx, id)
 			return commands.RetirementTarget{Ingredient: ingredient, Retirement: retirement}, err
 		},
-		Handle: m.commands.Retire,
-	})
+		m.commands.Retire,
+	)
 }

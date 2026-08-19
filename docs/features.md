@@ -74,7 +74,7 @@ pipe), and `--template` prints the expected JSON shape.
 
 ## Audit
 
-Every write passing through `RunCommand` produces an activity. Handlers call `TouchEntity` for
+Every write passing through a pipeline command method produces an activity. Handlers call `TouchEntity` for
 indirectly affected entities. Successful activity records commit with the write; rejected attempts
 are recorded after rollback.
 

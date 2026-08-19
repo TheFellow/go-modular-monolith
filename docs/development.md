@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Go `1.26.5` or newer (see `go.mod`).
+- Go `1.27.0` or newer (see `go.mod`).
 - Native Fyne dependencies only when building the desktop client; see its
   [platform instructions](../main/gui/README.md#run-from-source).
 
@@ -31,8 +31,8 @@ go test -tags ci ./pkg/toolkits/gui ./pkg/testutil/fynetest ./main/gui \
   ./app/domains/*/surfaces/gui
 go test ./pkg/toolkits/cli/... ./pkg/toolkits/tui/...
 go tool arch-lint -config=.arch-lint.yaml
-GOTOOLCHAIN=go1.26.5 \
-  go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
+GOTOOLCHAIN=go1.27.0 \
+  go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.3-0.20260819173906-1f273ea1c347 run
 go test -race -shuffle=on -count=1 -timeout=5m ./...
 ```
 

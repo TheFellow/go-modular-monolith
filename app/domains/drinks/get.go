@@ -8,5 +8,5 @@ import (
 )
 
 func (m *Module) Get(ctx *middleware.Context, id entity.DrinkID) (*models.Drink, error) {
-	return middleware.RunEntityQuery(m.pipeline, ctx, authz.ActionGet, m.queries.Get, id)
+	return m.pipeline.Query(ctx, authz.ActionGet, id, m.queries.Get)
 }
