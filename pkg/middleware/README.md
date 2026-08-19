@@ -71,30 +71,34 @@ Event handlers receive `HandlerContext`, a deliberately smaller `store.Context`.
 principal and transaction and permits `TouchEntity`, but exposes no `AddEvent`, enforcing the
 no-cascading rule at compile time.
 
-## Typed operation helpers
+## Typed pipeline operations
 
-Domain modules normally enter the pipeline through one of three helpers:
+Domain modules enter through generic methods on their configured `Pipeline`:
 
-| Helper           | Contract                                                                                                                                     |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RunEntityQuery` | Execute a get, then authorize the loaded result before returning it.                                                                         |
-| `RunPageQuery`   | Consume an ordered sequence until a full page of authorized items is available; permission denials are omitted while other errors propagate. |
-| `RunCommand`     | Load current state, authorize it, handle the mutation, then authorize resulting state before side effects commit.                            |
+| Method               | Contract                                                                                                                                     |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Query`              | Execute a get, then authorize the loaded `CedarEntity` result before returning it.                                                            |
+| `QueryResource`      | Authorize an already-known Cedar resource, then execute a query whose result does not need to implement `CedarEntity`.                        |
+| `PageQuery`          | Consume an ordered sequence until a full page of authorized items is available; permission denials are omitted while other errors propagate. |
+| `Command`            | Authorize caller-supplied input, handle the mutation, then authorize resulting state before side effects commit.                              |
+| `LoadCommand`        | Load trusted state inside the unit of work, authorize it, handle the mutation, then authorize the result.                                     |
+| `LoadCommandActions` | As `LoadCommand`, with the complete authorization action set derived from loaded state.                                                       |
 
-All returned entity types satisfy `CedarEntity`. `RunCommand` uses `CommandSpec.Action` for
-authorization unless `AuthorizationActions` derives a complete action set from the loaded input.
-The latter supports one workflow that must satisfy multiple policy actions; returning no actions
-is an internal error.
+All command and entity-query types satisfy `CedarEntity`. `LoadCommandActions` supports the one
+workflow whose policy requirements depend on its exact transition; returning no actions is an
+internal error. Prefer `Command` when input is already available and `LoadCommand` when current
+persisted state is the trusted authorization resource.
 
 A command has this shape:
 
 ```go
-updated, err := middleware.RunCommand(pipeline, ctx, middleware.CommandSpec[Widget, Widget]{
-	Action: widgetauthz.ActionUpdate,
-	Load: func(c *middleware.Context) (Widget, error) {
+updated, err := pipeline.LoadCommand(
+	ctx,
+	widgetauthz.ActionUpdate,
+	func(c *middleware.Context) (Widget, error) {
 		return repository.Get(c, id)
 	},
-	Handle: func(c *middleware.Context, current Widget) (Widget, error) {
+	func(c *middleware.Context, current Widget) (Widget, error) {
 		updated, err := current.Apply(patch)
 		if err != nil {
 			return Widget{}, err
@@ -105,16 +109,16 @@ updated, err := middleware.RunCommand(pipeline, ctx, middleware.CommandSpec[Widg
 		c.AddEvent(events.WidgetUpdated{Widget: updated})
 		return updated, nil
 	},
-})
+)
 ```
 
-`RunCommand` attributes activity to the loaded resource, or to the returned resource when the
+Commands attribute activity to the loaded resource, or to the returned resource when the
 input has no UID. Handlers can add indirect resources with `TouchEntity`; duplicate touches are
 ignored. Commands should add only events owned by their domain.
 
 ## Paging and authorization
 
-`RunPageQuery` authorizes each item after the DAO's filter and hydration work. A denied row does
+`PageQuery` authorizes each item after the DAO's filter and hydration work. A denied row does
 not shorten the page: iteration continues until the requested number of visible items is collected
 or the sequence ends. When another authorized item exists, `Next` is the cursor of the last item in
 the returned page. This prevents row existence and counts from leaking through authorization.
@@ -124,7 +128,7 @@ Filtering and paging details live in the [filter](../filter/README.md) and `pkg/
 
 ## Extending or testing the pipeline
 
-Prefer extending `RunCommand`, `RunEntityQuery`, or `RunPageQuery` over assembling ad hoc chains in
+Prefer extending the typed `Pipeline` methods over assembling ad hoc chains in
 domain code. A new cross-cutting concern must declare whether it applies to commands, queries, or
 both and whether its post-processing must occur inside the write transaction. Add ordering,
 rollback, caller-owned transaction, logging, and metrics tests before changing `NewPipeline`.

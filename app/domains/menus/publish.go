@@ -7,11 +7,10 @@ import (
 )
 
 func (m *Module) Publish(ctx *middleware.Context, menu *models.Menu) (*models.Menu, error) {
-	return middleware.RunCommand(m.pipeline, ctx, middleware.CommandSpec[*models.Menu, *models.Menu]{
-		Action: authz.ActionPublish,
-		Load: func(ctx *middleware.Context) (*models.Menu, error) {
+	return m.pipeline.LoadCommand(ctx, authz.ActionPublish,
+		func(ctx *middleware.Context) (*models.Menu, error) {
 			return m.queries.Get(ctx, menu.ID)
 		},
-		Handle: m.commands.Publish,
-	})
+		m.commands.Publish,
+	)
 }

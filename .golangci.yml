@@ -18,6 +18,13 @@ linters:
         # this check is not always a slam dunk, especially if the chain is
         # nested under a for loop
         - ifElseChain
+    modernize:
+      disable:
+        # Keep unrelated Go 1.27 source rewrites separate from the toolchain
+        # and generic-pipeline migration.
+        - embedlit
+        - errorsastype
+        - reflecttypeassert
     revive:
       enable-default-rules: true
       rules:

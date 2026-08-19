@@ -44,17 +44,16 @@ func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*mo
 	}
 	filter := m.listFilter(req)
 	filter.Expression = expression
-	return middleware.RunPageQuery(
-		m.pipeline,
+	return m.pipeline.PageQuery(
 		ctx,
 		authz.ActionList,
+		filter,
+		paging.Request{Cursor: req.Cursor, Limit: req.Limit},
 		func(ctx store.Context, filter dao.ListFilter, cursor paging.Cursor) iter.Seq2[*models.AuditEntry, error] {
 			filter.BeforeID = string(cursor)
 			return m.queries.List(ctx, filter)
 		},
 		func(entry *models.AuditEntry) paging.Cursor { return paging.Cursor(entry.ID.String()) },
-		filter,
-		paging.Request{Cursor: req.Cursor, Limit: req.Limit},
 	)
 }
 

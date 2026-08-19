@@ -7,13 +7,12 @@ import (
 )
 
 func (m *Module) Update(ctx *middleware.Context, menu *models.Menu) (*models.Menu, error) {
-	return middleware.RunCommand(m.pipeline, ctx, middleware.CommandSpec[*models.Menu, *models.Menu]{
-		Action: authz.ActionUpdate,
-		Load: func(ctx *middleware.Context) (*models.Menu, error) {
+	return m.pipeline.LoadCommand(ctx, authz.ActionUpdate,
+		func(ctx *middleware.Context) (*models.Menu, error) {
 			return m.queries.Get(ctx, menu.ID)
 		},
-		Handle: func(ctx *middleware.Context, _ *models.Menu) (*models.Menu, error) {
+		func(ctx *middleware.Context, _ *models.Menu) (*models.Menu, error) {
 			return m.commands.Update(ctx, menu)
 		},
-	})
+	)
 }

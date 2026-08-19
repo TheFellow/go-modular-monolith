@@ -7,11 +7,10 @@ import (
 )
 
 func (m *Module) Complete(ctx *middleware.Context, order *models.Order) (*models.Order, error) {
-	return middleware.RunCommand(m.pipeline, ctx, middleware.CommandSpec[*models.Order, *models.Order]{
-		Action: authz.ActionComplete,
-		Load: func(ctx *middleware.Context) (*models.Order, error) {
+	return m.pipeline.LoadCommand(ctx, authz.ActionComplete,
+		func(ctx *middleware.Context) (*models.Order, error) {
 			return m.queries.Get(ctx, order.ID)
 		},
-		Handle: m.commands.Complete,
-	})
+		m.commands.Complete,
+	)
 }

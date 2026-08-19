@@ -92,7 +92,7 @@ func transactionProbeKinds(t *testing.T, ctx context.Context, s *store.Store) []
 	return kinds
 }
 
-func TestRunCommand_ActivityRecorderFailureRollsBackBusinessWrite(t *testing.T) {
+func TestLoadCommand_ActivityRecorderFailureRollsBackBusinessWrite(t *testing.T) {
 	t.Parallel()
 
 	ctx, s := newTransactionTestStore(t)
@@ -110,15 +110,14 @@ func TestRunCommand_ActivityRecorderFailureRollsBackBusinessWrite(t *testing.T) 
 	})
 	resource := testEntity{ID: cedar.NewEntityUID(drinksauthz.DrinkType, cedar.String("atomic-success"))}
 
-	_, err := middleware.RunCommand(pipeline, middleware.NewContext(ctx), middleware.CommandSpec[testEntity, testEntity]{
-		Action: drinksauthz.ActionCreate,
-		Load: func(*middleware.Context) (testEntity, error) {
+	_, err := pipeline.LoadCommand(middleware.NewContext(ctx), drinksauthz.ActionCreate,
+		func(*middleware.Context) (testEntity, error) {
 			return resource, nil
 		},
-		Handle: func(ctx *middleware.Context, in testEntity) (testEntity, error) {
+		func(ctx *middleware.Context, in testEntity) (testEntity, error) {
 			return in, insertTransactionProbe(ctx, "business-write")
 		},
-	})
+	)
 
 	testutil.ErrorIsInternal(t, err)
 	testutil.ErrorContains(t, err, "record activity")
@@ -126,7 +125,7 @@ func TestRunCommand_ActivityRecorderFailureRollsBackBusinessWrite(t *testing.T) 
 	testutil.Equals(t, transactionProbeKinds(t, ctx, s), []string(nil))
 }
 
-func TestRunCommand_FailureRollsBackThenPersistsFailedActivity(t *testing.T) {
+func TestLoadCommand_FailureRollsBackThenPersistsFailedActivity(t *testing.T) {
 	t.Parallel()
 
 	ctx, s := newTransactionTestStore(t)
@@ -142,19 +141,18 @@ func TestRunCommand_FailureRollsBackThenPersistsFailedActivity(t *testing.T) {
 	})
 	resource := testEntity{ID: cedar.NewEntityUID(drinksauthz.DrinkType, cedar.String("atomic-failure"))}
 
-	_, err := middleware.RunCommand(pipeline, middleware.NewContext(ctx), middleware.CommandSpec[testEntity, testEntity]{
-		Action: drinksauthz.ActionCreate,
-		Load: func(*middleware.Context) (testEntity, error) {
+	_, err := pipeline.LoadCommand(middleware.NewContext(ctx), drinksauthz.ActionCreate,
+		func(*middleware.Context) (testEntity, error) {
 			return resource, nil
 		},
-		Handle: func(ctx *middleware.Context, in testEntity) (testEntity, error) {
+		func(ctx *middleware.Context, in testEntity) (testEntity, error) {
 			if err := insertTransactionProbe(ctx, "business-write"); err != nil {
 				return testEntity{}, err
 			}
 			ctx.TouchEntity(in.ID)
 			return testEntity{}, errors.FailedPreconditionf("handler rejected")
 		},
-	})
+	)
 
 	testutil.ErrorIsFailedPrecondition(t, err)
 	testutil.Equals(t, transactionProbeKinds(t, ctx, s), []string{"failure-audit"})
@@ -166,7 +164,7 @@ func TestRunCommand_FailureRollsBackThenPersistsFailedActivity(t *testing.T) {
 	testutil.StringContains(t, recorded[0].Error, "handler rejected")
 }
 
-func TestRunCommand_UsesCallerTransactionForBusinessAndSuccessActivity(t *testing.T) {
+func TestLoadCommand_UsesCallerTransactionForBusinessAndSuccessActivity(t *testing.T) {
 	t.Parallel()
 
 	ctx, s := newTransactionTestStore(t)
@@ -188,19 +186,16 @@ func TestRunCommand_UsesCallerTransactionForBusinessAndSuccessActivity(t *testin
 	})
 	resource := testEntity{ID: cedar.NewEntityUID(drinksauthz.DrinkType, cedar.String("caller-transaction"))}
 
-	_, err = middleware.RunCommand(
-		pipeline,
+	_, err = pipeline.LoadCommand(
 		middleware.NewContext(ctx).WithTransaction(tx),
-		middleware.CommandSpec[testEntity, testEntity]{
-			Action: drinksauthz.ActionCreate,
-			Load: func(ctx *middleware.Context) (testEntity, error) {
-				got, _ := ctx.Transaction()
-				testutil.IsTrue(t, got == tx)
-				return resource, nil
-			},
-			Handle: func(ctx *middleware.Context, in testEntity) (testEntity, error) {
-				return in, insertTransactionProbe(ctx, "business-write")
-			},
+		drinksauthz.ActionCreate,
+		func(ctx *middleware.Context) (testEntity, error) {
+			got, _ := ctx.Transaction()
+			testutil.IsTrue(t, got == tx)
+			return resource, nil
+		},
+		func(ctx *middleware.Context, in testEntity) (testEntity, error) {
+			return in, insertTransactionProbe(ctx, "business-write")
 		},
 	)
 	testutil.Ok(t, err)
@@ -214,7 +209,7 @@ func TestRunCommand_UsesCallerTransactionForBusinessAndSuccessActivity(t *testin
 	tx = nil
 }
 
-func TestRunCommand_AuthorizesLoadedResourceBeforeHandle(t *testing.T) {
+func TestLoadCommand_AuthorizesLoadedResourceBeforeHandle(t *testing.T) {
 	t.Parallel()
 
 	fix := testutil.NewFixture(t)
@@ -225,25 +220,24 @@ func TestRunCommand_AuthorizesLoadedResourceBeforeHandle(t *testing.T) {
 
 	loaded := false
 	handled := false
-	_, err := middleware.RunCommand(pipeline, fix.ActorContext("anonymous"), middleware.CommandSpec[testEntity, testEntity]{
-		Action: drinksauthz.ActionCreate,
-		Load: func(*middleware.Context) (testEntity, error) {
+	_, err := pipeline.LoadCommand(fix.ActorContext("anonymous"), drinksauthz.ActionCreate,
+		func(*middleware.Context) (testEntity, error) {
 			loaded = true
 			return testEntity{
 				ID: cedar.NewEntityUID(cedar.EntityType("Mixology::Drink"), cedar.String("stub")),
 			}, nil
 		},
-		Handle: func(_ *middleware.Context, in testEntity) (testEntity, error) {
+		func(_ *middleware.Context, in testEntity) (testEntity, error) {
 			handled = true
 			return in, nil
 		},
-	})
+	)
 	testutil.ErrorIsPermission(t, err)
 	testutil.IsTrue(t, loaded)
 	testutil.IsFalse(t, handled)
 }
 
-func TestRunCommand_AuthorizesResultAfterHandle(t *testing.T) {
+func TestLoadCommand_AuthorizesResultAfterHandle(t *testing.T) {
 	t.Parallel()
 
 	fix := testutil.NewFixture(t)
@@ -259,22 +253,21 @@ func TestRunCommand_AuthorizesResultAfterHandle(t *testing.T) {
 		},
 	}
 	handled := false
-	_, err := middleware.RunCommand(pipeline, fix.ActorContext("sommelier"), middleware.CommandSpec[testEntity, testEntity]{
-		Action: drinksauthz.ActionUpdate,
-		Load: func(*middleware.Context) (testEntity, error) {
+	_, err := pipeline.LoadCommand(fix.ActorContext("sommelier"), drinksauthz.ActionUpdate,
+		func(*middleware.Context) (testEntity, error) {
 			return wine, nil
 		},
-		Handle: func(_ *middleware.Context, out testEntity) (testEntity, error) {
+		func(_ *middleware.Context, out testEntity) (testEntity, error) {
 			handled = true
 			out.Attributes["Category"] = cedar.String("beer")
 			return out, nil
 		},
-	})
+	)
 	testutil.ErrorIsPermission(t, err)
 	testutil.IsTrue(t, handled)
 }
 
-func TestRunCommand_AuthorizationActionsRequireEveryActionBeforeHandle(t *testing.T) {
+func TestLoadCommand_AuthorizationActionsRequireEveryActionBeforeHandle(t *testing.T) {
 	t.Parallel()
 
 	fix := testutil.NewFixture(t)
@@ -284,27 +277,26 @@ func TestRunCommand_AuthorizationActionsRequireEveryActionBeforeHandle(t *testin
 	})
 
 	handled := false
-	_, err := middleware.RunCommand(pipeline, fix.ActorContext("manager"), middleware.CommandSpec[testEntity, testEntity]{
-		Action: drinksauthz.ActionTag,
-		AuthorizationActions: func(testEntity) []cedar.EntityUID {
-			return []cedar.EntityUID{drinksauthz.ActionTag, ingredientauthz.ActionTag}
-		},
-		Load: func(*middleware.Context) (testEntity, error) {
+	_, err := pipeline.LoadCommandActions(fix.ActorContext("manager"), drinksauthz.ActionTag,
+		func(*middleware.Context) (testEntity, error) {
 			return testEntity{
 				ID:         cedar.NewEntityUID(drinksauthz.DrinkType, "stub"),
 				Attributes: cedar.RecordMap{"Category": cedar.String("wine")},
 			}, nil
 		},
-		Handle: func(_ *middleware.Context, in testEntity) (testEntity, error) {
+		func(_ *middleware.Context, in testEntity) (testEntity, error) {
 			handled = true
 			return in, nil
 		},
-	})
+		func(testEntity) []cedar.EntityUID {
+			return []cedar.EntityUID{drinksauthz.ActionTag, ingredientauthz.ActionTag}
+		},
+	)
 	testutil.ErrorIsPermission(t, err)
 	testutil.IsFalse(t, handled)
 }
 
-func TestRunCommand_AuthorizationActionsRequireEveryActionAfterHandle(t *testing.T) {
+func TestLoadCommand_AuthorizationActionsRequireEveryActionAfterHandle(t *testing.T) {
 	t.Parallel()
 
 	fix := testutil.NewFixture(t)
@@ -314,29 +306,28 @@ func TestRunCommand_AuthorizationActionsRequireEveryActionAfterHandle(t *testing
 	})
 
 	handled := false
-	_, err := middleware.RunCommand(pipeline, fix.ActorContext("sommelier"), middleware.CommandSpec[testEntity, testEntity]{
-		Action: drinksauthz.ActionTag,
-		AuthorizationActions: func(testEntity) []cedar.EntityUID {
-			return []cedar.EntityUID{drinksauthz.ActionGet, drinksauthz.ActionUpdate}
-		},
-		Load: func(*middleware.Context) (testEntity, error) {
+	_, err := pipeline.LoadCommandActions(fix.ActorContext("sommelier"), drinksauthz.ActionTag,
+		func(*middleware.Context) (testEntity, error) {
 			return testEntity{
 				ID:         cedar.NewEntityUID(drinksauthz.DrinkType, "stub"),
 				Attributes: cedar.RecordMap{"Category": cedar.String("wine")},
 				Tags:       cedar.RecordMap{"audience": cedar.String("sommelier")},
 			}, nil
 		},
-		Handle: func(_ *middleware.Context, out testEntity) (testEntity, error) {
+		func(_ *middleware.Context, out testEntity) (testEntity, error) {
 			handled = true
 			out.Attributes["Category"] = cedar.String("beer")
 			return out, nil
 		},
-	})
+		func(testEntity) []cedar.EntityUID {
+			return []cedar.EntityUID{drinksauthz.ActionGet, drinksauthz.ActionUpdate}
+		},
+	)
 	testutil.ErrorIsPermission(t, err)
 	testutil.IsTrue(t, handled)
 }
 
-func TestRunCommand_EmptyAuthorizationActionsFailClosed(t *testing.T) {
+func TestLoadCommand_EmptyAuthorizationActionsFailClosed(t *testing.T) {
 	t.Parallel()
 
 	fix := testutil.NewFixture(t)
@@ -346,22 +337,21 @@ func TestRunCommand_EmptyAuthorizationActionsFailClosed(t *testing.T) {
 	})
 
 	handled := false
-	_, err := middleware.RunCommand(pipeline, fix.OwnerContext(), middleware.CommandSpec[testEntity, testEntity]{
-		Action:               drinksauthz.ActionTag,
-		AuthorizationActions: func(testEntity) []cedar.EntityUID { return nil },
-		Load: func(*middleware.Context) (testEntity, error) {
+	_, err := pipeline.LoadCommandActions(fix.OwnerContext(), drinksauthz.ActionTag,
+		func(*middleware.Context) (testEntity, error) {
 			return testEntity{ID: cedar.NewEntityUID(drinksauthz.DrinkType, "stub")}, nil
 		},
-		Handle: func(_ *middleware.Context, in testEntity) (testEntity, error) {
+		func(_ *middleware.Context, in testEntity) (testEntity, error) {
 			handled = true
 			return in, nil
 		},
-	})
+		func(testEntity) []cedar.EntityUID { return nil },
+	)
 	testutil.ErrorIsInternal(t, err)
 	testutil.IsFalse(t, handled)
 }
 
-func TestRunCommand_LoaderRunsInTransaction(t *testing.T) {
+func TestLoadCommand_LoaderRunsInTransaction(t *testing.T) {
 	t.Parallel()
 
 	fix := testutil.NewFixture(t)
@@ -374,18 +364,40 @@ func TestRunCommand_LoaderRunsInTransaction(t *testing.T) {
 	})
 
 	var gotTx *store.Tx
-	_, err := middleware.RunCommand(pipeline, ctx, middleware.CommandSpec[testEntity, testEntity]{
-		Action: drinksauthz.ActionCreate,
-		Load: func(ctx *middleware.Context) (testEntity, error) {
+	_, err := pipeline.LoadCommand(ctx, drinksauthz.ActionCreate,
+		func(ctx *middleware.Context) (testEntity, error) {
 			gotTx, _ = ctx.Transaction()
 			return testEntity{
 				ID: cedar.NewEntityUID(cedar.EntityType("Mixology::Drink"), cedar.String("stub")),
 			}, nil
 		},
-		Handle: func(_ *middleware.Context, in testEntity) (testEntity, error) {
+		func(_ *middleware.Context, in testEntity) (testEntity, error) {
 			return in, nil
 		},
+	)
+	testutil.Ok(t, err)
+	testutil.NotNil(t, gotTx)
+}
+
+func TestCommand_HandlerRunsInTransaction(t *testing.T) {
+	t.Parallel()
+
+	fix := testutil.NewFixture(t)
+	pipeline := middleware.NewPipeline(middleware.PipelineConfig{
+		Store:          fix.Store,
+		RecordActivity: func(*middleware.Context, middlewareevents.Activity) error { return nil },
 	})
+	resource := testEntity{
+		ID: cedar.NewEntityUID(cedar.EntityType("Mixology::Drink"), cedar.String("stub")),
+	}
+
+	var gotTx *store.Tx
+	_, err := pipeline.Command(fix.OwnerContext(), drinksauthz.ActionCreate, resource,
+		func(ctx *middleware.Context, in testEntity) (testEntity, error) {
+			gotTx, _ = ctx.Transaction()
+			return in, nil
+		},
+	)
 	testutil.Ok(t, err)
 	testutil.NotNil(t, gotTx)
 }

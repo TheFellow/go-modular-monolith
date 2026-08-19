@@ -7,11 +7,5 @@ import (
 )
 
 func (m *Module) AddDrink(ctx *middleware.Context, change *models.MenuPatch) (*models.Menu, error) {
-	return middleware.RunCommand(m.pipeline, ctx, middleware.CommandSpec[*models.MenuPatch, *models.Menu]{
-		Action: authz.ActionAddDrink,
-		Load: func(*middleware.Context) (*models.MenuPatch, error) {
-			return change, nil
-		},
-		Handle: m.commands.AddDrink,
-	})
+	return m.pipeline.Command(ctx, authz.ActionAddDrink, change, m.commands.AddDrink)
 }

@@ -15,7 +15,7 @@ consistency boundaries remain visible across all three front ends.
 
 ## Five-minute start
 
-Go `1.26.5` or newer is required. From the repository root:
+Go `1.27.0` or newer is required. From the repository root:
 
 ```sh
 go run ./main/seed

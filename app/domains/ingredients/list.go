@@ -34,14 +34,13 @@ func (m *Module) List(ctx *middleware.Context, req ListRequest) (paging.Page[*mo
 		}
 	}
 	filter := ingredientsdao.ListFilter{Category: req.Category, Expression: expression}
-	return middleware.RunPageQuery(
-		m.pipeline, ctx, authz.ActionList,
+	return m.pipeline.PageQuery(
+		ctx, authz.ActionList, filter, paging.Request{Cursor: req.Cursor, Limit: req.Limit},
 		func(ctx store.Context, filter ingredientsdao.ListFilter, cursor paging.Cursor) iter.Seq2[*models.Ingredient, error] {
 			filter.BeforeID = string(cursor)
 			return m.queries.List(ctx, filter)
 		},
 		func(item *models.Ingredient) paging.Cursor { return paging.Cursor(item.ID.String()) },
-		filter, paging.Request{Cursor: req.Cursor, Limit: req.Limit},
 	)
 }
 
