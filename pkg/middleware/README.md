@@ -84,10 +84,14 @@ Domain modules enter through generic methods on their configured `Pipeline`:
 | `LoadCommand`        | Load trusted state inside the unit of work, authorize it, handle the mutation, then authorize the result.                                     |
 | `LoadCommandActions` | As `LoadCommand`, with the complete authorization action set derived from loaded state.                                                       |
 
-All command and entity-query types satisfy `CedarEntity`. `LoadCommandActions` supports the one
-workflow whose policy requirements depend on its exact transition; returning no actions is an
-internal error. Prefer `Command` when input is already available and `LoadCommand` when current
-persisted state is the trusted authorization resource.
+Command inputs and results, `Query` results, and `PageQuery` items satisfy `CedarEntity`;
+`QueryResource` instead accepts a separate `cedar.Entity`, so its request and result can be any
+type. `LoadCommandActions` supports the one workflow whose policy requirements depend on its exact
+transition; returning no actions is an internal error. Prefer `Command` when input is already
+available and `LoadCommand` when current persisted state is the trusted authorization resource.
+The `LoadCommand` loader runs inside the same command transaction as the handler, event dispatch,
+and successful audit write. All command methods authorize both the input and result before that
+transaction commits.
 
 A command has this shape:
 
