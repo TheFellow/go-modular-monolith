@@ -56,11 +56,14 @@ Most application code should use the typed pipeline methods rather than call the
 - `Pipeline.QueryResource` authorizes an already-known resource before executing its handler.
 - `Pipeline.PageQuery` authorizes each row, omits permission-denied rows, and propagates
   evaluation or storage failures.
-- Pipeline command methods authorize the loaded and resulting resource states so policies can
-  constrain transitions.
+- `Pipeline.Command` authorizes caller-supplied input and the resulting resource state.
+- `Pipeline.LoadCommand` loads trusted state inside the command transaction, then authorizes that
+  state and the result so policies can constrain transitions.
+- `Pipeline.LoadCommandActions` does the same while deriving every required action from the loaded
+  state; an empty action set fails closed as an internal error.
 
 Those behaviors are documented in the
-[`pkg/middleware` guide](../middleware/README.md#typed-operation-helpers). Presentation code may
+[`pkg/middleware` guide](../middleware/README.md#typed-pipeline-operations). Presentation code may
 call `AuthorizeWithEntity` to decide whether to expose an action, but the command/query pipeline
 remains the enforcement point.
 
@@ -109,7 +112,7 @@ domain resource. Domain operations normally require `AuthorizeWithEntity`.
 2. Run `go generate ./...` from the repository root. Do not edit generated models, tests, or the
    assembled policy registry by hand.
 3. Implement or update the business model's `CedarEntity` conversion.
-4. Route the generated action through the appropriate middleware helper.
+4. Route the generated action through the appropriate typed `Pipeline` method.
 5. Test representative permits, denials, resource attributes, tags, and state transitions.
 
 The generator deliberately supports a narrow schema profile: one action namespace per domain, one
