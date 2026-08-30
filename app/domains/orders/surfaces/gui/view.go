@@ -48,7 +48,7 @@ type View struct {
 	expression, menuQuery, drinkQuery, quantity, itemNotes, orderNotes *ui.SemanticEntry
 	tags                                                               *ui.TagTokenEditor
 	menus, drinks                                                      *widget.Select
-	list                                                               *widget.Table
+	list                                                               *ui.RowTable
 	removeItems                                                        map[int]*ui.SemanticButton
 	refresh, create, save, cancel                                      *ui.SemanticButton
 	state                                                              State
@@ -150,7 +150,7 @@ func (v *View) browser(s State) framework.CanvasObject {
 				v.presenter.Select(id.Row)
 			}
 		}
-		ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Menu", Width: 160, Sortable: true}, {Title: "Status", Width: 100, Sortable: true}, {Title: "Items / qty", Width: 90, Sortable: true}, {Title: "Total", Width: 80, Sortable: true}, {Title: "Placed", Width: 140, Sortable: true}, {Title: "Tags", Width: 130, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, func(column int, direction ui.SortDirection) {
+		ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Menu", Width: 160, Flex: 2, Sortable: true}, {Title: "Status", Width: 100, Flex: 1, Sortable: true}, {Title: "Items / qty", Width: 90, Flex: 1, Sortable: true}, {Title: "Total", Width: 80, Flex: 1, Sortable: true}, {Title: "Placed", Width: 140, Flex: 1, Sortable: true}, {Title: "Tags", Width: 130, Flex: 2, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, func(column int, direction ui.SortDirection) {
 			sortColumns := []int{0, 2, 3, 5, 6, 8}
 			v.presenter.SortRows(sortColumns[column], direction)
 		})

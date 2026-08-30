@@ -27,14 +27,14 @@ func TestActionCellRecyclesSafelyAcrossTextTagsAndActions(t *testing.T) { //noli
 	cell := NewActionCell()
 	ShowCellTags(cell, `featured,"region=west, coast"`)
 	tags := cell.Objects[2].(*tableTagCell)
-	testutil.Equals(t, tags.primary, "featured")
-	testutil.Equals(t, tags.more, 1)
+	testutil.Equals(t, tags.tags, []string{"featured", "region=west, coast"})
 	ShowCellText(cell, "Name", false)
 	testutil.ErrorIf(t, tags.Visible() || !cell.Objects[0].Visible(), "%v", "text mode retained recycled tag content")
 	ShowCellActions(cell, []RowAction{{Label: "View"}})
 	testutil.ErrorIf(t, tags.Visible() || cell.Objects[0].Visible() || ActionSelector(cell).Hidden, "%v", "action mode retained recycled text or tag content")
 	ShowCellTags(cell, "new")
-	testutil.ErrorIf(t, !ActionSelector(cell).Hidden || !tags.Visible() || tags.primary != "new" || tags.more != 0, "%v", "tag mode retained recycled action content")
+	testutil.ErrorIf(t, !ActionSelector(cell).Hidden || !tags.Visible(), "%v", "tag mode retained recycled action content")
+	testutil.Equals(t, tags.tags, []string{"new"})
 }
 
 func TestTableTagPillsStayWithinCellAndTruncate(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
@@ -55,6 +55,32 @@ func TestTableTagPillsStayWithinCellAndTruncate(t *testing.T) { //nolint:paralle
 		testutil.Equals(t, label.Truncation, framework.TextTruncateEllipsis)
 	}
 	testutil.Equals(t, renderer.overflow.Objects[1].(*widget.Label).Text, "+2")
+}
+
+func TestTableTagPillsRevealMoreTagsAsColumnExpands(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
+	startTestApp(t)
+	tags := newTableTagCell()
+	tags.SetCSV("featured,region=west,environment=development")
+	renderer := tags.CreateRenderer().(*tableTagCellRenderer)
+	renderer.Refresh()
+	renderer.Layout(framework.NewSize(145, 32))
+	narrow := visibleTableTagPills(renderer)
+	testutil.ErrorIf(t, narrow != 1 || !renderer.overflow.Visible(), "narrow column shows %d tags, overflow visible=%v", narrow, renderer.overflow.Visible())
+
+	renderer.Layout(framework.NewSize(420, 32))
+	wide := visibleTableTagPills(renderer)
+	testutil.ErrorIf(t, wide <= narrow, "wide column shows %d tags, want more than narrow column's %d", wide, narrow)
+	testutil.ErrorIf(t, wide != 3 || renderer.overflow.Visible(), "wide column shows %d tags, overflow visible=%v", wide, renderer.overflow.Visible())
+}
+
+func visibleTableTagPills(renderer *tableTagCellRenderer) int {
+	visible := 0
+	for _, pill := range renderer.pills {
+		if pill.Visible() {
+			visible++
+		}
+	}
+	return visible
 }
 
 func TestActionCellRunsSelectedActionAndClearsSelection(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
@@ -173,6 +199,19 @@ func TestConfiguredRowTableUsesResizableNativeHeadersAndTogglesSort(t *testing.T
 	testutil.ErrorIf(t, button.Disabled() || button.OnTapped != nil, "%v", "informational header should remain readable and non-interactive")
 	testutil.Equals(t, button.Alignment, widget.ButtonAlignTrailing)
 	testutil.Equals(t, ActionSelector(NewActionCell()).Alignment, framework.TextAlignTrailing)
+}
+
+func TestFittedColumnWidthsPreserveMinimumsAndDistributeSpareWidth(t *testing.T) {
+	t.Parallel()
+	columns := []TableColumn{
+		{Title: "Name", Width: 160, Flex: 2},
+		{Title: "Status", Width: 80, Flex: 1},
+		{Title: "Tags", Width: 120, Flex: 2},
+		{Title: "Actions", Width: RowActionsWidth},
+	}
+	testutil.Equals(t, fittedColumnWidths(columns, 400), []float32{160, 80, 120, 120})
+	widths := fittedColumnWidths(columns, 680)
+	testutil.Equals(t, widths, []float32{240, 120, 200, 120})
 }
 
 func TestTableTimestampUsesCompactMinutePrecision(t *testing.T) {

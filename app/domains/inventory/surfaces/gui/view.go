@@ -39,7 +39,7 @@ const (
 type View struct {
 	presenter                        *Presenter
 	root, browse, detail, mutation   *framework.Container
-	list                             *widget.Table
+	list                             *ui.RowTable
 	listStack, empty                 *framework.Container
 	expression, amount, cost         *ui.SemanticEntry
 	tags                             *ui.TagTokenEditor
@@ -98,7 +98,7 @@ func NewView(p *Presenter) *View {
 			p.Select(v.state.Rows[id.Row].Inventory.ID)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Ingredient", Width: 145, Sortable: true}, {Title: "On hand", Width: 80, Sortable: true}, {Title: "Available", Width: 80, Sortable: true}, {Title: "Cost", Width: 75, Sortable: true}, {Title: "Status", Width: 65, Sortable: true}, {Title: "Updated", Width: 125, Sortable: true}, {Title: "Tags", Width: 120, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, func(column int, direction ui.SortDirection) {
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Ingredient", Width: 145, Flex: 2, Sortable: true}, {Title: "On hand", Width: 80, Flex: 1, Sortable: true}, {Title: "Available", Width: 80, Flex: 1, Sortable: true}, {Title: "Cost", Width: 75, Flex: 1, Sortable: true}, {Title: "Status", Width: 65, Flex: 1, Sortable: true}, {Title: "Updated", Width: 125, Flex: 1, Sortable: true}, {Title: "Tags", Width: 120, Flex: 2, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, func(column int, direction ui.SortDirection) {
 		sortColumns := []int{0, 2, 4, 6, 9, 7, 8}
 		p.SortRows(sortColumns[column], direction)
 	})

@@ -111,7 +111,7 @@ type recipeWidgets struct {
 type View struct {
 	presenter                         *Presenter
 	root                              *framework.Container
-	list                              *widget.Table
+	list                              *ui.RowTable
 	status, formStatus, tagStatus     *widget.Label
 	detailTitle, crumbName            *widget.Label
 	browse, formPanel, tagsPanel      *framework.Container
@@ -180,7 +180,7 @@ func NewView(p *Presenter) *View {
 			p.Select(id.Row)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 170, Sortable: true}, {Title: "Category", Width: 90, Sortable: true}, {Title: "Glass", Width: 85, Sortable: true}, {Title: "Status", Width: 105, Sortable: true}, {Title: "Ingredients", Width: 90, Sortable: true}, {Title: "Tags", Width: 145, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, p.SortItems)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 170, Flex: 2, Sortable: true}, {Title: "Category", Width: 90, Flex: 1, Sortable: true}, {Title: "Glass", Width: 85, Flex: 1, Sortable: true}, {Title: "Status", Width: 105, Flex: 1, Sortable: true}, {Title: "Ingredients", Width: 90, Flex: 1, Sortable: true}, {Title: "Tags", Width: 145, Flex: 2, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, p.SortItems)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New drink", p.StartCreate), ui.IconAdd))
 	edit := ui.NewButton(ControlEdit, "Edit", p.StartEdit)
