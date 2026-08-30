@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	framework "fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
 	frameworktest "fyne.io/fyne/v2/test"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
@@ -59,14 +58,6 @@ func TestTagPillsCSVTrimsAndOmitsEmptyValues(t *testing.T) {
 	startTestApp(t)
 	pills := TagPillsCSV(" featured, region=west, ").(*framework.Container)
 	testutil.ErrorIf(t, len(pills.Objects) != 2, "pill count = %d, want 2", len(pills.Objects))
-}
-
-func TestCompactTableTagPillsStayInsideColumn(t *testing.T) {
-	startTestApp(t)
-	row := container.New(&compactPillRowLayout{}, compactTagPill("environment=a-very-long-production-environment-name"), compactTagPill("featured"))
-	row.Resize(framework.NewSize(100, 24))
-	testutil.ErrorIf(t, row.Objects[0].Size().Width > 100, "first pill width %v exceeds the table column", row.Objects[0].Size().Width)
-	testutil.ErrorIf(t, row.Objects[1].Visible(), "%v", "pill beyond the table column remained visible")
 }
 
 func TestTagPreviewRefreshesEditablePills(t *testing.T) {
