@@ -15,7 +15,7 @@ func TestRowTableHidesNativeCellSeparators(t *testing.T) { //nolint:paralleltest
 	}, func(widget.TableCellID, framework.CanvasObject) {})
 	testutil.ErrorIf(t, !table.HideSeparators, "%v", "row table should hide native horizontal and vertical cell separators")
 	cell := NewActionCell()
-	testutil.ErrorIf(t, len(cell.Objects) != 4, "row cell objects = %d, want label, actions, pills, and horizontal separator", len(cell.Objects))
+	testutil.ErrorIf(t, len(cell.Objects) != 4, "row cell objects = %d, want label, actions, tags, and horizontal separator", len(cell.Objects))
 	{
 		_, ok := cell.Objects[3].(*widget.Separator)
 		testutil.ErrorIf(t, !ok, "row cell trailing object = %T, want *widget.Separator", cell.Objects[3])
@@ -26,13 +26,35 @@ func TestActionCellRecyclesSafelyAcrossTextTagsAndActions(t *testing.T) { //noli
 	startTestApp(t)
 	cell := NewActionCell()
 	ShowCellTags(cell, `featured,"region=west, coast"`)
-	testutil.ErrorIf(t, CellTagPills(cell).Hidden || len(CellTagPills(cell).Objects) != 2, "tag mode hidden=%v pills=%d", CellTagPills(cell).Hidden, len(CellTagPills(cell).Objects))
+	tags := cell.Objects[2].(*tableTagCell)
+	testutil.Equals(t, tags.primary, "featured")
+	testutil.Equals(t, tags.more, 1)
 	ShowCellText(cell, "Name", false)
-	testutil.ErrorIf(t, !CellTagPills(cell).Hidden || !cell.Objects[0].Visible(), "%v", "text mode retained recycled pill content")
+	testutil.ErrorIf(t, tags.Visible() || !cell.Objects[0].Visible(), "%v", "text mode retained recycled tag content")
 	ShowCellActions(cell, []RowAction{{Label: "View"}})
-	testutil.ErrorIf(t, !CellTagPills(cell).Hidden || cell.Objects[0].Visible() || ActionSelector(cell).Hidden, "%v", "action mode retained recycled text or pill content")
+	testutil.ErrorIf(t, tags.Visible() || cell.Objects[0].Visible() || ActionSelector(cell).Hidden, "%v", "action mode retained recycled text or tag content")
 	ShowCellTags(cell, "new")
-	testutil.ErrorIf(t, !ActionSelector(cell).Hidden || len(CellTagPills(cell).Objects) != 1, "%v", "pill mode retained recycled action content")
+	testutil.ErrorIf(t, !ActionSelector(cell).Hidden || !tags.Visible() || tags.primary != "new" || tags.more != 0, "%v", "tag mode retained recycled action content")
+}
+
+func TestTableTagPillsStayWithinCellAndTruncate(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.
+	startTestApp(t)
+	tags := newTableTagCell()
+	tags.SetCSV("environment=a-very-long-production-environment-name,featured,region=west")
+	renderer := tags.CreateRenderer().(*tableTagCellRenderer)
+	renderer.Refresh()
+	renderer.Layout(framework.NewSize(145, 32))
+
+	for _, pill := range renderer.objects {
+		if !pill.Visible() {
+			continue
+		}
+		testutil.ErrorIf(t, pill.Position().X < 0 || pill.Position().X+pill.Size().Width > 145,
+			"pill spans x=%v..%v outside width 145", pill.Position().X, pill.Position().X+pill.Size().Width)
+		label := pill.(*framework.Container).Objects[1].(*widget.Label)
+		testutil.Equals(t, label.Truncation, framework.TextTruncateEllipsis)
+	}
+	testutil.Equals(t, renderer.overflow.Objects[1].(*widget.Label).Text, "+2")
 }
 
 func TestActionCellRunsSelectedActionAndClearsSelection(t *testing.T) { //nolint:paralleltest // Fyne widget state is process-global.

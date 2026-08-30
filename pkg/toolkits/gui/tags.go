@@ -2,6 +2,7 @@ package gui
 
 import (
 	"encoding/csv"
+	"fmt"
 	"image/color"
 	"io"
 	"sort"
@@ -314,60 +315,114 @@ func TagPillsCSV(value string) framework.CanvasObject {
 	return TagPills(parseTagCSV(value))
 }
 
-func compactTagPill(value string) framework.CanvasObject {
+type tableTagCell struct {
+	widget.BaseWidget
+	primary string
+	more    int
+}
+
+func newTableTagCell() *tableTagCell {
+	cell := &tableTagCell{}
+	cell.ExtendBaseWidget(cell)
+	return cell
+}
+
+func (c *tableTagCell) SetCSV(value string) {
+	tags := parseTagCSV(value)
+	c.primary, c.more = "", 0
+	if len(tags) > 0 {
+		c.primary = tags[0]
+		c.more = len(tags) - 1
+	}
+	c.Refresh()
+}
+
+func (c *tableTagCell) CreateRenderer() framework.WidgetRenderer {
+	primary := compactTableTagPill("")
+	overflow := compactTableTagPill("")
+	return &tableTagCellRenderer{cell: c, primary: primary, overflow: overflow, objects: []framework.CanvasObject{primary, overflow}}
+}
+
+type tableTagCellRenderer struct {
+	cell              *tableTagCell
+	primary, overflow *framework.Container
+	objects           []framework.CanvasObject
+}
+
+func (r *tableTagCellRenderer) Layout(size framework.Size) {
+	if r.cell.primary == "" {
+		r.primary.Hide()
+		r.overflow.Hide()
+		return
+	}
+	r.primary.Show()
+	if r.cell.more == 0 {
+		r.overflow.Hide()
+		r.primary.Move(framework.NewPos(0, 0))
+		r.primary.Resize(size)
+		return
+	}
+	r.overflow.Show()
+	overflowText := fmt.Sprintf("+%d", r.cell.more)
+	overflowWidth := min(framework.MeasureText(overflowText, theme.TextSize(), framework.TextStyle{}).Width+40, size.Width)
+	primaryWidth := max(float32(0), size.Width-overflowWidth-tagPillGap)
+	if primaryWidth == 0 {
+		r.primary.Hide()
+		r.overflow.Move(framework.NewPos(0, 0))
+		r.overflow.Resize(framework.NewSize(overflowWidth, size.Height))
+		return
+	}
+	r.primary.Move(framework.NewPos(0, 0))
+	r.primary.Resize(framework.NewSize(primaryWidth, size.Height))
+	r.overflow.Move(framework.NewPos(primaryWidth+tagPillGap, 0))
+	r.overflow.Resize(framework.NewSize(overflowWidth, size.Height))
+}
+
+func (r *tableTagCellRenderer) MinSize() framework.Size {
+	return framework.NewSize(0, theme.Size(theme.SizeNameInlineIcon))
+}
+
+func (r *tableTagCellRenderer) Refresh() {
+	setCompactTableTagPill(r.primary, r.cell.primary)
+	more := ""
+	if r.cell.more > 0 {
+		more = fmt.Sprintf("+%d", r.cell.more)
+	}
+	setCompactTableTagPill(r.overflow, more)
+	r.Layout(r.cell.Size())
+}
+
+func (r *tableTagCellRenderer) Objects() []framework.CanvasObject { return r.objects }
+func (r *tableTagCellRenderer) Destroy()                          {}
+
+func compactTableTagPill(value string) *framework.Container {
 	label := widget.NewLabel(value)
 	label.Truncation = framework.TextTruncateEllipsis
 	background := canvas.NewRectangle(theme.Color(theme.ColorNameInputBackground))
 	background.CornerRadius = 10
 	background.StrokeWidth = 1
 	background.StrokeColor = withAlpha(theme.Color(theme.ColorNamePrimary), 150)
-	return container.New(&compactPillLayout{}, background, label)
+	return container.New(&compactTableTagPillLayout{}, background, label)
 }
 
-type compactPillLayout struct{}
+func setCompactTableTagPill(pill *framework.Container, value string) {
+	pill.Objects[1].(*widget.Label).SetText(value)
+	pill.Refresh()
+}
 
-func (*compactPillLayout) MinSize(objects []framework.CanvasObject) framework.Size {
+type compactTableTagPillLayout struct{}
+
+func (*compactTableTagPillLayout) MinSize(objects []framework.CanvasObject) framework.Size {
 	label := objects[1].(*widget.Label)
 	measured := framework.MeasureText(label.Text, theme.TextSize(), label.TextStyle)
-	// Fyne's Label renderer reserves more horizontal inset than MeasureText
-	// reports. Leave enough room for short tags to render in full while still
-	// bounding long values to their table column.
-	return framework.NewSize(measured.Width+40, measured.Height+2)
+	return framework.NewSize(measured.Width+28, measured.Height+2)
 }
 
-func (*compactPillLayout) Layout(objects []framework.CanvasObject, size framework.Size) {
+func (*compactTableTagPillLayout) Layout(objects []framework.CanvasObject, size framework.Size) {
 	objects[0].Move(framework.NewPos(0, 2))
 	objects[0].Resize(framework.NewSize(size.Width, max(0, size.Height-4)))
 	objects[1].Move(framework.NewPos(6, 0))
 	objects[1].Resize(framework.NewSize(max(0, size.Width-12), size.Height))
-}
-
-// compactPillRowLayout keeps table tags inside their assigned column. Detail
-// views retain the complete wrapping pill set.
-type compactPillRowLayout struct{}
-
-func (*compactPillRowLayout) MinSize([]framework.CanvasObject) framework.Size {
-	return framework.NewSize(0, theme.Size(theme.SizeNameInlineIcon))
-}
-
-func (*compactPillRowLayout) Layout(objects []framework.CanvasObject, size framework.Size) {
-	x := float32(0)
-	for i, object := range objects {
-		gap := float32(0)
-		if i > 0 {
-			gap = tagPillGap
-		}
-		remaining := size.Width - x - gap
-		if remaining <= 0 {
-			object.Hide()
-			continue
-		}
-		object.Show()
-		width := min(object.MinSize().Width, remaining)
-		object.Move(framework.NewPos(x+gap, 0))
-		object.Resize(framework.NewSize(width, size.Height))
-		x += gap + width
-	}
 }
 
 func withAlpha(value color.Color, alpha uint8) color.Color {

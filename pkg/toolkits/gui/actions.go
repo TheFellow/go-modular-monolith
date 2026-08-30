@@ -225,14 +225,14 @@ func NewActionCell() *framework.Container {
 	label.Truncation = framework.TextTruncateEllipsis
 	actions := NewActionSelect(nil, nil)
 	actions.Hide()
-	pills := container.New(&compactPillRowLayout{})
-	pills.Hide()
-	return container.New(&rowCellLayout{}, label, actions, pills, widget.NewSeparator())
+	tags := newTableTagCell()
+	tags.Hide()
+	return container.New(&rowCellLayout{}, label, actions, tags, widget.NewSeparator())
 }
 
-func actionCellParts(object framework.CanvasObject) (*widget.Label, *ActionSelect, *framework.Container) {
+func actionCellParts(object framework.CanvasObject) (*widget.Label, *ActionSelect, *tableTagCell) {
 	cell := object.(*framework.Container)
-	return cell.Objects[0].(*widget.Label), cell.Objects[1].(*ActionSelect), cell.Objects[2].(*framework.Container)
+	return cell.Objects[0].(*widget.Label), cell.Objects[1].(*ActionSelect), cell.Objects[2].(*tableTagCell)
 }
 
 type rowCellLayout struct{}
@@ -253,35 +253,28 @@ func (*rowCellLayout) MinSize(objects []framework.CanvasObject) framework.Size {
 }
 
 func ShowCellText(object framework.CanvasObject, text string, header bool) {
-	label, actions, pills := actionCellParts(object)
+	label, actions, tags := actionCellParts(object)
 	actions.Hide()
-	pills.Hide()
+	tags.Hide()
 	label.Show()
 	label.TextStyle = framework.TextStyle{Bold: header}
 	label.SetText(text)
 }
 
-// ShowCellTags renders a canonical CSV tag collection as compact pills. The
-// container is reused because widget.Table recycles cells while scrolling.
+// ShowCellTags renders a bounded pill summary. The dedicated widget keeps its
+// fixed renderer objects inside the recycled table cell at every layout pass.
 func ShowCellTags(object framework.CanvasObject, value string) {
-	label, actions, pills := actionCellParts(object)
+	label, actions, tags := actionCellParts(object)
 	label.Hide()
 	actions.Hide()
-	pills.RemoveAll()
-	for _, tag := range parseTagCSV(value) {
-		pills.Add(compactTagPill(tag))
-	}
-	if len(pills.Objects) == 0 {
-		pills.Add(widget.NewLabel(""))
-	}
-	pills.Show()
-	pills.Refresh()
+	tags.SetCSV(value)
+	tags.Show()
 }
 
 func ShowCellActions(object framework.CanvasObject, rowActions []RowAction) {
-	label, actions, pills := actionCellParts(object)
+	label, actions, tags := actionCellParts(object)
 	label.Hide()
-	pills.Hide()
+	tags.Hide()
 	actions.Show()
 	byLabel := make(map[string]func(), len(rowActions))
 	options := make([]string, 0, len(rowActions))
@@ -301,10 +294,4 @@ func ShowCellActions(object framework.CanvasObject, rowActions []RowAction) {
 func ActionSelector(object framework.CanvasObject) *ActionSelect {
 	_, actions, _ := actionCellParts(object)
 	return actions
-}
-
-// CellTagPills exposes the recycled pill container for focused tests.
-func CellTagPills(object framework.CanvasObject) *framework.Container {
-	_, _, pills := actionCellParts(object)
-	return pills
 }
