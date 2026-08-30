@@ -9,7 +9,11 @@ and workflows.
 
 - `ListDetail` owns the recurring searchable list, spinner/error state, sizing, optional local
   filtering/pagination, selection, and two-pane rendering.
+- `DetailViewport` adds pager-key scrolling to secondary panes while reserving arrow keys for list
+  selection. `FormViewport` keeps long workflows clipped and follows their active field.
 - `ListItem[T]` adapts a typed value to Bubbles' `list.Item` while retaining the typed value.
+- `ListSummary` and `TagSummary` build compact secondary metadata that Bubbles can truncate to the
+  current pane width.
 - Layout helpers calculate pane widths without duplicating Lip Gloss border/padding arithmetic.
 - `Spinner` and the small message/type contracts cover shared loading behavior.
 - `ViewModel` and `Interaction` define the shell-facing contract without knowing application routes.

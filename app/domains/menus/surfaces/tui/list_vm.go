@@ -82,6 +82,7 @@ type ListViewModel struct {
 
 	list         list.Model
 	detail       *DetailViewModel
+	detailPane   tui.DetailViewport
 	mode         listMode
 	create       *CreateMenuVM
 	rename       *RenameMenuVM
@@ -139,6 +140,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		dialogKeys:   keys.Standard.Dialog,
 		list:         l,
 		detail:       NewDetailViewModel(styles.Standard.ListView, app),
+		detailPane:   tui.NewDetailViewport(),
 		loading:      true,
 		projector:    menus.NewActionProjector(),
 	}
@@ -568,6 +570,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	}
+	if m.detailPane.Update(msg) {
+		return m, nil
+	}
 
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
@@ -616,7 +621,7 @@ func (m *ListViewModel) View() string {
 	}
 	listView = m.styles.ListPane.Width(tui.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
-	detailView := m.detail.View()
+	detailView := m.detailPane.View(m.detail.View())
 	switch m.mode {
 	case listModeBrowsing, listModeConfirmingDelete, listModeConfirmingPublish, listModeConfirmingDraft, listModeConfirmingRemoveDrink:
 	case listModeTagging:
@@ -651,7 +656,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 		if m.actionEnabled(menus.ControlList) {
 			bindings = append(bindings, analyzeKey, m.keys.Refresh)
 		}
-		return append(bindings, m.keys.Back)
+		return append(bindings, tui.DetailScrollHelp, m.keys.Back)
 	case listModeAddingDrink, listModeRemovingDrink, listModeAnalyzing:
 	}
 	if m.mode == listModeAddingDrink || m.mode == listModeRemovingDrink || m.mode == listModeAnalyzing {
@@ -688,6 +693,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			analysisHelp = append(analysisHelp, analyzeKey)
 			footer = append([]key.Binding{m.keys.Refresh}, footer...)
 		}
+		collection = append(collection, tui.DetailScrollHelp)
 		if m.actionEnabled(menus.ControlEdit) {
 			navigation = append(navigation, m.keys.Enter)
 		}
@@ -1067,6 +1073,8 @@ func (m *ListViewModel) setSize(width, height int) {
 
 	m.list.SetSize(listWidth, height)
 	m.detail.SetSize(detailWidth, height)
+	_, frameHeight := m.styles.DetailPane.GetFrameSize()
+	m.detailPane.SetSize(detailWidth, max(height-frameHeight, 1))
 	m.listWidth = listWidth
 	m.detailWidth = detailWidth
 }

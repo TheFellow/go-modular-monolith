@@ -35,7 +35,7 @@ func TestListViewModel_ShowsOrdersAfterLoad(t *testing.T) {
 	})
 
 	menu := testutil.CreateMenu(t, f, "Dinner", testutil.WithDrink(drink), testutil.Published())
-	order := testutil.PlaceOrder(t, f, ordersmodels.Order{
+	testutil.PlaceOrder(t, f, ordersmodels.Order{
 		MenuID: menu.ID,
 		Items: []ordersmodels.OrderItem{{
 			DrinkID:  drink.ID,
@@ -49,8 +49,6 @@ func TestListViewModel_ShowsOrdersAfterLoad(t *testing.T) {
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
 	view := model.View()
-	shortID := truncateID(order.ID.String())
-	testutil.ErrorIf(t, !strings.Contains(view, shortID), "expected view to contain order id, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Dinner"), "expected view to contain menu name, got:\n%s", view)
 }
 
@@ -177,11 +175,4 @@ func TestListViewModel_SetSize_NarrowWidth(t *testing.T) {
 
 	view := model.View()
 	testutil.StringNonEmpty(t, view, "expected non-empty view for narrow width")
-}
-
-func truncateID(id string) string {
-	if len(id) <= 8 {
-		return id
-	}
-	return id[len(id)-8:]
 }

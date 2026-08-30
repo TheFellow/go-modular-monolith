@@ -384,7 +384,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 		if m.actionEnabled(ingredients.ControlList) {
 			bindings = append(bindings, m.keys.Refresh)
 		}
-		return append(bindings, m.keys.Back)
+		return append(bindings, tui.DetailScrollHelp, m.keys.Back)
 	case listModeFiltering:
 	}
 	return nil
@@ -411,6 +411,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			navigation = append(navigation, m.keys.Up, m.keys.Down)
 			pagingHelp = append(pagingHelp, m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage)
 		}
+		pagingHelp = append(pagingHelp, tui.DetailScrollHelp)
 		if m.actionEnabled(ingredients.ControlList) && m.actionEnabled(ingredients.ControlEdit) {
 			navigation = append(navigation, m.keys.Enter)
 		}

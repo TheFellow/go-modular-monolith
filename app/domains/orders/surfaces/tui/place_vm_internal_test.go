@@ -89,6 +89,24 @@ func TestPlaceVMOwnsEachSearchKeyExactlyOnceAndAcceptsMultilineNotes(t *testing.
 	testutil.ErrorIf(t, !strings.Contains(v.orderNotes.Value(), "order\nnote"), "multiline order notes were not retained: %q", v.orderNotes.Value())
 }
 
+func TestPlaceVMUsesSectionedViewportAndFollowsFocusedField(t *testing.T) {
+	t.Parallel()
+	v := newPlaceVM(nil, 1)
+	v.loading = false
+	v.menu = &placeMenu{id: entity.NewMenuID(), name: "Dinner"}
+	v.field = placeFieldMenu
+	v.SetSize(80, 12)
+	top := v.View()
+	testutil.ErrorIf(t, !strings.Contains(top, "1. Choose a menu"), "menu section missing:\n%s", top)
+
+	v.field = placeFieldTags
+	bottom := v.View()
+	for _, text := range []string{"3. Order details", "Complete tags (optional):"} {
+		testutil.ErrorIf(t, !strings.Contains(bottom, text), "focused order section missing %q:\n%s", text, bottom)
+	}
+	testutil.ErrorIf(t, strings.Contains(bottom, "1. Choose a menu"), "viewport did not follow the focused lower section:\n%s", bottom)
+}
+
 func TestPlaceVMRejectsInvalidQuantityAndProtectsDirtyBack(t *testing.T) {
 	t.Parallel()
 	drink := placeDrink{id: entity.NewDrinkID(), name: "Fizz"}

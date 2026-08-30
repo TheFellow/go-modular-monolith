@@ -22,6 +22,7 @@ type ListDetail struct {
 	height  int
 	listW   int
 	detailW int
+	detail  DetailViewport
 }
 
 func NewListDetail(title, loadingLabel string, styles ListViewStyles) *ListDetail {
@@ -42,6 +43,7 @@ func NewListDetail(title, loadingLabel string, styles ListViewStyles) *ListDetai
 		styles:  styles,
 		list:    l,
 		spinner: NewSpinner(loadingLabel, styles.Subtitle),
+		detail:  NewDetailViewport(),
 		loading: true,
 	}
 }
@@ -72,6 +74,8 @@ func (m *ListDetail) SetSize(width, height int) (listWidth, detailWidth int) {
 	listWidth = PaneContentWidth(m.styles.ListPane, listWidth)
 	detailWidth = PaneContentWidth(m.styles.DetailPane, detailWidth)
 	m.list.SetSize(listWidth, height)
+	_, detailFrameHeight := m.styles.DetailPane.GetFrameSize()
+	m.detail.SetSize(detailWidth, max(height-detailFrameHeight, 1))
 	m.listW, m.detailW = listWidth, detailWidth
 	return listWidth, detailWidth
 }
@@ -81,6 +85,9 @@ func (m *ListDetail) Update(msg tea.Msg) tea.Cmd {
 	if m.loading {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return cmd
+	}
+	if m.detail.Update(msg) {
+		return nil
 	}
 	m.list, cmd = m.list.Update(msg)
 	return cmd
@@ -100,6 +107,7 @@ func (m *ListDetail) View(detail string) string {
 		listView = m.styles.ErrorText.Render(fmt.Sprintf("Error: %v", m.err))
 	}
 	listView = m.styles.ListPane.Width(PaneStyleWidth(m.styles.ListPane, m.listW)).Render(listView)
+	detail = m.detail.View(detail)
 	detail = m.styles.DetailPane.Width(PaneStyleWidth(m.styles.DetailPane, m.detailW)).Render(detail)
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detail)
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
+	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keyname"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -130,6 +131,7 @@ type placeVM struct {
 	loading, saving                       bool
 	err                                   error
 	backArmed                             bool
+	viewport                              tui.FormViewport
 }
 
 func newPlaceVM(session *app.Session, workflow uint64) *placeVM {
@@ -141,7 +143,7 @@ func newPlaceVM(session *app.Session, workflow uint64) *placeVM {
 		v.ShowLineNumbers = false
 		return v
 	}
-	v := &placeVM{session: session, workflow: workflow, loading: true,
+	v := &placeVM{session: session, workflow: workflow, loading: true, viewport: tui.NewFormViewport(),
 		menuQuery: input("Search menus: "), drinkQuery: input("Search drinks: "), quantity: input("Quantity: "),
 		tags:      input("Complete tags (optional): "),
 		itemNotes: notes("Item notes"), orderNotes: notes("Order notes")}
@@ -149,7 +151,8 @@ func newPlaceVM(session *app.Session, workflow uint64) *placeVM {
 	v.refocus()
 	return v
 }
-func (v *placeVM) Init() tea.Cmd { return v.loadCatalog() }
+func (v *placeVM) Init() tea.Cmd             { return v.loadCatalog() }
+func (v *placeVM) SetSize(width, height int) { v.viewport.SetSize(max(width-8, 20), max(height-2, 1)) }
 func (v *placeVM) loadCatalog() tea.Cmd {
 	workflow := v.workflow
 	session := v.session
@@ -502,7 +505,8 @@ func (v *placeVM) setFocusValue(value string) {
 	}
 }
 func (v *placeVM) View() string {
-	lines := []string{"Place Order", "", v.menuQuery.View()}
+	lines := []string{"Place Order", "", "1. Choose a menu", "Only published menus are available.", "", v.menuQuery.View()}
+	focusLine := len(lines) - 1
 	if v.loading {
 		lines = append(lines, "Loading published menus...")
 	} else {
@@ -513,9 +517,15 @@ func (v *placeVM) View() string {
 			}
 			lines = append(lines, prefix+m.name)
 		}
+		if v.field == placeFieldMenu {
+			focusLine += v.menuIndex + 1
+		}
 	}
 	if v.menu != nil {
-		lines = append(lines, "", "Menu: "+v.menu.name, v.drinkQuery.View())
+		lines = append(lines, "", "2. Add drinks", "Choose a drink from "+v.menu.name+" and set its quantity.", "", v.drinkQuery.View())
+		if v.field == placeFieldDrink {
+			focusLine = len(lines) - 1
+		}
 		for i, d := range v.visibleDrinks {
 			prefix := "  "
 			if i == v.drinkIndex {
@@ -523,11 +533,30 @@ func (v *placeVM) View() string {
 			}
 			lines = append(lines, prefix+d.name)
 		}
-		lines = append(lines, "", v.quantity.View(), "Item notes:", v.itemNotes.View(), "enter on a drink adds it")
+		if v.field == placeFieldDrink {
+			focusLine += v.drinkIndex + 1
+		}
+		lines = append(lines, "")
+		if v.field == placeFieldQuantity {
+			focusLine = len(lines)
+		}
+		lines = append(lines, v.quantity.View(), "Item notes:")
+		if v.field == placeFieldItemNotes {
+			focusLine = len(lines)
+		}
+		lines = append(lines, v.itemNotes.View(), "enter on a drink adds it")
 		for _, line := range v.lines {
 			lines = append(lines, fmt.Sprintf("• %s × %d — %s", line.drink.name, line.quantity, line.notes))
 		}
-		lines = append(lines, "", "Order notes:", v.orderNotes.View(), "", v.tags.View())
+		lines = append(lines, "", "3. Order details", "Add order-wide notes and tags before placing.", "", "Order notes:")
+		if v.field == placeFieldOrderNotes {
+			focusLine = len(lines)
+		}
+		lines = append(lines, v.orderNotes.View(), "")
+		if v.field == placeFieldTags {
+			focusLine = len(lines)
+		}
+		lines = append(lines, v.tags.View())
 	}
 	if v.saving {
 		lines = append(lines, "", "Saving...")
@@ -542,6 +571,5 @@ func (v *placeVM) View() string {
 			help += " • ctrl+j newline"
 		}
 	}
-	lines = append(lines, "", help)
-	return strings.Join(lines, "\n")
+	return v.viewport.View(strings.Join(lines, "\n"), focusLine, help)
 }

@@ -326,31 +326,31 @@ func TestRecipeViewportTracksHighlightedIngredientAndSubstituteCandidatesAt80x24
 		driver.Send(tea.KeyMsg{Type: tea.KeyTab})
 	}
 	driver.Press("e")
-	startOffset := program.vm.viewport.model.YOffset
+	startOffset := program.vm.viewport.YOffset()
 	for range 4 {
 		driver.Press("right")
 	}
 	driver.RequireText("Picker > Candidate 04", "↑/↓: recipe field")
-	testutil.ErrorIf(t, program.vm.viewport.model.YOffset <= startOffset, "ingredient candidate did not scroll viewport forward: start=%d current=%d focus=%d", startOffset, program.vm.viewport.model.YOffset, program.vm.recipe.focusLine())
+	testutil.ErrorIf(t, program.vm.viewport.YOffset() <= startOffset, "ingredient candidate did not scroll viewport forward: start=%d current=%d focus=%d", startOffset, program.vm.viewport.YOffset(), program.vm.recipe.focusLine())
 	for range 4 {
 		driver.Press("left")
 	}
 	driver.RequireText("Picker > Candidate 00", "Ingredient 1")
-	testutil.ErrorIf(t, program.vm.viewport.model.YOffset >= startOffset+1, "%v", "ingredient candidate did not scroll viewport back")
+	testutil.ErrorIf(t, program.vm.viewport.YOffset() >= startOffset+1, "%v", "ingredient candidate did not scroll viewport back")
 
 	for range 4 {
 		driver.Send(tea.KeyMsg{Type: tea.KeyCtrlN})
 	}
 	program.vm.recipe.rows[0].candidate = 0
-	substituteStart := program.vm.viewport.model.YOffset
+	substituteStart := program.vm.viewport.YOffset()
 	for range 4 {
 		driver.Press("right")
 	}
 	driver.RequireText("Picker > Candidate 04", "Substitutes", "↑/↓: recipe field")
-	testutil.ErrorIf(t, program.vm.viewport.model.YOffset <= substituteStart, "%v", "substitute candidate did not scroll viewport forward")
+	testutil.ErrorIf(t, program.vm.viewport.YOffset() <= substituteStart, "%v", "substitute candidate did not scroll viewport forward")
 	for range 4 {
 		driver.Press("left")
 	}
 	driver.RequireText("Picker > Candidate 00", "Substitutes")
-	testutil.ErrorIf(t, program.vm.viewport.model.YOffset >= substituteStart+1, "%v", "substitute candidate did not scroll viewport back")
+	testutil.ErrorIf(t, program.vm.viewport.YOffset() >= substituteStart+1, "%v", "substitute candidate did not scroll viewport back")
 }
