@@ -131,7 +131,6 @@ type View struct {
 	renderedForm                      Form
 	formRendered                      bool
 	rendering                         bool
-	tagNaturalWidth                   float32
 }
 
 var _ ui.View = (*View)(nil)
@@ -181,7 +180,7 @@ func NewView(p *Presenter) *View {
 			p.Select(id.Row)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 190, Sortable: true}, {Title: "Category", Width: 110, Sortable: true}, {Title: "Glass", Width: 110, Sortable: true}, {Title: "Status", Width: 125, Sortable: true}, {Title: "Ingredients", Width: 125, Sortable: true}, {Title: "Tags", Width: 190, Sortable: true}, {Title: "Actions", Width: 120}}, p.SortItems)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 170, Sortable: true}, {Title: "Category", Width: 90, Sortable: true}, {Title: "Glass", Width: 85, Sortable: true}, {Title: "Status", Width: 105, Sortable: true}, {Title: "Ingredients", Width: 90, Sortable: true}, {Title: "Tags", Width: 145, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, p.SortItems)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New drink", p.StartCreate), ui.IconAdd))
 	edit := ui.NewButton(ControlEdit, "Edit", p.StartEdit)
@@ -308,16 +307,6 @@ func (v *View) readForm() {
 	v.presenter.SetForm(Form{Name: v.name.Text, Category: v.category.Selected, Glass: v.glass.Selected, Description: v.description.Text, Recipe: rows, Steps: v.steps.Text, Garnish: v.garnish.Text, Tags: v.mutationTags.CSV(), ReplaceTags: true})
 }
 func (v *View) render(state State) {
-	if len(state.Items) > 0 {
-		values := make([]string, len(state.Items))
-		for i, item := range state.Items {
-			values[i] = item.Tags.Canonical().String()
-		}
-		if width := ui.TagPillColumnWidth(values, 190); width > v.tagNaturalWidth {
-			v.list.SetColumnWidth(4, width)
-			v.tagNaturalWidth = width
-		}
-	}
 	v.rendering = true
 	defer func() { v.rendering = false }()
 	v.browse.Hidden = state.Mode != Browsing
@@ -698,7 +687,7 @@ func ingredientName(options []IngredientOption, id entity.IngredientID) string {
 	}
 	return id.String()
 }
-func optionLabel(o IngredientOption) string { return fmt.Sprintf("%s (%s)", o.Name, o.ID.String()) }
+func optionLabel(o IngredientOption) string { return o.Name }
 func optionLabels(options []IngredientOption) []string {
 	out := make([]string, len(options))
 	for i, o := range options {

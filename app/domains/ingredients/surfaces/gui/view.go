@@ -54,7 +54,6 @@ type View struct {
 	renderedForm                                       Form
 	renderedInstance                                   uint64
 	state                                              State
-	tagNaturalWidth                                    float32
 }
 
 var _ ui.View = (*View)(nil)
@@ -95,7 +94,7 @@ func NewView(p *Presenter) *View {
 			p.Select(v.state.Items[id.Row].ID)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 180, Sortable: true}, {Title: "Category", Width: 110, Sortable: true}, {Title: "Unit", Width: 85, Sortable: true}, {Title: "Description", Width: 260, Sortable: true}, {Title: "Tags", Width: 180, Sortable: true}, {Title: "Actions", Width: 120}}, p.SortItems)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 165, Sortable: true}, {Title: "Category", Width: 95, Sortable: true}, {Title: "Unit", Width: 65, Sortable: true}, {Title: "Description", Width: 205, Sortable: true}, {Title: "Tags", Width: 145, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, p.SortItems)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No ingredients found", "Adjust the filter or create a new ingredient.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)
@@ -208,16 +207,6 @@ func (v *View) populate(f Form) {
 }
 
 func (v *View) render(s State) {
-	if len(s.Items) > 0 {
-		values := make([]string, len(s.Items))
-		for i, item := range s.Items {
-			values[i] = item.Tags.Canonical().String()
-		}
-		if width := ui.TagPillColumnWidth(values, 180); width > v.tagNaturalWidth {
-			v.list.SetColumnWidth(4, width)
-			v.tagNaturalWidth = width
-		}
-	}
 	v.rendering = true
 	defer func() { v.rendering = false }()
 	v.state = s

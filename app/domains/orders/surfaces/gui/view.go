@@ -53,7 +53,6 @@ type View struct {
 	refresh, create, save, cancel                                      *ui.SemanticButton
 	state                                                              State
 	rendering                                                          bool
-	tagNaturalWidth                                                    float32
 }
 
 var _ ui.View = (*View)(nil)
@@ -111,22 +110,18 @@ func (v *View) browser(s State) framework.CanvasObject {
 	v.create.Hidden = !s.CanPlace
 	setEnabled(v.expression, !busy && s.CanList)
 	setEnabled(bar.Apply, !busy && s.CanList)
-	columns := []string{"Menu", "Menu ID", "Status", "Items", "Total quantity", "Total", "Created", "Completed", "Tags", "Actions"}
+	columns := []string{"Menu", "Status", "Items / qty", "Total", "Placed", "Tags", "Actions"}
 	if v.list == nil {
 		v.list = ui.NewAutoPagingRowTable(func() (int, int) { return len(v.state.Rows), len(columns) }, func() framework.CanvasObject {
 			return ui.NewActionCell()
 		}, func(id widget.TableCellID, object framework.CanvasObject) {
 			cell := object
 			row := v.state.Rows[id.Row]
-			completed := ""
-			if t, ok := row.Order.CompletedAt.Unwrap(); ok {
-				completed = formatTime(t)
-			}
 			qty := 0
 			for _, item := range row.Order.Items {
 				qty += item.Quantity
 			}
-			values := []string{row.MenuName, row.Order.MenuID.String(), string(row.Order.Status), strconv.Itoa(len(row.Order.Items)), strconv.Itoa(qty), row.Total, formatTime(row.Order.CreatedAt), completed, row.Order.Tags.Canonical().String()}
+			values := []string{row.MenuName, string(row.Order.Status), fmt.Sprintf("%d / %d", len(row.Order.Items), qty), row.Total, ui.TableTimestamp(row.Order.CreatedAt), row.Order.Tags.Canonical().String()}
 			if id.Col == len(columns)-1 {
 				index := id.Row
 				actions := []ui.RowAction{{Label: "View", Run: func() { v.presenter.Select(index) }}}
@@ -143,7 +138,7 @@ func (v *View) browser(s State) framework.CanvasObject {
 				ui.ShowCellActions(cell, actions)
 				return
 			}
-			if id.Col == 8 {
+			if id.Col == 5 {
 				ui.ShowCellTags(cell, values[id.Col])
 				return
 			}
@@ -155,17 +150,10 @@ func (v *View) browser(s State) framework.CanvasObject {
 				v.presenter.Select(id.Row)
 			}
 		}
-		ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Menu", Width: 190, Sortable: true}, {Title: "Menu ID", Width: 240, Sortable: true}, {Title: "Status", Width: 100, Sortable: true}, {Title: "Items", Width: 65, Sortable: true}, {Title: "Total quantity", Width: 100, Sortable: true}, {Title: "Total", Width: 90, Sortable: true}, {Title: "Created", Width: 175, Sortable: true}, {Title: "Completed", Width: 175, Sortable: true}, {Title: "Tags", Width: 180, Sortable: true}, {Title: "Actions", Width: 140}}, v.presenter.SortRows)
-	}
-	if len(s.Rows) > 0 {
-		values := make([]string, len(s.Rows))
-		for i, row := range s.Rows {
-			values[i] = row.Order.Tags.Canonical().String()
-		}
-		if width := ui.TagPillColumnWidth(values, 180); width > v.tagNaturalWidth {
-			v.list.SetColumnWidth(8, width)
-			v.tagNaturalWidth = width
-		}
+		ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Menu", Width: 160, Sortable: true}, {Title: "Status", Width: 100, Sortable: true}, {Title: "Items / qty", Width: 90, Sortable: true}, {Title: "Total", Width: 80, Sortable: true}, {Title: "Placed", Width: 140, Sortable: true}, {Title: "Tags", Width: 130, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, func(column int, direction ui.SortDirection) {
+			sortColumns := []int{0, 2, 3, 5, 6, 8}
+			v.presenter.SortRows(sortColumns[column], direction)
+		})
 	}
 	v.list.Refresh()
 	list := framework.CanvasObject(v.list)
@@ -194,21 +182,6 @@ func orderTitle(r *Row) string {
 	}
 	return "Order " + r.Order.ID.String()
 }
-func readonly(value string) *widget.Entry {
-	e := widget.NewEntry()
-	e.Scroll = framework.ScrollNone
-	restoring := false
-	e.OnChanged = func(changed string) {
-		if restoring || changed == value {
-			return
-		}
-		restoring = true
-		e.SetText(value)
-		restoring = false
-	}
-	e.SetText(value)
-	return e
-}
 func (v *View) detail(s State) framework.CanvasObject {
 	if s.Selected == nil {
 		return ui.StandardFormPage(ui.FormPage{Title: "Order", Breadcrumb: v.breadcrumb("Order"), Fields: ui.EmptyDetail("an order")})
@@ -219,13 +192,11 @@ func (v *View) detail(s State) framework.CanvasObject {
 	if t, ok := r.Order.CompletedAt.Unwrap(); ok {
 		completed = formatTime(t)
 	}
-	notes := readonly(r.Order.Notes)
-	notes.MultiLine = true
-	notes.Scroll = framework.ScrollVerticalOnly
+	notes := ui.ReadonlyMultiLineEntry(r.Order.Notes)
 	fields := container.NewVBox(ui.DetailForm(
-		ui.DetailField("Order ID", readonly(r.Order.ID.String())), ui.DetailField("Menu", readonly(r.MenuName)),
-		ui.DetailField("Status", readonly(string(r.Order.Status))), ui.DetailField("Created", readonly(formatTime(r.Order.CreatedAt))),
-		ui.DetailField("Completed", readonly(completed)), ui.DetailField("Tags", ui.TagPillsCSV(r.Order.Tags.Canonical().String())),
+		ui.DetailField("Order ID", ui.ReadonlyEntry(r.Order.ID.String())), ui.DetailField("Menu", ui.ReadonlyEntry(r.MenuName)),
+		ui.DetailField("Status", ui.ReadonlyEntry(string(r.Order.Status))), ui.DetailField("Created", ui.ReadonlyEntry(formatTime(r.Order.CreatedAt))),
+		ui.DetailField("Completed", ui.ReadonlyEntry(completed)), ui.DetailField("Tags", ui.TagPillsCSV(r.Order.Tags.Canonical().String())),
 		ui.DetailField("Notes", notes)), widget.NewLabelWithStyle("Items", framework.TextAlignLeading, framework.TextStyle{Bold: true}))
 	if len(r.Order.BlockedIngredients) > 0 {
 		ids := make([]string, 0, len(r.Order.BlockedIngredients))
@@ -245,7 +216,7 @@ func (v *View) detail(s State) framework.CanvasObject {
 		}
 		fields.Add(container.NewVBox(container.NewBorder(nil, nil, nil, widget.NewLabel(meta), name), widget.NewSeparator()))
 	}
-	fields.Add(ui.DetailForm(ui.DetailField("Order total", readonly(r.Total))))
+	fields.Add(ui.DetailForm(ui.DetailField("Order total", ui.ReadonlyEntry(r.Total))))
 	actions := []framework.CanvasObject{}
 	clean := !s.Submitting && !s.Confirming && !s.Dirty
 	if action, ok := s.Actions[orders.ControlComplete]; ok && action.Visible {
@@ -287,16 +258,19 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	ui.SubmitOnEnter(v.menuQuery, searchMenus)
 	menuLabels := make([]string, len(s.Menus))
 	menuIDs := make(map[string]entity.MenuID, len(s.Menus))
+	menuLabelCounts := make(map[string]int, len(s.Menus))
+	selectedMenu := ""
 	for i, m := range s.Menus {
-		label := m.Name + "  [" + m.ID.String() + "]"
+		label := uniqueOptionLabel(m.Name, menuLabelCounts)
 		menuLabels[i] = label
 		menuIDs[label] = m.ID
+		if m.ID == s.Form.MenuID {
+			selectedMenu = label
+		}
 	}
 	v.menus = widget.NewSelect(menuLabels, nil)
-	for _, m := range s.Menus {
-		if m.ID == s.Form.MenuID {
-			v.menus.SetSelected(m.Name + "  [" + m.ID.String() + "]")
-		}
+	if selectedMenu != "" {
+		v.menus.SetSelected(selectedMenu)
 	}
 	v.menus.OnChanged = func(value string) {
 		if id, ok := menuIDs[value]; ok {
@@ -310,8 +284,9 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	ui.SubmitOnEnter(v.drinkQuery, searchDrinks)
 	drinkLabels := make([]string, len(s.Drinks))
 	drinkIDs := make(map[string]entity.DrinkID, len(s.Drinks))
+	drinkLabelCounts := make(map[string]int, len(s.Drinks))
 	for i, d := range s.Drinks {
-		label := fmt.Sprintf("%s  ·  %s  ·  %s  [%s]", d.Name, d.Availability, d.Price, d.ID)
+		label := uniqueOptionLabel(fmt.Sprintf("%s  ·  %s  ·  %s", d.Name, d.Availability, d.Price), drinkLabelCounts)
 		drinkLabels[i] = label
 		drinkIDs[label] = d.ID
 	}
@@ -385,8 +360,24 @@ func (v *View) placeForm(s State) framework.CanvasObject {
 	if s.Err != nil {
 		message = "Error: " + s.Err.Error()
 	}
-	fields := container.NewVBox(container.NewBorder(nil, nil, nil, searchMenus, v.menuQuery), widget.NewLabel("Published menu"), v.menus, container.NewBorder(nil, nil, nil, searchDrinks, v.drinkQuery), widget.NewLabel("Available drink"), v.drinks, widget.NewLabel("Quantity"), v.quantity, widget.NewLabel("Item notes"), v.itemNotes, container.NewHBox(layout.NewSpacer(), add), widget.NewLabelWithStyle("Order items", framework.TextAlignLeading, framework.TextStyle{Bold: true}), items, widget.NewLabel("Order notes"), v.orderNotes, widget.NewLabel("Tags"), v.tags.Content)
+	menuSection := ui.FormSection("1. Choose a menu", "Only published menus are available.",
+		container.NewBorder(nil, nil, nil, searchMenus, v.menuQuery), ui.DetailField("Published menu", v.menus))
+	itemSection := ui.FormSection("2. Add drinks", "Search the selected menu, choose a drink, and set its quantity.",
+		container.NewBorder(nil, nil, nil, searchDrinks, v.drinkQuery),
+		container.NewGridWithColumns(2, ui.DetailField("Available drink", v.drinks), ui.DetailField("Quantity", v.quantity)),
+		ui.DetailField("Item notes", v.itemNotes), container.NewHBox(layout.NewSpacer(), add))
+	reviewSection := ui.FormSection("3. Review and place", "Confirm the order items and add any order-level details.",
+		items, container.NewGridWithColumns(2, ui.DetailField("Order notes", v.orderNotes), ui.DetailField("Tags", v.tags.Content)))
+	fields := container.NewVBox(menuSection, widget.NewSeparator(), itemSection, widget.NewSeparator(), reviewSection)
 	return ui.StandardFormPage(ui.FormPage{Title: "Place order", Breadcrumb: container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", v.presenter.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Orders", v.presenter.ResetList), widget.NewLabel("›"), widget.NewLabel("Place order")), Subtitle: "Choose a published menu, add drinks, then place the order.", Fields: fields, Status: widget.NewLabel(message), Save: v.save, Cancel: v.cancel})
+}
+
+func uniqueOptionLabel(base string, counts map[string]int) string {
+	counts[base]++
+	if counts[base] == 1 {
+		return base
+	}
+	return fmt.Sprintf("%s (%d)", base, counts[base])
 }
 func (v *View) tagForm(s State) framework.CanvasObject {
 	v.tags = ui.NewTagTokenEditor(ControlTagValues, s.Form.Tags)

@@ -2,6 +2,7 @@ package gui
 
 import (
 	"testing"
+	"time"
 
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
@@ -148,6 +149,15 @@ func TestConfiguredRowTableUsesResizableNativeHeadersAndTogglesSort(t *testing.T
 	testutil.ErrorIf(t, button.Text != "Name  ↓", "sorted header = %q", button.Text)
 	table.UpdateHeader(widget.TableCellID{Row: -1, Col: 1}, header)
 	testutil.ErrorIf(t, button.Disabled() || button.OnTapped != nil, "%v", "informational header should remain readable and non-interactive")
+	testutil.Equals(t, button.Alignment, widget.ButtonAlignTrailing)
+	testutil.Equals(t, ActionSelector(NewActionCell()).Alignment, framework.TextAlignTrailing)
+}
+
+func TestTableTimestampUsesCompactMinutePrecision(t *testing.T) {
+	t.Parallel()
+	value := time.Date(2026, time.August, 30, 18, 23, 42, 0, time.UTC)
+	testutil.Equals(t, TableTimestamp(value), "2026-08-30 18:23")
+	testutil.Equals(t, TableTimestamp(time.Time{}), "")
 }
 
 func TestApplyTableSortRetainsDirection(t *testing.T) {

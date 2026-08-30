@@ -3,6 +3,7 @@ package gui
 import (
 	"slices"
 	"sync/atomic"
+	"time"
 
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -20,6 +21,17 @@ type TableColumn struct {
 	Title    string
 	Width    float32
 	Sortable bool
+}
+
+const RowActionsWidth float32 = 120
+
+// TableTimestamp keeps date columns readable at desktop table widths. Full
+// precision remains available in each entity's detail view.
+func TableTimestamp(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+	return value.Format("2006-01-02 15:04")
 }
 
 // TableSort retains a table's active in-memory ordering while more cursor
@@ -62,6 +74,10 @@ func ConfigureRowTable(table *widget.Table, columns []TableColumn, onSort func(i
 			return
 		}
 		column := columns[id.Col]
+		button.Alignment = widget.ButtonAlignLeading
+		if id.Col == len(columns)-1 && column.Title == "Actions" {
+			button.Alignment = widget.ButtonAlignTrailing
+		}
 		text := column.Title
 		if id.Col == sortedColumn {
 			if direction == SortAscending {
@@ -120,6 +136,7 @@ type ActionSelect struct {
 func NewActionSelect(options []string, onAction func(string)) *ActionSelect {
 	actions := &ActionSelect{}
 	actions.PlaceHolder = "Actions"
+	actions.Alignment = framework.TextAlignTrailing
 	actions.OnChanged = actions.changed
 	actions.ExtendBaseWidget(actions)
 	actions.SetActions(options, onAction)
