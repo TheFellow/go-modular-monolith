@@ -432,7 +432,7 @@ func TestWidgetCRUDTagsCurationTransitionsAndDelete(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(menu.Items), 1)
 	testutil.Equals(t, menu.Items[0].Availability, models.AvailabilityAvailable)
-	testutil.AuditTouches(t, f.LatestAuditEntry(authz.ActionAddDrink), menu.EntityUID())
+	testutil.AuditTouches(t, f.LatestAuditEntry(authz.ActionDrinkAdd), menu.EntityUID())
 	detail := detailText(menu, p.DrinkName)
 	for _, want := range []string{"Comma, Collins", "Drink ID: " + drink.ID.String(), "available", "N/A"} {
 		testutil.ErrorIf(t, !strings.Contains(detail, want), "detail did not preserve %q: %s", want, detail)
@@ -458,7 +458,7 @@ func TestWidgetCRUDTagsCurationTransitionsAndDelete(t *testing.T) {
 	menu, err = f.Menus.Get(f.OwnerContext(), menu.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(menu.Items), 0)
-	testutil.AuditTouches(t, f.LatestAuditEntry(authz.ActionRemoveDrink), menu.EntityUID())
+	testutil.AuditTouches(t, f.LatestAuditEntry(authz.ActionDrinkRemove), menu.EntityUID())
 	driver.Tap(ControlDelete)
 	dialogs.Confirmations()[3].Respond(true)
 	_, err = f.Menus.Get(f.OwnerContext(), menu.ID)

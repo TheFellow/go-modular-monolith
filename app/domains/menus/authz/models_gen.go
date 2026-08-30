@@ -46,15 +46,15 @@ func ValidateEntity(entity cedar.Entity) error {
 }
 
 var (
-	ActionAddDrink    = cedar.NewEntityUID(ActionType, "add_drink")
 	ActionCreate      = cedar.NewEntityUID(ActionType, "create")
 	ActionDelete      = cedar.NewEntityUID(ActionType, "delete")
 	ActionDraft       = cedar.NewEntityUID(ActionType, "draft")
+	ActionDrinkAdd    = cedar.NewEntityUID(ActionType, "drink:add")
+	ActionDrinkRemove = cedar.NewEntityUID(ActionType, "drink:remove")
 	ActionGet         = cedar.NewEntityUID(ActionType, "get")
 	ActionList        = cedar.NewEntityUID(ActionType, "list")
 	ActionPublish     = cedar.NewEntityUID(ActionType, "publish")
 	ActionReadiness   = cedar.NewEntityUID(ActionType, "readiness")
-	ActionRemoveDrink = cedar.NewEntityUID(ActionType, "remove_drink")
 	ActionTag         = cedar.NewEntityUID(ActionType, "tag")
 	ActionUntag       = cedar.NewEntityUID(ActionType, "untag")
 	ActionUpdate      = cedar.NewEntityUID(ActionType, "update")

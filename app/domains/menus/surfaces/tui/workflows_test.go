@@ -68,7 +68,7 @@ func TestMenuTUIAddsAndRemovesResolvedCommaBearingDrink(t *testing.T) {
 	testutil.Equals(t, len(got.Items), 1)
 	testutil.Equals(t, got.Items[0].DrinkID, drink.ID)
 	testutil.Equals(t, got.Tags.Canonical().String(), "channel=tui")
-	testutil.AuditTouches(t, f.LatestAuditEntry(menuauthz.ActionAddDrink), menu.EntityUID())
+	testutil.AuditTouches(t, f.LatestAuditEntry(menuauthz.ActionDrinkAdd), menu.EntityUID())
 	driver.RequireText("Comma, Collins")
 
 	driver.Press("x")
@@ -81,7 +81,7 @@ func TestMenuTUIAddsAndRemovesResolvedCommaBearingDrink(t *testing.T) {
 	got, err = f.App.Menus.Get(f.OwnerContext(), menu.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(got.Items), 0)
-	testutil.AuditTouches(t, f.LatestAuditEntry(menuauthz.ActionRemoveDrink), menu.EntityUID())
+	testutil.AuditTouches(t, f.LatestAuditEntry(menuauthz.ActionDrinkRemove), menu.EntityUID())
 }
 
 func TestMenuTUIShowsReadinessBlockerAndDisablesPublish(t *testing.T) {
