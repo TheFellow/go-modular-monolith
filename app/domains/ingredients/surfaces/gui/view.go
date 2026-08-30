@@ -37,7 +37,7 @@ const (
 type View struct {
 	presenter                                          *Presenter
 	root, browse, formPanel, tagsPanel                 *framework.Container
-	list                                               *widget.Table
+	list                                               *ui.RowTable
 	listStack                                          *framework.Container
 	empty                                              *framework.Container
 	expression                                         *ui.SemanticEntry
@@ -94,7 +94,7 @@ func NewView(p *Presenter) *View {
 			p.Select(v.state.Items[id.Row].ID)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 165, Sortable: true}, {Title: "Category", Width: 95, Sortable: true}, {Title: "Unit", Width: 65, Sortable: true}, {Title: "Description", Width: 205, Sortable: true}, {Title: "Tags", Width: 145, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, p.SortItems)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 165, Flex: 2, Sortable: true}, {Title: "Category", Width: 95, Flex: 1, Sortable: true}, {Title: "Unit", Width: 65, Flex: 1, Sortable: true}, {Title: "Description", Width: 205, Flex: 2, Sortable: true}, {Title: "Tags", Width: 145, Flex: 2, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, p.SortItems)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No ingredients found", "Adjust the filter or create a new ingredient.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)

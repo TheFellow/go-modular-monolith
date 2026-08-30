@@ -7,6 +7,7 @@ import (
 
 	framework "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -20,6 +21,7 @@ const (
 type TableColumn struct {
 	Title    string
 	Width    float32
+	Flex     float32
 	Sortable bool
 }
 
@@ -61,7 +63,7 @@ func ApplyTableSort[T any](rows []T, state TableSort, compare func(column int, l
 // ConfigureRowTable adds Fyne's native sticky header row. Native headers carry
 // the column-divider drag affordances, so widths remain attached to the table
 // for its entire lifetime (including refresh, filtering and detail/back).
-func ConfigureRowTable(table *widget.Table, columns []TableColumn, onSort func(int, SortDirection)) {
+func ConfigureRowTable(table *RowTable, columns []TableColumn, onSort func(int, SortDirection)) {
 	table.ShowHeaderRow = true
 	table.CreateHeader = func() framework.CanvasObject { return widget.NewButton("", nil) }
 	var sortedColumn = -1
@@ -111,9 +113,61 @@ func ConfigureRowTable(table *widget.Table, columns []TableColumn, onSort func(i
 			table.Refresh()
 		}
 	}
-	for col, column := range columns {
-		table.SetColumnWidth(col, column.Width)
+	table.columns = append(table.columns[:0], columns...)
+	table.fitColumns(table.Size().Width)
+}
+
+// RowTable applies column minimums and redistributes spare viewport width only
+// when its own width changes. Header drag adjustments therefore survive data
+// refreshes while window resizing restores a fitted grid.
+type RowTable struct {
+	*widget.Table
+	columns     []TableColumn
+	fittedWidth float32
+}
+
+func (t *RowTable) Resize(size framework.Size) {
+	t.Table.Resize(size)
+	if size.Width != t.fittedWidth {
+		t.fitColumns(size.Width)
 	}
+}
+
+func (t *RowTable) fitColumns(width float32) {
+	if len(t.columns) == 0 {
+		return
+	}
+	// Table column widths exclude Fyne's gaps between cells. Its scrollbars
+	// also occupy a slim overlay at the viewport edge. Reserve both so the
+	// rightmost Actions cell remains fully visible without leaving dead space.
+	columnGaps := float32(len(t.columns)-1) * t.Theme().Size(theme.SizeNamePadding)
+	scrollbarGutter := t.Theme().Size(theme.SizeNameScrollBarSmall) * 2
+	contentWidth := max(float32(0), width-columnGaps-scrollbarGutter)
+	widths := fittedColumnWidths(t.columns, contentWidth)
+	for column, fitted := range widths {
+		t.Table.SetColumnWidth(column, fitted)
+	}
+	t.fittedWidth = width
+}
+
+func fittedColumnWidths(columns []TableColumn, available float32) []float32 {
+	widths := make([]float32, len(columns))
+	minimum, flex := float32(0), float32(0)
+	for i, column := range columns {
+		widths[i] = column.Width
+		minimum += column.Width
+		flex += max(float32(0), column.Flex)
+	}
+	if available <= minimum || flex == 0 {
+		return widths
+	}
+	extra := available - minimum
+	for i, column := range columns {
+		if column.Flex > 0 {
+			widths[i] += extra * column.Flex / flex
+		}
+	}
+	return widths
 }
 
 type RowAction struct {
@@ -192,16 +246,16 @@ func (actions *ActionSelect) SelectAction(selected string) {
 // NewRowTable creates a table styled as aligned rows rather than a boxed grid.
 // Fyne's native separator setting is all-or-nothing, so the table dividers are
 // hidden and NewActionCell supplies a subtle horizontal rule for each row.
-func NewRowTable(length func() (rows int, cols int), create func() framework.CanvasObject, update func(widget.TableCellID, framework.CanvasObject)) *widget.Table {
+func NewRowTable(length func() (rows int, cols int), create func() framework.CanvasObject, update func(widget.TableCellID, framework.CanvasObject)) *RowTable {
 	table := widget.NewTable(length, create, update)
 	table.HideSeparators = true
-	return table
+	return &RowTable{Table: table}
 }
 
 // NewAutoPagingRowTable creates a row table that asks for more data when its
 // final row becomes visible. The callback runs outside Fyne's render stack so
 // presenters may safely publish a new table snapshot from it.
-func NewAutoPagingRowTable(length func() (rows int, cols int), create func() framework.CanvasObject, update func(widget.TableCellID, framework.CanvasObject), loadMore func()) *widget.Table {
+func NewAutoPagingRowTable(length func() (rows int, cols int), create func() framework.CanvasObject, update func(widget.TableCellID, framework.CanvasObject), loadMore func()) *RowTable {
 	var requestedRows atomic.Int64
 	requestedRows.Store(-1)
 	return NewRowTable(length, create, func(id widget.TableCellID, object framework.CanvasObject) {

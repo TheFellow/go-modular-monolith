@@ -35,7 +35,7 @@ type View struct {
 	presenter                                                           *Presenter
 	root, browse, workflow, operations, types, entities, form, detail   *framework.Container
 	entityRows, resultRows                                              *framework.Container
-	list                                                                *widget.Table
+	list                                                                *ui.RowTable
 	listStack                                                           *framework.Container
 	empty                                                               *framework.Container
 	search, entitySearch, value                                         *ui.SemanticEntry
@@ -76,7 +76,7 @@ func NewView(p *Presenter) *View {
 			p.SelectSummary(id.Row)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Tag", Width: 180, Sortable: true}, {Title: "Total", Width: 60, Sortable: true}, {Title: "Drinks", Width: 70, Sortable: true}, {Title: "Ingredients", Width: 90, Sortable: true}, {Title: "Inventory", Width: 80, Sortable: true}, {Title: "Menus", Width: 65, Sortable: true}, {Title: "Orders", Width: 65, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, p.SortSummaries)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Tag", Width: 180, Flex: 3, Sortable: true}, {Title: "Total", Width: 60, Flex: 1, Sortable: true}, {Title: "Drinks", Width: 70, Flex: 1, Sortable: true}, {Title: "Ingredients", Width: 90, Flex: 1, Sortable: true}, {Title: "Inventory", Width: 80, Flex: 1, Sortable: true}, {Title: "Menus", Width: 65, Flex: 1, Sortable: true}, {Title: "Orders", Width: 65, Flex: 1, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, p.SortSummaries)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No active tag usage", "Adjust the filter or tag an active entity to begin discovery.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	add := ui.WithIcon(ui.NewButton(ControlAdd+".list", "Tag entity", func() { p.Start(Add) }), ui.IconTag)

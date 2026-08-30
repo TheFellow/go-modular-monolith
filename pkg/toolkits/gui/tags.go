@@ -317,9 +317,13 @@ func TagPillsCSV(value string) framework.CanvasObject {
 
 type tableTagCell struct {
 	widget.BaseWidget
-	primary string
-	more    int
+	tags []string
 }
+
+const (
+	maxTableTagPills     = 8
+	tableTagPillMaxWidth = 180
+)
 
 func newTableTagCell() *tableTagCell {
 	cell := &tableTagCell{}
@@ -328,54 +332,105 @@ func newTableTagCell() *tableTagCell {
 }
 
 func (c *tableTagCell) SetCSV(value string) {
-	tags := parseTagCSV(value)
-	c.primary, c.more = "", 0
-	if len(tags) > 0 {
-		c.primary = tags[0]
-		c.more = len(tags) - 1
-	}
+	c.tags = append(c.tags[:0], parseTagCSV(value)...)
 	c.Refresh()
 }
 
 func (c *tableTagCell) CreateRenderer() framework.WidgetRenderer {
-	primary := compactTableTagPill("")
+	pills := make([]*framework.Container, maxTableTagPills)
+	objects := make([]framework.CanvasObject, 0, maxTableTagPills+1)
+	for i := range pills {
+		pills[i] = compactTableTagPill("")
+		objects = append(objects, pills[i])
+	}
 	overflow := compactTableTagPill("")
-	return &tableTagCellRenderer{cell: c, primary: primary, overflow: overflow, objects: []framework.CanvasObject{primary, overflow}}
+	objects = append(objects, overflow)
+	return &tableTagCellRenderer{cell: c, pills: pills, overflow: overflow, objects: objects}
 }
 
 type tableTagCellRenderer struct {
-	cell              *tableTagCell
-	primary, overflow *framework.Container
-	objects           []framework.CanvasObject
+	cell     *tableTagCell
+	pills    []*framework.Container
+	overflow *framework.Container
+	objects  []framework.CanvasObject
 }
 
 func (r *tableTagCellRenderer) Layout(size framework.Size) {
-	if r.cell.primary == "" {
-		r.primary.Hide()
-		r.overflow.Hide()
+	for _, pill := range r.pills {
+		pill.Hide()
+	}
+	r.overflow.Hide()
+	if len(r.cell.tags) == 0 || size.Width <= 0 {
 		return
 	}
-	r.primary.Show()
-	if r.cell.more == 0 {
-		r.overflow.Hide()
-		r.primary.Move(framework.NewPos(0, 0))
-		r.primary.Resize(size)
+
+	limit := min(len(r.cell.tags), len(r.pills))
+	visible := 0
+	for count := limit; count >= 1; count-- {
+		remaining := len(r.cell.tags) - count
+		required := float32(0)
+		for i := range count {
+			required += tableTagPillWidth(r.cell.tags[i])
+		}
+		required += tagPillGap * float32(count-1)
+		if remaining > 0 {
+			required += tagPillGap + tableTagOverflowWidth(remaining)
+		}
+		if required <= size.Width {
+			visible = count
+			break
+		}
+	}
+
+	// Even at the minimum column width, retain a useful leading tag pill and
+	// truncate it to make room for the count of tags that are not yet visible.
+	if visible == 0 {
+		remaining := len(r.cell.tags) - 1
+		width := size.Width
+		if remaining > 0 {
+			overflowWidth := min(tableTagOverflowWidth(remaining), size.Width)
+			width = max(float32(0), size.Width-overflowWidth-tagPillGap)
+			if width == 0 {
+				r.layoutOverflow(0, overflowWidth, size.Height, remaining)
+				return
+			}
+			r.layoutOverflow(width+tagPillGap, overflowWidth, size.Height, remaining)
+		}
+		r.layoutPill(0, 0, width, size.Height)
 		return
 	}
+
+	x := float32(0)
+	for i := range visible {
+		width := tableTagPillWidth(r.cell.tags[i])
+		r.layoutPill(i, x, width, size.Height)
+		x += width + tagPillGap
+	}
+	if remaining := len(r.cell.tags) - visible; remaining > 0 {
+		r.layoutOverflow(x, tableTagOverflowWidth(remaining), size.Height, remaining)
+	}
+}
+
+func (r *tableTagCellRenderer) layoutPill(index int, x, width, height float32) {
+	pill := r.pills[index]
+	pill.Show()
+	pill.Move(framework.NewPos(x, 0))
+	pill.Resize(framework.NewSize(width, height))
+}
+
+func (r *tableTagCellRenderer) layoutOverflow(x, width, height float32, remaining int) {
+	setCompactTableTagPill(r.overflow, fmt.Sprintf("+%d", remaining))
 	r.overflow.Show()
-	overflowText := fmt.Sprintf("+%d", r.cell.more)
-	overflowWidth := min(framework.MeasureText(overflowText, theme.TextSize(), framework.TextStyle{}).Width+40, size.Width)
-	primaryWidth := max(float32(0), size.Width-overflowWidth-tagPillGap)
-	if primaryWidth == 0 {
-		r.primary.Hide()
-		r.overflow.Move(framework.NewPos(0, 0))
-		r.overflow.Resize(framework.NewSize(overflowWidth, size.Height))
-		return
-	}
-	r.primary.Move(framework.NewPos(0, 0))
-	r.primary.Resize(framework.NewSize(primaryWidth, size.Height))
-	r.overflow.Move(framework.NewPos(primaryWidth+tagPillGap, 0))
-	r.overflow.Resize(framework.NewSize(overflowWidth, size.Height))
+	r.overflow.Move(framework.NewPos(x, 0))
+	r.overflow.Resize(framework.NewSize(width, height))
+}
+
+func tableTagPillWidth(value string) float32 {
+	return min(framework.MeasureText(value, theme.TextSize(), framework.TextStyle{}).Width+28, float32(tableTagPillMaxWidth))
+}
+
+func tableTagOverflowWidth(remaining int) float32 {
+	return framework.MeasureText(fmt.Sprintf("+%d", remaining), theme.TextSize(), framework.TextStyle{}).Width + 40
 }
 
 func (r *tableTagCellRenderer) MinSize() framework.Size {
@@ -383,12 +438,13 @@ func (r *tableTagCellRenderer) MinSize() framework.Size {
 }
 
 func (r *tableTagCellRenderer) Refresh() {
-	setCompactTableTagPill(r.primary, r.cell.primary)
-	more := ""
-	if r.cell.more > 0 {
-		more = fmt.Sprintf("+%d", r.cell.more)
+	for i, pill := range r.pills {
+		value := ""
+		if i < len(r.cell.tags) {
+			value = r.cell.tags[i]
+		}
+		setCompactTableTagPill(pill, value)
 	}
-	setCompactTableTagPill(r.overflow, more)
 	r.Layout(r.cell.Size())
 }
 

@@ -27,7 +27,7 @@ const (
 type View struct {
 	presenter                                    *Presenter
 	root, browse, detailPanel                    *framework.Container
-	list                                         *widget.Table
+	list                                         *ui.RowTable
 	listStack                                    *framework.Container
 	empty                                        *framework.Container
 	expression                                   *ui.SemanticEntry
@@ -81,7 +81,7 @@ func NewView(p *Presenter) *View {
 			p.Select(id.Row)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Started", Width: 140, Sortable: true}, {Title: "Duration", Width: 75, Sortable: true}, {Title: "Action", Width: 110, Sortable: true}, {Title: "Resource", Width: 100, Sortable: true}, {Title: "Actor", Width: 80, Sortable: true}, {Title: "Outcome", Width: 100, Sortable: true}, {Title: "Error", Width: 105, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, func(column int, direction ui.SortDirection) {
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Started", Width: 140, Flex: 1, Sortable: true}, {Title: "Duration", Width: 75, Flex: 1, Sortable: true}, {Title: "Action", Width: 110, Flex: 1, Sortable: true}, {Title: "Resource", Width: 100, Flex: 1, Sortable: true}, {Title: "Actor", Width: 80, Flex: 1, Sortable: true}, {Title: "Outcome", Width: 100, Flex: 1, Sortable: true}, {Title: "Error", Width: 105, Flex: 2, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, func(column int, direction ui.SortDirection) {
 		sortColumns := []int{0, 2, 3, 4, 5, 6, 8}
 		p.SortRows(sortColumns[column], direction)
 	})

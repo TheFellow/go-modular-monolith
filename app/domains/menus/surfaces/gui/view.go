@@ -52,7 +52,7 @@ const (
 type View struct {
 	p                                                              *Presenter
 	root, browse, detail, drinkPanel, analysisPanel, tagsPanel     *framework.Container
-	list                                                           *widget.Table
+	list                                                           *ui.RowTable
 	listStack, empty                                               *framework.Container
 	filterStatus                                                   *ui.FilterSelect
 	filterExpression, name, description, drinkSearch, targetMargin *ui.SemanticEntry
@@ -128,7 +128,7 @@ func NewView(p *Presenter) *View {
 			p.Select(id.Row)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 185, Sortable: true}, {Title: "Status", Width: 85, Sortable: true}, {Title: "Items", Width: 60, Sortable: true}, {Title: "Published", Width: 145, Sortable: true}, {Title: "Tags", Width: 145, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, func(column int, direction ui.SortDirection) {
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 185, Flex: 2, Sortable: true}, {Title: "Status", Width: 85, Flex: 1, Sortable: true}, {Title: "Items", Width: 60, Flex: 1, Sortable: true}, {Title: "Published", Width: 145, Flex: 1, Sortable: true}, {Title: "Tags", Width: 145, Flex: 2, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, func(column int, direction ui.SortDirection) {
 		sortColumns := []int{0, 1, 2, 4, 5}
 		p.SortItems(sortColumns[column], direction)
 	})
