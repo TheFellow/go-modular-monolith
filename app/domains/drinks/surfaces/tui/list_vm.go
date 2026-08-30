@@ -53,24 +53,25 @@ type ListViewModel struct {
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
 
-	list      list.Model
-	detail    *DetailViewModel
-	mode      listMode
-	create    *CreateDrinkVM
-	edit      *EditDrinkVM
-	tags      *components.TagEditor[cedar.EntityUID, tag.Tags]
-	dialog    *dialog.ConfirmDialog
-	spinner   tui.Spinner
-	loading   bool
-	err       error
-	actionErr error
-	projector drinks.ActionProjector
-	actions   map[actions.ID]actions.State
-	filter    *filterVM
-	request   drinks.ListRequest
-	next      paging.Cursor
-	history   []paging.Cursor
-	loadToken uint64
+	list       list.Model
+	detail     *DetailViewModel
+	detailPane tui.DetailViewport
+	mode       listMode
+	create     *CreateDrinkVM
+	edit       *EditDrinkVM
+	tags       *components.TagEditor[cedar.EntityUID, tag.Tags]
+	dialog     *dialog.ConfirmDialog
+	spinner    tui.Spinner
+	loading    bool
+	err        error
+	actionErr  error
+	projector  drinks.ActionProjector
+	actions    map[actions.ID]actions.State
+	filter     *filterVM
+	request    drinks.ListRequest
+	next       paging.Cursor
+	history    []paging.Cursor
+	loadToken  uint64
 
 	deleteTarget *models.Drink
 
@@ -105,6 +106,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		dialogKeys:   keys.Standard.Dialog,
 		list:         l,
 		detail:       NewDetailViewModel(styles.Standard.ListView, app),
+		detailPane:   tui.NewDetailViewport(),
 		loading:      true,
 		projector:    drinks.NewActionProjector(),
 	}
@@ -348,6 +350,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	}
+	if m.detailPane.Update(msg) {
+		return m, nil
+	}
 
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
@@ -381,7 +386,7 @@ func (m *ListViewModel) View() string {
 	}
 	listView = m.styles.ListPane.Width(tui.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
-	detailView := m.detail.View()
+	detailView := m.detailPane.View(m.detail.View())
 	switch m.mode {
 	case listModeBrowsing, listModeConfirmingDelete:
 	case listModeTagging:
@@ -413,7 +418,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 		if m.actionEnabled(drinks.ControlList) {
 			bindings = append(bindings, m.keys.Refresh)
 		}
-		return append(bindings, m.keys.Back)
+		return append(bindings, tui.DetailScrollHelp, m.keys.Back)
 	case listModeFiltering:
 	}
 	return nil
@@ -440,6 +445,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			navigation = append(navigation, m.keys.Up, m.keys.Down)
 			pagingHelp = append(pagingHelp, m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage)
 		}
+		pagingHelp = append(pagingHelp, tui.DetailScrollHelp)
 		if m.actionEnabled(drinks.ControlList) && m.actionEnabled(drinks.ControlEdit) {
 			navigation = append(navigation, m.keys.Enter)
 		}
@@ -717,9 +723,10 @@ func (m *ListViewModel) setSize(width, height int) {
 
 	m.list.SetSize(listWidth, height)
 	m.detail.SetSize(detailWidth, height)
+	_, frameHeight := m.styles.DetailPane.GetFrameSize()
+	m.detailPane.SetSize(detailWidth, max(height-frameHeight, 1))
 	m.listWidth = listWidth
 	m.detailWidth = detailWidth
-	_, frameHeight := m.styles.DetailPane.GetFrameSize()
 	m.detailHeight = max(height-frameHeight, 1)
 }
 

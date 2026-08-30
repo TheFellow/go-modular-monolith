@@ -149,14 +149,14 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	if m.actionEnabled(audit.ControlList) {
 		help = append(help, m.keys.Refresh)
 	}
-	return append(help, m.keys.Back)
+	return append(help, tui.DetailScrollHelp, m.keys.Back)
 }
 func (m *ListViewModel) FullHelp() [][]key.Binding {
 	last := []key.Binding{m.keys.Back}
 	if m.actionEnabled(audit.ControlList) {
 		last = append([]key.Binding{m.keys.Refresh}, last...)
 	}
-	return [][]key.Binding{{m.keys.Up, m.keys.Down, m.keys.Enter}, {m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage}, last}
+	return [][]key.Binding{{m.keys.Up, m.keys.Down, m.keys.Enter}, {m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage, tui.DetailScrollHelp}, last}
 }
 func (m *ListViewModel) loadEntries() tea.Cmd {
 	m.loadToken++

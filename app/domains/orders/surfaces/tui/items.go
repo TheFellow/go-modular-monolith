@@ -11,8 +11,14 @@ type orderItem = tui.ListItem[models.Order]
 
 func newOrderItem(order models.Order, menuName string, styles tui.ListViewStyles) orderItem {
 	status := orderStatusBadge(order.Status, styles)
-	description := fmt.Sprintf("%s | %s | %d items", status, menuName, len(order.Items))
-	return tui.NewListItem(order, truncateID(order.ID.String()), description, order.ID.String())
+	placed := ""
+	if !order.CreatedAt.IsZero() {
+		placed = "placed " + order.CreatedAt.Format("2006-01-02 15:04")
+	}
+	tags := order.Tags.Canonical().String()
+	description := tui.ListSummary(status, fmt.Sprintf("%d items", len(order.Items)), placed, tui.TagSummary(tags))
+	filterValue := tui.ListSummary(menuName, string(order.Status), tags, order.ID.String())
+	return tui.NewListItem(order, menuName, description, filterValue)
 }
 
 func truncateID(id string) string {

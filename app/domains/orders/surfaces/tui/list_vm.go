@@ -58,20 +58,21 @@ type ListViewModel struct {
 	dialogStyles dialog.DialogStyles
 	dialogKeys   dialog.DialogKeys
 
-	list      list.Model
-	detail    *DetailViewModel
-	mode      listMode
-	dialog    *components.TaggedConfirm[tag.Tags]
-	tags      *components.TagEditor[cedar.EntityUID, tag.Tags]
-	filter    *filterVM
-	place     *placeVM
-	workflow  uint64
-	loadToken uint64
-	spinner   tui.Spinner
-	loading   bool
-	mutating  bool
-	err       error
-	actionErr error
+	list       list.Model
+	detail     *DetailViewModel
+	detailPane tui.DetailViewport
+	mode       listMode
+	dialog     *components.TaggedConfirm[tag.Tags]
+	tags       *components.TagEditor[cedar.EntityUID, tag.Tags]
+	filter     *filterVM
+	place      *placeVM
+	workflow   uint64
+	loadToken  uint64
+	spinner    tui.Spinner
+	loading    bool
+	mutating   bool
+	err        error
+	actionErr  error
 
 	completeTarget *ordersmodels.Order
 	cancelTarget   *ordersmodels.Order
@@ -110,6 +111,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		dialogKeys:   keys.Standard.Dialog,
 		list:         l,
 		detail:       NewDetailViewModel(styles.Standard.ListView, app),
+		detailPane:   tui.NewDetailViewport(),
 		projector:    orders.NewActionProjector(),
 		loading:      true,
 		request:      orders.ListRequest{Limit: paging.DefaultLimit},
@@ -151,6 +153,8 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 			m.dialog.SetWidth(m.width)
 		} else if m.mode == listModeTagging {
 			m.tags.SetWidth(m.width)
+		} else if m.mode == listModePlacing {
+			m.place.SetSize(m.width, m.height)
 		}
 		return m, nil
 	case OrderCompletedMsg:
@@ -324,6 +328,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 			m.workflow++
 			m.mode = listModePlacing
 			m.place = newPlaceVM(m.app, m.workflow)
+			m.place.SetSize(m.width, m.height)
 			return m, m.place.Init()
 		case msg.String() == "f":
 			if !m.actionEnabled(orders.ControlList) {
@@ -396,6 +401,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	if !m.actionEnabled(orders.ControlList) {
 		return m, nil
 	}
+	if m.detailPane.Update(msg) {
+		return m, nil
+	}
 
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
@@ -437,7 +445,7 @@ func (m *ListViewModel) View() string {
 	}
 	listView = m.styles.ListPane.Width(tui.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
-	detailView := m.detail.View()
+	detailView := m.detailPane.View(m.detail.View())
 	detailView = m.styles.DetailPane.Width(tui.PaneStyleWidth(m.styles.DetailPane, m.detailWidth)).Render(detailView)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
@@ -464,7 +472,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 	if m.actionEnabled(orders.ControlList) {
 		bindings = append(bindings, m.keys.Refresh)
 	}
-	return append(bindings, m.keys.Back)
+	return append(bindings, tui.DetailScrollHelp, m.keys.Back)
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
@@ -489,6 +497,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 		paging = append(paging, m.list.KeyMap.PrevPage, m.list.KeyMap.NextPage)
 		last = append([]key.Binding{m.keys.Refresh}, last...)
 	}
+	paging = append(paging, tui.DetailScrollHelp)
 	return m.visibleBindingGroups([][]key.Binding{navigation, paging, []key.Binding{m.keys.Create, m.keys.Complete, m.keys.Cancel, m.keys.Tags}, last})
 }
 
@@ -756,6 +765,8 @@ func (m *ListViewModel) setSize(width, height int) {
 
 	m.list.SetSize(listWidth, height)
 	m.detail.SetSize(detailWidth, height)
+	_, frameHeight := m.styles.DetailPane.GetFrameSize()
+	m.detailPane.SetSize(detailWidth, max(height-frameHeight, 1))
 	m.listWidth = listWidth
 	m.detailWidth = detailWidth
 }

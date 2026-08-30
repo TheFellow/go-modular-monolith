@@ -68,10 +68,15 @@ graph TD
   restores it.
 - `Ctrl+S` saves the enclosing create/edit workflow; `Esc` outside an active
   value edit leaves the workflow.
+- `PgUp`/`PgDn` scroll the detail pane without changing the selected list row;
+  `Ctrl+U`/`Ctrl+D` scroll it by half a page.
 - Drink recipes use `↑`/`↓` to move through recipe fields and `←`/`→` to move
   through ingredient choices. `Enter` selects, toggles, adds, or removes.
 - `Tab` and `Shift+Tab` remain compatibility aliases for next/previous field,
   but are not the primary navigation model.
+- List summaries use entity names as their primary label and compact terminal
+  metadata for status, tags, and timestamps. Stable IDs remain available in
+  details and filtering rather than occupying the primary label.
 
 ### Fresh Context Pattern
 

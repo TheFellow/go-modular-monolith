@@ -60,6 +60,7 @@ type ListViewModel struct {
 	rows        []InventoryRow
 	table       table.Model
 	detail      *DetailViewModel
+	detailPane  tui.DetailViewport
 	projector   inventory.ActionProjector
 	actions     map[actions.ID]actions.State
 	mode        listMode
@@ -98,6 +99,7 @@ func NewListViewModel(app *app.Session) *ListViewModel {
 		formKeys:   keys.Standard.Form,
 		table:      model,
 		detail:     NewDetailViewModel(styles.Standard.ListView),
+		detailPane: tui.NewDetailViewport(),
 		projector:  inventory.NewActionProjector(),
 		loading:    true,
 	}
@@ -253,7 +255,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.next = msg.Next
 		selected := selectedInventoryID(m.selectedRow())
 		m.rows = msg.Rows
-		m.table.SetRows(buildInventoryTableRows(msg.Rows, m.styles))
+		m.table.SetRows(buildInventoryTableRows(msg.Rows, m.styles, len(m.table.Columns()) == 6))
 		m.selectInventory(selected)
 		m.syncDetail()
 		m.syncActions()
@@ -283,6 +285,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	}
+	if m.detailPane.Update(msg) {
+		return m, nil
+	}
 
 	var cmd tea.Cmd
 	m.table, cmd = m.table.Update(msg)
@@ -310,7 +315,7 @@ func (m *ListViewModel) View() string {
 	}
 	listView = m.styles.ListPane.Width(tui.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
-	detailView := m.detail.View()
+	detailView := m.detailPane.View(m.detail.View())
 	switch m.mode {
 	case listModeBrowsing:
 	case listModeTagging:
@@ -336,6 +341,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 		if m.actionEnabled(inventory.ControlList) {
 			base = []key.Binding{m.keys.Up, m.keys.Down, previousInventoryPage, nextInventoryPage, m.keys.Refresh, m.keys.Back}
 		}
+		base = append(base, tui.DetailScrollHelp)
 		return append(base, m.visibleActionBindings()...)
 	case listModeFiltering:
 	}
@@ -357,7 +363,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 		}
 		return [][]key.Binding{
 			{m.keys.Up, m.keys.Down, m.keys.Enter},
-			{previousInventoryPage, nextInventoryPage},
+			{previousInventoryPage, nextInventoryPage, tui.DetailScrollHelp},
 			m.visibleActionBindings(),
 			{m.keys.Refresh, m.keys.Back},
 		}
@@ -521,7 +527,12 @@ func (m *ListViewModel) setSize(width, height int) {
 	listWidth, detailWidth := tui.SplitListDetailWidths(width)
 	innerListWidth := tui.PaneContentWidth(m.styles.ListPane, listWidth)
 	detailWidth = tui.PaneContentWidth(m.styles.DetailPane, detailWidth)
-	m.table.SetColumns(inventoryColumns(innerListWidth))
+	columns := inventoryColumns(innerListWidth)
+	// Bubbles renders immediately from both setters, so clear rows while the
+	// adaptive column shape changes to keep row and column arity consistent.
+	m.table.SetRows(nil)
+	m.table.SetColumns(columns)
+	m.table.SetRows(buildInventoryTableRows(m.rows, m.styles, len(columns) == 6))
 	m.table.SetWidth(innerListWidth)
 	tableHeight := height
 	if tableHeight > 0 {
@@ -531,6 +542,8 @@ func (m *ListViewModel) setSize(width, height int) {
 	m.listWidth = innerListWidth
 	m.detailWidth = detailWidth
 	m.detail.SetSize(detailWidth, height)
+	_, frameHeight := m.styles.DetailPane.GetFrameSize()
+	m.detailPane.SetSize(detailWidth, max(height-frameHeight, 1))
 }
 
 func (m *ListViewModel) syncDetail() {
@@ -597,25 +610,36 @@ func inventoryColumns(width int) []table.Column {
 		quantityWidth = 10
 		costWidth     = 8
 		statusWidth   = 6
-		defaultWidth  = 48
-		columnCount   = 5
+		tagsWidth     = 18
+		wideThreshold = 72
+		defaultWidth  = wideThreshold
 	)
 
 	if width <= 0 {
 		width = defaultWidth
 	}
 
+	showTags := width >= wideThreshold
+	columnCount := 5
+	reserved := categoryWidth + quantityWidth + costWidth + statusWidth
+	if showTags {
+		columnCount++
+		reserved += tagsWidth
+	}
 	contentWidth := max(width-(inventoryColumnGap*columnCount), 0)
+	nameWidth := max(contentWidth-reserved, 0)
 
-	nameWidth := max(contentWidth-(categoryWidth+quantityWidth+costWidth+statusWidth), 0)
-
-	return []table.Column{
+	columns := []table.Column{
 		{Title: "Ingredient", Width: nameWidth},
 		{Title: "Category", Width: categoryWidth},
 		{Title: "Quantity", Width: quantityWidth},
 		{Title: "Cost", Width: costWidth},
 		{Title: "Status", Width: statusWidth},
 	}
+	if showTags {
+		columns = append(columns, table.Column{Title: "Tags", Width: tagsWidth})
+	}
+	return columns
 }
 
 func inventoryTableStyles(styles tui.ListViewStyles) table.Styles {
@@ -626,17 +650,21 @@ func inventoryTableStyles(styles tui.ListViewStyles) table.Styles {
 	return tableStyles
 }
 
-func buildInventoryTableRows(rows []InventoryRow, styles tui.ListViewStyles) []table.Row {
+func buildInventoryTableRows(rows []InventoryRow, styles tui.ListViewStyles, showTags bool) []table.Row {
 	out := make([]table.Row, 0, len(rows))
 	for _, row := range rows {
 		status := renderStatus(row.Status, styles)
-		out = append(out, table.Row{
+		values := table.Row{
 			row.Ingredient.Name,
 			string(row.Ingredient.Category),
 			row.Quantity,
 			row.Cost,
 			status,
-		})
+		}
+		if showTags {
+			values = append(values, row.Inventory.Tags.Canonical().String())
+		}
+		out = append(out, values)
 	}
 	return out
 }

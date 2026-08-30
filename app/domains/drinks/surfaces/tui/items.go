@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 )
@@ -10,5 +8,6 @@ import (
 type drinkItem = tui.ListItem[models.Drink]
 
 func newDrinkItem(drink models.Drink) drinkItem {
-	return tui.NewListItem(drink, drink.Name, fmt.Sprintf("%s • %s • %s", drink.Category, drink.Glass, drink.Status), drink.Name)
+	description := tui.ListSummary(string(drink.Category), string(drink.Glass), string(drink.Status), tui.TagSummary(drink.Tags.Canonical().String()))
+	return tui.NewListItem(drink, drink.Name, description, drink.Name)
 }

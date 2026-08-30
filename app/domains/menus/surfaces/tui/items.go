@@ -11,6 +11,6 @@ type menuItem = tui.ListItem[models.Menu]
 
 func newMenuItem(menu models.Menu, styles tui.ListViewStyles) menuItem {
 	status := menuStatusBadge(menu.Status, styles)
-	description := fmt.Sprintf("%s | %d drinks", status, len(menu.Items))
+	description := tui.ListSummary(status, fmt.Sprintf("%d drinks", len(menu.Items)), tui.TagSummary(menu.Tags.Canonical().String()))
 	return tui.NewListItem(menu, menu.Name, description, menu.Name)
 }

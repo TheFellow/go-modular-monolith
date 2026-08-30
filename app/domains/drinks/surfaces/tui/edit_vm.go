@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	toolkittui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
@@ -31,7 +32,7 @@ type EditDrinkVM struct {
 	description *forms.TextField
 	tags        *forms.TextField
 	recipe      *RecipeEditor
-	viewport    formViewport
+	viewport    toolkittui.FormViewport
 }
 
 // DrinkUpdatedMsg is sent when the drink has been updated.
@@ -110,7 +111,7 @@ func NewEditDrinkVM(app *app.Session, drink *models.Drink) *EditDrinkVM {
 		description: descriptionField,
 		tags:        tagsField,
 		recipe:      recipeField,
-		viewport:    newFormViewport(),
+		viewport:    toolkittui.NewFormViewport(),
 	}
 }
 
@@ -166,7 +167,7 @@ func (m *EditDrinkVM) View() string {
 // SetWidth sets the width of the form.
 func (m *EditDrinkVM) SetWidth(w int) {
 	m.form.SetWidth(w)
-	m.viewport.SetSize(w, m.viewport.height)
+	m.viewport.SetWidth(w)
 }
 
 // SetSize sets the form viewport dimensions.
