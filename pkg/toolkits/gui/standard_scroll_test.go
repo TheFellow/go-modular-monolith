@@ -1,7 +1,6 @@
 package gui
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 
@@ -41,7 +40,7 @@ func TestReadonlyEntryPassesWheelToFormPage(t *testing.T) { //nolint:paralleltes
 	testutil.Equals(t, entry.Text, "selectable detail")
 }
 
-func TestMultiLineEntryKeepsWheelForItsOwnContent(t *testing.T) { //nolint:paralleltest // Fyne app and driver state is process-global.
+func TestEditableMultiLineEntryPassesWheelToFormPage(t *testing.T) { //nolint:paralleltest // Fyne app and driver state is process-global.
 	app := test.NewApp()
 	t.Cleanup(app.Quit)
 
@@ -52,11 +51,25 @@ func TestMultiLineEntryKeepsWheelForItsOwnContent(t *testing.T) { //nolint:paral
 
 	test.Scroll(canvas, scrollPoint(app, entry), 0, -80)
 
-	testutil.ErrorIf(t, page.Offset.Y != 0, "multiline wheel event moved form page to %v instead of its field", page.Offset.Y)
-	testutil.ErrorIf(t, entry.Scroll != framework.ScrollVerticalOnly, "multiline scroll direction = %v", entry.Scroll)
-	entryScroll := test.WidgetRenderer(entry).Objects()[2]
-	offsetY := reflect.ValueOf(entryScroll).Elem().FieldByName("Offset").FieldByName("Y").Float()
-	testutil.ErrorIf(t, offsetY == 0, "%v", "wheel event over Steps did not scroll its multiline content")
+	testutil.ErrorIf(t, page.Offset.Y == 0, "%v", "wheel event over an editable multiline field did not scroll the form page")
+	testutil.ErrorIf(t, entry.Scroll != framework.ScrollNone, "multiline scroll direction = %v", entry.Scroll)
+	testutil.ErrorIf(t, entry.Text == "" || entry.Disabled(), "%v", "scrolling changed the editable multiline field")
+}
+
+func TestReadonlyMultiLineEntryPassesWheelToDetailPage(t *testing.T) { //nolint:paralleltest // Fyne app and driver state is process-global.
+	app := test.NewApp()
+	t.Cleanup(app.Quit)
+
+	value := strings.Repeat("A long detail line\n", 20)
+	entry := ReadonlyMultiLineEntry(value)
+	fields := container.NewVBox(append([]framework.CanvasObject{entry}, spacer(30)...)...)
+	page, canvas := formCanvas(app, fields)
+
+	test.Scroll(canvas, scrollPoint(app, entry), 0, -80)
+
+	testutil.ErrorIf(t, page.Offset.Y == 0, "%v", "wheel event over a multiline detail field did not scroll the detail page")
+	testutil.Equals(t, entry.Scroll, framework.ScrollNone)
+	testutil.Equals(t, entry.Text, value)
 }
 
 func formCanvas(app framework.App, fields framework.CanvasObject) (*container.Scroll, framework.Canvas) {

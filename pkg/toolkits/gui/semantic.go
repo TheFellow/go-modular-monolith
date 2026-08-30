@@ -38,12 +38,12 @@ func NewEntry(id string) *SemanticEntry {
 	return entry
 }
 
-// NewMultiLineEntry keeps a vertical inner scroll target so long text remains
-// independently scrollable inside a scrolling form page.
+// NewMultiLineEntry grows with its content inside the form's scroll region.
+// Avoiding a nested scroller lets wheel gestures over the text area continue
+// to move the page, including when the field has reached its own boundary.
 func NewMultiLineEntry(id string) *SemanticEntry {
 	entry := NewEntry(id)
 	entry.MultiLine = true
-	entry.Scroll = framework.ScrollVerticalOnly
 	return entry
 }
 

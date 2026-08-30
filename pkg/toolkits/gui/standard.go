@@ -176,17 +176,14 @@ func ReadonlyEntry(value string) *widget.Entry {
 	return readonlyEntry(value, false)
 }
 
-// ReadonlyMultiLineEntry keeps long selectable detail text independently
-// scrollable while constructing the renderer in a consistent state.
+// ReadonlyMultiLineEntry keeps long selectable detail text in the page's
+// single scroll region so wheel gestures over the text still move the page.
 func ReadonlyMultiLineEntry(value string) *widget.Entry {
 	return readonlyEntry(value, true)
 }
 
 func readonlyEntry(value string, multiline bool) *widget.Entry {
 	entry := &widget.Entry{MultiLine: multiline, Wrapping: framework.TextWrapOff, Scroll: framework.ScrollNone}
-	if multiline {
-		entry.Scroll = framework.ScrollVerticalOnly
-	}
 	entry.ExtendBaseWidget(entry)
 	restoring := false
 	entry.OnChanged = func(changed string) {
