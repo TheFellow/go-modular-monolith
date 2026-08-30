@@ -145,7 +145,7 @@ func (t *RowTable) fitColumns(width float32) {
 	contentWidth := max(float32(0), width-columnGaps-scrollbarGutter)
 	widths := fittedColumnWidths(t.columns, contentWidth)
 	for column, fitted := range widths {
-		t.Table.SetColumnWidth(column, fitted)
+		t.SetColumnWidth(column, fitted)
 	}
 	t.fittedWidth = width
 }
