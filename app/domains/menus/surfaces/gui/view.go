@@ -69,7 +69,6 @@ type View struct {
 	renderedMode                                                   Mode
 	renderedForm                                                   Form
 	renderedInstance                                               uint64
-	tagNaturalWidth                                                float32
 }
 
 var _ ui.View = (*View)(nil)
@@ -88,7 +87,7 @@ func NewView(p *Presenter) *View {
 	v.applyFilter = bar.Apply
 	v.descriptionHelp = widget.NewLabel("")
 	v.descriptionHelp.Hide()
-	columns := []string{"Name", "Status", "Items", "Created", "Published", "Tags", "Actions"}
+	columns := []string{"Name", "Status", "Items", "Published", "Tags", "Actions"}
 	v.list = ui.NewAutoPagingRowTable(func() (int, int) { return len(v.state.Items), len(columns) }, func() framework.CanvasObject {
 		return ui.NewActionCell()
 	}, func(id widget.TableCellID, o framework.CanvasObject) {
@@ -96,9 +95,9 @@ func NewView(p *Presenter) *View {
 		m := v.state.Items[id.Row]
 		published := ""
 		if t, ok := m.PublishedAt.Unwrap(); ok {
-			published = t.Format(time.RFC3339)
+			published = ui.TableTimestamp(t)
 		}
-		values := []string{m.Name, string(m.Status), strconv.Itoa(len(m.Items)), formatTime(m.CreatedAt), published, m.Tags.Canonical().String()}
+		values := []string{m.Name, string(m.Status), strconv.Itoa(len(m.Items)), published, m.Tags.Canonical().String()}
 		if id.Col == len(columns)-1 {
 			index := id.Row
 			actions := []ui.RowAction{{Label: "View", Run: func() { p.Select(index) }}}
@@ -117,7 +116,7 @@ func NewView(p *Presenter) *View {
 			ui.ShowCellActions(cell, actions)
 			return
 		}
-		if id.Col == 5 {
+		if id.Col == 4 {
 			ui.ShowCellTags(cell, values[id.Col])
 			return
 		}
@@ -129,7 +128,10 @@ func NewView(p *Presenter) *View {
 			p.Select(id.Row)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 210, Sortable: true}, {Title: "Status", Width: 100, Sortable: true}, {Title: "Items", Width: 70, Sortable: true}, {Title: "Created", Width: 190, Sortable: true}, {Title: "Published", Width: 190, Sortable: true}, {Title: "Tags", Width: 190, Sortable: true}, {Title: "Actions", Width: 140}}, p.SortItems)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Name", Width: 185, Sortable: true}, {Title: "Status", Width: 85, Sortable: true}, {Title: "Items", Width: 60, Sortable: true}, {Title: "Published", Width: 145, Sortable: true}, {Title: "Tags", Width: 145, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, func(column int, direction ui.SortDirection) {
+		sortColumns := []int{0, 1, 2, 4, 5}
+		p.SortItems(sortColumns[column], direction)
+	})
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No menus found", "Adjust the filter or create a menu.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Refresh), ui.IconRefresh)
@@ -360,16 +362,6 @@ func (v *View) buildTags(s State) *framework.Container {
 }
 
 func (v *View) render(s State) {
-	if len(s.Items) > 0 {
-		values := make([]string, len(s.Items))
-		for i, item := range s.Items {
-			values[i] = item.Tags.Canonical().String()
-		}
-		if width := ui.TagPillColumnWidth(values, 190); width > v.tagNaturalWidth {
-			v.list.SetColumnWidth(5, width)
-			v.tagNaturalWidth = width
-		}
-	}
 	v.state = s
 	if s.Mode == AddingDrink && v.renderedMode != AddingDrink {
 		v.drinkSearch.SetText(s.Form.DrinkQuery)
@@ -502,18 +494,7 @@ func analysisText(a queries.MenuAnalytics) string {
 	return strings.Join(lines, "\n")
 }
 func readonly(value string) *widget.Entry {
-	e := widget.NewEntry()
-	restoring := false
-	e.OnChanged = func(changed string) {
-		if restoring || changed == value {
-			return
-		}
-		restoring = true
-		e.SetText(value)
-		restoring = false
-	}
-	e.SetText(value)
-	return e
+	return ui.ReadonlyEntry(value)
 }
 func setEnabled(o interface {
 	Enable()

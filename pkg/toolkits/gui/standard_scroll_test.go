@@ -27,6 +27,20 @@ func TestSingleLineEntryPassesWheelToFormPage(t *testing.T) { //nolint:parallelt
 	testutil.ErrorIf(t, entry.Text != "selectable text" || entry.Disabled(), "%v", "scrolling changed the editable/selectable entry")
 }
 
+func TestReadonlyEntryPassesWheelToFormPage(t *testing.T) { //nolint:paralleltest // Fyne app and driver state is process-global.
+	app := test.NewApp()
+	t.Cleanup(app.Quit)
+
+	entry := ReadonlyEntry("selectable detail")
+	fields := container.NewVBox(append([]framework.CanvasObject{entry}, spacer(30)...)...)
+	page, canvas := formCanvas(app, fields)
+
+	test.Scroll(canvas, scrollPoint(app, entry), 0, -80)
+
+	testutil.ErrorIf(t, page.Offset.Y == 0, "%v", "wheel event over a read-only detail field did not scroll the form page")
+	testutil.Equals(t, entry.Text, "selectable detail")
+}
+
 func TestMultiLineEntryKeepsWheelForItsOwnContent(t *testing.T) { //nolint:paralleltest // Fyne app and driver state is process-global.
 	app := test.NewApp()
 	t.Cleanup(app.Quit)

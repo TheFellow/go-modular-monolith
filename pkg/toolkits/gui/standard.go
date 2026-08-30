@@ -156,6 +156,51 @@ func DetailForm(fields ...framework.CanvasObject) framework.CanvasObject {
 	return container.NewVBox(fields...)
 }
 
+// FormSection gives longer workflows a clear visual sequence without creating
+// additional nested scroll regions.
+func FormSection(title, guidance string, content ...framework.CanvasObject) framework.CanvasObject {
+	heading := widget.NewLabelWithStyle(title, framework.TextAlignLeading, framework.TextStyle{Bold: true})
+	objects := []framework.CanvasObject{heading}
+	if guidance != "" {
+		label := widget.NewLabel(guidance)
+		label.Wrapping = framework.TextWrapWord
+		objects = append(objects, label)
+	}
+	objects = append(objects, content...)
+	return container.NewVBox(objects...)
+}
+
+// ReadonlyEntry keeps selectable detail text without installing an inner
+// horizontal scroll target that steals wheel events from the form page.
+func ReadonlyEntry(value string) *widget.Entry {
+	return readonlyEntry(value, false)
+}
+
+// ReadonlyMultiLineEntry keeps long selectable detail text independently
+// scrollable while constructing the renderer in a consistent state.
+func ReadonlyMultiLineEntry(value string) *widget.Entry {
+	return readonlyEntry(value, true)
+}
+
+func readonlyEntry(value string, multiline bool) *widget.Entry {
+	entry := &widget.Entry{MultiLine: multiline, Wrapping: framework.TextWrapOff, Scroll: framework.ScrollNone}
+	if multiline {
+		entry.Scroll = framework.ScrollVerticalOnly
+	}
+	entry.ExtendBaseWidget(entry)
+	restoring := false
+	entry.OnChanged = func(changed string) {
+		if restoring || changed == value {
+			return
+		}
+		restoring = true
+		entry.SetText(value)
+		restoring = false
+	}
+	entry.SetText(value)
+	return entry
+}
+
 // ActionBar keeps primary actions leading and secondary/destructive actions
 // trailing across every workspace.
 func ActionBar(primary, other []framework.CanvasObject) framework.CanvasObject {

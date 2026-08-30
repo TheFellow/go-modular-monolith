@@ -42,7 +42,6 @@ type View struct {
 	apply, submit, back                                                 *ui.SemanticButton
 	status, workflowTitle, detailTitle, crumbName                       *widget.Label
 	state                                                               State
-	tagNaturalWidth                                                     float32
 	inspect, addOperation, removeOperation, showExact, showKey, summary *ui.SemanticButton
 }
 
@@ -77,7 +76,7 @@ func NewView(p *Presenter) *View {
 			p.SelectSummary(id.Row)
 		}
 	}
-	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Tag", Width: 260, Sortable: true}, {Title: "Total", Width: 70, Sortable: true}, {Title: "Drinks", Width: 80, Sortable: true}, {Title: "Ingredients", Width: 100, Sortable: true}, {Title: "Inventory", Width: 90, Sortable: true}, {Title: "Menus", Width: 70, Sortable: true}, {Title: "Orders", Width: 70, Sortable: true}, {Title: "Actions", Width: 120}}, p.SortSummaries)
+	ui.ConfigureRowTable(v.list, []ui.TableColumn{{Title: "Tag", Width: 180, Sortable: true}, {Title: "Total", Width: 60, Sortable: true}, {Title: "Drinks", Width: 70, Sortable: true}, {Title: "Ingredients", Width: 90, Sortable: true}, {Title: "Inventory", Width: 80, Sortable: true}, {Title: "Menus", Width: 65, Sortable: true}, {Title: "Orders", Width: 65, Sortable: true}, {Title: "Actions", Width: ui.RowActionsWidth}}, p.SortSummaries)
 	v.empty = ui.EmptyCollection(ui.IconEmpty, "No active tag usage", "Adjust the filter or tag an active entity to begin discovery.")
 	v.listStack = container.NewStack(v.list, v.empty)
 	add := ui.WithIcon(ui.NewButton(ControlAdd+".list", "Tag entity", func() { p.Start(Add) }), ui.IconTag)
@@ -157,16 +156,6 @@ func (v *View) render(s State) {
 	v.summary.Enable()
 	if !summary.Enabled {
 		v.summary.Disable()
-	}
-	if len(s.VisibleSummaries) > 0 {
-		values := make([]string, len(s.VisibleSummaries))
-		for i, summary := range s.VisibleSummaries {
-			values[i] = summary.Tag
-		}
-		if width := ui.TagPillColumnWidth(values, 260); width > v.tagNaturalWidth {
-			v.list.SetColumnWidth(0, width)
-			v.tagNaturalWidth = width
-		}
 	}
 	v.state = s
 	list := s.Mode == Results && s.Operation == Summary

@@ -38,7 +38,10 @@ Shell + Route + View
 - `FilterBar` keeps one visible expression as the source of truth; presets write expressions into
   it. Paging and sortable-table helpers standardize collection controls.
 - Icon vocabulary, row actions, empty detail, tag pills/token editing, and table cell presenters
-  keep repeated visuals consistent without importing application models.
+  keep repeated visuals consistent without importing application models. Collection tables show
+  task-relevant summaries rather than opaque IDs, keep bounded columns inside the standard desktop
+  workspace, and reserve the aligned rightmost column for `Actions`; full identifiers and precision
+  belong in breadcrumbs or detail views.
 - `Dialogs` is injected for confirmations and testability. `PresentError` maps typed application
   errors to safe inline/warning/error presentation; `Validator` handles presentation-only checks.
 

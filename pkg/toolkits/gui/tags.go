@@ -324,24 +324,6 @@ func compactTagPill(value string) framework.CanvasObject {
 	return container.New(&compactPillLayout{}, background, label)
 }
 
-// TagPillColumnWidth returns the width required to display the widest tag row
-// without shortening an individual pill. The table can then scroll
-// horizontally when that natural width is wider than the viewport.
-func TagPillColumnWidth(values []string, minimum float32) float32 {
-	width := minimum
-	for _, value := range values {
-		rowWidth := float32(0)
-		for i, tag := range parseTagCSV(value) {
-			if i > 0 {
-				rowWidth += tagPillGap
-			}
-			rowWidth += compactTagPill(tag).MinSize().Width
-		}
-		width = max(width, rowWidth)
-	}
-	return width
-}
-
 type compactPillLayout struct{}
 
 func (*compactPillLayout) MinSize(objects []framework.CanvasObject) framework.Size {
@@ -360,9 +342,8 @@ func (*compactPillLayout) Layout(objects []framework.CanvasObject, size framewor
 	objects[1].Resize(framework.NewSize(max(0, size.Width-12), size.Height))
 }
 
-// compactPillRowLayout preserves each pill's natural width. Table tag columns
-// start wide enough for their content and can be widened with the native header
-// divider instead of silently clipping a tag's text.
+// compactPillRowLayout keeps table tags inside their assigned column. Detail
+// views retain the complete wrapping pill set.
 type compactPillRowLayout struct{}
 
 func (*compactPillRowLayout) MinSize([]framework.CanvasObject) framework.Size {
@@ -376,7 +357,13 @@ func (*compactPillRowLayout) Layout(objects []framework.CanvasObject, size frame
 		if i > 0 {
 			gap = tagPillGap
 		}
-		width := object.MinSize().Width
+		remaining := size.Width - x - gap
+		if remaining <= 0 {
+			object.Hide()
+			continue
+		}
+		object.Show()
+		width := min(object.MinSize().Width, remaining)
 		object.Move(framework.NewPos(x+gap, 0))
 		object.Resize(framework.NewSize(width, size.Height))
 		x += gap + width
