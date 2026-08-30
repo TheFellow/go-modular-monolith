@@ -62,6 +62,9 @@ func (r *LatestRequest[T]) LoadContext(parent context.Context, work func(context
 	r.dispatch(generation, func() { publish(LoadState[T]{Status: Loading}) })
 	r.execute(cancel, func() {
 		defer cancel()
+		if ctx.Err() != nil {
+			return
+		}
 		value, err := work(ctx)
 		r.dispatch(generation, func() {
 			if err != nil {
