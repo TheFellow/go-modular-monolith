@@ -17,7 +17,7 @@ namespace Mixology {
     entity Drink { Name: String, Featured: Bool, Owner: Actor };
 }
 namespace Mixology::Drink {
-    action list, add_ice appliesTo {
+    action list, "ice:add" appliesTo {
         principal: Mixology::Actor,
         resource: Mixology::Drink,
         context: {}
@@ -35,7 +35,7 @@ namespace Mixology::Drink {
 	for _, want := range []string{
 		`DrinkType cedar.EntityType = "Mixology::Drink"`,
 		`ResourceType cedar.EntityType = DrinkType`,
-		`ActionAddIce = cedar.NewEntityUID(ActionType, "add_ice")`,
+		`ActionIceAdd = cedar.NewEntityUID(ActionType, "ice:add")`,
 		`Name string`,
 		`Featured bool`,
 		`Owner cedar.EntityUID`,
@@ -295,7 +295,7 @@ namespace Mixology {
     entity Drink;
 }
 namespace Mixology::Drink {
-    action "add-ice", add_ice appliesTo {
+    action "ice:add", ice_add appliesTo {
         principal: Mixology::Actor,
         resource: Mixology::Drink,
         context: {}
@@ -309,7 +309,7 @@ namespace Mixology::Drink {
 
 	_, err = renderModuleModels(parsed.AST(), "drinks")
 	testutil.ErrorIf(t, err == nil, "expected normalized action name collision")
-	testutil.ErrorIf(t, !strings.Contains(err.Error(), `both normalize to variable name "ActionAddIce"`), "unexpected error: %v", err)
+	testutil.ErrorIf(t, !strings.Contains(err.Error(), `both normalize to variable name "ActionIceAdd"`), "unexpected error: %v", err)
 }
 
 func TestRenderModuleModelsRejectsNormalizedNameCollisions(t *testing.T) {
@@ -321,7 +321,7 @@ namespace Mixology {
     entity Drink { "foo-bar": String, foo_bar: Long };
 }
 namespace Mixology::Drink {
-    action "add-ice", add_ice appliesTo {
+    action "ice:add", ice_add appliesTo {
         principal: Mixology::Actor,
         resource: Mixology::Drink,
         context: {}

@@ -426,7 +426,7 @@ func exportedName(name string) string {
 	var out strings.Builder
 	upper := true
 	for _, r := range name {
-		if r == '_' || r == '-' || r == ' ' {
+		if r == '_' || r == '-' || r == ':' || r == ' ' {
 			upper = true
 			continue
 		}

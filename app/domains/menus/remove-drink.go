@@ -7,5 +7,5 @@ import (
 )
 
 func (m *Module) RemoveDrink(ctx *middleware.Context, change *models.MenuPatch) (*models.Menu, error) {
-	return m.pipeline.Command(ctx, authz.ActionRemoveDrink, change, m.commands.RemoveDrink)
+	return m.pipeline.Command(ctx, authz.ActionDrinkRemove, change, m.commands.RemoveDrink)
 }
