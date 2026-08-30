@@ -46,6 +46,20 @@ func TestLatestRequestChecksStalenessWhenUIPublicationRuns(t *testing.T) {
 	testutil.ErrorIf(t, len(values) != 1 || values[0] != 2, "published values = %v, want [2]", values)
 }
 
+func TestLatestRequestSkipsWorkInvalidatedBeforeExecution(t *testing.T) {
+	executor := &fynetest.ManualExecutor{}
+	request := gui.NewLatestRequest[int](executor, gui.InlineDispatcher{})
+	ran := false
+
+	request.LoadContext(context.Background(), func(context.Context) (int, error) {
+		ran = true
+		return 1, nil
+	}, func(gui.LoadState[int]) {})
+	request.Invalidate()
+	testutil.ErrorIf(t, !executor.RunNext(), "%v", "expected queued operation")
+	testutil.ErrorIf(t, ran, "%v", "invalidated operation ran")
+}
+
 func TestLatestRequestCancelsSupersededWork(t *testing.T) {
 	executor := gui.NewManagedExecutor()
 	t.Cleanup(executor.Close)
