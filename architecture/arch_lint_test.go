@@ -19,7 +19,7 @@ func TestArchitectureRulesRejectForbiddenImports(t *testing.T) {
 	repositoryRoot := repositoryRoot(t)
 	fixtureRoot := t.TempDir()
 
-	writeFixture(t, fixtureRoot, "go.mod", "module github.com/TheFellow/go-modular-monolith\n\ngo 1.27.0\n")
+	writeFixture(t, fixtureRoot, "go.mod", "module github.com/TheFellow/go-modular-monolith\n\ngo 1.27.1\n")
 	configData, err := os.ReadFile(filepath.Join(repositoryRoot, ".arch-lint.yaml"))
 	testutil.ErrorIf(t, err != nil, "read repository architecture config: %v", err)
 	writeFixture(t, fixtureRoot, ".arch-lint.yaml", string(configData))
