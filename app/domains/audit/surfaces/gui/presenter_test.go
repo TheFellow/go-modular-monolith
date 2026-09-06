@@ -263,7 +263,7 @@ func TestAuditDetailIsFullWidthCopyableReadOnlyAndHasNoFilters(t *testing.T) {
 	view := NewView(presenter)
 	view.Activate()
 	view.list.Select(widget.TableCellID{Row: 0, Col: 0})
-	testutil.ErrorIf(t, !view.browse.Hidden || view.detailPanel.Hidden || len(view.detailFields) != 10, "%v", "detail did not replace the list with the complete audit form")
+	testutil.ErrorIf(t, !view.browse.Hidden || view.detailPanel.Hidden || len(view.detailFields) != 13, "%v", "detail did not replace the list with the complete audit form")
 	for _, field := range view.detailFields {
 		testutil.ErrorIf(t, field.Disabled(), "%v", "read-only detail field is disabled and cannot be copied")
 	}

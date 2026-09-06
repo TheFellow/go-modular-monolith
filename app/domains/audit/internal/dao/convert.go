@@ -8,7 +8,8 @@ import (
 
 func toRow(e models.AuditEntry) AuditEntryRow {
 	return AuditEntryRow{
-		ID:            e.ID.String(),
+		ID:         e.ID.String(),
+		WorkflowID: e.WorkflowID, Effects: e.Effects, Participants: e.Participants,
 		Action:        e.Action,
 		ResourceType:  string(e.Resource.Type),
 		ResourceID:    string(e.Resource.ID),
@@ -24,8 +25,9 @@ func toRow(e models.AuditEntry) AuditEntryRow {
 
 func toModel(r AuditEntryRow) models.AuditEntry {
 	return models.AuditEntry{
-		ID:          entity.AuditEntryID(cedar.NewEntityUID(models.AuditEntryEntityType, cedar.String(r.ID))),
-		Action:      r.Action,
+		ID:         entity.AuditEntryID(cedar.NewEntityUID(models.AuditEntryEntityType, cedar.String(r.ID))),
+		Action:     r.Action,
+		WorkflowID: r.WorkflowID, Effects: r.Effects, Participants: r.Participants,
 		Resource:    cedar.NewEntityUID(cedar.EntityType(r.ResourceType), cedar.String(r.ResourceID)),
 		Principal:   cedar.NewEntityUID(cedar.EntityType(r.PrincipalType), cedar.String(r.PrincipalID)),
 		Touches:     r.Touches,

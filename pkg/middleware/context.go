@@ -11,6 +11,7 @@ import (
 )
 
 type Context struct {
+	workflow *workflowState
 	context.Context
 	events    []any
 	principal cedar.EntityUID
@@ -109,3 +110,19 @@ func (h *HandlerContext) TouchEntity(uid cedar.EntityUID) {
 func (h *HandlerContext) Principal() cedar.EntityUID {
 	return h.ctx.Principal()
 }
+
+func (c *Context) RecordEffect(kind string, uid cedar.EntityUID, changes ...middlewareevents.Change) {
+	if a, ok := c.Activity(); ok {
+		a.Effects = append(a.Effects, middlewareevents.Effect{Kind: kind, Resource: uid, Changes: changes})
+		a.Touch(uid)
+	}
+}
+func (h *HandlerContext) RecordEffect(kind string, uid cedar.EntityUID, changes ...middlewareevents.Change) {
+	h.ctx.RecordEffect(kind, uid, changes...)
+}
+func (c *Context) ReferenceEntity(uid cedar.EntityUID) {
+	if a, ok := c.Activity(); ok {
+		a.Participants = append(a.Participants, uid)
+	}
+}
+func (h *HandlerContext) ReferenceEntity(uid cedar.EntityUID) { h.ctx.ReferenceEntity(uid) }

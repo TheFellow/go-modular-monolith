@@ -101,7 +101,9 @@ func TestLoadCommand_ActivityRecorderFailureRollsBackBusinessWrite(t *testing.T)
 		Store: s,
 		RecordActivity: func(ctx *middleware.Context, activity middlewareevents.Activity) error {
 			recordCalls++
-			testutil.IsTrue(t, activity.Success)
+			if !activity.Success {
+				return insertTransactionProbe(ctx, "failure-audit")
+			}
 			if err := insertTransactionProbe(ctx, "success-audit"); err != nil {
 				return err
 			}
@@ -121,8 +123,8 @@ func TestLoadCommand_ActivityRecorderFailureRollsBackBusinessWrite(t *testing.T)
 
 	testutil.ErrorIsInternal(t, err)
 	testutil.ErrorContains(t, err, "record activity")
-	testutil.Equals(t, recordCalls, 1)
-	testutil.Equals(t, transactionProbeKinds(t, ctx, s), []string(nil))
+	testutil.Equals(t, recordCalls, 2)
+	testutil.Equals(t, transactionProbeKinds(t, ctx, s), []string{"failure-audit"})
 }
 
 func TestLoadCommand_FailureRollsBackThenPersistsFailedActivity(t *testing.T) {

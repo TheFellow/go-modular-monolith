@@ -19,8 +19,9 @@ func NewWriter(s *store.Store) *Writer {
 
 func (w *Writer) RecordActivity(ctx *middleware.Context, activity middlewareevents.Activity) error {
 	entry := models.AuditEntry{
-		ID:          entity.NewAuditEntryID(),
-		Action:      activity.Action.String(),
+		ID:         entity.NewAuditEntryID(),
+		Action:     activity.Action.String(),
+		WorkflowID: activity.WorkflowID, Effects: activity.Effects, Participants: activity.Participants,
 		Resource:    activity.Resource,
 		Principal:   activity.Principal,
 		StartedAt:   activity.StartedAt,
