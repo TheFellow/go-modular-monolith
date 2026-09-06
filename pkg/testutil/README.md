@@ -48,6 +48,13 @@ The convenience functions fail the test immediately on setup errors and return p
 models. `CreateMenu` accepts `WithDescription`, repeated `WithDrink`, and `Published` options;
 `SetInventory` and `PlaceOrder` cover their respective write paths.
 
+`SetInventory` loads the latest stock revision for fixture setup. To test stale-editor rejection,
+call `f.Inventory.Set` directly with the captured old revision; the helper deliberately refreshes
+it. `CreateMenu(..., Published())` and `PlaceOrder` provision ample primary stock when the fixture
+has no inventory at all. Once any stock exists they leave allocation under the test's control.
+Set stock explicitly for shortage, optional-ingredient, cost, and substitution scenarios. Temporary
+substitution rules also require explicit `Ingredients.SetSubstitution` setup; names do not imply rules.
+
 Use `OwnerContext()` for unrestricted setup and `ActorContext("sommelier")` (or another declared
 persona) for behavior under policy. Both return real middleware contexts. `LatestAuditEntry` and
 `AuditTouches` inspect the activity emitted by a command, while `f.Metrics` exposes counters and
@@ -67,6 +74,12 @@ testutil.Equals(t, count, 1.0)
 
 Create a new fixture per test. It owns mutable application state and is not intended to be shared
 between parallel tests.
+
+For cross-domain reactions, assert both state and audit meaning: `AuditTouches` covers mutations,
+`entry.Participants` covers inspected dependencies, and `entry.Effects` explains changes. Failed
+activities describe attempted effects. Permute sibling handlers with all `Handling` calls before
+any `Handle`, then inject a late failure and verify every domain write and child success activity
+rolls back. See the [workflow regressions](../../app/cross_domain_regression_test.go).
 
 ## Assertions
 

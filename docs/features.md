@@ -39,8 +39,10 @@ mixology drinks list --filter 'tags contains "audience=sommelier"'
 ```
 
 Adding an existing key replaces its value; repeated add and missing remove are successful no-ops.
-Non-delete mutations also accept `--tags`: omission preserves, a value replaces the whole set, and
+Commands exposing `--tags` use the same convention: omission preserves, a value replaces the whole set, and
 `--tags=` clears it. The domain mutation and tag replacement are one authorized, audited transaction.
+GUI/TUI editors carry both the captured entity revision and original tag set, so a concurrent tag
+edit cannot be overwritten by a stale combined save.
 
 Associations are centrally stored by Cedar entity type, ID, and key, but each owning domain loads
 its own entities and hydrates tags in one type-scoped query. Soft-deleted rows retain associations;
@@ -69,14 +71,23 @@ Typed IDs include a prefix: `drk-`, `ing-`, `inv-`, `mnu-`, `ord-`, and `aud-`. 
 `--id`; references name the target (`--menu-id`, `--drink-id`, and so on). Cross-domain tag commands
 infer the entity type from the five operational prefixes and reject audit IDs.
 
-Add `--json` for structured output. Document mutations accept `--file` or `--stdin` (including a
-pipe), and `--template` prints the expected JSON shape.
+Commands supporting text output accept `--json` for structured output. Catalog document mutations
+accept `--file` or `--stdin` (including a pipe), and `--template` prints their expected JSON shape.
+Amendment batches accept a JSON array through `--file` or `--stdin`; they have no template flag.
+Amendment, substitution-rule, and stock disposition/history commands return JSON directly.
 
 ## Audit
 
-Every write passing through a pipeline command method produces an activity. Handlers call `TouchEntity` for
-indirectly affected entities. Successful activity records commit with the write; rejected attempts
-are recorded after rollback.
+Every write passing through a pipeline command method produces an activity. Domain commands and
+handlers use `RecordEffect` to explain changes and attribute touched entities. `ReferenceEntity`
+records inspected dependencies separately as participants. Effects contain a kind, resource, and
+field-level before/after text; they explain business intent rather than representing a full database
+snapshot. Successful activities commit with the write. Rejected attempts record attempted effects
+after rollback; those effects must not be interpreted as committed changes.
+
+Composed workflows correlate child activities with a workflow ID. If an outer workflow fails,
+child successes roll back and one failed workflow activity is retained. A caller supplying its own
+transaction is responsible for rollback and post-rollback failure recording.
 
 ```sh
 mixology audit list --limit 20
@@ -88,11 +99,25 @@ mixology audit history Mixology::Drink::drk-abc123
 
 ## Stateful fulfillment and retirement
 
-Placing an order captures its ingredient-usage snapshot and reserves that stock in Inventory.
+Placing an order captures immutable acceptance: menu and drink names, agreed prices, notes,
+preparation instructions, and chosen or omitted ingredients. Its current approved plan initially
+matches that acceptance and reserves the selected stock in Inventory. Optional ingredients are
+included when stock permits and omitted when necessary to preserve required service; included
+optionals are reserved and consumed, and omitted ones contribute no cost.
 Inventory lists distinguish on-hand, reserved, and available quantities. Completing the order
 consumes its reservations; cancelling releases them. A later stock correction below the reserved
 total moves every affected pending order to `blocked`, and replenishment returns it to `pending`.
 Blocked orders remain cancellable but cannot be completed.
+
+Stock and reservations persist in canonical units (`ml` for volume); returned quantities use the
+stock's display unit. `CostUnit` identifies the price basis independently, so changing ounces to
+millilitres does not change the economic cost. Cost and fulfillment share one allocation planner,
+and margin calculations require matching currencies.
+
+Temporary substitutions are stored by ingredient ID, with an explicit ratio, quality, enabled
+state, and revision. Renaming ingredients never creates or changes rules. Use
+`ingredients substitution` to create or revise a rule and `ingredients substitutions --id ...` to inspect its
+current revision, including disabled rules.
 
 This collaboration is deliberately reciprocal: Order events change Inventory reservations and
 draft and published Menu availability, while Inventory adjustment events change Order fulfillment state.
@@ -124,6 +149,10 @@ Explicit withdrawal (`--withdraw`) quarantines retained stock and blocks affecte
 Discontinuation alone honors existing reservations. Explicit amendments change approved fulfillment
 without rewriting acceptance; cancellation releases reservations and can recover other blocked orders.
 Quarantine release and disposal are separate stock operations with retained movement history.
+
+Drink deletion is rejected while any active draft/published menu or any historical order uses it.
+Menu deletion is rejected when an order uses it; redrafting retains the previous publication time.
+Dependency errors explain the blocker. There is no force-delete operation.
 
 See [Transactional domain workflows](transactional-workflows.md) for canonical units, ID rules,
 immutable acceptance, amendment batches, usage guards, audit effects and concurrency contracts.

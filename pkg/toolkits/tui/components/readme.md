@@ -9,6 +9,8 @@ This package contains reusable Bubble Tea controls that compose the lower-level
   an explicit clear, and a replacement. The caller injects its parser and retains its own tag type.
 - `TagEditor[Target, Tags]` owns edit/save interaction and duplicate-submission protection. Target
   and tag types are generic; parsing and replacement behavior are injected by the domain adapter.
+  The replacement callback must capture any expected original tag set needed for concurrency;
+  the generic editor cannot infer the application's revision or tag policy.
 - `TaggedConfirm[T]` adds an optional replacement field before a confirmation dialog without
   knowing the eventual domain command.
 

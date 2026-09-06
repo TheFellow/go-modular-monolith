@@ -28,7 +28,8 @@ the command added them. The [middleware guide](../middleware/README.md#default-p
 the surrounding transaction and failure-audit ordering.
 
 Handlers receive `*middleware.HandlerContext`, which exposes the current transaction, principal,
-and `TouchEntity`, but deliberately has no `AddEvent`. A handler is a leaf operation and cannot
+and activity methods (`RecordEffect`, `ReferenceEntity`, `TouchEntity`), but deliberately has no
+`AddEvent`. A handler is a leaf operation and cannot
 start an event cascade. Events with no matching handler are valid extension points: the dispatcher
 logs them at debug level and returns successfully.
 
@@ -44,7 +45,8 @@ func (h *StockAdjusted) Handle(
 	e inventoryevents.StockAdjusted,
 ) error {
 	// Update handler-owned state in the current transaction.
-	ctx.TouchEntity(menu.ID.EntityUID())
+	ctx.RecordEffect("menu_availability_changed", menu.ID.EntityUID(),
+		middleware.Change("items", beforeItems, menu.Items))
 	return nil
 }
 ```
@@ -64,23 +66,23 @@ service state does not belong on a handler receiver.
 
 A handler may implement `Handling` with the same event signature in addition to `Handle`. For one
 event, the dispatcher calls `Handling` on every preparing handler before it calls any `Handle`
-method. Use this when a handler must snapshot data before another handler can change it:
+method. Use this when sibling writes could change data needed for the reaction. Capturing only
+dependency IDs is insufficient if `Handle` then re-reads a sibling's changed state. Menu placement
+prepares the final availability using projected reservations:
 
 ```go
-func (h *IngredientDeleted) Handling(
-	ctx *middleware.HandlerContext,
-	e ingredientsevents.IngredientDeleted,
-) error {
-	drinks, err := h.drinks.ListByIngredient(ctx, e.Ingredient.ID)
-	if err != nil {
-		return err
-	}
-	h.affectedDrinks = drinks
-	return nil
+func (h *OrderPlaced) Handling(ctx *middleware.HandlerContext, e events.OrderPlaced) error {
+	return h.prepared.order(ctx, nil, e.Order.IngredientUsage, false)
+}
+
+func (h *OrderPlaced) Handle(ctx *middleware.HandlerContext, _ events.OrderPlaced) error {
+	return h.prepared.apply(ctx)
 }
 ```
 
-`Handle` later reads the state captured on that same receiver. Do not use observed generated order
+The [prepared menu implementation](../../app/domains/menus/handlers/prepared.go) calculates the
+result in `Handling`; `Handle` writes only its own prepared rows. Pure calculations on captured
+data may also run in `Handle`, as in Drinks' recipe rewrite. Do not use observed generated order
 as a coordination mechanism: all handlers for an event must remain correct in any order.
 
 Ingredient retirement demonstrates why this phase exists. Drinks snapshots every recipe that
@@ -90,8 +92,8 @@ pending Orders on withdrawal, and recompute Menu availability in one transaction
 product intent carried by the event, not something a consumer infers from a temporary substitute.
 Menus prepares final availability during `Handling`, projecting inventory changes and using Drinks
 public pure recipe-retirement rule. Its `Handle` persists those results without re-reading peers.
-Handlers touch every indirectly changed entity so the originating retirement activity exposes the
-full audit blast radius.
+Handlers record effects for indirectly changed entities and reference inspected dependencies
+separately, so the originating retirement activity distinguishes mutations from participants.
 
 ## Adding an event reaction
 
@@ -100,11 +102,13 @@ full audit blast radius.
 2. Add the consumer under `app/domains/<consumer>/handlers`. Implement `Handle` with
    `*middleware.HandlerContext`, the concrete imported event type, and the standard constructor
    shown above.
-3. Add `Handling` only when the reaction needs a pre-mutation snapshot shared with its later
-   `Handle` call.
+3. Add `Handling` when the reaction depends on peer state that another handler may change. Capture
+   that state and prepare projected results before any sibling `Handle` executes.
 4. Run `go generate ./pkg/dispatcher` and commit the resulting
    [`dispatcher_gen.go`](dispatcher_gen.go). Never edit that file directly.
-5. Test the handler's domain effect through a real fixture, then run:
+5. Test the handler's domain effect through a real fixture. For shared-state reactions, permute
+   sibling order while keeping every `Handling` before any `Handle`, and test late-error rollback.
+   Then run:
 
 ```sh
 go test ./pkg/dispatcher ./app/domains/<consumer>/...

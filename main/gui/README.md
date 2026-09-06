@@ -106,10 +106,21 @@ errors are shown as application errors, and command execution rechecks all rules
 state.
 
 Ingredient retirement accepts an optional explicit permanent replacement and conversion ratio;
-leaving it blank preserves dependent recipes in a review-required state. Menu workspaces load the
+leaving it blank puts required references under review and removes optional/substitute references.
+Retirement retains physical stock and accepted order history. Menu workspaces load the
 authorized readiness report separately from the base menu projection. Readiness blockers disable
 Publish and remain visible for examination, while an operational change may leave an existing
 published menu visible in a degraded state.
+
+Order details display accepted names, prices, and instructions from the order snapshot, plus its
+current approved plan and amendment reasons. Retained stock remains visible after ingredient
+retirement with its saved name, disposition, and separate cost unit; non-active stock cannot be
+set or adjusted through ordinary editors. Revision tokens and the captured complete tag set protect
+combined saves from overwriting newer edits.
+
+Explicit amendment and stock quarantine/release/disposal forms are not part of the desktop yet.
+Use the [CLI](../cli/README.md#amendments-substitutions-and-stock-history) or application API; the
+desktop's normal refresh path displays their committed results.
 
 Fyne does not currently provide complete cross-platform screen-reader
 semantics for every widget. Labels, form items, visible button text, native

@@ -8,11 +8,11 @@ queries, persistence, Cedar policies, events, and transport adapters. Compositio
 
 | Context     | Owns                                                 | Synchronous dependencies              | Events produced                                  |
 | ----------- | ---------------------------------------------------- | ------------------------------------- | ------------------------------------------------ |
-| Ingredients | ingredient catalog and retirement                    | —                                     | created, updated, retired                        |
+| Ingredients | ingredient catalog, ID-based substitution rules, retirement | —                               | created, updated, retired                        |
 | Drinks      | recipes                                              | Ingredients                           | created, updated, deleted                        |
-| Inventory   | stock                                                | Ingredients                           | stock adjusted                                   |
-| Menus       | curation and publication                             | Drinks, Ingredients, Inventory        | created, drink added/removed, published, drafted |
-| Orders      | order lifecycle                                      | Menus, Drinks, Ingredients, Inventory | placed, completed, cancelled                     |
+| Inventory   | stock, reservations, disposition, movement history   | Ingredients                           | stock adjusted                                   |
+| Menus       | curation and publication                             | Drinks, Ingredients, Inventory        | created, drink added/removed, published, drafted, deleted |
+| Orders      | acceptance snapshots, fulfillment plans, amendments, lifecycle | Menus, Drinks, Ingredients, Inventory | placed, amended, completed, cancelled       |
 | Audit       | append-only activities                               | —                                     | —                                                |
 | Tagging     | polymorphic associations and authorized tag workflow | domain-owned target loaders           | —                                                |
 
@@ -27,6 +27,8 @@ Inventory adjustment events can in turn block or unblock every pending Order who
 affected. Both event families recalculate draft and published Menu availability. Ingredient retirement fans
 out similarly: Drinks enter review rather than disappearing, Menu items become unavailable, and
 Inventory retains stock with an explicit disposition while accepted Order snapshots remain historical truth.
+Cancellation and amendment release also reconcile other blocked Orders. Menu projections include
+implicit substitution dependencies, and use the same pure recipe-retirement rule owned by Drinks.
 
 ## Package boundaries
 
@@ -41,7 +43,8 @@ effects. Invalid registration fails immediately.
 
 Presentation follows a second set of vertical boundaries documented under
 [domain surfaces](../app/domains/readme.md#presentation-surfaces). Reusable framework code lives in
-the [toolkits](../pkg/toolkits/readme.md); process and cross-domain composition live in `main`.
+the [toolkits](../pkg/toolkits/readme.md). Process and route composition live in `main`; reusable
+transactional workflows such as selected-order amendment and ingredient retirement live in `app`.
 Domain action projectors bridge those boundaries: they combine Cedar authorization with durable
 domain prerequisites and return framework-neutral control state for GUI, TUI, and future web
 adapters. Each concrete view then composes transient state such as dirty forms or requests in
@@ -54,6 +57,12 @@ metrics, activity tracking, unit of work, authorization, execution, event dispat
 recording. Authorization evaluates both the loaded input and resulting state, allowing policies to
 constrain transitions. Domain mutation, leaf handlers, and successful audit entry share one
 transaction. On failure that transaction rolls back, then the failed attempt is audited separately.
+
+`middleware.RunWorkflow` extends this boundary to several public module calls. Child activities
+retain their actions and share a workflow ID. A failure rolls back all child successes and records
+one failed workflow activity containing attempted effects. When a caller supplies a transaction,
+that caller owns commit, rollback, and failure recording. Audit effects explain domain changes;
+they are not a replayable event log.
 
 Queries share logging and metrics. A get authorizes its returned Cedar entity. A list authorizes
 each result and silently removes permission denials; evaluation/infrastructure failures still fail
@@ -68,20 +77,22 @@ sessions bind one selected actor while still creating fresh operation contexts.
 The generated [domain event dispatcher](../pkg/dispatcher/README.md) connects public events to
 their handlers without making bounded contexts depend directly on their consumers. Handlers
 receive `*middleware.HandlerContext`, which deliberately has no `AddEvent`. They may query
-and mutate their own domain and call `TouchEntity`, but cannot emit another event. This makes every
+and mutate their own domain, record effects, and reference dependencies, but cannot emit another event. This makes every
 event fan-out a bounded leaf operation.
 
 When several handlers consume one event, their order must be treated as nondeterministic. The
 dispatcher therefore runs every optional `PreparingHandler.Handling` method before it runs any
 `Handle` method. During this preparation phase, each handler can read and retain the state as it
-existed when the original event was raised. Its later `Handle` call can use that snapshot even if
-another handler has since changed related state in the shared transaction. This two-phase protocol
+existed after the originating command and before sibling handlers write. It calculates the intended
+result using that state and the event's projected changes. Its later `Handle` persists that result
+without re-reading peers whose state a sibling may have changed. This two-phase protocol
 preserves the information that might otherwise require a follow-up, cascading event, without making
 correctness depend on handler order.
 
 Order placement demonstrates why preparation and transactional fan-out matter: one event may
 touch several inventory rows and menus, and any reservation failure rolls back the Order and every
-handler mutation. Handler changes are recorded as audit touches on the initiating operation.
+handler mutation. `RecordEffect` adds domain-authored changes and touches; `ReferenceEntity` records
+inspected dependencies separately, without claiming they changed.
 
 Ingredient retirement is another deliberate fan-out. Ingredients owns validation of an optional
 explicit permanent replacement. Drinks owns canonical recipe rewrite or `review_required` state;
@@ -131,6 +142,8 @@ surface/toolkit imports, surface-to-composition imports, cross-domain presentati
 shared-package domain imports, private authz/internal access, foreign-event emission, and query or
 handler access to command implementations. Tests in `architecture/` also validate every context's
 allowed topology and require every domain to be initialized by `app.New`.
+They also require a revision field on every registered domain row. The store requires a positive
+expected revision for each update/delete and compares it in SQL; client checks alone are insufficient.
 
 Typed errors are transport-neutral: one immutable kind maps to HTTP, gRPC, CLI, and TUI semantics
 while separating diagnostic detail from safe presentation text.

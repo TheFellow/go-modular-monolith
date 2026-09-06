@@ -8,6 +8,17 @@ domain, and architecture tests reject undeclared package shapes and dependency d
 See the [architecture guide](../../docs/architecture.md) for the context map, pipelines, event
 rules, and enforcement details.
 
+Active public models omit deletion metadata. Catalog DAOs retain private deletion timestamps;
+ordinary queries return active catalog entries. Inventory instead exposes retained stock with an
+explicit disposition, and Orders owns immutable acceptance plus the current approved plan and
+amendment history. These contracts preserve historical meaning without querying today's catalog
+to reconstruct yesterday's order.
+
+Cross-domain workflows belong in `app` and compose public module operations inside
+`middleware.RunWorkflow`. Reactive handlers write only their own context; when sibling mutations
+could affect a read, calculate the intended result in `Handling` and persist it in `Handle`.
+See [transactional workflows](../../docs/transactional-workflows.md) for the concrete contracts.
+
 ## Presentation surfaces
 
 `surfaces/cli`, `surfaces/tui`, and `surfaces/gui` adapt a domain's public API to one presentation
@@ -29,3 +40,6 @@ executable from accumulating domain behavior.
 Mutable public models expose an opaque `Revision` so replace-style editors and document adapters
 can round-trip the version they read. Surfaces transport that value but do not compare or increment
 it; private DAO rows mark it with `store:"revision"`, and the store owns the atomic conflict check.
+An editor replacing the whole tag set must also pass the captured original tags: tag changes do
+not advance the owning entity's revision. TUI tag editors use `Session.TagReplacer(originalTags)`;
+composed edits pass the expected set to `RunTaggedMutation`.

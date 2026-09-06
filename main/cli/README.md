@@ -32,8 +32,10 @@ go run ./main/cli ingredients retire --id ing-old --replacement-id ing-new --rep
 go run ./main/cli --actor manager menus readiness --id mnu-example
 ```
 
-All list commands share paging and typed filter expressions. Mutation commands that accept a JSON
-document use `--file` or `--stdin` (which may receive a pipe); `--template` prints their expected shape.
+Operational domain lists share paging and typed filter expressions; substitution-rule and movement
+history commands return their own collections. CRUD document commands use `--file` or `--stdin`
+(which may receive a pipe); `--template` prints their expected shape. Amendment batches use the same
+input reader with a JSON array and have no template flag.
 See the [feature guide](../../docs/features.md) for IDs, filters, tags, authorization personas, and
 audit examples.
 
@@ -45,11 +47,34 @@ before submitting, while JSON input remains explicit so read/edit/write automati
 concurrent changes.
 
 Retirement is a distinct authorized operation; `ingredients delete` remains a compatibility alias
-for retirement without replacement. An explicit replacement updates compatible future recipes,
-while omission preserves affected recipes for review. `menus readiness` reports publication
+for the same retirement command. An explicit replacement updates compatible future recipes,
+while omission leaves required references under review and removes optional/substitute references.
+Existing stock and accepted reservations are retained; `--withdraw` quarantines stock and blocks
+affected open orders. `menus readiness` reports publication
 blockers and warnings to authorized operators. Existing published menus may degrade in place, but
 the publish command rejects a draft with known blockers. These commands expose the same domain
-rules, event reactions, and audit touches as the TUI and GUI.
+rules and transactional audit effects as the TUI and GUI.
+
+## Amendments, substitutions, and stock history
+
+| Command | Contract |
+| --- | --- |
+| `ingredients substitution` | Create a rule with revision zero, or supply the rule's current `--revision` to revise/disable it. `ingredients substitutions --id ...` lists enabled and disabled rules. |
+| `orders amend` | Replace a currently selected ingredient using `--ingredient-id`, `--replacement-id`, `--ratio`, and a required `--reason`. Acceptance and agreed prices remain unchanged. |
+| `orders amend-batch` | Read an array of amendments from `--file` or `--stdin`; every entry needs its expected revision. The complete selection commits or rolls back together. |
+| `inventory quarantine` / `release` | Change retained stock eligibility with `--ingredient-id` and a required `--reason`. Release respects catalog retirement. |
+| `inventory dispose` | Record physical disposal of discontinued/quarantined stock using `--quantity` in its display unit and a required `--reason`. |
+| `inventory history` | Read retained physical stock movements by `--ingredient-id`. |
+
+These commands return JSON directly. Stock set/disposition and single-order amendment commands can
+load the current revision when it is omitted; read/edit/write automation should supply the token
+it originally read. Rule revisions and amendment-batch revisions are explicit. An order amendment's
+ingredient ID identifies the ingredient in the current plan, which may already differ from the
+original acceptance after an earlier substitution or amendment.
+
+The CLI exposes retirement and amendment batches as separate commands. To retire an ingredient and
+amend selected orders in one transaction, call `App.RetireIngredient`; running two CLI invocations
+does not create an atomic workflow. See the [workflow examples and batch shape](../../docs/transactional-workflows.md#explicit-workflows).
 
 ## Adding a command
 
