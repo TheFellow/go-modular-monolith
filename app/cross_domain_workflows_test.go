@@ -82,6 +82,25 @@ func TestDiscontinuationHonorsAcceptedStockAndDisposalKeepsEvidence(t *testing.T
 	testutil.Ok(t, err)
 	testutil.Equals(t, history[len(history)-1].After, 0.0)
 }
+func TestOptionalIngredientIsReservedAndConsumed(t *testing.T) {
+	t.Parallel()
+	f, _, d, m := workflowFixture(t)
+	ctx := f.OwnerContext()
+	garnish := testutil.CreateIngredient(t, f, im.Ingredient{Name: "Garnish", Category: im.CategoryGarnish, Unit: measurement.UnitPiece})
+	testutil.SetInventory(t, f, workflowStock(garnish, 3))
+	d.Recipe.Ingredients = append(d.Recipe.Ingredients, dm.RecipeIngredient{IngredientID: garnish.ID, Amount: measurement.MustAmount(1, garnish.Unit), Optional: true})
+	d, err := f.Drinks.Update(ctx, d)
+	testutil.Ok(t, err)
+	order := workflowOrder(t, f, d, m)
+	stock, err := f.Inventory.Get(ctx, garnish.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, stock.ReservedAmount().Value(), 1.0)
+	_, err = f.Orders.Complete(ctx, order)
+	testutil.Ok(t, err)
+	stock, err = f.Inventory.Get(ctx, garnish.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, stock.Amount.Value(), 2.0)
+}
 func TestStockAndTagEditorsRejectStaleState(t *testing.T) {
 	t.Parallel()
 	f, i, _, _ := workflowFixture(t)

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"sort"
 	"time"
 
@@ -38,7 +39,7 @@ func (c *Commands) Complete(ctx *middleware.Context, order *models.Order) (*mode
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID.EntityUID())
+	ctx.RecordEffect("order_completed", updated.ID.EntityUID(), middlewareevents.Change{Field: "status", Before: string(order.Status), After: string(updated.Status)})
 	ctx.AddEvent(events.OrderCompleted{
 		Order: updated,
 	})
@@ -46,7 +47,7 @@ func (c *Commands) Complete(ctx *middleware.Context, order *models.Order) (*mode
 	return &updated, nil
 }
 
-func (c *Commands) fulfillmentSnapshot(ctx *middleware.Context, o models.Order) ([]models.IngredientUsage, error) {
+func (c *Commands) fulfillmentSnapshot(ctx *middleware.Context, o *models.Order) ([]models.IngredientUsage, error) {
 	if c.drinks == nil || c.ingredients == nil || c.inventory == nil {
 		return nil, errors.Internalf("missing dependencies")
 	}
@@ -57,7 +58,13 @@ func (c *Commands) fulfillmentSnapshot(ctx *middleware.Context, o models.Order) 
 	usageByIngredient := map[usageKey]models.IngredientUsage{}
 	requirements := make([]drinksmodels.RecipeIngredient, 0)
 
-	for _, item := range o.Items {
+	o.Plan = nil
+	requirementItems := []int{}
+	menu, err := c.menus.Get(ctx, o.MenuID)
+	if err != nil {
+		return nil, err
+	}
+	for itemIndex, item := range o.Items {
 		drink, err := c.drinks.Get(ctx, item.DrinkID)
 		if err != nil {
 			return nil, err
@@ -66,6 +73,19 @@ func (c *Commands) fulfillmentSnapshot(ctx *middleware.Context, o models.Order) 
 		requested, err := requirementsForDrink(drink, item.Quantity)
 		if err != nil {
 			return nil, err
+		}
+		snapshot := models.ItemSnapshot{DrinkID: drink.ID, Name: drink.Name, Quantity: item.Quantity, Notes: item.Notes, Steps: append([]string(nil), drink.Recipe.Steps...), Garnish: drink.Recipe.Garnish}
+		for _, menuItem := range menu.Items {
+			if menuItem.DrinkID == drink.ID {
+				snapshot.Price = menuItem.Price
+				if name, ok := menuItem.DisplayName.Unwrap(); ok && name != "" {
+					snapshot.Name = name
+				}
+			}
+		}
+		o.Plan = append(o.Plan, snapshot)
+		for range requested {
+			requirementItems = append(requirementItems, itemIndex)
 		}
 		requirements = append(requirements, requested...)
 	}
@@ -77,11 +97,21 @@ func (c *Commands) fulfillmentSnapshot(ctx *middleware.Context, o models.Order) 
 	if !ok {
 		return nil, errors.Invalidf("insufficient stock to fulfill order")
 	}
-	for _, pick := range fulfilled {
+	for index, pick := range fulfilled {
+		req := requirements[index]
+		selection := models.IngredientSelection{OriginalID: req.IngredientID, IngredientID: pick.IngredientID, Optional: req.Optional, Omitted: pick.Omitted, Ratio: pick.Ratio}
+		if pick.Omitted {
+			o.Plan[requirementItems[index]].Ingredients = append(o.Plan[requirementItems[index]].Ingredients, selection)
+			continue
+		}
+		selection.Quantity = pick.Required.Value()
+		selection.Unit = pick.Required.Unit()
 		ingredient, err := c.ingredients.Get(ctx, pick.IngredientID)
 		if err != nil {
 			return nil, err
 		}
+		selection.Name = ingredient.Name
+		o.Plan[requirementItems[index]].Ingredients = append(o.Plan[requirementItems[index]].Ingredients, selection)
 		u := models.IngredientUsage{IngredientID: pick.IngredientID, Name: ingredient.Name, Amount: pick.Required}
 		k := usageKey{id: u.IngredientID.String()}
 		existing, ok := usageByIngredient[k]
@@ -118,6 +148,7 @@ func (c *Commands) fulfillmentSnapshot(ctx *middleware.Context, o models.Order) 
 			return nil, errors.Invalidf("insufficient stock for ingredient %s: need %s, have %s", u.IngredientID.String(), u.Amount.String(), stockAmount.String())
 		}
 	}
+	o.Acceptance = models.AcceptanceSnapshot{MenuID: menu.ID, MenuName: menu.Name, Items: o.Plan}
 	return ingredientUsage, nil
 }
 
@@ -128,9 +159,6 @@ func requirementsForDrink(drink *drinksmodels.Drink, quantity int) ([]drinksmode
 
 	out := make([]drinksmodels.RecipeIngredient, 0, len(drink.Recipe.Ingredients))
 	for _, req := range drink.Recipe.Ingredients {
-		if req.Optional {
-			continue
-		}
 
 		required := req
 		required.Amount = req.Amount.Mul(float64(quantity))

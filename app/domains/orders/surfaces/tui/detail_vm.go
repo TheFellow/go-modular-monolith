@@ -3,7 +3,6 @@ package tui
 import (
 	"cmp"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -11,9 +10,6 @@ import (
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	orders "github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
@@ -55,10 +51,7 @@ func (d *DetailViewModel) View() string {
 		return d.styles.Subtitle.Render("Select an order to view details")
 	}
 
-	menu, err := d.menu(order.MenuID)
-	if err != nil {
-		return d.styles.ErrorText.Render(fmt.Sprintf("Error: %v", err))
-	}
+	menu := &menusmodels.Menu{Name: order.Acceptance.MenuName}
 
 	statusBadge := orderStatusBadge(order.Status, d.styles)
 	lines := []string{
@@ -95,7 +88,7 @@ func (d *DetailViewModel) View() string {
 		}
 	}
 
-	itemLines, total, err := d.renderItems(order.Items, menu)
+	itemLines, total, err := d.renderSnapshot(order.Acceptance.Items)
 	if err != nil {
 		lines = append(lines, d.styles.ErrorText.Render(fmt.Sprintf("Error: %v", err)))
 	} else {
@@ -104,6 +97,27 @@ func (d *DetailViewModel) View() string {
 		lines = append(lines, "", d.styles.Subtitle.Render("Total: ")+total)
 	}
 
+	lines = append(lines, "", "Approved preparation")
+	for _, item := range order.Plan {
+		lines = append(lines, item.Name)
+		for _, selection := range item.Ingredients {
+			if selection.Omitted {
+				lines = append(lines, "  Omitted optional ingredient: "+selection.OriginalID.String())
+				continue
+			}
+			lines = append(lines, fmt.Sprintf("  %g %s %s", selection.Quantity, selection.Unit, selection.Name))
+		}
+		lines = append(lines, item.Steps...)
+		if item.Garnish != "" {
+			lines = append(lines, "Garnish: "+item.Garnish)
+		}
+	}
+	for _, amendment := range order.Amendments {
+		lines = append(lines, "Amended "+formatTime(amendment.At)+" by "+amendment.Principal+": "+amendment.Reason)
+	}
+	if at, ok := order.CancelledAt.Unwrap(); ok {
+		lines = append(lines, "Cancelled: "+formatTime(at), order.CancellationReason)
+	}
 	content := strings.Join(lines, "\n")
 	if d.width > 0 {
 		content = lipgloss.NewStyle().Width(d.width).Render(content)
@@ -111,118 +125,50 @@ func (d *DetailViewModel) View() string {
 	return content
 }
 
-func (d *DetailViewModel) renderItems(items []models.OrderItem, menu *menusmodels.Menu) ([]string, string, error) {
-	if len(items) == 0 {
-		return []string{d.styles.Muted.Render("No items")}, "N/A", nil
-	}
-
-	menuItems := make(map[string]menusmodels.MenuItem, len(menu.Items))
-	for _, item := range menu.Items {
-		menuItems[item.DrinkID.String()] = item
-	}
-
-	sorted := make([]models.OrderItem, len(items))
-	copy(sorted, items)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].DrinkID.String() < sorted[j].DrinkID.String() })
-
-	lines := make([]string, 0, len(sorted))
-	var total menusmodels.Price
-	var totalSet bool
-	totalAvailable := true
-
-	for _, item := range sorted {
-		name, err := d.drinkName(item.DrinkID)
-		if err != nil {
-			return nil, "", err
-		}
-
-		lineTotal := "N/A"
-		if menuItem, ok := menuItems[item.DrinkID.String()]; ok {
-			if price, ok := menuItem.Price.Unwrap(); ok {
-				qty, err := decimal.New(int64(item.Quantity), 0)
-				if err != nil {
-					return nil, "", errors.Internalf("quantity %d: %w", item.Quantity, err)
-				}
-				linePrice, err := price.Mul(qty)
-				if err != nil {
-					return nil, "", err
-				}
-				lineTotal = linePrice.String()
-				if totalAvailable {
-					if !totalSet {
-						total = linePrice
-						totalSet = true
-					} else {
-						next, err := total.Add(linePrice)
-						if err != nil {
-							return nil, "", err
-						}
-						total = next
-					}
-				}
-			} else {
-				totalAvailable = false
-			}
-		} else {
-			totalAvailable = false
-		}
-
-		line := fmt.Sprintf("- %s | qty: %d | total: %s", name, item.Quantity, lineTotal)
-		if notes := strings.TrimSpace(item.Notes); notes != "" {
-			line += "\n  Notes: " + strings.ReplaceAll(notes, "\n", "\n  ")
-		}
-		lines = append(lines, line)
-	}
-
-	totalStr := "N/A"
-	if totalAvailable && totalSet {
-		totalStr = total.String()
-	}
-	return lines, totalStr, nil
-}
-
-func (d *DetailViewModel) drinkName(id entity.DrinkID) (string, error) {
-	if id.IsZero() {
-		return "", errors.Internalf("order item missing drink id")
-	}
-	item, err := d.app.Drinks.Get(d.context(), id)
-	if err != nil {
-		return "", errors.Internalf("load drink %s: %w", id.String(), err)
-	}
-	if item == nil {
-		return "", errors.Internalf("drink %s missing", id.String())
-	}
-	name := strings.TrimSpace(item.Name)
-	if name == "" {
-		return "", errors.Internalf("drink %s missing name", id.String())
-	}
-	return name, nil
-}
-
-func (d *DetailViewModel) menu(id entity.MenuID) (*menusmodels.Menu, error) {
-	if id.IsZero() {
-		return nil, errors.Internalf("order missing menu id")
-	}
-	menu, err := d.app.Menus.Get(d.context(), id)
-	if err != nil {
-		return nil, errors.Internalf("load menu %s: %w", id.String(), err)
-	}
-	if menu == nil {
-		return nil, errors.Internalf("menu %s missing", id.String())
-	}
-	if strings.TrimSpace(menu.Name) == "" {
-		return nil, errors.Internalf("menu %s missing name", id.String())
-	}
-	return menu, nil
-}
-
-func (d *DetailViewModel) context() *middleware.Context {
-	return d.app.Context()
-}
-
 func formatTime(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
 	return t.Format(time.RFC3339)
+}
+
+func (d *DetailViewModel) renderSnapshot(items []models.ItemSnapshot) ([]string, string, error) {
+	lines := []string{}
+	var total menusmodels.Price
+	known := true
+	set := false
+	for _, item := range items {
+		lineTotal := "N/A"
+		if price, ok := item.Price.Unwrap(); ok {
+			qty, err := decimal.New(int64(item.Quantity), 0)
+			if err != nil {
+				return nil, "", err
+			}
+			cost, err := price.Mul(qty)
+			if err != nil {
+				return nil, "", err
+			}
+			lineTotal = cost.String()
+			if !set {
+				total = cost
+				set = true
+			} else {
+				total, err = total.Add(cost)
+				if err != nil {
+					return nil, "", err
+				}
+			}
+		} else {
+			known = false
+		}
+		line := fmt.Sprintf("- %s | qty: %d | total: %s", item.Name, item.Quantity, lineTotal)
+		if notes := strings.TrimSpace(item.Notes); notes != "" {
+			line += "\n  Notes: " + strings.ReplaceAll(notes, "\n", "\n  ")
+		}
+		lines = append(lines, line)
+	}
+	if !known || !set {
+		return lines, "N/A", nil
+	}
+	return lines, total.String(), nil
 }

@@ -19,6 +19,11 @@ func NewOrderID(id string) entity.OrderID {
 }
 
 type Order struct {
+	Acceptance         AcceptanceSnapshot
+	Plan               []ItemSnapshot
+	Amendments         []AmendmentRecord
+	CancelledAt        optional.Value[time.Time]
+	CancellationReason string
 	ID                 entity.OrderID
 	Revision           uint64 `json:"revision"`
 	MenuID             entity.MenuID

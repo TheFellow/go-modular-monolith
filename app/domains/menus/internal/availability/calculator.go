@@ -7,6 +7,7 @@ import (
 	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	ingredientsq "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/queries"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	inventoryq "github.com/TheFellow/go-modular-monolith/app/domains/inventory/queries"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
@@ -18,6 +19,9 @@ import (
 )
 
 type AvailabilityCalculator struct {
+	Exact       bool
+	stocks      map[entity.IngredientID]*inventorymodels.Inventory
+	recipes     map[entity.DrinkID]*drinksmodels.Drink
 	drinks      *drinksq.Queries
 	inventory   *inventoryq.Queries
 	ingredients *ingredientsq.Queries
@@ -65,7 +69,7 @@ type AppliedSubstitution struct {
 func (c *AvailabilityCalculator) Readiness(ctx store.Context, menu *models.Menu) (models.ReadinessReport, error) {
 	report := models.ReadinessReport{MenuID: menu.ID, Status: menu.Status}
 	for _, item := range menu.Items {
-		drink, err := c.drinks.Get(ctx, item.DrinkID)
+		drink, err := c.drink(ctx, item.DrinkID)
 		if err != nil {
 			return models.ReadinessReport{}, err
 		}
@@ -116,7 +120,7 @@ func (c *AvailabilityCalculator) Readiness(ctx store.Context, menu *models.Menu)
 }
 
 func (c *AvailabilityCalculator) CalculateDetail(ctx store.Context, drinkID entity.DrinkID) (Detail, error) {
-	drink, err := c.drinks.Get(ctx, drinkID)
+	drink, err := c.drink(ctx, drinkID)
 	if err != nil {
 		return Detail{}, err
 	}
@@ -134,14 +138,22 @@ func (c *AvailabilityCalculator) CalculateDetail(ctx store.Context, drinkID enti
 		requirements = append(requirements, req)
 	}
 
-	picks, fulfilled := c.PickIngredients(ctx, requirements)
+	if len(requirements) == 0 && len(drink.Recipe.Ingredients) == 0 {
+		return Detail{Status: models.AvailabilityUnavailable}, nil
+	}
+	picks, fulfilled, err := c.PlanIngredients(ctx, requirements)
+	if err != nil {
+		return Detail{}, err
+	}
 	if !fulfilled {
 		for _, req := range requirements {
 			hasSub := len(req.Substitutes) > 0
 			if !hasSub && c.ingredients != nil {
-				if rules, err := c.ingredients.SubstitutionsFor(ctx, req.IngredientID); err == nil {
-					hasSub = len(rules) > 0
+				rules, err := c.ingredients.SubstitutionsFor(ctx, req.IngredientID)
+				if err != nil {
+					return Detail{}, err
 				}
+				hasSub = len(rules) > 0
 			}
 			missing = append(missing, MissingIngredient{
 				IngredientID:  req.IngredientID,
@@ -178,6 +190,7 @@ func (c *AvailabilityCalculator) CalculateDetail(ctx store.Context, drinkID enti
 }
 
 type PickResult struct {
+	Omitted          bool
 	IngredientID     entity.IngredientID
 	Required         measurement.Amount
 	Available        measurement.Amount
@@ -218,6 +231,9 @@ func (c *AvailabilityCalculator) PickIngredients(ctx store.Context, requirements
 // menu readiness, it preserves dependency and conversion errors so callers do
 // not misreport infrastructure failures as insufficient stock.
 func (c *AvailabilityCalculator) PlanIngredients(ctx store.Context, requirements []drinksmodels.RecipeIngredient) ([]PickResult, bool, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, false, err
+	}
 	candidateSets := make([][]PickResult, len(requirements))
 	for i, req := range requirements {
 		var err error
@@ -225,7 +241,7 @@ func (c *AvailabilityCalculator) PlanIngredients(ctx store.Context, requirements
 		if err != nil {
 			return nil, false, err
 		}
-		if len(candidateSets[i]) == 0 {
+		if len(candidateSets[i]) == 0 && !req.Optional {
 			return nil, false, nil
 		}
 	}
@@ -267,6 +283,12 @@ func (c *AvailabilityCalculator) PlanIngredients(ctx store.Context, requirements
 				delete(reserved, key)
 			}
 		}
+		if requirements[index].Optional {
+			selected[index] = PickResult{Omitted: true}
+			if assign(index + 1) {
+				return true
+			}
+		}
 		return false
 	}
 
@@ -304,7 +326,7 @@ func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drin
 	}
 
 	var rules []ingredientsmodels.SubstitutionRule
-	if c.ingredients != nil {
+	if c.ingredients != nil && !c.Exact {
 		resolved, err := c.ingredients.SubstitutionsFor(ctx, req.IngredientID)
 		if err != nil && !errors.IsNotFound(err) {
 			return nil, err
@@ -337,7 +359,7 @@ func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drin
 
 	var picks []PickResult
 	for _, cand := range candidates {
-		stock, err := c.inventory.Get(ctx, cand.id)
+		stock, err := c.stock(ctx, cand.id)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				continue
@@ -387,4 +409,38 @@ func (c *AvailabilityCalculator) availableCandidates(ctx store.Context, req drin
 		return nil, nil
 	}
 	return picks, nil
+}
+
+// OverrideStock and OverrideDrink are event-local projections populated during
+// Handling. Nil stock means unavailable for future fulfillment.
+func (c *AvailabilityCalculator) OverrideStock(id entity.IngredientID, stock *inventorymodels.Inventory) {
+	if c.stocks == nil {
+		c.stocks = make(map[entity.IngredientID]*inventorymodels.Inventory)
+	}
+	c.stocks[id] = stock
+}
+func (c *AvailabilityCalculator) OverrideDrink(drink *drinksmodels.Drink) {
+	if c.recipes == nil {
+		c.recipes = make(map[entity.DrinkID]*drinksmodels.Drink)
+	}
+	c.recipes[drink.ID] = drink
+}
+func (c *AvailabilityCalculator) stock(ctx store.Context, id entity.IngredientID) (*inventorymodels.Inventory, error) {
+	if stock, ok := c.stocks[id]; ok {
+		if stock == nil {
+			return nil, errors.NotFoundf("stock unavailable")
+		}
+		return stock, nil
+	}
+	return c.inventory.Get(ctx, id)
+}
+func (c *AvailabilityCalculator) drink(ctx store.Context, id entity.DrinkID) (*drinksmodels.Drink, error) {
+	if drink, ok := c.recipes[id]; ok {
+		return drink, nil
+	}
+	return c.drinks.Get(ctx, id)
+}
+func (c *AvailabilityCalculator) CalculateStrict(ctx store.Context, id entity.DrinkID) (models.Availability, error) {
+	detail, err := c.CalculateDetail(ctx, id)
+	return detail.Status, err
 }

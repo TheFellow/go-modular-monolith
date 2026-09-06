@@ -204,6 +204,8 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Flags: appendTagsFlag([]cli.Flag{
 					clitoolkit.JSONFlag,
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
+					&cli.StringFlag{Name: "reason", Usage: "Reason for cancellation"},
+					&cli.Uint64Flag{Name: "revision", Usage: "Expected order revision"},
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					orderID, err := entity.ParseOrderID(cmd.String("id"))
@@ -211,7 +213,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 						return err
 					}
 					updated, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
-						return c.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: orderID})
+						return c.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: orderID, Revision: cmd.Uint64("revision"), CancellationReason: cmd.String("reason")})
 					})
 					if err != nil {
 						return err

@@ -57,12 +57,12 @@ func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.
 	order.Notes = strings.TrimSpace(order.Notes)
 
 	now := time.Now().UTC()
-	created := *order
+	created := models.Order{MenuID: order.MenuID, Items: order.Items, Notes: order.Notes}
 	created.ID = entity.NewOrderID()
 	created.Status = models.OrderStatusPending
 	created.CreatedAt = now
 	created.CompletedAt = optional.None[time.Time]()
-	usage, err := c.fulfillmentSnapshot(ctx, created)
+	usage, err := c.fulfillmentSnapshot(ctx, &created)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (c *Commands) Place(ctx *middleware.Context, order *models.Order) (*models.
 		return nil, err
 	}
 
-	ctx.TouchEntity(created.ID.EntityUID())
+	ctx.RecordEffect("order_placed", created.ID.EntityUID(), middleware.Change("acceptance", "", created.Acceptance))
 	ctx.AddEvent(events.OrderPlaced{Order: created})
 	return &created, nil
 }

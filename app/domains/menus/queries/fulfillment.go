@@ -3,6 +3,8 @@ package queries
 import (
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/availability"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -13,6 +15,7 @@ import (
 // that is advertised as available is fulfilled by the same deterministic
 // original/substitute choice.
 type IngredientFulfillment struct {
+	Omitted          bool
 	IngredientID     entity.IngredientID
 	Required         measurement.Amount
 	Available        measurement.Amount
@@ -42,6 +45,7 @@ func (q *Queries) FulfillIngredients(ctx store.Context, requirements []drinksmod
 	fulfilled := make([]IngredientFulfillment, len(picks))
 	for i, pick := range picks {
 		fulfilled[i] = IngredientFulfillment{
+			Omitted:          pick.Omitted,
 			IngredientID:     pick.IngredientID,
 			Required:         pick.Required,
 			Available:        pick.Available,
@@ -51,4 +55,23 @@ func (q *Queries) FulfillIngredients(ctx store.Context, requirements []drinksmod
 		}
 	}
 	return fulfilled, true, nil
+}
+
+// FulfillWithReservations credits only this order's existing commitments. The
+// calculator is fresh per operation; overrides cannot leak into other requests.
+func (q *Queries) FulfillWithReservations(ctx store.Context, requirements []drinksmodels.RecipeIngredient, stocks []*inventorymodels.Inventory) ([]IngredientFulfillment, bool, error) {
+	calculator := availability.New(q.store, q.tags)
+	calculator.Exact = true
+	for _, stock := range stocks {
+		calculator.OverrideStock(stock.IngredientID, stock)
+	}
+	picks, ok, err := calculator.PlanIngredients(ctx, requirements)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	result := make([]IngredientFulfillment, len(picks))
+	for i, pick := range picks {
+		result[i] = IngredientFulfillment{Omitted: pick.Omitted, IngredientID: pick.IngredientID, Required: pick.Required, Available: pick.Available, UsedSubstitution: pick.UsedSubstitution, Ratio: pick.Ratio, QualityImpact: pick.QualityImpact}
+	}
+	return result, true, nil
 }

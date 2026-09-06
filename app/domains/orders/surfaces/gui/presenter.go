@@ -610,7 +610,10 @@ func (p *Presenter) SaveTags(value string) bool {
 		return false
 	}
 	target := p.state.Selected.Order
-	return p.mutate(func() error { _, err := p.app.Tags.Replace(p.app.Context(), target.EntityUID(), tags); return err }, true)
+	return p.mutate(func() error {
+		_, err := p.app.Tags.Replace(p.app.Context(), target.EntityUID(), tags, target.Tags)
+		return err
+	}, true)
 }
 func (p *Presenter) CancelForm() {
 	if p.state.Submitting {
@@ -662,10 +665,10 @@ func (p *Presenter) confirm(title string, status models.OrderStatus) {
 		}
 		p.mutate(func() error {
 			if status == models.OrderStatusCompleted {
-				_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Order, error) { return p.app.Orders.Complete(ctx, stable) })
+				_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Order, error) { return p.app.Orders.Complete(ctx, stable) }, stable.Tags)
 				return err
 			}
-			_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Order, error) { return p.app.Orders.Cancel(ctx, stable) })
+			_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Order, error) { return p.app.Orders.Cancel(ctx, stable) }, stable.Tags)
 			return err
 		}, false)
 	})
@@ -756,43 +759,18 @@ func actionEnabled(states map[actions.ID]actions.State, id actions.ID) bool {
 	return ok && state.Visible && state.Enabled
 }
 
-func (p *Presenter) resolve(ctx *middleware.Context, order models.Order) (Row, error) {
-	menu, err := p.app.Menus.Get(ctx, order.MenuID)
-	if err != nil {
-		return Row{}, err
-	}
-	if menu == nil {
-		return Row{}, errors.Internalf("menu %s missing", order.MenuID)
-	}
-	menuItems := make(map[entity.DrinkID]menumodels.MenuItem, len(menu.Items))
-	for _, item := range menu.Items {
-		menuItems[item.DrinkID] = item
-	}
-	items := append([]models.OrderItem(nil), order.Items...)
-	sort.Slice(items, func(i, j int) bool { return items[i].DrinkID.String() < items[j].DrinkID.String() })
-	row := Row{Order: *cloneOrder(&order), MenuName: menu.Name, Total: "N/A"}
+func (p *Presenter) resolve(_ *middleware.Context, order models.Order) (Row, error) {
+	items := order.Acceptance.Items
+	row := Row{Order: *cloneOrder(&order), MenuName: order.Acceptance.MenuName, Total: "N/A"}
 	var total menumodels.Price
+	var err error
 	totalSet, available := false, true
 	for _, item := range items {
-		mi, ok := menuItems[item.DrinkID]
-		name := item.DrinkID.String()
-		if displayName, hasDisplayName := mi.DisplayName.Unwrap(); ok && hasDisplayName && strings.TrimSpace(displayName) != "" {
-			name = displayName
-		} else {
-			drink, getErr := p.app.Drinks.Get(ctx, item.DrinkID)
-			if getErr != nil && !errors.IsPermission(getErr) {
-				return Row{}, getErr
-			}
-			if getErr == nil {
-				if drink == nil {
-					return Row{}, errors.Internalf("drink %s missing", item.DrinkID)
-				}
-				name = drink.Name
-			}
-		}
+		name := item.Name
+
 		line := Line{DrinkID: item.DrinkID, Name: name, Quantity: item.Quantity, Notes: item.Notes, Total: "N/A"}
-		price, hasPrice := mi.Price.Unwrap()
-		if !ok || !hasPrice {
+		price, hasPrice := item.Price.Unwrap()
+		if !hasPrice {
 			available = false
 		} else {
 			qty, _ := decimal.New(int64(item.Quantity), 0)

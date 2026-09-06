@@ -2,10 +2,14 @@ package app_test
 
 import (
 	"github.com/TheFellow/go-modular-monolith/app"
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
+	dm "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	im "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	iv "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	om "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"testing"
@@ -38,6 +42,28 @@ func TestQuarantineAndReleasePreservePhysicalHistoryAndCatalogRetirement(t *test
 	testutil.Equals(t, len(history), 5)
 }
 
+func TestOptionalCannotStarveRequiredAndSnapshotsSurviveCatalogEdits(t *testing.T) {
+	t.Parallel()
+	f, i, d, m := workflowFixture(t)
+	ctx := f.OwnerContext()
+	d.Recipe.Ingredients = []dm.RecipeIngredient{{IngredientID: i.ID, Amount: measurement.MustAmount(2, i.Unit), Optional: true}, {IngredientID: i.ID, Amount: measurement.MustAmount(2, i.Unit)}}
+	d, err := f.Drinks.Update(ctx, d)
+	testutil.Ok(t, err)
+	testutil.SetInventory(t, f, workflowStock(i, 2))
+	order := workflowOrder(t, f, d, m)
+	testutil.IsTrue(t, order.Plan[0].Ingredients[0].Omitted)
+	testutil.Equals(t, order.IngredientUsage[0].Amount.Value(), 2.0)
+	d.Name = "Renamed"
+	d.Recipe.Steps = []string{"Different instructions"}
+	_, err = f.Drinks.Update(ctx, d)
+	testutil.Ok(t, err)
+	current, err := f.Orders.Get(ctx, order.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, current.Acceptance, order.Acceptance)
+	_, err = f.Orders.Complete(ctx, current)
+	testutil.Ok(t, err)
+}
+
 func TestComposedEditorRejectsStaleTagsAndRollsBackDomainUpdate(t *testing.T) {
 	t.Parallel()
 	f, i, _, _ := workflowFixture(t)
@@ -55,6 +81,27 @@ func TestComposedEditorRejectsStaleTagsAndRollsBackDomainUpdate(t *testing.T) {
 	current, err := f.Ingredients.Get(ctx, i.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, current.Name, i.Name)
+}
+
+func TestLateWorkflowFailureRollsBackEveryDomain(t *testing.T) {
+	t.Parallel()
+	f, i, d, m := workflowFixture(t)
+	ctx := f.OwnerContext()
+	order := workflowOrder(t, f, d, m)
+	err := middleware.RunWorkflow(ctx, f.Store, "rollback_probe", audit.NewWriter(f.Store).RecordActivity, func(ctx *middleware.Context) error {
+		if _, err := f.Orders.Complete(ctx, order); err != nil {
+			return err
+		}
+		return errors.FailedPreconditionf("late workflow rejection")
+	})
+	testutil.ErrorIsFailedPrecondition(t, err)
+	got, err := f.Orders.Get(ctx, order.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, got, order)
+	stock, err := f.Inventory.Get(ctx, i.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, stock.Amount.Value(), 10.0)
+	testutil.Equals(t, stock.ReservedAmount().Value(), 2.0)
 }
 
 func TestDiscontinuationDoesNotReleaseExistingQuarantine(t *testing.T) {

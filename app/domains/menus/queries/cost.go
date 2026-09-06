@@ -19,6 +19,7 @@ import (
 )
 
 type CostCalculator struct {
+	store        *store.Store
 	drinks       *drinksq.Queries
 	inventory    *inventoryq.Queries
 	availability *availability.AvailabilityCalculator
@@ -26,6 +27,7 @@ type CostCalculator struct {
 
 func NewCostCalculator(s *store.Store, tags tag.Repository) *CostCalculator {
 	return &CostCalculator{
+		store:        s,
 		drinks:       drinksq.New(s, tags),
 		inventory:    inventoryq.New(s, tags),
 		availability: availability.New(s, tags),
@@ -50,6 +52,16 @@ type DrinkCost struct {
 }
 
 func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID entity.DrinkID, targetMargin float64) (DrinkCost, error) {
+	var result DrinkCost
+	err := c.store.ReadContext(ctx, func(tx *store.Tx) error {
+		var err error
+		result, err = c.calculate(ctx.WithTransaction(tx), drinkID, targetMargin)
+		return err
+	})
+	return result, err
+}
+
+func (c *CostCalculator) calculate(ctx *middleware.Context, drinkID entity.DrinkID, targetMargin float64) (DrinkCost, error) {
 	if targetMargin <= 0 || targetMargin >= 1 {
 		return DrinkCost{}, errors.Invalidf("target margin must be between 0 and 1")
 	}
@@ -65,14 +77,17 @@ func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID entity.Drink
 		unknown bool
 	)
 
-	for _, req := range drink.Recipe.Ingredients {
-		if req.Optional {
+	picks, ok, err := c.availability.PlanIngredients(ctx, drink.Recipe.Ingredients)
+	if err != nil {
+		return DrinkCost{}, err
+	}
+	if !ok {
+		return DrinkCost{}, errors.FailedPreconditionf("recipe cannot be fulfilled")
+	}
+	for i, req := range drink.Recipe.Ingredients {
+		pick := picks[i]
+		if pick.Omitted {
 			continue
-		}
-
-		pick, ok := c.availability.PickIngredient(ctx, req)
-		if !ok {
-			return DrinkCost{}, errors.Invalidf("missing required ingredient %s for drink %s", req.IngredientID.String(), drinkID.String())
 		}
 
 		stock, err := c.inventory.Get(ctx, pick.IngredientID)
@@ -98,7 +113,7 @@ func (c *CostCalculator) Calculate(ctx *middleware.Context, drinkID entity.Drink
 			return DrinkCost{}, err
 		}
 
-		required, err := pick.Required.Convert(stock.Amount.Unit())
+		required, err := pick.Required.Convert(stock.CostUnit)
 		if err != nil {
 			return DrinkCost{}, err
 		}

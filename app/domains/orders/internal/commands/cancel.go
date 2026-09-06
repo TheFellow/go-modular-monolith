@@ -1,6 +1,7 @@
 package commands
 
 import (
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
@@ -26,13 +27,14 @@ func (c *Commands) Cancel(ctx *middleware.Context, order *models.Order) (*models
 
 	updated := *order
 	updated.Status = models.OrderStatusCancelled
+	updated.CancelledAt = optional.Some(time.Now().UTC())
 	updated.CompletedAt = optional.None[time.Time]()
 
 	if err := c.dao.Update(ctx, &updated); err != nil {
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID.EntityUID())
+	ctx.RecordEffect("order_cancelled", updated.ID.EntityUID(), middlewareevents.Change{Field: "status", Before: string(order.Status), After: string(updated.Status)}, middleware.Change("reason", "", updated.CancellationReason))
 	ctx.AddEvent(events.OrderCancelled{
 		Order: updated,
 	})
