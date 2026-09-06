@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -21,19 +22,23 @@ func TrackActivity(s *store.Store, recordActivity func(*Context, middlewareevent
 
 		activity := middlewareevents.NewActivity(op.Action, cedar.EntityUID{}, ctx.Principal())
 		ctx.activity = activity
+		if ctx.workflow != nil {
+			activity.WorkflowID = ctx.workflow.id
+			ctx.workflow.activities = append(ctx.workflow.activities, activity)
+		}
 
 		err := next(ctx)
 		// The command pipeline finalizes successful activities inside UnitOfWork.
-		// A non-zero completion time therefore means recording was already
-		// attempted and its result must be returned without a second attempt.
-		if !activity.CompletedAt.IsZero() {
+		// A successful completed activity needs no second record. A failure
+		// after that attempt (including audit/commit failure) is recorded after rollback.
+		if !activity.CompletedAt.IsZero() && err == nil {
 			return err
 		}
 
 		completeActivity(activity, err)
 
 		record := func(recordCtx *Context) error {
-			return recordCompletedActivity(recordCtx, recordActivity, *activity, err == nil)
+			return recordCompletedActivity(recordCtx, recordActivity, *activity)
 		}
 
 		if tx, ok := ctx.Transaction(); ok && tx != nil {
@@ -41,17 +46,19 @@ func TrackActivity(s *store.Store, recordActivity func(*Context, middlewareevent
 			// the activity in that transaction rather than competing for a second
 			// SQLite write transaction while the caller's transaction is still open.
 			if rerr := record(ctx); rerr != nil {
-				return rerr
+				return errors.Join(err, rerr)
 			}
 		} else if s != nil {
-			if rerr := s.Write(ctx, func(tx *store.Tx) error {
-				txCtx := ctx.WithTransaction(tx)
+			auditCtx := *ctx
+			auditCtx.Context = context.WithoutCancel(ctx.Context)
+			if rerr := s.Write(&auditCtx, func(tx *store.Tx) error {
+				txCtx := auditCtx.WithTransaction(tx)
 				return record(txCtx)
 			}); rerr != nil {
-				return rerr
+				return errors.Join(err, rerr)
 			}
 		} else if rerr := record(ctx); rerr != nil {
-			return rerr
+			return errors.Join(err, rerr)
 		}
 
 		return err
@@ -77,7 +84,7 @@ func recordSuccessfulActivity(recordActivity func(*Context, middlewareevents.Act
 			return errors.Internalf("activity missing from command context")
 		}
 		completeActivity(activity, nil)
-		return recordCompletedActivity(ctx, recordActivity, *activity, true)
+		return recordCompletedActivity(ctx, recordActivity, *activity)
 	}
 }
 
@@ -92,13 +99,10 @@ func recordCompletedActivity(
 	ctx *Context,
 	recordActivity func(*Context, middlewareevents.Activity) error,
 	activity middlewareevents.Activity,
-	commandSucceeded bool,
 ) error {
 	if err := recordActivity(ctx, activity); err != nil {
 		log.FromContext(ctx).Error("record activity", log.Err(err))
-		if commandSucceeded {
-			return errors.Internalf("record activity: %w", err)
-		}
+		return errors.Internalf("record activity: %w", err)
 	}
 	return nil
 }

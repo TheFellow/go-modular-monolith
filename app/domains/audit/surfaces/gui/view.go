@@ -92,11 +92,11 @@ func NewView(p *Presenter) *View {
 	v.browse = ui.StandardListPage(ui.ListPage{Title: "Audit", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.refresh}, List: v.listStack, Status: v.status}).(*framework.Container)
 
 	v.detailTitle, v.crumbName, v.detailStatus = widget.NewLabel("Audit activity"), widget.NewLabel(""), widget.NewLabel("")
-	labels := []string{"ID", "Action", "Entity", "Actor", "Started", "Completed", "Duration", "Success", "Error", "Touched entities"}
+	labels := []string{"ID", "Action", "Entity", "Actor", "Started", "Completed", "Duration", "Success", "Error", "Touched entities", "Workflow", "Referenced entities", "Effects"}
 	items := make([]framework.CanvasObject, 0, len(labels))
 	for i, label := range labels {
 		entry := ui.NewEntry(fmt.Sprintf("audit.detail.field.%d", i))
-		entry.MultiLine = label == "Error" || label == "Touched entities"
+		entry.MultiLine = label == "Error" || label == "Touched entities" || label == "Referenced entities" || label == "Effects"
 		entry.OnChanged = func(string) { v.restoreDetail() }
 		v.detailFields = append(v.detailFields, entry)
 		items = append(items, ui.DetailField(label, entry))
@@ -151,7 +151,7 @@ func (v *View) populateDetail(row Row) {
 	if len(row.Touches) > 0 {
 		touches = strings.Join(row.Touches, "\n")
 	}
-	values := []string{row.Entry.ID.String(), row.Entry.Action, row.Entry.Resource.String(), row.Entry.Principal.String(), formatTime(row.Entry.StartedAt), formatTime(row.Entry.CompletedAt), formatDuration(row.Entry.StartedAt, row.Entry.CompletedAt), strconv.FormatBool(row.Entry.Success), errorText, touches}
+	values := []string{row.Entry.ID.String(), row.Entry.Action, row.Entry.Resource.String(), row.Entry.Principal.String(), formatTime(row.Entry.StartedAt), formatTime(row.Entry.CompletedAt), formatDuration(row.Entry.StartedAt, row.Entry.CompletedAt), strconv.FormatBool(row.Entry.Success), errorText, touches, row.Entry.WorkflowID, fmt.Sprint(row.Entry.Participants), fmt.Sprint(row.Entry.Effects)}
 	for i, value := range values {
 		if v.detailFields[i].Text != value {
 			v.detailFields[i].SetText(value)

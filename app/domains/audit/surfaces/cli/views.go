@@ -1,22 +1,27 @@
 package cli
 
 import (
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
+	cedar "github.com/cedar-policy/cedar-go"
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 )
 
 type AuditRow struct {
-	ID          string `table:"ID" json:"id"`
-	StartedAt   string `table:"STARTED_AT" json:"started_at"`
-	CompletedAt string `table:"COMPLETED_AT" json:"completed_at"`
-	Duration    string `table:"DURATION" json:"duration"`
-	Action      string `table:"ACTION" json:"action"`
-	Resource    string `table:"RESOURCE" json:"resource"`
-	Principal   string `table:"PRINCIPAL" json:"principal"`
-	Success     bool   `table:"SUCCESS" json:"success"`
-	Touches     int    `table:"TOUCHES" json:"touches"`
-	Error       string `table:"ERROR" json:"error,omitempty"`
+	WorkflowID   string                    `table:"-" json:"workflow_id,omitempty"`
+	Effects      []middlewareevents.Effect `table:"-" json:"effects"`
+	Participants []cedar.EntityUID         `table:"-" json:"participants"`
+	ID           string                    `table:"ID" json:"id"`
+	StartedAt    string                    `table:"STARTED_AT" json:"started_at"`
+	CompletedAt  string                    `table:"COMPLETED_AT" json:"completed_at"`
+	Duration     string                    `table:"DURATION" json:"duration"`
+	Action       string                    `table:"ACTION" json:"action"`
+	Resource     string                    `table:"RESOURCE" json:"resource"`
+	Principal    string                    `table:"PRINCIPAL" json:"principal"`
+	Success      bool                      `table:"SUCCESS" json:"success"`
+	Touches      int                       `table:"TOUCHES" json:"touches"`
+	Error        string                    `table:"ERROR" json:"error,omitempty"`
 }
 
 func ToAuditRow(entry *models.AuditEntry) AuditRow {
@@ -24,6 +29,7 @@ func ToAuditRow(entry *models.AuditEntry) AuditRow {
 		return AuditRow{}
 	}
 	return AuditRow{
+		WorkflowID: entry.WorkflowID, Effects: entry.Effects, Participants: entry.Participants,
 		ID:          entry.ID.String(),
 		StartedAt:   formatTime(entry.StartedAt),
 		CompletedAt: formatTime(entry.CompletedAt),

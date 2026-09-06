@@ -58,6 +58,17 @@ func (d *DetailViewModel) View() string {
 	lines = append(lines, "", d.styles.Subtitle.Render("Touched Entities"))
 	lines = append(lines, touched...)
 
+	if entry.WorkflowID != "" {
+		lines = append(lines, "Workflow: "+entry.WorkflowID)
+	}
+	lines = append(lines, "", "Referenced entities")
+	lines = append(lines, touchedEntities(entry.Participants)...)
+	for _, effect := range entry.Effects {
+		lines = append(lines, effect.Kind+": "+effect.Resource.String())
+		for _, change := range effect.Changes {
+			lines = append(lines, "  "+change.Field+": "+change.Before+" → "+change.After)
+		}
+	}
 	content := strings.Join(lines, "\n")
 	if d.width > 0 {
 		content = lipgloss.NewStyle().Width(d.width).Render(content)

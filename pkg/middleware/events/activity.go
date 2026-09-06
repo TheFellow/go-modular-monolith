@@ -8,9 +8,12 @@ import (
 )
 
 type Activity struct {
-	Action    cedar.EntityUID
-	Resource  cedar.EntityUID
-	Principal cedar.EntityUID
+	WorkflowID   string
+	Effects      []Effect
+	Participants []cedar.EntityUID
+	Action       cedar.EntityUID
+	Resource     cedar.EntityUID
+	Principal    cedar.EntityUID
 
 	StartedAt   time.Time
 	CompletedAt time.Time
@@ -50,4 +53,17 @@ func (a *Activity) Complete(err error) {
 	if err != nil {
 		a.Error = err.Error()
 	}
+}
+
+// Effect is a domain-authored explanation, not a persistence snapshot. On a
+// failed activity its values describe attempted effects, never committed state.
+type Effect struct {
+	Kind     string
+	Resource cedar.EntityUID
+	Changes  []Change
+}
+type Change struct {
+	Field  string
+	Before string
+	After  string
 }

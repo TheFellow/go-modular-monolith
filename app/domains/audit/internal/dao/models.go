@@ -1,14 +1,18 @@
 package dao
 
 import (
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"time"
 
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
 type AuditEntryRow struct {
-	ID       string
-	Revision uint64 `json:"-" store:"revision"`
+	ID           string
+	WorkflowID   string
+	Effects      []middlewareevents.Effect
+	Participants []cedar.EntityUID
+	Revision     uint64 `json:"-" store:"revision"`
 
 	Action string `store:"index"`
 
