@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
@@ -75,6 +76,12 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch *models.Patch) (*models
 			LastUpdated:  time.Time{},
 		}
 	} else {
+		if patch.Revision != 0 && patch.Revision != existing.Revision {
+			return nil, errors.Conflictf("stock changed: reload before editing")
+		}
+		if existing.Status != "" && existing.Status != models.StatusActive {
+			return nil, errors.FailedPreconditionf("stock is %s; release quarantine before editing active stock", existing.Status)
+		}
 		updated = *existing
 	}
 	if updated.ID.IsZero() {
@@ -102,14 +109,34 @@ func (c *Commands) Adjust(ctx *middleware.Context, patch *models.Patch) (*models
 	updated.IngredientID = patch.IngredientID
 	if hasCost {
 		updated.CostPerUnit = optional.Some(cost)
+		updated.CostUnit = patch.CostUnit
+		if updated.CostUnit == "" {
+			updated.CostUnit = ingredient.Unit
+		}
+		if _, err := measurement.MustAmount(1, ingredient.Unit).Convert(updated.CostUnit); err != nil {
+			return nil, err
+		}
 	}
+	updated.IngredientName = ingredient.Name
 	updated.LastUpdated = time.Now().UTC()
+	updated.Reason = string(patch.Reason)
+	if updated.Status == "" {
+		updated.Status = models.StatusActive
+	}
 
 	if err := c.dao.Upsert(ctx, &updated); err != nil {
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.EntityUID())
+	beforeAmount := "0"
+	beforeCost := ""
+	beforeCostUnit := measurement.Unit("")
+	if existing != nil {
+		beforeAmount = existing.Amount.String()
+		beforeCost = fmt.Sprint(existing.CostPerUnit)
+		beforeCostUnit = existing.CostUnit
+	}
+	ctx.RecordEffect("stock_adjusted", updated.EntityUID(), middleware.Change("quantity", beforeAmount, updated.Amount.String()), middleware.Change("cost", beforeCost, fmt.Sprint(updated.CostPerUnit)), middleware.Change("cost_unit", beforeCostUnit, updated.CostUnit), middleware.Change("reason", "", updated.Reason))
 	if hasDelta {
 		reserved, err := c.dao.ReservedAmount(ctx, updated.IngredientID)
 		if err != nil {

@@ -37,16 +37,28 @@ func (d *DAO) List(ctx store.Context, filter ListFilter) iter.Seq2[*models.Inven
 				return err
 			}
 			for _, row := range rows {
-				stock := toModel(row)
-				reserved, err := reservedQuantityTx(tx, row.IngredientID)
+				stock, err := toModel(row)
+				if err != nil {
+					return err
+				}
+				if v, ok := filter.MaxQuantity.Unwrap(); ok && stock.Amount.Value() > v {
+					continue
+				}
+				if v, ok := filter.MinQuantity.Unwrap(); ok && stock.Amount.Value() < v {
+					continue
+				}
+				reserved, err := reservedQuantityTx(tx, row.IngredientID, measurement.Unit(row.Unit))
 				if err != nil {
 					return err
 				}
 				if reserved > 0 {
-					stock.Reserved = measurement.MustAmount(reserved, stock.Amount.Unit())
+					stock.Reserved, err = measurement.MustAmount(reserved, measurement.Unit(row.Unit)).Convert(stock.Amount.Unit())
+					if err != nil {
+						return err
+					}
 				}
 				stock.Tags = tagsByTarget[stock.EntityUID()]
-				matched, err := filter.Expression.Match(listFilterView(row, stock.Tags.Strings()))
+				matched, err := filter.Expression.Match(listFilterView(stock, stock.Tags.Strings()))
 				if err != nil {
 					return err
 				}
@@ -71,20 +83,14 @@ func (d *DAO) query(tx *store.Tx, filter ListFilter) *store.Query[StockRow] {
 	if !filter.IngredientID.IsZero() {
 		q = q.FilterID(filter.IngredientID.String())
 	}
-	if v, ok := filter.MaxQuantity.Unwrap(); ok {
-		q = q.FilterLessEqual("Quantity", v)
-	}
-	if v, ok := filter.MinQuantity.Unwrap(); ok {
-		q = q.FilterGreaterEqual("Quantity", v)
-	}
 	if filter.BeforeID != "" {
 		q = q.FilterLess("InventoryID", filter.BeforeID)
 	}
-	q = appfilter.ApplySQLPushdowns(q, filter.Expression)
+	// Quantity and unit filters operate on display values, not canonical storage.
 
 	return q
 }
 
-func listFilterView(r StockRow, tags []string) models.ListFilterView {
-	return models.ListFilterView{ID: r.InventoryID, IngredientID: r.IngredientID, Quantity: r.Quantity, Unit: r.Unit, LastUpdated: r.LastUpdated, Tags: tags}
+func listFilterView(value models.Inventory, tags []string) models.ListFilterView {
+	return models.ListFilterView{ID: value.ID.String(), IngredientID: value.IngredientID.String(), Quantity: value.Amount.Value(), Unit: string(value.Amount.Unit()), LastUpdated: value.LastUpdated, Tags: tags}
 }

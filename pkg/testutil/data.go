@@ -31,6 +31,12 @@ func CreateDrink(t testing.TB, f *Fixture, drink drinksmodels.Drink) *drinksmode
 
 func SetInventory(t testing.TB, f *Fixture, update inventorymodels.Update) *inventorymodels.Inventory {
 	t.Helper()
+	current, err := f.Inventory.Get(f.OwnerContext(), update.IngredientID)
+	if err == nil {
+		update.Revision = current.Revision
+	} else if !errors.IsNotFound(err) {
+		Ok(t, err)
+	}
 	stock, err := f.Inventory.Set(f.OwnerContext(), &update)
 	Ok(t, err)
 	return stock

@@ -154,6 +154,10 @@ func (p *Presenter) loadPage(appendPage bool) {
 				return loadResult{}, errors.Internalf("inventory %d missing", i)
 			}
 			ingredient, err := p.app.Ingredients.Get(op, item.IngredientID)
+			if errors.IsNotFound(err) && item.Status != inventorymodels.StatusActive {
+				ingredient = &models.Ingredient{ID: item.IngredientID, Name: item.IngredientName, Unit: item.Amount.Unit()}
+				err = nil
+			}
 			if err != nil {
 				return loadResult{}, fmt.Errorf("load ingredient %s: %w", item.IngredientID, err)
 			}
@@ -478,16 +482,16 @@ func (p *Presenter) Submit(form Form) bool {
 		switch mode {
 		case Adjust:
 			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
-				return p.app.Inventory.Adjust(ctx, &inventorymodels.Patch{IngredientID: selected.Ingredient.ID, Reason: form.Reason, Delta: validated.amount, CostPerUnit: validated.cost})
-			})
+				return p.app.Inventory.Adjust(ctx, &inventorymodels.Patch{CostUnit: selected.Inventory.CostUnit, Revision: selected.Inventory.Revision, IngredientID: selected.Ingredient.ID, Reason: form.Reason, Delta: validated.amount, CostPerUnit: validated.cost})
+			}, selected.Inventory.Tags)
 		case Set:
 			amount, _ := validated.amount.Unwrap()
 			cost, _ := validated.cost.Unwrap()
 			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
-				return p.app.Inventory.Set(ctx, &inventorymodels.Update{IngredientID: selected.Ingredient.ID, Amount: amount, CostPerUnit: cost})
-			})
+				return p.app.Inventory.Set(ctx, &inventorymodels.Update{CostUnit: selected.Inventory.CostUnit, Revision: selected.Inventory.Revision, IngredientID: selected.Ingredient.ID, Amount: amount, CostPerUnit: cost})
+			}, selected.Inventory.Tags)
 		case Tags:
-			_, err = p.app.Tags.Replace(p.app.Context(), selected.Inventory.EntityUID(), validated.tags)
+			_, err = p.app.Tags.Replace(p.app.Context(), selected.Inventory.EntityUID(), validated.tags, selected.Inventory.Tags)
 		case Browse, Viewing:
 			err = errors.Invalidf("inventory form is not active")
 		}
@@ -611,7 +615,11 @@ func makeRow(inv inventorymodels.Inventory, ingredient models.Ingredient, lowSto
 	if value, ok := inv.CostPerUnit.Unwrap(); ok {
 		cost = value.String()
 	}
-	return Row{Inventory: inv, Ingredient: ingredient, Quantity: fmt.Sprintf("%.2f %s", inv.Amount.Value(), inv.Amount.Unit()), Cost: cost, Status: StockStatus(inv.Available(), lowStock)}
+	status := StockStatus(inv.Available(), lowStock)
+	if inv.Status != "" && inv.Status != inventorymodels.StatusActive {
+		status = strings.ToUpper(string(inv.Status))
+	}
+	return Row{Inventory: inv, Ingredient: ingredient, Quantity: fmt.Sprintf("%.2f %s", inv.Amount.Value(), inv.Amount.Unit()), Cost: cost, Status: status}
 }
 func StockStatus(amount measurement.Amount, lowStock float64) string {
 	if amount == nil || amount.Value() <= 0 {

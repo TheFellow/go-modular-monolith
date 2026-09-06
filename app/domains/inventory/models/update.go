@@ -9,6 +9,8 @@ import (
 )
 
 type Update struct {
+	CostUnit     measurement.Unit // Defaults to the catalog unit when explicitly pricing stock.
+	Revision     uint64           `json:"revision"`
 	IngredientID entity.IngredientID
 	Amount       measurement.Amount
 	CostPerUnit  money.Price

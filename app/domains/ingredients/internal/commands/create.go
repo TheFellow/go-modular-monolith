@@ -22,11 +22,11 @@ func (c *Commands) Create(ctx *middleware.Context, ingredient *models.Ingredient
 	if name == "" {
 		return nil, errors.Invalidf("name is required")
 	}
-	if ingredient.Category == "" {
-		return nil, errors.Invalidf("category is required")
+	if err := ingredient.Category.Validate(); err != nil {
+		return nil, err
 	}
-	if ingredient.Unit == "" {
-		return nil, errors.Invalidf("unit is required")
+	if err := ingredient.Unit.Validate(); err != nil {
+		return nil, err
 	}
 
 	created := *ingredient
@@ -38,7 +38,7 @@ func (c *Commands) Create(ctx *middleware.Context, ingredient *models.Ingredient
 		return nil, err
 	}
 
-	ctx.TouchEntity(created.ID.EntityUID())
+	ctx.RecordEffect("ingredient_created", created.ID.EntityUID(), middleware.Change("name", "", created.Name), middleware.Change("unit", "", created.Unit), middleware.Change("category", "", created.Category))
 	ctx.AddEvent(events.IngredientCreated{
 		Ingredient: created,
 	})

@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"slices"
 	"testing"
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
@@ -39,8 +40,9 @@ func TestIngredientRetirementMarksDependentsForReviewAndPreservesRelationships(t
 	gotAffectedB, err := f.Drinks.Get(ctx, affectedB.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, gotAffectedB.Status, drinksmodels.StatusReviewRequired)
-	_, err = f.Inventory.Get(ctx, target.ID)
-	testutil.ErrorIsNotFound(t, err)
+	retained, err := f.Inventory.Get(ctx, target.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, retained.Status, inventorymodels.StatusDiscontinued)
 	gotSurvivor, err := f.Drinks.Get(ctx, survivor.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, gotSurvivor, survivor, cmpopts.EquateEmpty())
@@ -96,7 +98,8 @@ func TestIngredientRetirementWithExplicitReplacementRewritesCanonicalRecipe(t *t
 	gotSubstituteOnly, err := f.Drinks.Get(ctx, substituteOnly.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, gotSubstituteOnly.Recipe.Ingredients[0].Substitutes, []entity.IngredientID{replacement.ID})
-	testutil.AuditTouches(t, f.LatestAuditEntry(ingredientsauthz.ActionRetire), retired.ID.EntityUID(), replacement.ID.EntityUID(), drink.ID.EntityUID(), substituteOnly.ID.EntityUID())
+	testutil.AuditTouches(t, f.LatestAuditEntry(ingredientsauthz.ActionRetire), retired.ID.EntityUID(), drink.ID.EntityUID(), substituteOnly.ID.EntityUID())
+	testutil.IsTrue(t, slices.Contains(f.LatestAuditEntry(ingredientsauthz.ActionRetire).Participants, replacement.ID.EntityUID()))
 }
 
 func TestIngredientRetirementRemovesOptionalAndSubstituteReferencesWithoutReview(t *testing.T) {

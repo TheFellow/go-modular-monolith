@@ -57,7 +57,7 @@ func NewAdjustInventoryVM(app *app.Session, row InventoryRow) *AdjustInventoryVM
 		forms.WithAllowNegative(),
 		forms.WithPlaceholder("e.g., +5.0 or -2.5"),
 	)
-	costField := forms.NewTextField("Cost per unit", forms.WithPlaceholder("e.g., $1.23 or EUR 1.23"))
+	costField := forms.NewTextField("Cost per "+string(row.Inventory.CostUnit), forms.WithPlaceholder("e.g., $1.23 or EUR 1.23"))
 	reasonField := forms.NewSelectField(
 		"Reason",
 		reasonOptions,
@@ -194,6 +194,8 @@ func (m *AdjustInventoryVM) submit() tea.Cmd {
 	}
 
 	patch := &models.Patch{
+		CostUnit:     m.row.Inventory.CostUnit,
+		Revision:     m.row.Inventory.Revision,
 		IngredientID: m.row.Ingredient.ID,
 		Reason:       toAdjustmentReason(m.reason.Value()),
 		Delta:        delta,
@@ -205,7 +207,7 @@ func (m *AdjustInventoryVM) submit() tea.Cmd {
 	return func() tea.Msg {
 		adjusted, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Inventory, error) {
 			return m.app.Inventory.Adjust(ctx, patch)
-		})
+		}, m.row.Inventory.Tags)
 		if err != nil {
 			return AdjustErrorMsg{Err: err}
 		}

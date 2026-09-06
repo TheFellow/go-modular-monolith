@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/internal/dao"
 	ordersevents "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -21,12 +22,9 @@ func NewOrderCompleted(s *store.Store, tags tag.Repository) *OrderCompleted {
 }
 
 func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.OrderCompleted) error {
-	reservations, err := h.dao.ReservationsForOrder(ctx, e.Order.ID)
+	reservations, err := validatedReservations(ctx, h.dao, e.Order)
 	if err != nil {
 		return err
-	}
-	if len(reservations) == 0 {
-		return nil
 	}
 
 	now := time.Now().UTC()
@@ -41,26 +39,31 @@ func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.O
 			return err
 		}
 
+		if existing.Status == models.StatusQuarantined || existing.Status == models.StatusDisposed {
+			return errors.FailedPreconditionf("stock is %s", existing.Status)
+		}
 		updated := *existing
-		current, err := updated.Amount.Convert(usage.Amount.Unit())
+		current := updated.Amount
+		consumed, err := usage.Amount.Convert(current.Unit())
 		if err != nil {
 			return err
 		}
-		newAmount, err := current.Sub(usage.Amount)
+		newAmount, err := current.Sub(consumed)
 		if err != nil {
 			return err
 		}
 		if newAmount.Value() < 0 {
-			newAmount = measurement.MustAmount(0, usage.Amount.Unit())
+			return errors.FailedPreconditionf("reserved stock for %s is no longer sufficient", ingredientID)
 		}
 		updated.Amount = newAmount
 		updated.LastUpdated = now
+		updated.Reason = "order completed " + e.Order.ID.String()
 
 		if err := h.dao.Upsert(ctx, &updated); err != nil {
 			return err
 		}
 
-		ctx.TouchEntity(updated.EntityUID())
+		ctx.RecordEffect("stock_consumed", updated.EntityUID(), middlewareevents.Change{Field: "quantity", Before: existing.Amount.String(), After: updated.Amount.String()})
 	}
 
 	return h.dao.DeleteReservations(ctx, e.Order.ID)

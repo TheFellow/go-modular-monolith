@@ -42,8 +42,11 @@ func (c *Commands) Update(ctx *middleware.Context, ingredient *models.Ingredient
 	if err := updated.Category.Validate(); err != nil {
 		return nil, err
 	}
-	if updated.Unit == "" {
-		return nil, errors.Invalidf("unit is required")
+	if err := updated.Unit.Validate(); err != nil {
+		return nil, err
+	}
+	if updated.Unit.Canonical() != existing.Unit.Canonical() {
+		return nil, errors.FailedPreconditionf("ingredient units must retain their dimension; create a replacement ingredient instead")
 	}
 	updated.Description = strings.TrimSpace(updated.Description)
 
@@ -51,7 +54,7 @@ func (c *Commands) Update(ctx *middleware.Context, ingredient *models.Ingredient
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID.EntityUID())
+	ctx.RecordEffect("ingredient_updated", updated.ID.EntityUID(), middleware.Change("name", existing.Name, updated.Name), middleware.Change("unit", existing.Unit, updated.Unit), middleware.Change("category", existing.Category, updated.Category))
 	ctx.AddEvent(events.IngredientUpdated{
 		Ingredient: updated,
 	})

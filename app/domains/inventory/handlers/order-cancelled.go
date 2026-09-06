@@ -30,7 +30,7 @@ func (h *OrderCancelled) Handle(ctx *middleware.HandlerContext, e ordersevents.O
 		if err != nil {
 			return err
 		}
-		ctx.TouchEntity(stock.EntityUID())
+		ctx.RecordEffect("stock_released", stock.EntityUID(), middleware.Change("order", "", e.Order.ID.String()), middleware.Change("released_quantity", "", reservation.Amount.String()))
 	}
 	return nil
 }

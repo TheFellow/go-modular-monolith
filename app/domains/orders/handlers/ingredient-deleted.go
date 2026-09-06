@@ -19,6 +19,9 @@ func NewIngredientDeleted(s *store.Store, tags tag.Repository) *IngredientDelete
 }
 
 func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, e ingredientsevents.IngredientDeleted) error {
+	if !e.Withdraw {
+		return nil
+	}
 	orders, err := h.dao.ListByIngredient(ctx, e.Ingredient.ID)
 	if err != nil {
 		return err
@@ -39,7 +42,7 @@ func (h *IngredientDeleted) Handle(ctx *middleware.HandlerContext, e ingredients
 		if err := h.dao.Update(ctx, order); err != nil {
 			return err
 		}
-		ctx.TouchEntity(order.ID.EntityUID())
+		ctx.RecordEffect("order_blocked", order.ID.EntityUID(), middleware.Change("withdrawn_ingredient", "", e.Ingredient.ID.String()))
 	}
 	return nil
 }

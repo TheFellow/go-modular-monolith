@@ -33,8 +33,7 @@ func TestReservationShortageBlocksRestockUnblocksAndCancellationReleases(t *test
 	testutil.IsTrue(t, math.Abs(reserved.Available().Value()-6.0) < 1e-9)
 	testutil.Equals(t, order.IngredientUsage[0].Amount.Value(), 4.0)
 
-	_, err = f.Inventory.Set(ctx, &inventorymodels.Update{IngredientID: ingredient.ID, Amount: measurement.MustAmount(2, ingredient.Unit), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
-	testutil.Ok(t, err)
+	testutil.SetInventory(t, f, inventorymodels.Update{IngredientID: ingredient.ID, Amount: measurement.MustAmount(2, ingredient.Unit), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
 	blocked, err := f.Orders.Get(ctx, order.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, blocked.Status, ordersmodels.OrderStatusBlocked)
@@ -42,8 +41,7 @@ func TestReservationShortageBlocksRestockUnblocksAndCancellationReleases(t *test
 
 	_, err = f.Orders.Complete(ctx, &ordersmodels.Order{ID: order.ID})
 	testutil.ErrorIsInvalid(t, err)
-	_, err = f.Inventory.Set(ctx, &inventorymodels.Update{IngredientID: ingredient.ID, Amount: measurement.MustAmount(10, ingredient.Unit), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
-	testutil.Ok(t, err)
+	testutil.SetInventory(t, f, inventorymodels.Update{IngredientID: ingredient.ID, Amount: measurement.MustAmount(10, ingredient.Unit), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
 	unblocked, err := f.Orders.Get(ctx, order.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, unblocked.Status, ordersmodels.OrderStatusPending)
@@ -66,7 +64,7 @@ func TestIngredientRetirementBlocksReservedOrderButStillAllowsCancellation(t *te
 	menu := testutil.CreateMenu(t, f, "Retired reservation", testutil.WithDrink(drink), testutil.Published())
 	order := testutil.PlaceOrder(t, f, ordersmodels.Order{MenuID: menu.ID, Items: []ordersmodels.OrderItem{{DrinkID: drink.ID, Quantity: 1}}})
 
-	_, err := f.Ingredients.Delete(ctx, ingredient.ID)
+	_, err := f.Ingredients.Retire(ctx, ingredient.ID, ingredientsmodels.Retirement{Withdraw: true, Reason: "withdrawal"})
 	testutil.Ok(t, err)
 	blocked, err := f.Orders.Get(ctx, order.ID)
 	testutil.Ok(t, err)

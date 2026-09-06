@@ -8,7 +8,10 @@ import (
 
 func (d *DAO) Upsert(ctx store.Context, stock *models.Inventory) error {
 	return store.Write(ctx, func(tx *store.Tx) error {
-		row := toRow(*stock)
+		row, err := toRow(*stock)
+		if err != nil {
+			return err
+		}
 		if stock.Revision == 0 {
 			existing := StockRow{IngredientID: stock.IngredientID.String()}
 			if err := tx.Get(&existing); err != nil {
@@ -19,14 +22,18 @@ func (d *DAO) Upsert(ctx store.Context, stock *models.Inventory) error {
 					return store.MapError(err, "insert stock for ingredient %s", stock.IngredientID.String())
 				}
 				stock.Revision = row.Revision
-				return nil
+				return recordMovement(tx, StockRow{}, row)
 			}
 			return errors.Conflictf("stock for ingredient %s already exists", stock.IngredientID.String())
+		}
+		before := StockRow{IngredientID: stock.IngredientID.String()}
+		if err := tx.Get(&before); err != nil {
+			return err
 		}
 		if err := tx.Update(&row); err != nil {
 			return store.MapError(err, "update stock for ingredient %s", stock.IngredientID.String())
 		}
 		stock.Revision = row.Revision
-		return nil
+		return recordMovement(tx, before, row)
 	})
 }

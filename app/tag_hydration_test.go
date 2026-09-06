@@ -126,7 +126,7 @@ func TestTagAssociationsRemainIsolatedAndFollowDeletionSemantics(t *testing.T) {
 	stockTags, err := repository.List(ctx, stock.EntityUID())
 	testutil.Ok(t, err)
 	testutil.Equals(t, ingredientTags, tag.Tags{value})
-	testutil.Equals(t, stockTags, tag.Tags(nil))
+	testutil.Equals(t, stockTags, tag.Tags{value})
 }
 
 func TestHydratedTagsPersistAcrossApplicationRestart(t *testing.T) {

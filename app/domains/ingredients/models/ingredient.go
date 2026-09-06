@@ -28,6 +28,8 @@ type Ingredient struct {
 // permanent replacement is explicit product intent; temporary substitutions
 // are fulfillment options and are never promoted by this operation.
 type Retirement struct {
+	Withdraw      bool // Quarantine existing stock immediately; otherwise discontinue future use.
+	Reason        string
 	ReplacementID entity.IngredientID
 	Ratio         float64
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/set"
+	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
@@ -402,7 +403,10 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 		for _, item := range inventoryList.Items {
 			ingredient, ok := ingredientByID[item.IngredientID]
 			if !ok {
-				return InventoryLoadedMsg{Err: errors.Internalf("ingredient %s missing", item.IngredientID.String()), Token: token}
+				if item.Status == inventorymodels.StatusActive || item.Status == "" {
+					return InventoryLoadedMsg{Err: errors.Internalf("ingredient %s missing", item.IngredientID.String()), Token: token}
+				}
+				ingredient = &ingredientsmodels.Ingredient{ID: item.IngredientID, Name: item.IngredientName, Unit: item.Amount.Unit()}
 			}
 
 			quantity := item.Amount.String()
@@ -415,6 +419,9 @@ func (m *ListViewModel) loadInventory() tea.Cmd {
 				threshold = value
 			}
 			status := stockStatus(item.Available(), threshold)
+			if item.Status != "" && item.Status != inventorymodels.StatusActive {
+				status = strings.ToUpper(string(item.Status))
+			}
 
 			rows = append(rows, InventoryRow{
 				Inventory:  *item,
@@ -433,6 +440,9 @@ func (m *ListViewModel) loadIngredients(ids []entity.IngredientID) (map[entity.I
 	ingredientByID := make(map[entity.IngredientID]*ingredientsmodels.Ingredient, len(ids))
 	for _, id := range ids {
 		ingredient, err := m.app.Ingredients.Get(m.context(), id)
+		if errors.IsNotFound(err) {
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}

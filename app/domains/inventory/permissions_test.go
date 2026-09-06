@@ -74,6 +74,7 @@ func TestPermissions_Inventory(t *testing.T) {
 			testutil.Equals(t, adjusted.Amount, measurement.MustAmount(wantAdjusted, ingredient.Unit))
 
 			_, err = a.Inventory.Set(ctx, &inventoryM.Update{
+				Revision:     adjusted.Revision,
 				IngredientID: ingredient.ID,
 				Amount:       measurement.MustAmount(20, measurement.UnitOz),
 				CostPerUnit:  money.NewPriceFromCents(100, currency.USD),

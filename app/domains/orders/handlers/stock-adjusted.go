@@ -24,6 +24,8 @@ func (h *StockAdjusted) Handle(ctx *middleware.HandlerContext, e inventoryevents
 		return err
 	}
 	for _, order := range orders {
+		beforeStatus := order.Status
+		beforeBlocked := append([]entity.IngredientID(nil), order.BlockedIngredients...)
 		blocked := map[string]entity.IngredientID{}
 		for _, id := range order.BlockedIngredients {
 			blocked[id.String()] = id
@@ -48,7 +50,7 @@ func (h *StockAdjusted) Handle(ctx *middleware.HandlerContext, e inventoryevents
 		if err := h.dao.Update(ctx, order); err != nil {
 			return err
 		}
-		ctx.TouchEntity(order.ID.EntityUID())
+		ctx.RecordEffect("order_reconciled", order.ID.EntityUID(), middleware.Change("status", beforeStatus, order.Status), middleware.Change("blocked_ingredients", beforeBlocked, order.BlockedIngredients))
 	}
 	return nil
 }

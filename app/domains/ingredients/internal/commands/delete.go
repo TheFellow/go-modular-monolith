@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"fmt"
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"math"
 	"time"
 
@@ -71,12 +73,14 @@ func (c *Commands) Retire(ctx *middleware.Context, target RetirementTarget) (*mo
 		return nil, err
 	}
 
-	ctx.TouchEntity(deleted.ID.EntityUID())
+	ctx.RecordEffect("ingredient_retired", deleted.ID.EntityUID(), middlewareevents.Change{Field: "replacement_id", After: target.Retirement.ReplacementID.String()}, middlewareevents.Change{Field: "ratio", After: fmt.Sprint(ratio)}, middlewareevents.Change{Field: "withdraw", After: fmt.Sprint(target.Retirement.Withdraw)}, middlewareevents.Change{Field: "reason", After: target.Retirement.Reason})
 	if replacement != nil {
-		ctx.TouchEntity(replacement.ID.EntityUID())
+		ctx.ReferenceEntity(replacement.ID.EntityUID())
 	}
 	ctx.AddEvent(events.IngredientDeleted{
 		Ingredient:       deleted,
+		Withdraw:         target.Retirement.Withdraw,
+		Reason:           target.Retirement.Reason,
 		DeletedAt:        now,
 		Replacement:      replacement,
 		ReplacementRatio: ratio,

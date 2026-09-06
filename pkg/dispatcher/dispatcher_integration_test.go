@@ -30,7 +30,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	})
 	testutil.Ok(t, err)
 
-	_, err = a.Inventory.Set(ctx, &inventoryM.Update{
+	testutil.SetInventory(t, f, inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Amount:       measurement.MustAmount(10, ingredient.Unit),
 		CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
@@ -59,7 +59,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	testutil.Equals(t, len(m2.Items), 1)
 	testutil.Equals(t, m2.Items[0].Availability, menuM.AvailabilityAvailable)
 
-	_, err = a.Inventory.Set(ctx, &inventoryM.Update{
+	testutil.SetInventory(t, f, inventoryM.Update{
 		IngredientID: ingredient.ID,
 		Amount:       measurement.MustAmount(0, ingredient.Unit),
 		CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
