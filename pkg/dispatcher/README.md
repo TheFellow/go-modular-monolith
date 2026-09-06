@@ -84,10 +84,12 @@ func (h *IngredientDeleted) Handling(
 as a coordination mechanism: all handlers for an event must remain correct in any order.
 
 Ingredient retirement demonstrates why this phase exists. Drinks snapshots every recipe that
-references the retiring ingredient before Inventory removes its stock; handlers can then rewrite
+references the retiring ingredient before Inventory changes stock disposition; handlers can then rewrite
 future recipes for an explicit replacement, mark unreplaced Drinks for review, block historical
-pending Order snapshots, and recompute Menu availability in one transaction. The replacement is
+pending Orders on withdrawal, and recompute Menu availability in one transaction. The replacement is
 product intent carried by the event, not something a consumer infers from a temporary substitute.
+Menus prepares final availability during `Handling`, projecting inventory changes and using Drinks
+public pure recipe-retirement rule. Its `Handle` persists those results without re-reading peers.
 Handlers touch every indirectly changed entity so the originating retirement activity exposes the
 full audit blast radius.
 

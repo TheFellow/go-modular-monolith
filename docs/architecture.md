@@ -24,9 +24,9 @@ reaches into private persistence.
 The graph is intentionally reciprocal without creating package cycles. Orders query catalog and
 stock contracts while Order events cause Inventory to reserve, consume, or release quantities.
 Inventory adjustment events can in turn block or unblock every pending Order whose reservation is
-affected. Both event families recalculate published Menu availability. Ingredient retirement fans
+affected. Both event families recalculate draft and published Menu availability. Ingredient retirement fans
 out similarly: Drinks enter review rather than disappearing, Menu items become unavailable, and
-Inventory removes unusable stock while accepted Order snapshots remain historical truth.
+Inventory retains stock with an explicit disposition while accepted Order snapshots remain historical truth.
 
 ## Package boundaries
 
@@ -85,8 +85,9 @@ handler mutation. Handler changes are recorded as audit touches on the initiatin
 
 Ingredient retirement is another deliberate fan-out. Ingredients owns validation of an optional
 explicit permanent replacement. Drinks owns canonical recipe rewrite or `review_required` state;
-Inventory removes unusable stock; Menus preserves published curation while recalculating degraded
-availability; Orders blocks historical snapshots rather than rewriting an accepted order. Optional
+Inventory retains discontinued or quarantined stock; Menus preserves published curation while
+recalculating availability; Orders blocks withdrawals while retaining immutable acceptance.
+Explicit order amendments revise only the approved fulfillment plan. Optional
 recipe references and substitute candidates follow less destructive rules than required canonical
 references. These are leaf reactions in one transaction and do not emit follow-up events.
 
@@ -133,3 +134,5 @@ allowed topology and require every domain to be initialized by `app.New`.
 
 Typed errors are transport-neutral: one immutable kind maps to HTTP, gRPC, CLI, and TUI semantics
 while separating diagnostic detail from safe presentation text.
+
+See [Transactional domain workflows](transactional-workflows.md) for the complete mutation contracts and verification strategy.

@@ -44,7 +44,7 @@ Non-delete mutations also accept `--tags`: omission preserves, a value replaces 
 
 Associations are centrally stored by Cedar entity type, ID, and key, but each owning domain loads
 its own entities and hydrates tags in one type-scoped query. Soft-deleted rows retain associations;
-the inventory hard-delete path removes them transactionally. Tags have no reserved application
+retained inventory also keeps its associations. Tags have no reserved application
 meaning—individual Cedar policies or other consumers choose semantics.
 
 Tag discovery returns each active match's domain-provided display name alongside its entity type
@@ -95,11 +95,11 @@ total moves every affected pending order to `blocked`, and replenishment returns
 Blocked orders remain cancellable but cannot be completed.
 
 This collaboration is deliberately reciprocal: Order events change Inventory reservations and
-published Menu availability, while Inventory adjustment events change Order fulfillment state.
+draft and published Menu availability, while Inventory adjustment events change Order fulfillment state.
 Every indirect mutation is part of the originating transaction and appears in its audit touches.
 
-Retiring an ingredient (`ingredients retire`; `delete` remains a compatibility alias) removes its
-stock but preserves dependent Drinks and Menu curation. A required canonical reference makes its
+Retiring an ingredient (`ingredients retire`; `delete` remains a compatibility alias) discontinues
+future use while retaining physical stock, accepted reservations, dependent Drinks and Menu curation. A required canonical reference makes its
 Drink `review_required`; an optional reference is removed, and a retired substitute candidate is
 discarded. `--replacement-id` records explicit permanent product intent: category and unit
 compatibility are validated and affected canonical recipes are rewritten transactionally. The
@@ -120,8 +120,13 @@ exposing draft operational findings to read-only personas.
 
 Editing a Drink with a valid replacement recipe returns it to `active`; existing Orders retain the
 usage snapshot accepted when they were placed.
-Pending Orders reserved against the retired ingredient become `blocked`; they preserve that
-historical requirement and may still be cancelled to release the reservation.
+Explicit withdrawal (`--withdraw`) quarantines retained stock and blocks affected open Orders.
+Discontinuation alone honors existing reservations. Explicit amendments change approved fulfillment
+without rewriting acceptance; cancellation releases reservations and can recover other blocked orders.
+Quarantine release and disposal are separate stock operations with retained movement history.
+
+See [Transactional domain workflows](transactional-workflows.md) for canonical units, ID rules,
+immutable acceptance, amendment batches, usage guards, audit effects and concurrency contracts.
 
 ## Runtime configuration
 
