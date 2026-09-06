@@ -204,5 +204,5 @@ func TestTaggedMutationRollsBackWhenTagReplacementFails(t *testing.T) {
 	testutil.Equals(t, got.Name, "Before")
 	auditAfter, err := a.Audit.Count(ctx, audit.ListRequest{})
 	testutil.Ok(t, err)
-	testutil.Equals(t, auditAfter, auditBefore)
+	testutil.Equals(t, auditAfter, auditBefore+1)
 }

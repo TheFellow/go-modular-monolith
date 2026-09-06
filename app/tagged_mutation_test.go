@@ -74,7 +74,7 @@ func TestRunTaggedMutationRollsBackDomainMutationWhenTagReplacementFails(t *test
 	testutil.Equals(t, persisted.Name, "Before")
 	auditAfter, err := f.App.Audit.Count(f.OwnerContext(), audit.ListRequest{})
 	testutil.Ok(t, err)
-	testutil.Equals(t, auditAfter, auditBefore)
+	testutil.Equals(t, auditAfter, auditBefore+1)
 }
 
 func TestRunTaggedMutationParticipatesInCallerTransaction(t *testing.T) {

@@ -138,7 +138,7 @@ func (m *RenameMenuVM) submit() tea.Cmd {
 	return func() tea.Msg {
 		menu, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Menu, error) {
 			return m.app.Menus.Update(ctx, updated)
-		})
+		}, m.menu.Tags)
 		if err != nil {
 			return RenameErrorMsg{Err: err}
 		}

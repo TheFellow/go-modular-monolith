@@ -16,8 +16,8 @@ type Session struct {
 }
 
 // ReplaceTags replaces an entity's complete tag set in this session's context.
-func (s *Session) ReplaceTags(target cedar.EntityUID, desired tag.Tags) (tag.Tags, error) {
-	result, err := s.Tags.Replace(s.Context(), target, desired)
+func (s *Session) ReplaceTags(target cedar.EntityUID, desired tag.Tags, expected ...tag.Tags) (tag.Tags, error) {
+	result, err := s.Tags.Replace(s.Context(), target, desired, expected...)
 	return result.Tags, err
 }
 
@@ -41,4 +41,12 @@ func (s *Session) ContextFrom(ctx context.Context) *middleware.Context {
 	}
 	context.AfterFunc(ctx, cancel)
 	return middleware.NewContext(derived)
+}
+
+// TagReplacer captures an editor's original complete set for optimistic checks.
+func (s *Session) TagReplacer(expected tag.Tags) func(cedar.EntityUID, tag.Tags) (tag.Tags, error) {
+	before := append(tag.Tags(nil), expected...)
+	return func(target cedar.EntityUID, desired tag.Tags) (tag.Tags, error) {
+		return s.ReplaceTags(target, desired, before)
+	}
 }

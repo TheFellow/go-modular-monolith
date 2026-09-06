@@ -214,7 +214,7 @@ func (m *EditDrinkVM) submit() tea.Cmd {
 	return func() tea.Msg {
 		drink, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Drink, error) {
 			return m.app.Drinks.Update(ctx, &updated)
-		})
+		}, updated.Tags)
 		if err != nil {
 			return UpdateErrorMsg{Err: err}
 		}

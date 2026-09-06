@@ -184,7 +184,7 @@ func (m *EditIngredientVM) submit() tea.Cmd {
 	return func() tea.Msg {
 		ingredient, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Ingredient, error) {
 			return m.app.Ingredients.Update(ctx, updated)
-		})
+		}, m.ingredient.Tags)
 		if err != nil {
 			return UpdateErrorMsg{Err: err}
 		}

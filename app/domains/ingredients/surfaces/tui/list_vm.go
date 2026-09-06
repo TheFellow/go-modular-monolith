@@ -635,7 +635,7 @@ func (m *ListViewModel) startTags() tea.Cmd {
 		return nil
 	}
 	m.mode = listModeTagging
-	m.tags = components.NewTagEditor(m.app.ReplaceTags, tag.ParseCollection, ingredient.EntityUID(), ingredient.Name, ingredient.Tags.Canonical().String())
+	m.tags = components.NewTagEditor(m.app.TagReplacer(ingredient.Tags), tag.ParseCollection, ingredient.EntityUID(), ingredient.Name, ingredient.Tags.Canonical().String())
 	m.tags.SetWidth(m.width)
 	return m.tags.Init()
 }
