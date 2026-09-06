@@ -15,10 +15,6 @@ func toRow(o models.Order) OrderRow {
 	if t, ok := o.CompletedAt.Unwrap(); ok {
 		completedAt = &t
 	}
-	var deletedAt *time.Time
-	if t, ok := o.DeletedAt.Unwrap(); ok {
-		deletedAt = &t
-	}
 	items := make([]OrderItemRow, 0, len(o.Items))
 	for _, it := range o.Items {
 		items = append(items, OrderItemRow{
@@ -47,7 +43,6 @@ func toRow(o models.Order) OrderRow {
 		CreatedAt:          o.CreatedAt,
 		CompletedAt:        completedAt,
 		Notes:              o.Notes,
-		DeletedAt:          deletedAt,
 	}
 }
 
@@ -57,12 +52,6 @@ func toModel(r OrderRow) models.Order {
 		completedAt = optional.Some(*r.CompletedAt)
 	} else {
 		completedAt = optional.None[time.Time]()
-	}
-	var deletedAt optional.Value[time.Time]
-	if r.DeletedAt != nil {
-		deletedAt = optional.Some(*r.DeletedAt)
-	} else {
-		deletedAt = optional.None[time.Time]()
 	}
 	items := make([]models.OrderItem, 0, len(r.Items))
 	for _, it := range r.Items {
@@ -103,6 +92,5 @@ func toModel(r OrderRow) models.Order {
 		CreatedAt:          r.CreatedAt,
 		CompletedAt:        completedAt,
 		Notes:              r.Notes,
-		DeletedAt:          deletedAt,
 	}
 }

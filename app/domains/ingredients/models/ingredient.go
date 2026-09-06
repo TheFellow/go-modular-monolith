@@ -3,14 +3,12 @@ package models
 import (
 	"slices"
 	"strings"
-	"time"
 
 	ingredientauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -23,7 +21,6 @@ type Ingredient struct {
 	Category    Category
 	Unit        measurement.Unit
 	Description string
-	DeletedAt   optional.Value[time.Time]
 	Tags        tag.Tags
 }
 
