@@ -35,6 +35,7 @@ permit(
         Mixology::Order::Action::"place",
         Mixology::Order::Action::"complete",
         Mixology::Order::Action::"cancel",
+        Mixology::Order::Action::"amend",
         Mixology::Order::Action::"tag",
         Mixology::Order::Action::"untag"
     ],
@@ -47,6 +48,7 @@ permit(
         Mixology::Order::Action::"place",
         Mixology::Order::Action::"complete",
         Mixology::Order::Action::"cancel",
+        Mixology::Order::Action::"amend",
         Mixology::Order::Action::"tag",
         Mixology::Order::Action::"untag"
     ],

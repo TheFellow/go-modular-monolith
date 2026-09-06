@@ -163,6 +163,35 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 				return herr
 			}
 		}
+	case orders_events.OrderAmended:
+		inventoryHandler := inventory_handlers.NewOrderAmended(d.store, d.tags)
+		menusHandler := menus_handlers.NewOrderAmended(d.store, d.tags)
+		ordersHandler := orders_handlers.NewOrderAmended(d.store, d.tags)
+		if err := menusHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := ordersHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := inventoryHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := menusHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := ordersHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 	case orders_events.OrderCancelled:
 		inventoryHandler := inventory_handlers.NewOrderCancelled(d.store, d.tags)
 		menusHandler := menus_handlers.NewOrderCancelled(d.store, d.tags)

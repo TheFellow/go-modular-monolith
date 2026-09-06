@@ -46,6 +46,7 @@ func ValidateEntity(entity cedar.Entity) error {
 }
 
 var (
+	ActionAmend    = cedar.NewEntityUID(ActionType, "amend")
 	ActionCancel   = cedar.NewEntityUID(ActionType, "cancel")
 	ActionComplete = cedar.NewEntityUID(ActionType, "complete")
 	ActionGet      = cedar.NewEntityUID(ActionType, "get")
