@@ -1,44 +1,20 @@
 package handlers
 
 import (
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/events"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/availability"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
+	events "github.com/TheFellow/go-modular-monolith/app/domains/menus/events"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-type MenuPublished struct {
-	dao          *dao.DAO
-	availability *availability.AvailabilityCalculator
-}
+type MenuPublished struct{ prepared *preparedMenus }
 
 func NewMenuPublished(s *store.Store, tags tag.Repository) *MenuPublished {
-	return &MenuPublished{
-		dao:          dao.New(s, tags),
-		availability: availability.New(s, tags),
-	}
+	return &MenuPublished{prepared: newPreparedMenus(s, tags)}
 }
-
-func (h *MenuPublished) Handle(ctx *middleware.HandlerContext, e events.MenuPublished) error {
-	menu := e.Menu
-
-	changed := false
-	for i := range menu.Items {
-		want := h.availability.Calculate(ctx, menu.Items[i].DrinkID)
-		if menu.Items[i].Availability != want {
-			menu.Items[i].Availability = want
-			changed = true
-		}
-	}
-	if !changed {
-		return nil
-	}
-
-	if err := h.dao.Update(ctx, &menu); err != nil {
-		return err
-	}
-	ctx.TouchEntity(menu.ID.EntityUID())
-	return nil
+func (h *MenuPublished) Handling(ctx *middleware.HandlerContext, e events.MenuPublished) error {
+	return h.prepared.prepare(ctx, e.Menu.ID)
+}
+func (h *MenuPublished) Handle(ctx *middleware.HandlerContext, _ events.MenuPublished) error {
+	return h.prepared.apply(ctx)
 }

@@ -3,10 +3,18 @@ package app_test
 import (
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
+	dh "github.com/TheFellow/go-modular-monolith/app/domains/drinks/handlers"
 	dm "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ie "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
 	im "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	ih "github.com/TheFellow/go-modular-monolith/app/domains/inventory/handlers"
 	iv "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	mh "github.com/TheFellow/go-modular-monolith/app/domains/menus/handlers"
+	mm "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	oe "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
+	oh "github.com/TheFellow/go-modular-monolith/app/domains/orders/handlers"
 	om "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/tagging"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
@@ -14,7 +22,77 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"testing"
+	"time"
 )
+
+func TestRetirementPreparationIsIndependentOfEveryHandlerOrder(t *testing.T) {
+	t.Parallel()
+	f, original, drink, menu := workflowFixture(t)
+	ctx := f.OwnerContext()
+	replacement := testutil.CreateIngredient(t, f, im.Ingredient{Name: "Replacement", Category: original.Category, Unit: original.Unit})
+	testutil.SetInventory(t, f, workflowStock(replacement, 10))
+	event := ie.IngredientDeleted{Ingredient: *original, Replacement: replacement, ReplacementRatio: 1, DeletedAt: time.Now().UTC()}
+	tags := tagging.NewRepository(f.Store)
+	for _, order := range [][]int{{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}} {
+		tx, err := f.Store.Begin(ctx, true)
+		testutil.Ok(t, err)
+		txctx := ctx.WithTransaction(tx)
+		hctx := middleware.NewHandlerContext(txctx)
+		drinks := dh.NewIngredientDeleted(f.Store, tags)
+		inventory := ih.NewIngredientDeleted(f.Store, tags)
+		menus := mh.NewIngredientDeleted(f.Store, tags)
+		testutil.Ok(t, drinks.Handling(hctx, event))
+		testutil.Ok(t, inventory.Handling(hctx, event))
+		testutil.Ok(t, menus.Handling(hctx, event))
+		handlers := []func() error{func() error { return drinks.Handle(hctx, event) }, func() error { return inventory.Handle(hctx, event) }, func() error { return menus.Handle(hctx, event) }}
+		for _, n := range order {
+			testutil.Ok(t, handlers[n]())
+		}
+		gotDrink, err := f.Drinks.Get(txctx, drink.ID)
+		testutil.Ok(t, err)
+		testutil.Equals(t, gotDrink.Recipe.Ingredients[0].IngredientID, replacement.ID)
+		gotMenu, err := f.Menus.Get(txctx, menu.ID)
+		testutil.Ok(t, err)
+		testutil.Equals(t, gotMenu.Items[0].Availability, mm.AvailabilityAvailable)
+		stock, err := f.Inventory.Get(txctx, original.ID)
+		testutil.Ok(t, err)
+		testutil.Equals(t, stock.Status, iv.StatusDiscontinued)
+		testutil.Ok(t, f.Store.Rollback(tx))
+	}
+}
+
+func TestCancellationPreparationRecoversPeersInEveryHandlerOrder(t *testing.T) {
+	t.Parallel()
+	f, i, d, m := workflowFixture(t)
+	ctx := f.OwnerContext()
+	a := workflowOrder(t, f, d, m)
+	b := workflowOrder(t, f, d, m)
+	testutil.SetInventory(t, f, workflowStock(i, 2))
+	tags := tagging.NewRepository(f.Store)
+	for _, sequence := range [][]int{{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}} {
+		tx, err := f.Store.Begin(ctx, true)
+		testutil.Ok(t, err)
+		txctx := ctx.WithTransaction(tx)
+		hctx := middleware.NewHandlerContext(txctx)
+		event := oe.OrderCancelled{Order: *a}
+		inventory := ih.NewOrderCancelled(f.Store, tags)
+		menus := mh.NewOrderCancelled(f.Store, tags)
+		orders := oh.NewOrderCancelled(f.Store, tags)
+		testutil.Ok(t, menus.Handling(hctx, event))
+		testutil.Ok(t, orders.Handling(hctx, event))
+		handlers := []func() error{func() error { return inventory.Handle(hctx, event) }, func() error { return menus.Handle(hctx, event) }, func() error { return orders.Handle(hctx, event) }}
+		for _, n := range sequence {
+			testutil.Ok(t, handlers[n]())
+		}
+		peer, err := f.Orders.Get(txctx, b.ID)
+		testutil.Ok(t, err)
+		testutil.Equals(t, peer.Status, om.OrderStatusPending)
+		stock, err := f.Inventory.Get(txctx, i.ID)
+		testutil.Ok(t, err)
+		testutil.Equals(t, stock.ReservedAmount().Value(), 2.0)
+		testutil.Ok(t, f.Store.Rollback(tx))
+	}
+}
 
 func TestQuarantineAndReleasePreservePhysicalHistoryAndCatalogRetirement(t *testing.T) {
 	t.Parallel()

@@ -1,55 +1,20 @@
 package handlers
 
 import (
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/availability"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	ordersevents "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
+	events "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-type OrderCompleted struct {
-	dao          *dao.DAO
-	availability *availability.AvailabilityCalculator
-}
+type OrderCompleted struct{ prepared *preparedMenus }
 
 func NewOrderCompleted(s *store.Store, tags tag.Repository) *OrderCompleted {
-	return &OrderCompleted{
-		dao:          dao.New(s, tags),
-		availability: availability.New(s, tags),
-	}
+	return &OrderCompleted{prepared: newPreparedMenus(s, tags)}
 }
-
-func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, e ordersevents.OrderCompleted) error {
-	if len(e.Order.IngredientUsage) == 0 {
-		return nil
-	}
-
-	for menu, err := range h.dao.List(ctx, dao.ListFilter{Status: models.MenuStatusPublished}) {
-		if err != nil {
-			return err
-		}
-		changed := false
-		for i := range menu.Items {
-			item := menu.Items[i]
-			status := h.availability.Calculate(ctx, item.DrinkID)
-			if item.Availability == status {
-				continue
-			}
-			menu.Items[i].Availability = status
-			changed = true
-		}
-
-		if !changed {
-			continue
-		}
-		if err := h.dao.Update(ctx, menu); err != nil {
-			return err
-		}
-		ctx.TouchEntity(menu.ID.EntityUID())
-	}
-
-	return nil
+func (h *OrderCompleted) Handling(ctx *middleware.HandlerContext, e events.OrderCompleted) error {
+	return h.prepared.order(ctx, e.Order.IngredientUsage, nil, true)
+}
+func (h *OrderCompleted) Handle(ctx *middleware.HandlerContext, _ events.OrderCompleted) error {
+	return h.prepared.apply(ctx)
 }

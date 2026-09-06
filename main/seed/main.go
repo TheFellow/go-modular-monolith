@@ -249,10 +249,12 @@ func run() error {
 	// Add drinks to menu
 	for _, drinkID := range drinkIDs {
 		patch := &menumodels.MenuPatch{
-			MenuID:  createdMenu.ID,
-			DrinkID: drinkID,
+			Revision: createdMenu.Revision,
+			MenuID:   createdMenu.ID,
+			DrinkID:  drinkID,
 		}
-		if _, err := a.Menus.AddDrink(ctx, patch); err != nil {
+		createdMenu, err = a.Menus.AddDrink(ctx, patch)
+		if err != nil {
 			return fmt.Errorf("add drink to menu: %w", err)
 		}
 	}

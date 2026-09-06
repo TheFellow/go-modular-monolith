@@ -19,6 +19,9 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, patch *models.MenuPatch)
 	if err != nil {
 		return nil, err
 	}
+	if patch.Revision != 0 && patch.Revision != menu.Revision {
+		return nil, errors.Conflictf("menu changed; reload before editing items")
+	}
 	if err := ensureDraftMenu(menu); err != nil {
 		return nil, err
 	}
@@ -48,7 +51,7 @@ func (c *Commands) RemoveDrink(ctx *middleware.Context, patch *models.MenuPatch)
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID.EntityUID())
+	ctx.RecordEffect("menu_item_removed", updated.ID.EntityUID(), middleware.Change("drink_id", patch.DrinkID.String(), ""))
 	ctx.AddEvent(events.DrinkRemovedFromMenu{
 		Menu: updated,
 		Item: removedItem,

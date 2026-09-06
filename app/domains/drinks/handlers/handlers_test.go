@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	cedar "github.com/cedar-policy/cedar-go"
 	"slices"
 	"testing"
 
@@ -163,10 +164,10 @@ func TestIngredientUpdatedHandlersAuditEveryDependentWithoutMutatingThem(t *test
 	}
 
 	entry := f.LatestAuditEntry(ingredientsauthz.ActionUpdate)
-	testutil.AuditTouches(t, entry,
-		target.ID.EntityUID(), affectedA.ID.EntityUID(), affectedB.ID.EntityUID(),
-		menuA.ID.EntityUID(), menuB.ID.EntityUID(),
-	)
+	testutil.AuditTouches(t, entry, target.ID.EntityUID())
+	for _, uid := range []cedar.EntityUID{affectedA.ID.EntityUID(), affectedB.ID.EntityUID(), menuA.ID.EntityUID(), menuB.ID.EntityUID()} {
+		testutil.IsTrue(t, slices.Contains(entry.Participants, uid))
+	}
 }
 
 func handlerDrink(name string, ingredientID entity.IngredientID) drinksmodels.Drink {

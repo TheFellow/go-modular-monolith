@@ -179,7 +179,7 @@ func TestAudit_TouchesIncludeIngredientUpdateDrinks(t *testing.T) {
 	testutil.ErrorIf(t, len(entries) != 1, "expected 1 audit entry, got %d", len(entries))
 	entry := entries[0]
 	testutil.ErrorIf(t, !touchesContain(entry.Touches, ingredient.ID.EntityUID()), "expected touches to include ingredient %s", ingredient.ID.String())
-	testutil.ErrorIf(t, !touchesContain(entry.Touches, drink.ID.EntityUID()), "expected touches to include drink %s", drink.ID.String())
+	testutil.ErrorIf(t, !touchesContain(entry.Participants, drink.ID.EntityUID()), "expected touches to include drink %s", drink.ID.String())
 }
 
 func TestAudit_TouchesIncludeIngredientUpdateMenus(t *testing.T) {
@@ -226,7 +226,7 @@ func TestAudit_TouchesIncludeIngredientUpdateMenus(t *testing.T) {
 	entries := page.Items
 	testutil.ErrorIf(t, len(entries) != 1, "expected 1 audit entry, got %d", len(entries))
 	entry := entries[0]
-	testutil.ErrorIf(t, !touchesContain(entry.Touches, menu.ID.EntityUID()), "expected touches to include menu %s", menu.ID.String())
+	testutil.ErrorIf(t, !touchesContain(entry.Participants, menu.ID.EntityUID()), "expected touches to include menu %s", menu.ID.String())
 }
 
 func TestAudit_ListFilters(t *testing.T) {

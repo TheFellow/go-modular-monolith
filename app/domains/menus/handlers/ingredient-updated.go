@@ -1,51 +1,20 @@
 package handlers
 
 import (
-	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
-	ingredientsevents "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
+	events "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/events"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/set"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-type IngredientUpdated struct {
-	dao    *dao.DAO
-	drinks *drinksq.Queries
-}
+type IngredientUpdated struct{ prepared *preparedMenus }
 
 func NewIngredientUpdated(s *store.Store, tags tag.Repository) *IngredientUpdated {
-	return &IngredientUpdated{
-		dao:    dao.New(s, tags),
-		drinks: drinksq.New(s, tags),
-	}
+	return &IngredientUpdated{prepared: newPreparedMenus(s, tags)}
 }
-
-func (h *IngredientUpdated) Handle(ctx *middleware.HandlerContext, e ingredientsevents.IngredientUpdated) error {
-	drinks, err := h.drinks.ListByIngredient(ctx, e.Ingredient.ID)
-	if err != nil {
-		return err
-	}
-	if len(drinks) == 0 {
-		return nil
-	}
-
-	var seen set.Set[string]
-	for _, drink := range drinks {
-		menus, err := h.dao.ListByDrink(ctx, drink.ID)
-		if err != nil {
-			return err
-		}
-		for _, menu := range menus {
-			id := menu.ID.String()
-			if seen.Contains(id) {
-				continue
-			}
-			seen.Add(id)
-			ctx.TouchEntity(menu.ID.EntityUID())
-		}
-	}
-
-	return nil
+func (h *IngredientUpdated) Handling(ctx *middleware.HandlerContext, _ events.IngredientUpdated) error {
+	return h.prepared.prepare(ctx)
+}
+func (h *IngredientUpdated) Handle(ctx *middleware.HandlerContext, _ events.IngredientUpdated) error {
+	return h.prepared.apply(ctx)
 }

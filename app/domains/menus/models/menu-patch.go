@@ -7,8 +7,9 @@ import (
 )
 
 type MenuPatch struct {
-	MenuID  entity.MenuID
-	DrinkID entity.DrinkID
+	Revision uint64
+	MenuID   entity.MenuID
+	DrinkID  entity.DrinkID
 }
 
 func (c MenuPatch) EntityUID() cedar.EntityUID {
