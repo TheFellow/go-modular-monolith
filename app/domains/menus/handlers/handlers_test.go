@@ -19,7 +19,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func TestDrinkDeletedHandlerRemovesOnlyDeletedDrinkFromMenus(t *testing.T) {
+func TestDrinkDeletedHandlerRejectsReferencedDrink(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
@@ -33,21 +33,22 @@ func TestDrinkDeletedHandlerRemovesOnlyDeletedDrinkFromMenus(t *testing.T) {
 	unrelatedMenu := testutil.CreateMenu(t, f, "Unrelated", testutil.WithDrink(survivor), testutil.Published())
 
 	_, err := f.Drinks.Delete(ctx, target.ID)
-	testutil.Ok(t, err)
+	testutil.ErrorIsFailedPrecondition(t, err)
 	gotAffected, err := f.Menus.Get(ctx, affectedMenu.ID)
 	testutil.Ok(t, err)
-	testutil.Equals(t, menuHandlerDrinkIDs(gotAffected), []entity.DrinkID{survivor.ID})
+	testutil.Equals(t, menuHandlerDrinkIDs(gotAffected), []entity.DrinkID{target.ID, survivor.ID})
 	gotUnrelated, err := f.Menus.Get(ctx, unrelatedMenu.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, gotUnrelated, unrelatedMenu, cmpopts.EquateEmpty())
 	_, err = f.Drinks.Get(ctx, target.ID)
-	testutil.ErrorIsNotFound(t, err)
+	testutil.Ok(t, err)
 	gotSurvivor, err := f.Drinks.Get(ctx, survivor.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, gotSurvivor, survivor, cmpopts.EquateEmpty())
 
 	entry := f.LatestAuditEntry(drinksauthz.ActionDelete)
-	testutil.AuditTouches(t, entry, target.ID.EntityUID(), affectedMenu.ID.EntityUID())
+	testutil.IsFalse(t, entry.Success)
+	testutil.AuditTouches(t, entry, target.ID.EntityUID())
 }
 
 func TestDrinkUpdatedHandlerChangesOnlyAffectedPublishedMenuItems(t *testing.T) {

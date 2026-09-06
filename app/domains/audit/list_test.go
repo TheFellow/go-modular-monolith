@@ -90,7 +90,7 @@ func TestAudit_RecordsActivityForCommand(t *testing.T) {
 	testutil.ErrorIf(t, !touchesContain(entry.Touches, created.ID.EntityUID()), "expected touches to include %s", created.ID.String())
 }
 
-func TestAudit_TouchesIncludeHandlerUpdates(t *testing.T) {
+func TestAudit_RecordsRejectedDeletionDependencies(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
@@ -128,7 +128,7 @@ func TestAudit_TouchesIncludeHandlerUpdates(t *testing.T) {
 	testutil.Ok(t, err)
 
 	_, err = f.Drinks.Delete(ctx, drink.ID)
-	testutil.Ok(t, err)
+	testutil.ErrorIsFailedPrecondition(t, err)
 
 	page, err := f.App.Audit.List(ctx, audit.ListRequest{Action: drinksauthz.ActionDelete})
 	testutil.Ok(t, err)
@@ -136,7 +136,7 @@ func TestAudit_TouchesIncludeHandlerUpdates(t *testing.T) {
 	testutil.ErrorIf(t, len(entries) != 1, "expected 1 audit entry, got %d", len(entries))
 	entry := entries[0]
 	testutil.ErrorIf(t, !touchesContain(entry.Touches, drink.ID.EntityUID()), "expected touches to include drink %s", drink.ID.String())
-	testutil.ErrorIf(t, !touchesContain(entry.Touches, menu.ID.EntityUID()), "expected touches to include menu %s", menu.ID.String())
+	testutil.ErrorIf(t, !touchesContain(entry.Participants, menu.ID.EntityUID()), "expected touches to include menu %s", menu.ID.String())
 }
 
 func TestAudit_TouchesIncludeIngredientUpdateDrinks(t *testing.T) {

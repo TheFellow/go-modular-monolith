@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"github.com/TheFellow/go-modular-monolith/app/domains/menus/events"
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
@@ -34,6 +35,7 @@ func (c *Commands) Delete(ctx *middleware.Context, menu *models.Menu) (*models.M
 	}
 
 	ctx.RecordEffect("menu_deleted", deleted.ID.EntityUID(), middleware.Change("status", existing.Status, deleted.Status))
+	ctx.AddEvent(events.MenuDeleted{Menu: deleted})
 
 	return &deleted, nil
 }

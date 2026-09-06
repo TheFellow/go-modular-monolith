@@ -1,6 +1,7 @@
 package models
 
 import (
+	"math"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
@@ -39,7 +40,7 @@ func (r Recipe) Validate() error {
 		if ing.Amount.Unit() == "" {
 			return errors.Invalidf("recipe ingredient %d: unit is required", i)
 		}
-		if ing.Amount.Value() <= 0 {
+		if ing.Amount.Value() <= 0 || math.IsNaN(ing.Amount.Value()) || math.IsInf(ing.Amount.Value(), 0) {
 			return errors.Invalidf("recipe ingredient %d: amount must be > 0", i)
 		}
 		for j, sub := range ing.Substitutes {

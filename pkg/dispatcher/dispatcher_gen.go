@@ -24,7 +24,23 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	switch e := event.(type) {
 	case drinks_events.DrinkDeleted:
 		menusHandler := menus_handlers.NewDrinkDeleted(d.store, d.tags)
+		ordersHandler := orders_handlers.NewDrinkDeleted(d.store, d.tags)
+		if err := menusHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := ordersHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 		if err := menusHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := ordersHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
@@ -99,6 +115,18 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 		menusHandler := menus_handlers.NewStockAdjusted(d.store, d.tags)
 		ordersHandler := orders_handlers.NewStockAdjusted(d.store, d.tags)
 		if err := menusHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := ordersHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+	case menus_events.MenuDeleted:
+		ordersHandler := orders_handlers.NewMenuDeleted(d.store, d.tags)
+		if err := ordersHandler.Handling(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}

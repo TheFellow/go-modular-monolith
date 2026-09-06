@@ -72,7 +72,7 @@ func TestDispatch_StockAdjusted_UpdatesMenuAvailability(t *testing.T) {
 	testutil.Equals(t, got.Items[0].Availability, menuM.AvailabilityUnavailable)
 }
 
-func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
+func TestDispatch_DrinkDeleted_PreventsRemovingUsedDrink(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	a := f.App
@@ -131,11 +131,10 @@ func TestDispatch_DrinkDeleted_RemovesMenuItems(t *testing.T) {
 	t.Cleanup(func() { testutil.Ok(t, f.Store.Rollback(tx)) })
 	txCtx := ctx.WithTransaction(tx)
 	err = d.Dispatch(txCtx, drinksevents.DrinkDeleted{Drink: *drink1, DeletedAt: time.Now().UTC()})
-	testutil.Ok(t, err)
+	testutil.ErrorIsFailedPrecondition(t, err)
 
-	// Verify menu now has only drink2
+	// A veto leaves the menu unchanged.
 	got, err := a.Menus.Get(txCtx, m2.ID)
 	testutil.Ok(t, err)
-	testutil.Equals(t, len(got.Items), 1)
-	testutil.Equals(t, got.Items[0].DrinkID, drink2.ID)
+	testutil.Equals(t, got.Items, m2.Items)
 }

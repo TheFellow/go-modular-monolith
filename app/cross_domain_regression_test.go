@@ -7,6 +7,7 @@ import (
 	im "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	iv "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	om "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -104,6 +105,23 @@ func TestLateWorkflowFailureRollsBackEveryDomain(t *testing.T) {
 	testutil.Equals(t, stock.ReservedAmount().Value(), 2.0)
 }
 
+func TestRecipeRejectsIncompatibleRequiredOptionalAndSubstituteReferences(t *testing.T) {
+	t.Parallel()
+	f, i, d, _ := workflowFixture(t)
+	piece := testutil.CreateIngredient(t, f, im.Ingredient{Name: "Discrete", Category: im.CategoryGarnish, Unit: measurement.UnitPiece})
+	for _, req := range []dm.RecipeIngredient{
+		{IngredientID: i.ID, Amount: measurement.MustAmount(1, measurement.UnitPiece)},
+		{IngredientID: i.ID, Amount: measurement.MustAmount(1, measurement.UnitPiece), Optional: true},
+		{IngredientID: i.ID, Amount: measurement.MustAmount(1, i.Unit), Substitutes: []entity.IngredientID{piece.ID}},
+		{IngredientID: i.ID, Amount: measurement.MustAmount(1, i.Unit), Optional: true, Substitutes: []entity.IngredientID{piece.ID}},
+	} {
+		updated := *d
+		updated.Recipe = dm.Recipe{Ingredients: []dm.RecipeIngredient{req}, Steps: []string{"Mix"}}
+		_, err := f.Drinks.Update(f.OwnerContext(), &updated)
+		testutil.ErrorIsInvalid(t, err)
+	}
+}
+
 func TestDiscontinuationDoesNotReleaseExistingQuarantine(t *testing.T) {
 	t.Parallel()
 	f, i, d, m := workflowFixture(t)
@@ -121,4 +139,20 @@ func TestDiscontinuationDoesNotReleaseExistingQuarantine(t *testing.T) {
 	current, err := f.Orders.Get(ctx, order.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, current.Status, om.OrderStatusBlocked)
+}
+
+func TestRetirementRejectsAmbiguousSubstituteCandidateRatioAtomically(t *testing.T) {
+	t.Parallel()
+	f, i, d, _ := workflowFixture(t)
+	ctx := f.OwnerContext()
+	candidate := testutil.CreateIngredient(t, f, im.Ingredient{Name: "Candidate", Category: i.Category, Unit: i.Unit})
+	replacement := testutil.CreateIngredient(t, f, im.Ingredient{Name: "Concentrate", Category: i.Category, Unit: i.Unit})
+	d.Recipe.Ingredients[0].Substitutes = []entity.IngredientID{candidate.ID}
+	_, err := f.Drinks.Update(ctx, d)
+	testutil.Ok(t, err)
+	_, err = f.Ingredients.Retire(ctx, candidate.ID, im.Retirement{ReplacementID: replacement.ID, Ratio: .5})
+	testutil.ErrorIsFailedPrecondition(t, err)
+	testutil.ErrorContains(t, err, d.ID.String())
+	_, err = f.Ingredients.Get(ctx, candidate.ID)
+	testutil.Ok(t, err)
 }
