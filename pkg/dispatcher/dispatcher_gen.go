@@ -46,6 +46,11 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 				return herr
 			}
 		}
+		if err := inventoryHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 		if err := menusHandler.Handling(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
@@ -73,8 +78,14 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 		}
 	case ingredients_events.IngredientUpdated:
 		drinksHandler := drinks_handlers.NewIngredientUpdated(d.store, d.tags)
+		inventoryHandler := inventory_handlers.NewIngredientUpdated(d.store, d.tags)
 		menusHandler := menus_handlers.NewIngredientUpdated(d.store, d.tags)
 		if err := drinksHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := inventoryHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}

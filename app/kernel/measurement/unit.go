@@ -40,3 +40,16 @@ func (u Unit) Validate() error {
 		return errors.Invalidf("invalid unit %q", string(u))
 	}
 }
+
+// Canonical returns the stable storage unit for this dimension. Display units
+// never determine the scale of persisted inventory or reservations.
+func (u Unit) Canonical() Unit {
+	switch u {
+	case UnitOz, UnitCl, UnitMl:
+		return UnitMl
+	case UnitDash, UnitPiece, UnitSplash:
+		return u
+	default:
+		return u
+	}
+}

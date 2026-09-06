@@ -42,9 +42,12 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 		return actions.Evaluate(ctx, declaration)
 	}
 	resource := selected.CedarEntity()
+	active := func(context.Context) (bool, string, error) {
+		return selected.Status == "" || selected.Status == models.StatusActive, "Only active stock can be set or adjusted; use disposition or disposal for retained stock.", nil
+	}
 	declaration.Controls = append(declaration.Controls,
-		actions.Control{ID: ControlAdjust, Permission: permission(inventoryauthz.ActionAdjust, resource)},
-		actions.Control{ID: ControlSet, Permission: permission(inventoryauthz.ActionSet, resource)},
+		actions.Control{ID: ControlAdjust, Permission: permission(inventoryauthz.ActionAdjust, resource), Conditions: []actions.Condition{active}},
+		actions.Control{ID: ControlSet, Permission: permission(inventoryauthz.ActionSet, resource), Conditions: []actions.Condition{active}},
 		actions.Control{ID: ControlTags, Permission: permission(inventoryauthz.ActionTag, resource)},
 	)
 	return actions.Evaluate(ctx, declaration)

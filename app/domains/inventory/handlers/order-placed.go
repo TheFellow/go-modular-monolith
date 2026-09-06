@@ -23,7 +23,7 @@ func (h *OrderPlaced) Handle(ctx *middleware.HandlerContext, e ordersevents.Orde
 		if err != nil {
 			return err
 		}
-		ctx.TouchEntity(stock.EntityUID())
+		ctx.RecordEffect("stock_reserved", stock.EntityUID(), middleware.Change("order", "", e.Order.ID.String()), middleware.Change("reserved_quantity", "", usage.Amount.String()))
 	}
 	return nil
 }

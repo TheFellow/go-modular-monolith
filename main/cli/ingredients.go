@@ -270,13 +270,15 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					&cli.StringFlag{Name: "id", Usage: "Ingredient ID", Required: true},
 					&cli.StringFlag{Name: "replacement-id", Usage: "Explicit permanent replacement ingredient ID"},
 					&cli.Float64Flag{Name: "replacement-ratio", Usage: "Replacement quantity ratio (defaults to 1)"},
+					&cli.BoolFlag{Name: "withdraw", Usage: "Quarantine existing stock and block accepted orders immediately"},
+					&cli.StringFlag{Name: "reason", Usage: "Reason for retirement or withdrawal"},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					ingredientID, err := entity.ParseIngredientID(cmd.String("id"))
 					if err != nil {
 						return err
 					}
-					retirement := models.Retirement{Ratio: cmd.Float64("replacement-ratio")}
+					retirement := models.Retirement{Ratio: cmd.Float64("replacement-ratio"), Withdraw: cmd.Bool("withdraw"), Reason: cmd.String("reason")}
 					if replacement := strings.TrimSpace(cmd.String("replacement-id")); replacement != "" {
 						retirement.ReplacementID, err = entity.ParseIngredientID(replacement)
 						if err != nil {

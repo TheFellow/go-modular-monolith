@@ -34,6 +34,7 @@ func TestInventory_SetGetAdjustAndRemove(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.IsFalse(t, set.ID.IsZero())
 	wantSet := &models.Inventory{
+		IngredientName: ingredient.Name, Status: models.StatusActive, Reason: "set", CostUnit: ingredient.Unit,
 		ID: set.ID, Revision: set.Revision, IngredientID: ingredient.ID,
 		Amount: measurement.MustAmount(10, ingredient.Unit), CostPerUnit: optional.Some(cost),
 		LastUpdated: set.LastUpdated,
@@ -53,6 +54,7 @@ func TestInventory_SetGetAdjustAndRemove(t *testing.T) {
 	wantAdjusted := *set
 	wantAdjusted.Amount = measurement.MustAmount(12.5, ingredient.Unit)
 	wantAdjusted.Revision++
+	wantAdjusted.Reason = string(models.ReasonReceived)
 	wantAdjusted.LastUpdated = adjusted.LastUpdated
 	testutil.Equals(t, adjusted, &wantAdjusted)
 
@@ -62,9 +64,10 @@ func TestInventory_SetGetAdjustAndRemove(t *testing.T) {
 
 	_, err = f.Ingredients.Delete(ctx, ingredient.ID)
 	testutil.Ok(t, err)
-	_, err = f.Inventory.Get(ctx, ingredient.ID)
-	testutil.ErrorIsNotFound(t, err)
+	retained, err := f.Inventory.Get(ctx, ingredient.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, retained.Status, models.StatusDiscontinued)
 	count, err = f.Inventory.Count(ctx, inventory.ListRequest{})
 	testutil.Ok(t, err)
-	testutil.Equals(t, count, 0)
+	testutil.Equals(t, count, 1)
 }

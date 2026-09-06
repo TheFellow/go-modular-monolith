@@ -155,13 +155,17 @@ func (v *View) ExecuteCommand(c ui.Command) bool {
 }
 
 func (v *View) mutationFields(mode Mode) framework.CanvasObject {
+	costLabel := "Cost per unit"
+	if v.state.Selected != nil && v.state.Selected.Inventory.CostUnit != "" {
+		costLabel = "Cost per " + string(v.state.Selected.Inventory.CostUnit)
+	}
 	switch mode {
 	case Browse, Viewing:
 		return container.NewVBox()
 	case Adjust:
-		return ui.DetailForm(ui.DetailField("Signed amount", v.amount), ui.DetailField("Cost per unit", v.cost), ui.DetailField("Reason", v.reason), ui.DetailField("Tags", v.tags.Content))
+		return ui.DetailForm(ui.DetailField("Signed amount", v.amount), ui.DetailField(costLabel, v.cost), ui.DetailField("Reason", v.reason), ui.DetailField("Tags", v.tags.Content))
 	case Set:
-		return ui.DetailForm(ui.DetailField("Quantity", v.amount), ui.DetailField("Cost per unit", v.cost), ui.DetailField("Tags", v.tags.Content))
+		return ui.DetailForm(ui.DetailField("Quantity", v.amount), ui.DetailField(costLabel, v.cost), ui.DetailField("Tags", v.tags.Content))
 	case Tags:
 		return ui.DetailForm(ui.DetailField("Tags", v.tags.Content))
 	}
@@ -174,7 +178,7 @@ func (v *View) detailFields(s State) framework.CanvasObject {
 	}
 	r := s.Selected
 	entry := ui.ReadonlyEntry
-	form := ui.DetailForm(ui.DetailField("Ingredient", entry(r.Ingredient.Name)), ui.DetailField("Category", entry(string(r.Ingredient.Category))), ui.DetailField("On hand", entry(r.Quantity)), ui.DetailField("Reserved", entry(r.Inventory.ReservedAmount().String())), ui.DetailField("Available", entry(r.Inventory.Available().String())), ui.DetailField("Cost per unit", entry(r.Cost)), ui.DetailField("Status", entry(r.Status)), ui.DetailField("Tags", ui.TagPillsCSV(r.Inventory.Tags.Canonical().String())), ui.DetailField("Last updated", entry(formatInventoryTime(r.Inventory.LastUpdated))))
+	form := ui.DetailForm(ui.DetailField("Ingredient", entry(r.Ingredient.Name)), ui.DetailField("Category", entry(string(r.Ingredient.Category))), ui.DetailField("On hand", entry(r.Quantity)), ui.DetailField("Reserved", entry(r.Inventory.ReservedAmount().String())), ui.DetailField("Available", entry(r.Inventory.Available().String())), ui.DetailField("Cost per "+string(r.Inventory.CostUnit), entry(r.Cost)), ui.DetailField("Status", entry(r.Status)), ui.DetailField("Tags", ui.TagPillsCSV(r.Inventory.Tags.Canonical().String())), ui.DetailField("Last updated", entry(formatInventoryTime(r.Inventory.LastUpdated))))
 	return container.NewVBox(ui.ActionBar(nil, []framework.CanvasObject{v.adjust, v.set, v.tagAction}), form)
 }
 

@@ -2,6 +2,7 @@ package measurement
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -14,6 +15,9 @@ type DiscreteQuantity struct {
 }
 
 func NewDiscreteQuantity(count float64, unit Unit) (DiscreteQuantity, error) {
+	if math.IsNaN(count) || math.IsInf(count, 0) {
+		return DiscreteQuantity{}, errors.Invalidf("quantity must be finite")
+	}
 	unit = Unit(strings.TrimSpace(string(unit)))
 	if err := unit.Validate(); err != nil {
 		return DiscreteQuantity{}, err

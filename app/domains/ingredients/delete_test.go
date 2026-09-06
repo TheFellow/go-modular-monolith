@@ -57,8 +57,9 @@ func TestIngredients_Delete_CascadesToDrinksMenusAndInventory(t *testing.T) {
 	_, err = f.Ingredients.Delete(ctx, ingredient.ID)
 	testutil.Ok(t, err)
 
-	_, err = f.Inventory.Get(ctx, ingredient.ID)
-	testutil.ErrorIsNotFound(t, err)
+	retained, err := f.Inventory.Get(ctx, ingredient.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, retained.Status, inventoryM.StatusDiscontinued)
 
 	gotDrink, err := f.Drinks.Get(ctx, drink.ID)
 	testutil.Ok(t, err)

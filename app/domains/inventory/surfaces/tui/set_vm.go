@@ -49,7 +49,7 @@ func NewSetInventoryVM(app *app.Session, row InventoryRow) *SetInventoryVM {
 		_ = quantityField.SetValue(row.Inventory.Amount.Value())
 	}
 
-	costField := forms.NewTextField("Cost Per Unit", forms.WithPlaceholder("Optional, e.g. $1.23 or EUR 1.23"))
+	costField := forms.NewTextField("Cost per "+string(row.Inventory.CostUnit), forms.WithPlaceholder("Optional, e.g. $1.23 or EUR 1.23"))
 	tagsField := components.NewOptionalTagsField(row.Inventory.Tags.Canonical().String())
 
 	formStyles := styles.Standard.Form
@@ -167,6 +167,8 @@ func (m *SetInventoryVM) submit() tea.Cmd {
 	}
 
 	update := &models.Update{
+		CostUnit:     m.row.Inventory.CostUnit,
+		Revision:     m.row.Inventory.Revision,
 		IngredientID: m.row.Ingredient.ID,
 		Amount:       amount,
 		CostPerUnit:  cost,
@@ -177,7 +179,7 @@ func (m *SetInventoryVM) submit() tea.Cmd {
 	return func() tea.Msg {
 		updated, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Inventory, error) {
 			return m.app.Inventory.Set(ctx, update)
-		})
+		}, m.row.Inventory.Tags)
 		if err != nil {
 			return SetErrorMsg{Err: err}
 		}

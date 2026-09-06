@@ -10,6 +10,8 @@ import (
 )
 
 type Patch struct {
+	CostUnit     measurement.Unit // Defaults to the catalog unit when explicitly pricing stock.
+	Revision     uint64           `json:"revision"`
 	IngredientID entity.IngredientID
 	Reason       AdjustmentReason
 	Delta        optional.Value[measurement.Amount]

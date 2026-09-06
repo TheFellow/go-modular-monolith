@@ -9,7 +9,10 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+	"math"
 	"reflect"
 	"testing"
 )
@@ -37,4 +40,62 @@ func TestActiveContractsDoNotExposeDeletion(t *testing.T) {
 		_, ok := reflect.TypeOf(model).FieldByName("DeletedAt")
 		testutil.ErrorIf(t, ok, "active contract %T exposes deletion", model)
 	}
+}
+func TestCanonicalStockSurvivesDisplayUnitChange(t *testing.T) {
+	t.Parallel()
+	f, i, d, m := workflowFixture(t)
+	ctx := f.OwnerContext()
+	workflowOrder(t, f, d, m)
+	i.Unit = measurement.UnitMl
+	_, err := f.Ingredients.Update(ctx, i)
+	testutil.Ok(t, err)
+	stock, err := f.Inventory.Adjust(ctx, &iv.Patch{IngredientID: i.ID, Reason: iv.ReasonCorrected, Delta: optional.Some[measurement.Amount](measurement.MustAmount(0, i.Unit))})
+	testutil.Ok(t, err)
+	reserved, err := stock.ReservedAmount().Convert(measurement.UnitOz)
+	testutil.Ok(t, err)
+	testutil.Equals(t, reserved.Value(), 2.0)
+	testutil.Equals(t, stock.CostUnit, measurement.UnitOz)
+	order := workflowOrder(t, f, d, m)
+	_, err = f.Orders.Complete(ctx, order)
+	testutil.Ok(t, err)
+	stock, err = f.Inventory.Get(ctx, i.ID)
+	testutil.Ok(t, err)
+	remaining, err := stock.Amount.Convert(measurement.UnitOz)
+	testutil.Ok(t, err)
+	testutil.IsTrue(t, math.Abs(remaining.Value()-8) < 1e-9)
+}
+func TestDiscontinuationHonorsAcceptedStockAndDisposalKeepsEvidence(t *testing.T) {
+	t.Parallel()
+	f, i, d, m := workflowFixture(t)
+	ctx := f.OwnerContext()
+	order := workflowOrder(t, f, d, m)
+	_, err := f.Ingredients.Retire(ctx, i.ID, im.Retirement{Reason: "discontinued"})
+	testutil.Ok(t, err)
+	_, err = f.Orders.Complete(ctx, order)
+	testutil.Ok(t, err)
+	stock, err := f.Inventory.Get(ctx, i.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, stock.Status, iv.StatusDiscontinued)
+	_, err = f.Inventory.Dispose(ctx, iv.Disposal{IngredientID: i.ID, Revision: stock.Revision, Amount: stock.Amount, Reason: "discard remaining stock"})
+	testutil.Ok(t, err)
+	history, err := f.Inventory.History(ctx, i.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, history[len(history)-1].After, 0.0)
+}
+func TestStockAndTagEditorsRejectStaleState(t *testing.T) {
+	t.Parallel()
+	f, i, _, _ := workflowFixture(t)
+	ctx := f.OwnerContext()
+	stock, err := f.Inventory.Get(ctx, i.ID)
+	testutil.Ok(t, err)
+	testutil.SetInventory(t, f, workflowStock(i, 8))
+	update := workflowStock(i, 20)
+	update.Revision = stock.Revision
+	_, err = f.Inventory.Set(ctx, &update)
+	testutil.ErrorIsConflict(t, err)
+	before := tag.Tags{}
+	_, err = f.App.Tags.Upsert(ctx, i.EntityUID(), tag.Tag{Key: "new"})
+	testutil.Ok(t, err)
+	_, err = f.App.Tags.Replace(ctx, i.EntityUID(), tag.Tags{{Key: "stale"}}, before)
+	testutil.ErrorIsConflict(t, err)
 }

@@ -7,6 +7,8 @@ import (
 )
 
 type IngredientDeleted struct {
+	Withdraw         bool
+	Reason           string
 	Ingredient       models.Ingredient
 	DeletedAt        time.Time
 	Replacement      *models.Ingredient

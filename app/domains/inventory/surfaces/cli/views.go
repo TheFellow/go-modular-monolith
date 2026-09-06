@@ -16,6 +16,9 @@ import (
 )
 
 type InventoryRow struct {
+	Status       string               `table:"STATUS" json:"status"`
+	CostUnit     string               `table:"COST_UNIT" json:"cost_unit"`
+	Revision     uint64               `table:"-" json:"revision"`
 	ID           string               `table:"ID" json:"id"`
 	IngredientID string               `table:"INGREDIENT_ID" json:"ingredient_id"`
 	Quantity     Quantity             `table:"QUANTITY" json:"quantity"`
@@ -28,6 +31,8 @@ type InventoryRow struct {
 }
 
 type InventoryInput struct {
+	Revision     *uint64  `json:"revision,omitempty"`
+	CostUnit     string   `json:"cost_unit,omitempty"`
 	IngredientID string   `json:"ingredient_id"`
 	Quantity     *float64 `json:"quantity"`
 	Unit         string   `json:"unit,omitempty"`
@@ -35,6 +40,8 @@ type InventoryInput struct {
 }
 
 type InventoryPatch struct {
+	Revision     uint64   `json:"revision,omitempty"`
+	CostUnit     string   `json:"cost_unit,omitempty"`
 	IngredientID string   `json:"ingredient_id"`
 	Delta        *float64 `json:"delta,omitempty"`
 	Reason       string   `json:"reason"`
@@ -50,6 +57,7 @@ func ToInventoryRow(s *models.Inventory) InventoryRow {
 		costPerUnit = cost.String()
 	}
 	return InventoryRow{
+		Status: string(s.Status), CostUnit: string(s.CostUnit), Revision: s.Revision,
 		ID:           s.ID.String(),
 		IngredientID: s.IngredientID.String(),
 		Quantity:     Quantity(s.Amount.Value()),

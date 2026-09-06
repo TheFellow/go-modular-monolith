@@ -19,7 +19,7 @@ func (d *DAO) Get(ctx store.Context, ingredientID entity.IngredientID) (*models.
 		if err := tx.Get(&row); err != nil {
 			return err
 		}
-		reserved, err = reservedQuantityTx(tx, row.IngredientID)
+		reserved, err = reservedQuantityTx(tx, row.IngredientID, measurement.Unit(row.Unit))
 		if err != nil {
 			return err
 		}
@@ -29,9 +29,15 @@ func (d *DAO) Get(ctx store.Context, ingredientID entity.IngredientID) (*models.
 	if err != nil {
 		return nil, store.MapError(err, "stock for ingredient %s not found", ingredientID.String())
 	}
-	stock := toModel(row)
+	stock, err := toModel(row)
+	if err != nil {
+		return nil, err
+	}
 	if reserved > 0 {
-		stock.Reserved = measurement.MustAmount(reserved, stock.Amount.Unit())
+		stock.Reserved, err = measurement.MustAmount(reserved, measurement.Unit(row.Unit)).Convert(stock.Amount.Unit())
+		if err != nil {
+			return nil, err
+		}
 	}
 	stock.Tags = tagsByTarget[stock.EntityUID()]
 	return &stock, nil

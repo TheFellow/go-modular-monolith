@@ -74,6 +74,7 @@ func TestOrders_PlaceGetCancelAndComplete(t *testing.T) {
 	wantStock.Amount = measurement.MustAmount(8, base.Unit)
 	wantStock.LastUpdated = stock.LastUpdated
 	wantStock.Revision++
+	wantStock.Reason = "order completed " + completedOrder.ID.String()
 	testutil.Equals(t, stock, &wantStock)
 	count, err = f.Orders.Count(ctx, orders.ListRequest{})
 	testutil.Ok(t, err)

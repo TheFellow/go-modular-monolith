@@ -26,6 +26,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 		Name:  "inventory",
 		Usage: "Manage ingredient stock",
 		Commands: []*cli.Command{
+			c.disposalCommand(), c.dispositionCommand("quarantine", true), c.dispositionCommand("release", false), c.stockHistoryCommand(),
 			{
 				Name:  "list",
 				Usage: "List stock levels",
@@ -96,6 +97,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					clitoolkit.StdinFlag,
 					clitoolkit.FileFlag,
 					&cli.StringFlag{Name: "ingredient-id", Usage: "Ingredient ID"},
+					&cli.Uint64Flag{Name: "revision", Usage: "Expected stock revision"},
 					&cli.StringFlag{Name: "delta", Usage: "Delta (+/-) in ingredient unit"},
 					&cli.StringFlag{
 						Name:    "reason",
@@ -171,6 +173,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						}
 
 						patch = &inventorymodels.Patch{
+							Revision: input.Revision, CostUnit: measurement.Unit(input.CostUnit),
 							IngredientID: parsedIngredientID,
 							Delta:        delta,
 							CostPerUnit:  cost,
@@ -229,6 +232,9 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
+						if cmd.IsSet("revision") {
+							patch.Revision = cmd.Uint64("revision")
+						}
 						return c.app.Inventory.Adjust(ctx, patch)
 					})
 					if err != nil {
@@ -252,6 +258,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					clitoolkit.StdinFlag,
 					clitoolkit.FileFlag,
 					&cli.StringFlag{Name: "ingredient-id", Usage: "Ingredient ID"},
+					&cli.Uint64Flag{Name: "revision", Usage: "Expected stock revision"},
 					&cli.Float64Flag{Name: "quantity", Usage: "Quantity in ingredient unit"},
 					&cli.StringFlag{
 						Name:  "cost-per-unit",
@@ -264,11 +271,15 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					}
 
 					var update *inventorymodels.Update
+					var expectedRevision *uint64
+					preserveCost := false
 					if cmd.Bool("stdin") || strings.TrimSpace(cmd.String("file")) != "" {
 						input, err := clitoolkit.ReadJSONInput[inventorycli.InventoryInput](cmd)
 						if err != nil {
 							return err
 						}
+						expectedRevision = input.Revision
+						preserveCost = strings.TrimSpace(input.CostPerUnit) == ""
 						if strings.TrimSpace(input.IngredientID) == "" {
 							return errors.Invalidf("ingredient_id is required")
 						}
@@ -298,6 +309,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 							return err
 						}
 						update = &inventorymodels.Update{
+							CostUnit:     measurement.Unit(input.CostUnit),
 							IngredientID: parsedIngredientID,
 							Amount:       amount,
 							CostPerUnit:  cost,
@@ -336,6 +348,21 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						}
 					}
 
+					current, loadErr := c.app.Inventory.Get(ctx, update.IngredientID)
+					if loadErr == nil {
+						update.Revision = current.Revision
+						if preserveCost || ((!cmd.Bool("stdin") && cmd.String("file") == "") && strings.TrimSpace(cmd.String("cost-per-unit")) == "") {
+							update.CostUnit = current.CostUnit
+						}
+					} else if !errors.IsNotFound(loadErr) {
+						return loadErr
+					}
+					if expectedRevision != nil {
+						update.Revision = *expectedRevision
+					}
+					if cmd.IsSet("revision") {
+						update.Revision = cmd.Uint64("revision")
+					}
 					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
 						return c.app.Inventory.Set(ctx, update)
 					})

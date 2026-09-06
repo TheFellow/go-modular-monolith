@@ -7,13 +7,18 @@ import (
 )
 
 type StockRow struct {
-	IngredientID string
-	Revision     uint64 `json:"-" store:"revision"`
-	InventoryID  string `store:"index"`
-	Quantity     float64
-	Unit         string
-	CostPerUnit  *money.Price
-	LastUpdated  time.Time `store:"index"`
+	IngredientID   string
+	IngredientName string
+	Status         string
+	Reason         string
+	Revision       uint64 `json:"-" store:"revision"`
+	InventoryID    string `store:"index"`
+	Quantity       float64
+	DisplayUnit    string
+	CostUnit       string
+	Unit           string
+	CostPerUnit    *money.Price
+	LastUpdated    time.Time `store:"index"`
 }
 
 // ReservationRow is owned by Inventory. OrderID is an external correlation

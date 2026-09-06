@@ -10,6 +10,7 @@ import (
 )
 
 type Reservation struct {
+	Existing     bool
 	OrderID      entity.OrderID
 	IngredientID entity.IngredientID
 	Amount       measurement.Amount
@@ -25,6 +26,9 @@ func (d *DAO) Reserve(ctx store.Context, reservation Reservation) error {
 		if err := tx.Get(&stock); err != nil {
 			return store.MapError(err, "stock for ingredient %s not found", reservation.IngredientID.String())
 		}
+		if stock.Status != "" && stock.Status != "active" && (stock.Status != "discontinued" || !reservation.Existing) {
+			return errors.FailedPreconditionf("ingredient %s stock is %s", reservation.IngredientID.String(), stock.Status)
+		}
 		requested, err := reservation.Amount.Convert(measurement.Unit(stock.Unit))
 		if err != nil {
 			return err
@@ -35,7 +39,15 @@ func (d *DAO) Reserve(ctx store.Context, reservation Reservation) error {
 		}
 		reserved := 0.0
 		for _, row := range rows {
-			reserved += row.Quantity
+			amount, err := measurement.NewAmount(row.Quantity, measurement.Unit(row.Unit))
+			if err != nil {
+				return err
+			}
+			amount, err = amount.Convert(measurement.Unit(stock.Unit))
+			if err != nil {
+				return err
+			}
+			reserved += amount.Value()
 		}
 		if stock.Quantity-reserved < requested.Value() {
 			return errors.FailedPreconditionf("insufficient available stock for ingredient %s: need %s, available %g %s", reservation.IngredientID.String(), requested.String(), stock.Quantity-reserved, stock.Unit)
@@ -87,28 +99,25 @@ func (d *DAO) ReservedAmount(ctx store.Context, ingredientID entity.IngredientID
 	if err != nil {
 		return nil, err
 	}
-	var quantity float64
-	err = d.store.ReadContext(ctx, func(tx *store.Tx) error {
-		rows, err := store.QueryTx[ReservationRow](tx).FilterEqual("IngredientID", ingredientID.String()).List()
-		if err != nil {
-			return err
-		}
-		for _, row := range rows {
-			quantity += row.Quantity
-		}
-		return nil
-	})
-	return measurement.MustAmount(quantity, stock.Amount.Unit()), store.MapError(err, "sum reservations")
+	return stock.ReservedAmount(), nil
 }
 
-func reservedQuantityTx(tx *store.Tx, ingredientID string) (float64, error) {
+func reservedQuantityTx(tx *store.Tx, ingredientID string, unit measurement.Unit) (float64, error) {
 	rows, err := store.QueryTx[ReservationRow](tx).FilterEqual("IngredientID", ingredientID).List()
 	if err != nil {
 		return 0, err
 	}
 	var quantity float64
 	for _, row := range rows {
-		quantity += row.Quantity
+		amount, err := measurement.NewAmount(row.Quantity, measurement.Unit(row.Unit))
+		if err != nil {
+			return 0, err
+		}
+		amount, err = amount.Convert(unit)
+		if err != nil {
+			return 0, err
+		}
+		quantity += amount.Value()
 	}
 	return quantity, nil
 }

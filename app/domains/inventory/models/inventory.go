@@ -15,26 +15,33 @@ import (
 const InventoryEntityType = entity.TypeInventory
 
 type Inventory struct {
-	ID           entity.InventoryID
-	Revision     uint64 `json:"revision"`
-	IngredientID entity.IngredientID
-	Amount       measurement.Amount
-	Reserved     measurement.Amount
-	CostPerUnit  optional.Value[money.Price]
-	LastUpdated  time.Time
-	Tags         tag.Tags
+	IngredientName string
+	Status         Status
+	Reason         string
+	CostUnit       measurement.Unit // Unit to which CostPerUnit applies; independent of display units.
+	ID             entity.InventoryID
+	Revision       uint64 `json:"revision"`
+	IngredientID   entity.IngredientID
+	Amount         measurement.Amount
+	Reserved       measurement.Amount
+	CostPerUnit    optional.Value[money.Price]
+	LastUpdated    time.Time
+	Tags           tag.Tags
 }
 
 func (s Inventory) Available() measurement.Amount {
 	if s.Amount == nil {
 		return nil
 	}
+	if s.Status != "" && s.Status != StatusActive {
+		return measurement.MustAmount(0, s.Amount.Unit())
+	}
 	if s.Reserved == nil {
 		return s.Amount
 	}
 	reserved, err := s.Reserved.Convert(s.Amount.Unit())
 	if err != nil {
-		return s.Amount
+		return measurement.MustAmount(0, s.Amount.Unit())
 	}
 	available, err := s.Amount.Sub(reserved)
 	if err != nil || available.Value() < 0 {
@@ -73,4 +80,13 @@ const (
 	ReasonSpilled   AdjustmentReason = "spilled"
 	ReasonExpired   AdjustmentReason = "expired"
 	ReasonCorrected AdjustmentReason = "corrected"
+)
+
+type Status string
+
+const (
+	StatusActive       Status = "active"
+	StatusDiscontinued Status = "discontinued"
+	StatusQuarantined  Status = "quarantined"
+	StatusDisposed     Status = "disposed"
 )
