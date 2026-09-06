@@ -1,6 +1,10 @@
 package app_test
 
 import (
+	"math"
+	"reflect"
+	"testing"
+
 	dm "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	im "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	ih "github.com/TheFellow/go-modular-monolith/app/domains/inventory/handlers"
@@ -19,9 +23,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
-	"math"
-	"reflect"
-	"testing"
 )
 
 func workflowFixture(t *testing.T) (*testutil.Fixture, *im.Ingredient, *dm.Drink, *mm.Menu) {
@@ -134,6 +135,30 @@ func TestIDSubstitutionSurvivesRenameAndTracksStock(t *testing.T) {
 	got, err := f.Menus.Get(ctx, m.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, got.Items[0].Availability, mm.AvailabilityUnavailable)
+}
+func TestAmendmentPreservesAcceptanceAndMovesReservations(t *testing.T) {
+	t.Parallel()
+	f, i, d, m := workflowFixture(t)
+	ctx := f.OwnerContext()
+	order := workflowOrder(t, f, d, m)
+	replacement := testutil.CreateIngredient(t, f, im.Ingredient{Name: "Replacement", Category: i.Category, Unit: i.Unit})
+	testutil.SetInventory(t, f, workflowStock(replacement, 10))
+	_, err := f.Ingredients.Retire(ctx, i.ID, im.Retirement{Withdraw: true, ReplacementID: replacement.ID, Reason: "withdraw original"})
+	testutil.Ok(t, err)
+	blocked, err := f.Orders.Get(ctx, order.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, blocked.Status, om.OrderStatusBlocked)
+	amended, err := f.Orders.Amend(ctx, om.Amendment{OrderID: order.ID, Revision: blocked.Revision, Reason: "approved replacement", Replacements: []om.Replacement{{OriginalID: i.ID, ReplacementID: replacement.ID, Ratio: 1}}})
+	testutil.Ok(t, err)
+	testutil.Equals(t, amended.Acceptance, order.Acceptance)
+	testutil.Equals(t, len(amended.Amendments), 1)
+	testutil.Equals(t, amended.IngredientUsage[0].IngredientID, replacement.ID)
+	oldStock, err := f.Inventory.Get(ctx, i.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, oldStock.ReservedAmount().Value(), 0.0)
+	testutil.Equals(t, oldStock.Amount.Value(), 10.0)
+	_, err = f.Orders.Complete(ctx, amended)
+	testutil.Ok(t, err)
 }
 func TestDiscontinuationHonorsAcceptedStockAndDisposalKeepsEvidence(t *testing.T) {
 	t.Parallel()

@@ -22,6 +22,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 		Name:  "orders",
 		Usage: "Manage orders",
 		Commands: []*cli.Command{
+			c.orderAmendCommand(), c.orderAmendBatchCommand(),
 			{
 				Name:  "place",
 				Usage: "Place an order",

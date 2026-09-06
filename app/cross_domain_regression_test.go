@@ -21,6 +21,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+	"slices"
 	"testing"
 	"time"
 )
@@ -92,6 +93,71 @@ func TestCancellationPreparationRecoversPeersInEveryHandlerOrder(t *testing.T) {
 		testutil.Equals(t, stock.ReservedAmount().Value(), 2.0)
 		testutil.Ok(t, f.Store.Rollback(tx))
 	}
+}
+
+func TestFailedSelectedAmendmentsRollBackAllEffectsAndPersistFailure(t *testing.T) {
+	t.Parallel()
+	f, i, d, m := workflowFixture(t)
+	ctx := f.OwnerContext()
+	a := workflowOrder(t, f, d, m)
+	b := workflowOrder(t, f, d, m)
+	replacement := testutil.CreateIngredient(t, f, im.Ingredient{Name: "Scarce replacement", Category: i.Category, Unit: i.Unit})
+	testutil.SetInventory(t, f, workflowStock(replacement, 2))
+	request := func(o *om.Order) om.Amendment {
+		return om.Amendment{OrderID: o.ID, Revision: o.Revision, Reason: "approved", Replacements: []om.Replacement{{OriginalID: i.ID, ReplacementID: replacement.ID, Ratio: 1}}}
+	}
+	before, err := f.App.Audit.Count(ctx, audit.ListRequest{})
+	testutil.Ok(t, err)
+	_, err = f.App.RetireIngredient(ctx, i.ID, im.Retirement{ReplacementID: replacement.ID}, []om.Amendment{request(a), request(b)})
+	testutil.ErrorIsFailedPrecondition(t, err)
+	got, err := f.Orders.Get(ctx, a.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, got, a)
+	stock, err := f.Inventory.Get(ctx, replacement.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, stock.ReservedAmount().Value(), 0.0)
+	_, err = f.Ingredients.Get(ctx, i.ID)
+	testutil.Ok(t, err)
+	after, err := f.App.Audit.Count(ctx, audit.ListRequest{})
+	testutil.Ok(t, err)
+	testutil.Equals(t, after, before+1)
+	page, err := f.App.Audit.List(ctx, audit.ListRequest{})
+	testutil.Ok(t, err)
+	failed := page.Items[0]
+	for _, entry := range page.Items {
+		if !entry.Success && entry.WorkflowID != "" {
+			failed = entry
+			break
+		}
+	}
+	testutil.IsFalse(t, failed.Success)
+	testutil.IsTrue(t, failed.WorkflowID != "")
+	testutil.IsTrue(t, len(failed.Effects) > 0)
+	testutil.IsTrue(t, slices.Contains(failed.Touches, a.ID.EntityUID()))
+}
+
+func TestAtomicRetirementAmendmentKeepsAcceptanceAndApprovedPreparation(t *testing.T) {
+	t.Parallel()
+	f, i, d, m := workflowFixture(t)
+	ctx := f.OwnerContext()
+	order := workflowOrder(t, f, d, m)
+	replacement := testutil.CreateIngredient(t, f, im.Ingredient{Name: "Approved", Category: i.Category, Unit: i.Unit})
+	testutil.SetInventory(t, f, workflowStock(replacement, 10))
+	results, err := f.App.RetireIngredient(ctx, i.ID, im.Retirement{ReplacementID: replacement.ID, Ratio: .5, Reason: "retire original"}, []om.Amendment{{OrderID: order.ID, Revision: order.Revision, Reason: "customer approved", Replacements: []om.Replacement{{OriginalID: i.ID, ReplacementID: replacement.ID, Ratio: .5}}, Preparation: []om.PreparationAmendment{{DrinkID: d.ID, Steps: []string{"Revised instructions"}}}}})
+	testutil.Ok(t, err)
+	testutil.Equals(t, len(results), 1)
+	current, err := f.Orders.Get(ctx, order.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, current.Acceptance, order.Acceptance)
+	testutil.Equals(t, current.Plan[0].Ingredients[0].Ratio, .5)
+	testutil.Equals(t, current.Plan[0].Steps, []string{"Revised instructions"})
+	testutil.Equals(t, current.IngredientUsage[0].Amount.Value(), 1.0)
+	_, err = f.Ingredients.Get(ctx, i.ID)
+	testutil.ErrorIsNotFound(t, err)
+	_, err = f.Orders.Amend(ctx, om.Amendment{OrderID: order.ID, Revision: order.Revision, Reason: "stale"})
+	testutil.ErrorIsConflict(t, err)
+	_, err = f.Orders.Complete(ctx, current)
+	testutil.Ok(t, err)
 }
 
 func TestQuarantineAndReleasePreservePhysicalHistoryAndCatalogRetirement(t *testing.T) {
