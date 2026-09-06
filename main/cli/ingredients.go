@@ -22,6 +22,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 		Name:  "ingredients",
 		Usage: "Manage ingredients",
 		Commands: []*cli.Command{
+			c.substitutionCommand(), c.substitutionsCommand(),
 			{
 				Name:  "list",
 				Usage: "List ingredients",

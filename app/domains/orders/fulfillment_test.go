@@ -29,6 +29,8 @@ func TestCompleteOrderUsesCatalogRatioForExplicitSubstitute(t *testing.T) {
 	substitute := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
 		Name: "Honey Syrup", Category: ingredientsmodels.CategorySyrup, Unit: measurement.UnitOz,
 	})
+	_, ruleErr := f.Ingredients.SetSubstitution(ctx, &ingredientsmodels.SubstitutionRule{IngredientID: primary.ID, SubstituteID: substitute.ID, Ratio: 0.75, QualityImpact: ingredientsmodels.QualityDifferent})
+	testutil.Ok(t, ruleErr)
 	substituteStock := testutil.SetInventory(t, f, fulfillmentStock(substitute, 3))
 	testutil.SetInventory(t, f, fulfillmentStock(primary, 10))
 	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
@@ -85,6 +87,8 @@ func TestCompleteOrderPrefersHigherQualityCatalogSubstitute(t *testing.T) {
 	scotch := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
 		Name: "Scotch", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz,
 	})
+	_, ruleErr := f.Ingredients.SetSubstitution(ctx, &ingredientsmodels.SubstitutionRule{IngredientID: primary.ID, SubstituteID: rye.ID, Ratio: 1, QualityImpact: ingredientsmodels.QualityEquivalent})
+	testutil.Ok(t, ruleErr)
 	ryeStock := testutil.SetInventory(t, f, fulfillmentStock(rye, 5))
 	scotchStock := testutil.SetInventory(t, f, fulfillmentStock(scotch, 10))
 	testutil.SetInventory(t, f, fulfillmentStock(primary, 10))

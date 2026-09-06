@@ -136,6 +136,20 @@ func run() error {
 	}
 	fmt.Printf("  Created %d ingredients\n", len(ingredients))
 
+	// Seed catalog rules using seed keys, then persist only stable ingredient IDs.
+	for _, pair := range [][2]string{{"lime_juice", "lemon_juice"}, {"lemon_juice", "lime_juice"}} {
+		original, ok := ingredientIDs[pair[0]]
+		if !ok {
+			continue
+		}
+		substitute, ok := ingredientIDs[pair[1]]
+		if !ok {
+			continue
+		}
+		if _, err := a.Ingredients.SetSubstitution(ctx, &ingredientmodels.SubstitutionRule{IngredientID: original, SubstituteID: substitute, Ratio: 1, QualityImpact: ingredientmodels.QualitySimilar}); err != nil {
+			return err
+		}
+	}
 	// Set inventory levels
 	fmt.Println()
 	fmt.Println("Setting inventory levels...")
