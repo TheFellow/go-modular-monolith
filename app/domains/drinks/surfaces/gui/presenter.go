@@ -374,6 +374,9 @@ func (p *Presenter) Save() bool {
 		return false
 	}
 	mode := p.state.Mode
+	if mode != Creating && p.state.Selected != nil {
+		drink.Tags = p.state.Selected.Tags
+	}
 	var desired *tag.Tags
 	if p.state.Form.ReplaceTags {
 		values, parseErr := tag.ParseCollection(p.state.Form.Tags)
@@ -387,7 +390,7 @@ func (p *Presenter) Save() bool {
 		if mode == Creating {
 			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Drink, error) { return p.app.Drinks.Create(ctx, drink) })
 		} else {
-			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Drink, error) { return p.app.Drinks.Update(ctx, drink) })
+			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Drink, error) { return p.app.Drinks.Update(ctx, drink) }, drink.Tags)
 		}
 		return err
 	})
@@ -449,7 +452,10 @@ func (p *Presenter) saveTags() bool {
 		p.fail(err)
 		return false
 	}
-	return p.mutate(func() error { _, err := p.app.Tags.Replace(p.app.Context(), target.EntityUID(), tags); return err })
+	return p.mutate(func() error {
+		_, err := p.app.Tags.Replace(p.app.Context(), target.EntityUID(), tags, target.Tags)
+		return err
+	})
 }
 func (p *Presenter) mutate(work func() error) bool {
 	if p.submit.Active() {

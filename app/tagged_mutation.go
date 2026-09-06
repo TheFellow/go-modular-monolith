@@ -1,9 +1,9 @@
 package app
 
 import (
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -27,6 +27,7 @@ func RunTaggedMutation[T TaggableEntity](
 	ctx *middleware.Context,
 	desired *tag.Tags,
 	mutate func(*middleware.Context) (T, error),
+	expected ...tag.Tags,
 ) (T, error) {
 	var zero T
 	if desired == nil {
@@ -43,7 +44,7 @@ func RunTaggedMutation[T TaggableEntity](
 		if err != nil {
 			return err
 		}
-		replaced, err := application.Tags.Replace(txCtx, result.EntityUID(), *desired)
+		replaced, err := application.Tags.Replace(txCtx, result.EntityUID(), *desired, expected...)
 		if err != nil {
 			return err
 		}
@@ -61,9 +62,7 @@ func RunTaggedMutation[T TaggableEntity](
 		return result, nil
 	}
 
-	err := application.Store.Write(ctx, func(tx *store.Tx) error {
-		return compose(ctx.WithTransaction(tx))
-	})
+	err := middleware.RunWorkflow(ctx, application.Store, "tagged_mutation", audit.NewWriter(application.Store).RecordActivity, compose)
 	if err != nil {
 		return zero, err
 	}

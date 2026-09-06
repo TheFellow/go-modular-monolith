@@ -405,7 +405,7 @@ func (p *Presenter) Submit(form Form) bool {
 			}
 			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Ingredient, error) {
 				return p.app.Ingredients.Update(ctx, &models.Ingredient{ID: selected.ID, Revision: selected.Revision, Name: strings.TrimSpace(form.Name), Category: category, Unit: unit, Description: strings.TrimSpace(form.Description)})
-			})
+			}, selected.Tags)
 		case Tags:
 			if selected == nil {
 				return errors.Invalidf("ingredient is required")
@@ -413,7 +413,7 @@ func (p *Presenter) Submit(form Form) bool {
 			var desired tag.Tags
 			desired, err = tag.ParseCollection(form.Tags)
 			if err == nil {
-				_, err = p.app.Tags.Replace(p.app.Context(), selected.EntityUID(), desired)
+				_, err = p.app.Tags.Replace(p.app.Context(), selected.EntityUID(), desired, selected.Tags)
 			}
 		case Browse, Viewing:
 			err = errors.FailedPreconditionf("ingredient form is not active")

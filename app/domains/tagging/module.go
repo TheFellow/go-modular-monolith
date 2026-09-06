@@ -1,6 +1,7 @@
 package tagging
 
 import (
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"sort"
 	"strings"
 
@@ -58,7 +59,7 @@ func (m *Module) Upsert(ctx *middleware.Context, target cedar.EntityUID, value t
 		func(ctx *middleware.Context) (targetState, error) {
 			return loadState(ctx, registration, target)
 		},
-		func(ctx *middleware.Context, _ targetState) (Result, error) {
+		func(ctx *middleware.Context, before targetState) (Result, error) {
 			changed, err := m.repository.Upsert(ctx, target, value)
 			if err != nil {
 				return Result{}, err
@@ -68,7 +69,7 @@ func (m *Module) Upsert(ctx *middleware.Context, target cedar.EntityUID, value t
 				return Result{}, err
 			}
 			if changed {
-				ctx.TouchEntity(target)
+				ctx.RecordEffect("tags_changed", target, middlewareevents.Change{Field: "tags", Before: before.tags.Canonical().String(), After: state.tags.Canonical().String()})
 			}
 			return resultFromState(state, changed), nil
 		},
@@ -87,7 +88,7 @@ func (m *Module) Set(ctx *middleware.Context, target cedar.EntityUID, value tag.
 // after states. The replacement is recorded as one stable tag activity;
 // untag is an additional authorization requirement rather than a second
 // activity.
-func (m *Module) Replace(ctx *middleware.Context, target cedar.EntityUID, desired tag.Tags) (Result, error) {
+func (m *Module) Replace(ctx *middleware.Context, target cedar.EntityUID, desired tag.Tags, expected ...tag.Tags) (Result, error) {
 	registration, err := m.resolve(target)
 	if err != nil {
 		return Result{}, err
@@ -99,9 +100,16 @@ func (m *Module) Replace(ctx *middleware.Context, target cedar.EntityUID, desire
 
 	return m.pipeline.LoadCommandActions(ctx, registration.TagAction,
 		func(ctx *middleware.Context) (targetState, error) {
-			return loadState(ctx, registration, target)
+			state, err := loadState(ctx, registration, target)
+			if err != nil {
+				return state, err
+			}
+			if len(expected) > 0 && state.tags.Canonical().String() != expected[0].Canonical().String() {
+				return state, errors.Conflictf("tags changed; reload before replacing the complete set")
+			}
+			return state, nil
 		},
-		func(ctx *middleware.Context, _ targetState) (Result, error) {
+		func(ctx *middleware.Context, before targetState) (Result, error) {
 			changed, err := m.repository.Replace(ctx, target, desired)
 			if err != nil {
 				return Result{}, err
@@ -111,7 +119,7 @@ func (m *Module) Replace(ctx *middleware.Context, target cedar.EntityUID, desire
 				return Result{}, err
 			}
 			if changed {
-				ctx.TouchEntity(target)
+				ctx.RecordEffect("tags_changed", target, middlewareevents.Change{Field: "tags", Before: before.tags.Canonical().String(), After: state.tags.Canonical().String()})
 			}
 			return resultFromState(state, changed), nil
 		},
@@ -135,7 +143,7 @@ func (m *Module) Remove(ctx *middleware.Context, target cedar.EntityUID, key str
 		func(ctx *middleware.Context) (targetState, error) {
 			return loadState(ctx, registration, target)
 		},
-		func(ctx *middleware.Context, _ targetState) (Result, error) {
+		func(ctx *middleware.Context, before targetState) (Result, error) {
 			changed, err := m.repository.Remove(ctx, target, key)
 			if err != nil {
 				return Result{}, err
@@ -145,7 +153,7 @@ func (m *Module) Remove(ctx *middleware.Context, target cedar.EntityUID, key str
 				return Result{}, err
 			}
 			if changed {
-				ctx.TouchEntity(target)
+				ctx.RecordEffect("tags_changed", target, middlewareevents.Change{Field: "tags", Before: before.tags.Canonical().String(), After: state.tags.Canonical().String()})
 			}
 			return resultFromState(state, changed), nil
 		},
