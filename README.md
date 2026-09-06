@@ -8,10 +8,11 @@ events, and presentation adapters explicit. The same application is exposed as a
 TUI, and Fyne desktop client.
 
 The sample is intentionally stateful rather than a collection of isolated CRUD screens. Orders
-reserve Inventory, stock changes can block Orders and degrade published Menus, and ingredient
-retirement either puts dependent Drinks under review or explicitly replaces compatible recipe
-references. Draft publication consults a queryable readiness report, so the reciprocal event and
-consistency boundaries remain visible across all three front ends.
+reserve Inventory, stock changes can block Orders and degrade draft and published Menus, and
+ingredient retirement updates future recipes while retaining stock and accepted order history.
+Explicit amendments change an order's approved fulfillment without rewriting its original
+acceptance. Stateful handlers prepare dependent changes before writing, so the entire workflow and
+its audit evidence commit together without depending on sibling handler order.
 
 ## Five-minute start
 
@@ -25,14 +26,17 @@ go run ./main/tui
 go run ./main/gui
 ```
 
-All entrypoints use `data/mixology.db` by default. Override it with `--db` or `MIXOLOGY_DB`.
+All entrypoints use `data/mixology.db` by default. Override it with `MIXOLOGY_DB`; interactive
+entrypoints also accept `--db`.
 CLI, TUI, and GUI processes on the same machine may use that local file concurrently; SQLite
 serializes writes and waits up to 10 seconds for a busy writer. The GUI and TUI automatically
 re-query after another connection commits; stale edits are rejected with an optimistic-concurrency
 conflict rather than overwriting newer data.
-Database files created by the former bstore backend are incompatible; reseed them or export/import
-their data with the previous application version before opening this version.
-They also share actor, logging, and metrics options; run any entrypoint with `--help` for the full
+These domain changes require a freshly seeded teaching database, including when upgrading from an
+older SQLite checkout. There is no migration or historical backfill for canonical stock units and
+order acceptance snapshots. Use a new `MIXOLOGY_DB` path and run the seeder; see the
+[data reset policy](docs/development.md#teaching-data-and-schema-changes).
+Interactive entrypoints also share actor, logging, and metrics options; run any entrypoint with `--help` for the full
 set. The desktop client has additional [native prerequisites](main/gui/README.md#run-from-source).
 
 For a useful first code trace, start at one executable, follow its domain surface adapter, then
@@ -62,6 +66,7 @@ authorization, transaction, event, and audit pipelines against an isolated datab
 | If you want to…                                                                | Start here                                                                         |
 | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | Understand bounded contexts, pipelines, events, authz, and enforced boundaries | [Architecture](docs/architecture.md)                                               |
+| Trace atomic retirement, amendments, history, and concurrency decisions       | [Transactional workflows](docs/transactional-workflows.md)                         |
 | Use fulfillment, retirement, filters, tags, audit, IDs, or personas            | [Application features](docs/features.md)                                           |
 | Work on an executable and its composition layer                                | [CLI](main/cli/README.md), [TUI](main/tui/README.md), or [GUI](main/gui/README.md) |
 | Reuse or extend presentation mechanics                                         | [Presentation toolkits](pkg/toolkits/readme.md)                                    |

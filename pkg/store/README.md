@@ -4,9 +4,10 @@
 [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite), a CGO-free SQLite driver, and exposes
 only application-owned `Store`, `Tx`, and typed `Query` APIs.
 
-> Existing bstore/bbolt database files are not SQLite files and cannot be opened after this change.
-> Reseed disposable data, or export it with the previous application version and import it into a
-> fresh SQLite database before upgrading. Keep a backup until the imported data is verified.
+This teaching application requires fresh seed data for its new domain contracts. Store bootstrap
+migrations do not backfill canonical stock units or order acceptance history in older SQLite
+records. Legacy bstore/bbolt files are also incompatible. See the
+[data reset policy](../../docs/development.md#teaching-data-and-schema-changes).
 
 ## Deployment and concurrency
 
@@ -52,12 +53,21 @@ For a compound invariant, name all fields on one tag, for example
 `store:"unique=EntityType+EntityID+Key"`. These are database constraints, not check-then-insert
 conventions, so competing writers cannot violate them.
 
-The `revision` tag opts a row into optimistic concurrency. Insert requires revision zero and sets it
-to one. Reads populate the current revision. Update and delete include that revision in their SQL
-predicate; update increments it atomically, while a stale predicate returns a typed conflict. Public
-domain models and presentation DTOs must round-trip the token rather than calculating or comparing
-it themselves. This keeps the invariant at the persistence boundary and prevents a check-then-write
-race between processes.
+The first struct field is the record key. Keep it first when adding metadata: Inventory uses
+`IngredientID` as its stock-row key even though its public model also has an Inventory ID.
+
+Every registered domain row has a `store:"revision"` field, enforced by architecture tests. Insert
+requires revision zero for revisioned rows and sets it to one. Reads populate the current revision.
+Every update and delete requires a nonzero revision and includes it in the SQL predicate; an update
+increments it atomically, while a stale predicate returns a typed conflict. There is no unchecked
+update/delete path for a row missing the tag. Public models and presentation DTOs round-trip the
+token; domain commands can reject stale request tokens early, but SQL still checks every save.
+
+Catalog soft deletion is a revision-checked update of a private row. Public active models do not
+expose `DeletedAt`; inventory disposition and order terminal status are explicit domain state.
+Audit entries and stock movements are append-only. Orders retain immutable acceptance and append
+amendment history within their own row, rather than relying on the current catalog to recreate
+historical values.
 
 `ChangeMonitor.Signals` is an edge notification, while `ChangeMonitor.Epoch` is its monotonically
 increasing process-local level. The default 250 ms poll is intended for responsive thick clients,
@@ -89,6 +99,8 @@ become internal errors.
 
 ## Migration policy
 
-Add ordered, idempotent statements to `Store.migrate` and record a new integer version in
-`schema_migrations`. Never rewrite an already-released migration. Domain data backfills should run
-after registration and remain safe to execute more than once.
+The store's existing bootstrap migrations are ordered in `Store.migrate` and recorded in
+`schema_migrations`. They concern the generic record store, not a migration of every domain's JSON
+shape. This PR deliberately resets teaching data instead of adding domain backfills. A future
+compatibility requirement would need explicit, tested domain transformations; opening an older
+database is not evidence that its historical values can be reconstructed correctly.

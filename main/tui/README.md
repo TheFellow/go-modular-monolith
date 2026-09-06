@@ -32,7 +32,7 @@ graph TD
 - Root Bubble Tea model (`main/tui/app.go`).
 - Always starts on the dashboard.
 - Owns navigation, view caching, and global UI state (help, status, title bar).
-- Uses `app.App` as the single source of truth for authentication.
+- Uses `app.Session` to bind the selected actor and create fresh operation contexts.
 - Converts coalesced SQLite data-version signals into application-layer reloads. Cached views are
   marked stale, and an active input workflow is allowed to finish before it reloads.
 
@@ -114,3 +114,19 @@ for complete-model keyboard, command, render, viewport, and ANSI behavior.
 - Automatic reload commands use request tokens so an older asynchronous result cannot replace a
   newer one. Notifications contain no domain payload and never bypass normal queries.
 - Keep view models small and focused; delegate domain logic to commands/queries.
+
+## Historical details and guarded edits
+
+Order details use accepted names, prices, and recipe snapshots instead of loading today's catalog.
+They show the current approved plan, amendment reasons, and cancellation metadata alongside that
+history. Retained inventory remains visible by its saved ingredient name after catalog retirement,
+with disposition and cost basis shown separately from display quantity. Set/adjust actions are
+disabled for non-active stock.
+
+Editors retain the entity revision and original tag set. `Session.TagReplacer(originalTags)`
+captures the expected complete set for generic tag editors; combined changes pass it through
+`RunTaggedMutation`. A conflict leaves the newer persisted state intact.
+
+The TUI has retirement and ordinary order controls; explicit amendment, quarantine, release, and
+disposal are currently exposed through the [CLI](../cli/README.md#amendments-substitutions-and-stock-history)
+and application API. Their results appear in the TUI after refresh.

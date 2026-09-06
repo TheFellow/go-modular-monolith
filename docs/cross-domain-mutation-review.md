@@ -1,6 +1,8 @@
 # Cross-domain mutation review
 
-Reviewed 2026-09-06 against `bc52eb8`. The findings below preserve the original baseline review. User decisions and implemented behavior are recorded in [Transactional domain workflows](transactional-workflows.md). In particular, the original extra-phase suggestion in #4 was rejected: implementation uses the existing stateful `Handling`/`Handle` protocol. Schema changes use fresh seed data with no migration.
+Reviewed 2026-09-06 against `bc52eb8`. The findings below preserve the original baseline review. User decisions and implemented behavior are recorded in [Transactional domain workflows](transactional-workflows.md). In particular, the original extra-phase suggestion in #4 was rejected: implementation uses the existing stateful `Handling`/`Handle` protocol. Schema changes use fresh seed data with no migration. Evidence links are pinned to the reviewed commit so they remain accurate after the implementation changes below.
+
+## Baseline findings (superseded by the workflow record)
 
 The transaction foundation is sound: command writes, leaf reactions, and successful activity records share one SQLite transaction. The main gaps are incomplete dependency discovery, reactions that depend on sibling handler order, mutable catalog data being used to render historical orders, and lifecycle policy that differs between ingredients, drinks, menus, and stock.
 
@@ -27,7 +29,7 @@ Complexity: **S** = localized change and integration tests; **M** = multiple dom
 | 15 | Shortage handling blocks every order rather than allocating remaining stock | Medium | M–L | Decision |
 | 16 | Optional ingredients are omitted from all reservation/consumption accounting | Medium | M | Decision |
 
-The following map covers the current mutation families across all seven contexts. A missing event alone is not a defect; reactions are needed only where an invariant or deliberate projection depends on the mutation.
+The following map covers the baseline mutation families across all seven contexts. A missing event alone is not a defect; reactions are needed only where an invariant or deliberate projection depends on the mutation.
 
 | Origin / mutation | Current recipients or dependency | Assessment |
 | --- | --- | --- |
@@ -49,7 +51,7 @@ The following map covers the current mutation families across all seven contexts
 
    `Drinks.Update` copies the submitted model, including `DeletedAt`. An ordinary update can therefore retire a drink without `DrinkDeleted` or its menu-removal behavior. `Orders.Place` likewise copies `DeletedAt` and `BlockedIngredients` from caller input. A placed order with `DeletedAt` set reserves stock but cannot subsequently be fetched or cancelled through the normal facade.
 
-   **Evidence:** [drink update](../app/domains/drinks/internal/commands/update.go), [order placement](../app/domains/orders/internal/commands/place.go). Both deletion-field cases were reproduced through the real application pipeline.
+   **Evidence:** [drink update](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/drinks/internal/commands/update.go), [order placement](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/orders/internal/commands/place.go). Both deletion-field cases were reproduced through the real application pipeline.
 
    **Implement:** separate command input from persisted entity state, or explicitly allowlist writable fields; initialize lifecycle state inside the domain. Apply the same audit to create/update contracts across the catalog. This preserves the existing dedicated lifecycle permissions and events.
 
@@ -59,7 +61,7 @@ The following map covers the current mutation families across all seven contexts
 
    Ingredient update accepts an arbitrary nonempty unit. Inventory does not consume `IngredientUpdated`. A later stock adjustment converts stock to the new catalog unit but reservation sums simply add stored numeric quantities and label the result with the current stock unit. A reproduced example changes 10 oz of stock to 295.74 ml while a 2 oz reservation becomes reported as **2 ml**. `Adjust` also retains the old numeric cost per unit unless a replacement cost is supplied, potentially changing the implied cost basis. Incompatible dimensional changes can make later fulfillment fail.
 
-   **Evidence:** [ingredient update](../app/domains/ingredients/internal/commands/update.go), [inventory adjustment](../app/domains/inventory/internal/commands/adjust.go), [reservation sums](../app/domains/inventory/internal/dao/reservations.go), [inventory hydration](../app/domains/inventory/internal/dao/get.go).
+   **Evidence:** [ingredient update](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/ingredients/internal/commands/update.go), [inventory adjustment](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/inventory/internal/commands/adjust.go), [reservation sums](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/inventory/internal/dao/reservations.go), [inventory hydration](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/inventory/internal/dao/get.go).
 
    **Fix regardless of policy:** validate supported units and convert reservation quantities before aggregation. Never silently relabel quantities or prices. Detect already-mixed rows during migration.
 
@@ -71,7 +73,7 @@ The following map covers the current mutation families across all seven contexts
 
    With two orders reserving 2 oz each and corrected stock of 2 oz, both orders become blocked. Cancelling one leaves the other blocked even though its reservation is now fully backed. Orders reacts to `StockAdjusted` and ingredient retirement, but not cancellation. Requiring a fake stock adjustment to repair this is a missing reaction, not a product choice.
 
-   **Evidence:** [Order handlers](../app/domains/orders/handlers/stock-adjusted.go), [reservation release](../app/domains/inventory/handlers/order-cancelled.go). Reproduced with real commands.
+   **Evidence:** [Order handlers](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/orders/handlers/stock-adjusted.go), [reservation release](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/inventory/handlers/order-cancelled.go). Reproduced with real commands.
 
    **Implement:** reconsider all affected open orders after the reservation change, preserving independent blockers such as another shortage or ingredient retirement. Use the coordination approach in #4. Touch the recovered orders in the cancellation activity.
 
@@ -83,7 +85,7 @@ The following map covers the current mutation families across all seven contexts
 
    Menu order handlers read Inventory after its sibling handler has changed reservations. Menu retirement reads Drinks/Inventory after their sibling handlers have rewritten/deleted data. Preparation snapshots identify affected entities but do not make those final-state reads independent of `Handle` ordering.
 
-   **Evidence:** [generated dispatcher](../pkg/dispatcher/dispatcher_gen.go), [menu reservation reaction](../app/domains/menus/handlers/order-placed.go), [menu retirement reaction](../app/domains/menus/handlers/ingredient-deleted.go). Running the same placement handlers in opposite orders produces `unavailable` versus `available` for a menu whose stock has all been reserved. Current generated order masks the defect.
+   **Evidence:** [generated dispatcher](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/pkg/dispatcher/dispatcher_gen.go), [menu reservation reaction](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/handlers/order-placed.go), [menu retirement reaction](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/handlers/ingredient-deleted.go). Running the same placement handlers in opposite orders produces `unavailable` versus `available` for a menu whose stock has all been reserved. Current generated order masks the defect.
 
    **Recommendation:** use explicit bounded phases inside the same transaction: prepare the affected set, apply domain-owned effects, then refresh dependent projections against final state. Retain leaf handlers and prohibit event cascades; require order independence within each phase. An alternative is a complete prepared effect plan consumed by independent handlers, but it is more complex and risks duplicating domain logic. Sorting handlers by name or hardcoding current order is not sufficient.
 
@@ -95,7 +97,7 @@ The following map covers the current mutation families across all seven contexts
 
    Rules for generated ingredient IDs are resolved from normalized **names**. Renaming or creating an ingredient can therefore change fulfillment behavior without a recipe edit. Normalized-name collisions can resolve to an unintended ingredient. Retiring the original also prevents name-based rule lookup through its normal `Get`, unlike explicit substitute IDs retained in a recipe.
 
-   **Evidence:** [rule resolution](../app/domains/ingredients/queries/substitutions.go), [stock dependency check](../app/domains/menus/handlers/stock-adjusted.go), [recipe dependency query](../app/domains/drinks/internal/dao/list.go). Stale stored availability was reproduced.
+   **Evidence:** [rule resolution](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/ingredients/queries/substitutions.go), [stock dependency check](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/handlers/stock-adjusted.go), [recipe dependency query](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/drinks/internal/dao/list.go). Stale stored availability was reproduced.
 
    **Fix:** expose a single complete dependency contract, including implicit candidates; invalidate all affected menu projections on stock, catalog, and rule changes. Record before/after dependency identity when necessary. Recompute affected draft displays too, or make draft availability explicitly read-time data; current refresh rules differ between retirement and other changes.
 
@@ -107,7 +109,7 @@ The following map covers the current mutation families across all seven contexts
 
    Orders snapshot aggregate actual ingredient usage and names, which is valuable. They do not capture the accepted drink name, recipe/steps, per-item ingredient allocation, original-to-substitute mapping, menu identity/version/name, or agreed price. The TUI order detail loads the current Menu and Drinks; deleting either breaks historical presentation. Renaming a drink changes how an old order is shown. The displayed total is derived from current menu items, not accepted order data. Menu prices are optional and normal AddDrink currently supplies none, so this is a structural gap even before a full pricing workflow exists.
 
-   **Evidence:** [Order model](../app/domains/orders/models/order.go), [snapshot builder](../app/domains/orders/internal/commands/complete.go), [order detail](../app/domains/orders/surfaces/tui/detail_vm.go). Soft-deleted catalog rows remain in storage, but ordinary facade reads exclude them; retained rows alone do not preserve prior versions.
+   **Evidence:** [Order model](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/orders/models/order.go), [snapshot builder](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/orders/internal/commands/complete.go), [order detail](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/orders/surfaces/tui/detail_vm.go). Soft-deleted catalog rows remain in storage, but ordinary facade reads exclude them; retained rows alone do not preserve prior versions.
 
    **Options:** **A — immutable order acceptance snapshots (recommended minimum):** self-contained history and simple reads; duplicates relevant descriptive data. **B — immutable recipe and menu publication versions referenced by Orders:** stronger provenance and less repeated recipe data; larger model and migration. **C — historical lookup of soft-deleted current rows:** quick recovery of names; cannot recover earlier edits, prices, or accepted recipe steps and is insufficient by itself.
 
@@ -117,7 +119,7 @@ The following map covers the current mutation families across all seven contexts
 
    Existing retirement intentionally blocks open orders that used the old ingredient. They can be cancelled; there is no supported route to approve replacement and re-reserve stock for the same order. Silently rewriting `IngredientUsage` would discard what was originally accepted.
 
-   **Evidence:** [ingredient retirement contract](../app/domains/ingredients/models/ingredient.go), [order retirement handler](../app/domains/orders/handlers/ingredient-deleted.go), [order completion/cancellation](../app/domains/orders/internal/commands/complete.go).
+   **Evidence:** [ingredient retirement contract](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/ingredients/models/ingredient.go), [order retirement handler](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/orders/handlers/ingredient-deleted.go), [order completion/cancellation](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/orders/internal/commands/complete.go).
 
    **Options:** **A — cancel and place a linked replacement order:** simplest immutable record; more staff work and no existing atomic linked command. **B — explicit order amendment/revision (recommended):** preserves original acceptance and approved new fulfillment, with atomic release/reserve and actor/reason; requires amendment history and customer/staff approval semantics. **C — bulk automatic amendment during retirement:** lowest operational friction; may change accepted products without explicit order-level approval and makes batch stock allocation more complex.
 
@@ -129,7 +131,7 @@ The following map covers the current mutation families across all seven contexts
 
    Retirement hard-deletes the stock row and its tags, while reservations remain until cancellation. This loses current quantity/cost/tag evidence and makes every existing reservation unusable even if the physical stock could still be served. Replacement does not transfer stock, appropriately: a different ingredient is not automatically the same physical inventory.
 
-   **Evidence:** [retirement stock handler](../app/domains/inventory/handlers/ingredient-deleted.go), [stock deletion](../app/domains/inventory/internal/dao/delete-by-ingredient.go).
+   **Evidence:** [retirement stock handler](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/inventory/handlers/ingredient-deleted.go), [stock deletion](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/inventory/internal/dao/delete-by-ingredient.go).
 
    **Options:** **A — discontinue future use but honor accepted reservations:** preserves usable stock and service; requires separate eligibility for new versus already accepted usage. **B — withdraw/quarantine immediately:** blocks fulfillment and retains stock identity plus reason/quantity; requires an explicit disposal or release operation. **C — reject retirement while stock/reservations exist:** easiest invariant; more manual steps and a poor fit for an urgent withdrawal. Recommended product model is distinct discontinuation and immediate-withdrawal operations, backed by retained stock records and explicit movements.
 
@@ -139,7 +141,7 @@ The following map covers the current mutation families across all seven contexts
 
    Ingredient retirement preserves menu curation and degrades availability. Drink deletion instead removes items from every active menu, including published menus, potentially leaving a published menu empty. Direct menu edits are draft-only, so the indirect path bypasses the curation rule. Menu Draft clears `PublishedAt`; a previously used menu can then be edited or deleted. There is no first-class readable archive workflow, despite an `archived` status. A valid Drink update also changes what an already-published menu offers without another publication approval.
 
-   **Evidence:** [drink deletion reaction](../app/domains/menus/handlers/drink-deleted.go), [menu draft](../app/domains/menus/internal/commands/draft.go), [menu delete](../app/domains/menus/internal/commands/delete.go), [drink update reaction](../app/domains/menus/handlers/drink-updated.go).
+   **Evidence:** [drink deletion reaction](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/handlers/drink-deleted.go), [menu draft](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/internal/commands/draft.go), [menu delete](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/internal/commands/delete.go), [drink update reaction](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/handlers/drink-updated.go).
 
    **Options:** **A — reject withdrawal/edit while referenced by published menus or open orders:** simple and explicit; operationally restrictive. **B — retain a withdrawn menu item, allow accepted orders to finish, require explicit redraft to alter curation (recommended minimum):** consistent with ingredient degradation; requires tombstone/historical display (#6). **C — immutable publications and versioned recipes:** best historical and approval semantics; largest change. With C, draft a new revision while the previous publication remains readable, and separate “stop new orders” from editing.
 
@@ -153,7 +155,7 @@ The following map covers the current mutation families across all seven contexts
 
    There is also a concrete transactional coverage gap: `RunTaggedMutation` uses an outer transaction. A tag-step failure rolls back both the domain success activity and failure activity, leaving no record of the rejected composite operation. The existing rollback test explicitly asserts unchanged audit count. Standalone command failure auditing is stronger than composed-workflow failure auditing. A failure after successful audit preparation/at commit is another path to inspect: `TrackActivity` skips a second record once completion is set.
 
-   **Evidence:** [AuditEntry](../app/domains/audit/models/entry.go), [activity middleware](../pkg/middleware/track_activity.go), [tagged composition](../app/tagged_mutation.go), [rollback test](../app/tagged_mutation_test.go), [menu retirement touch condition](../app/domains/menus/handlers/ingredient-deleted.go).
+   **Evidence:** [AuditEntry](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/audit/models/entry.go), [activity middleware](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/pkg/middleware/track_activity.go), [tagged composition](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/tagged_mutation.go), [rollback test](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/tagged_mutation_test.go), [menu retirement touch condition](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/handlers/ingredient-deleted.go).
 
    **Fix:** let the outer workflow own post-rollback failure recording; distinguish attempted participants from committed effects; correlate child activities to one workflow. Preserve atomic success auditing. Capture cancellation time and reason, retirement/replacement reason and identity, and reservation/disposal facts as domain data where operationally needed.
 
@@ -165,7 +167,7 @@ The following map covers the current mutation families across all seven contexts
 
    Drink create/update checks referenced ingredient existence but not recipe amount compatibility with catalog units. Explicit substitutes are checked for existence, not dimensional compatibility. A stocked incompatible candidate can make strict planning fail even when a valid original is available, because candidate enumeration evaluates it too. Optional ingredient lookup currently suppresses any error and skips its substitute validation. Ingredient Create only checks nonempty category/unit, while Update validates category but still accepts any nonempty unit. Retirement removes optional references without validating the resulting recipe; removing the final optional ingredient can leave a recipe that violates `Recipe.Validate`'s nonempty rule.
 
-   **Evidence:** [drink create](../app/domains/drinks/internal/commands/create.go), [drink update](../app/domains/drinks/internal/commands/update.go), [recipe validation](../app/domains/drinks/models/recipe.go), [retirement rewrite](../app/domains/drinks/handlers/ingredient-deleted.go), [candidate planning](../app/domains/menus/internal/availability/calculator.go).
+   **Evidence:** [drink create](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/drinks/internal/commands/create.go), [drink update](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/drinks/internal/commands/update.go), [recipe validation](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/drinks/models/recipe.go), [retirement rewrite](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/drinks/handlers/ingredient-deleted.go), [candidate planning](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/internal/availability/calculator.go).
 
    **Implement:** enforce supported units and amount dimensional compatibility; finite positive quantities/ratios at public boundaries; validate substituted and rewritten recipes; distinguish a missing optional ingredient from infrastructure failure. Preserve coherent unavailable/review state if retirement necessarily leaves an invalid canonical recipe, rather than pretending it is active and fulfillable. Category equivalence for *temporary* substitutions is a product rule and should not be invented as part of this fix; physical compatibility is mandatory.
 
@@ -175,7 +177,7 @@ The following map covers the current mutation families across all seven contexts
 
    `Calculate` turns dependency errors into `unavailable`. `CalculateDetail` uses `PickIngredients`, which suppresses planning errors; Menu Publish uses the resulting readiness report. Menu event handlers also persist the tolerant result, and `StockAdjusted.drinkUsesIngredient` treats any drink read error as “not a dependency.” Thus some failures become misleading business blockers, persisted degradation, or skipped updates instead of aborting the transaction. The strict order planning path already demonstrates the intended alternative.
 
-   **Evidence:** [availability calculator](../app/domains/menus/internal/availability/calculator.go), [menu publish](../app/domains/menus/internal/commands/publish.go), [stock handler](../app/domains/menus/handlers/stock-adjusted.go).
+   **Evidence:** [availability calculator](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/internal/availability/calculator.go), [menu publish](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/internal/commands/publish.go), [stock handler](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/handlers/stock-adjusted.go).
 
    **Implement:** separate presentation fallback from authoritative readiness/projection calculation. Missing or retired stock is a modeled business condition; database/conversion/cancellation errors propagate. Recompute multi-domain reports under a consistent read snapshot when they must describe one state; authoritative commands already have the write transaction.
 
@@ -185,7 +187,7 @@ The following map covers the current mutation families across all seven contexts
 
    Availability and order placement plan the complete requirement set with backtracking. Cost calculation calls `PickIngredient` independently for every line. Two requirements can therefore both cost the same scarce substitute even though only one can consume it and the other must use a more expensive fallback. Availability, suggested price, and actual accepted usage can disagree. Menu margin calculation also subtracts raw decimal amounts without first checking that menu and ingredient-cost currencies match.
 
-   **Evidence:** [cost calculator](../app/domains/menus/queries/cost.go), [menu margin](../app/domains/menus/queries/analytics.go), [existing shared-substitute fulfillment tests](../app/domains/orders/fulfillment_test.go).
+   **Evidence:** [cost calculator](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/queries/cost.go), [menu margin](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/queries/analytics.go), [existing shared-substitute fulfillment tests](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/orders/fulfillment_test.go).
 
    **Implement:** cost the full plan used for the calculation; expose whether it is a current estimate or an accepted-order snapshot (#6). Reject or mark unknown cross-currency margin instead of dividing unlike currencies. Cost-only stock edits need no new availability event if availability truly does not change; estimates should simply read the updated cost.
 
@@ -195,7 +197,7 @@ The following map covers the current mutation families across all seven contexts
 
    Domain row revisions protect many edits, but Inventory `Set` and `Adjust` inputs have no expected revision. They load the latest stock inside the command, so a stale absolute stock-count form can overwrite intervening completion/receipt changes. Full tag replacement similarly reloads current tag rows; an editor can delete a newly added tag without conflict. Tag mutations do not advance the owning entity's revision, so the domain revision alone cannot protect a combined entity-and-tags edit. SQLite serialization prevents simultaneous writes, but not stale user intent.
 
-   **Evidence:** [inventory input](../app/domains/inventory/models/update.go), [stock set](../app/domains/inventory/internal/commands/set.go), [tag replacement](../app/domains/tagging/module.go), [tag repository](../app/domains/tagging/repository.go).
+   **Evidence:** [inventory input](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/inventory/models/update.go), [stock set](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/inventory/internal/commands/set.go), [tag replacement](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/tagging/module.go), [tag repository](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/tagging/repository.go).
 
    **Recommendation:** require expected revision for absolute stock edits and an expected tag-set revision/hash for full replacements. Keep additive stock adjustments and explicit one-key tag operations applicable to current state when their semantics allow it. For combined edits, check every precondition before any effect and roll back as one operation.
 
@@ -207,7 +209,7 @@ The following map covers the current mutation families across all seven contexts
 
    A stock correction below total reservations blocks every open order using that ingredient, even if available physical stock could satisfy some. This is consistent with the current aggregate shortage rule; unlike #3, changing it is a product choice. No replacement planning is attempted for already accepted orders.
 
-   **Evidence:** [stock shortage event](../app/domains/inventory/internal/commands/set.go), [order blocker reaction](../app/domains/orders/handlers/stock-adjusted.go).
+   **Evidence:** [stock shortage event](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/inventory/internal/commands/set.go), [order blocker reaction](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/orders/handlers/stock-adjusted.go).
 
    **Options:** **A — block all until the aggregate deficit is resolved (recommended initial policy):** simple and avoids choosing winners; stops some fulfillable service. **B — deterministic FIFO/priority allocation:** maximizes fulfillment; requires stable allocation rules and re-evaluation across ingredients. **C — staff-directed allocation/amendment:** explicit business judgment; more workflow and audit requirements. All require #3's recovery behavior when commitments are released.
 
@@ -217,7 +219,7 @@ The following map covers the current mutation families across all seven contexts
 
    Optional recipe ingredients are skipped by readiness requirements, order snapshots, reservation, and cost calculation. If a garnish is physically used, the system never consumes it. An optional-only recipe can place/complete an order with no stock usage. “Not required for availability” and “never consumed” are currently the same concept.
 
-   **Evidence:** [order requirements](../app/domains/orders/internal/commands/complete.go), [availability requirements](../app/domains/menus/internal/availability/calculator.go), [cost calculation](../app/domains/menus/queries/cost.go).
+   **Evidence:** [order requirements](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/orders/internal/commands/complete.go), [availability requirements](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/internal/availability/calculator.go), [cost calculation](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/queries/cost.go).
 
    **Options:** **A — optional means descriptive/untracked (smallest scope):** document the limitation and explicitly decide whether optional-only recipes are permitted. **B — include when available:** closer to service behavior; must snapshot each chosen optional and reserve it atomically. **C — explicit per-order inclusion/omission (recommended if optional items matter):** accurate preparation and accounting; requires item-level fulfillment plans and UI choices. Acceptance snapshots should retain what was actually selected under B/C.
 

@@ -6,8 +6,27 @@
 - Native Fyne dependencies only when building the desktop client; see its
   [platform instructions](../main/gui/README.md#run-from-source).
 
-The project uses plain Go commands. Code generators, `arch-lint`, and pinned lint tooling are
-declared in the module rather than wrapped by a Makefile.
+The project uses plain Go commands. Code generators live beside their packages, `arch-lint` is a
+module tool, and the Go linter version is pinned in CI and the command below.
+
+## Teaching data and schema changes
+
+Canonical inventory quantities, persisted substitution rules, and order acceptance snapshots
+require fresh teaching data. No domain-data migration or historical backfill is provided. Existing
+store bootstrap migrations do not convert older domain JSON records to these new contracts.
+
+Choose a new local database path to keep an older database intact:
+
+```sh
+export MIXOLOGY_DB=./data/workflows-demo.db
+go run ./main/seed
+go run ./main/cli inventory list
+```
+
+The seeder adds sample data; it does not reset or upgrade an existing database. If removing an old
+database instead, close every process using it before removing the database and its SQLite sidecar
+files. The historical review describes rejected alternatives as well as the original gaps; the
+[workflow record](transactional-workflows.md) is the current contract.
 
 ## Everyday loop
 
@@ -50,6 +69,11 @@ f := testutil.NewFixture(t)
 lime := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{
 	Name: "Fresh Lime", Category: ingredientsmodels.CategoryJuice, Unit: measurement.UnitOz,
 })
+testutil.SetInventory(t, f, inventorymodels.Update{
+	IngredientID: lime.ID,
+	Amount:       measurement.MustAmount(10, lime.Unit),
+	CostPerUnit:  money.NewPriceFromCents(100, currency.USD),
+})
 drink := testutil.CreateDrink(t, f, drinksmodels.Drink{
 	Name: "Daiquiri", Category: drinksmodels.DrinkCategoryCocktail,
 	Glass: drinksmodels.GlassTypeCoupe,
@@ -65,6 +89,8 @@ menu := testutil.CreateMenu(t, f, "Classics", testutil.WithDrink(drink), testuti
 ```
 
 Pass `testutil.Published()` to `CreateMenu` when publication matters. Handler tests can use
-`LatestAuditEntry` and `AuditTouches` to verify attribution. The
+`LatestAuditEntry` and `AuditTouches` to verify mutation attribution; inspect `Participants` for
+dependency reads and `Effects` for domain-authored changes. Permute sibling handlers, running all
+`Handling` calls before any `Handle`, and inject late failures to verify rollback. The
 [test utility guide](../pkg/testutil/README.md) covers actor contexts, metrics assertions, GUI/TUI
 drivers, and the complete helper map.

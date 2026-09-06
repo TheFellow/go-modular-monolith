@@ -35,7 +35,7 @@ command
 The ordering is part of the application contract:
 
 - A successful domain write, its event-handler writes, touched entities, and its audit activity
-  share the `UnitOfWork` transaction.
+  share the `UnitOfWork` transaction, including domain-authored effects and referenced participants.
 - An event, result-authorization, or successful-audit failure rolls back that complete transaction.
 - With a middleware-owned transaction, `TrackActivity` records the failed attempt in a separate
   managed transaction after rollback.
@@ -68,7 +68,7 @@ composition, and transaction-focused tests; ordinary domain code should accept t
 given. See the [store guide](../store/README.md#transactions) for the full lifecycle.
 
 Event handlers receive `HandlerContext`, a deliberately smaller `store.Context`. It preserves the
-principal and transaction and permits `TouchEntity`, but exposes no `AddEvent`, enforcing the
+principal and transaction and permits `RecordEffect`, `ReferenceEntity`, and `TouchEntity`, but exposes no `AddEvent`, enforcing the
 no-cascading rule at compile time.
 
 ## Typed pipeline operations
@@ -110,15 +110,41 @@ updated, err := pipeline.LoadCommand(
 		if err := repository.Update(c, updated); err != nil {
 			return Widget{}, err
 		}
+		c.RecordEffect("widget_updated", updated.EntityUID(),
+			middleware.Change("state", current, updated))
 		c.AddEvent(events.WidgetUpdated{Widget: updated})
 		return updated, nil
 	},
 )
 ```
 
-Commands attribute activity to the loaded resource, or to the returned resource when the
-input has no UID. Handlers can add indirect resources with `TouchEntity`; duplicate touches are
-ignored. Commands should add only events owned by their domain.
+Commands attribute activity to the loaded resource, or to the returned resource when the input has
+no UID. Use `RecordEffect(kind, resource, changes...)` to explain a mutation and add its resource to
+the touch set. `middleware.Change(field, before, after)` formats effect values as text. Use
+`ReferenceEntity` for inspected dependencies; those participants are not claimed as changed.
+`TouchEntity` remains available for attribution without an effect, and duplicate touches are
+ignored. On failure, effects describe attempted changes, not committed state. Commands should add
+only events owned by their domain.
+
+## Composing commands
+
+Use `RunWorkflow` at an application composition boundary when several module calls must commit
+together. It takes the operation context, store, workflow name, activity recorder, and a callback
+receiving the shared transactional context. Each child command retains its own action and audit
+record, while all child activities share a workflow ID. A successful workflow commits those child
+records with the business writes; it does not add a separate success summary.
+
+If the callback fails, all child writes and success activities roll back. The outer boundary then
+records one failed workflow activity containing attempted touches, participants, and effects.
+Failure recording uses an uncancelled context, and a recorder failure is returned alongside the
+original error rather than swallowed.
+
+`RunWorkflow` participates directly when its input already carries a transaction. In that case,
+the caller owns commit, rollback, and failure recording; an outer `RunWorkflow` can provide that
+ownership. A raw `Store.Write` around several commands does not add workflow correlation or
+post-rollback audit recording by itself. See
+[`App.AmendOrders` and `App.RetireIngredient`](../../app/amend_orders.go) and
+[`RunTaggedMutation`](../../app/tagged_mutation.go) for application compositions.
 
 ## Paging and authorization
 

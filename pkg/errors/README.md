@@ -59,8 +59,9 @@ Choose kinds by meaning rather than by the current surface:
 - `Invalid` means the request or input is malformed.
 - `NotFound` means the requested application resource does not exist.
 - `Permission` means the actor is not allowed to perform the operation.
-- `Conflict` means the request collides with existing state, such as a duplicate.
-- `FailedPrecondition` means current state does not permit an otherwise valid operation.
+- `Conflict` means the request collides with existing state, such as a duplicate or stale revision/tag set.
+- `FailedPrecondition` means current state does not permit an otherwise valid operation, such as
+  deleting a drink still used by a menu or order. Include dependencies and corrective action in the message.
 - `Internal` means an invariant, dependency, evaluation, or unexpected implementation failure.
 
 For example, the [authorization evaluator](../authz/README.md#evaluation-api) returns `Permission`
