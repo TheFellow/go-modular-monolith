@@ -7,7 +7,6 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/TheFellow/go-modular-monolith/app"
@@ -174,10 +173,10 @@ func TestTagsCLIWorkflowsPersistAndAuthorize(t *testing.T) {
 	testutil.StringContains(t, out, targets.inventory)
 	testutil.StringContains(t, out, "Tags:")
 
-	softDeleteCLIDrink(t, dbPath, targets.drink)
+	rejectUsedCLIDrinkDeletion(t, dbPath, targets.drink)
 	out, err = runTagsCLI(dbPath, "owner", "tags", "show", "shared=visible")
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, strings.Contains(out, targets.drink), "deleted drink appeared in tag discovery: %s", out)
+	testutil.StringContains(t, out, targets.drink)
 	for name, id := range all {
 		if name != "drink" {
 			testutil.StringContains(t, out, id)
@@ -193,8 +192,8 @@ func TestTagsCLIWorkflowsPersistAndAuthorize(t *testing.T) {
 	var summaries []tagging.Summary
 	testutil.Ok(t, json.Unmarshal([]byte(out), &summaries))
 	testutil.Equals(t, summaries[0].Tag, "shared=visible")
-	testutil.Equals(t, summaries[0].Total, 4)
-	testutil.Equals(t, summaries[0].Drinks, 0)
+	testutil.Equals(t, summaries[0].Total, 5)
+	testutil.Equals(t, summaries[0].Drinks, 1)
 	testutil.Equals(t, summaries[0].Ingredients, 1)
 	testutil.Equals(t, summaries[0].Inventory, 1)
 	testutil.Equals(t, summaries[0].Menus, 1)
@@ -258,7 +257,7 @@ func seedCLITagTargets(t *testing.T, dbPath string) cliTagTargets {
 	}
 }
 
-func softDeleteCLIDrink(t *testing.T, dbPath, rawID string) {
+func rejectUsedCLIDrinkDeletion(t *testing.T, dbPath, rawID string) {
 	t.Helper()
 	ctx := authn.ToContext(context.Background(), authn.Owner())
 	ctx = pkglog.ToContext(ctx, slog.New(slog.NewTextHandler(io.Discard, nil)))
@@ -268,6 +267,6 @@ func softDeleteCLIDrink(t *testing.T, dbPath, rawID string) {
 	id, err := entity.ParseDrinkID(rawID)
 	testutil.Ok(t, err)
 	_, err = a.Drinks.Delete(middleware.NewContext(ctx), id)
-	testutil.Ok(t, err)
+	testutil.ErrorIsFailedPrecondition(t, err)
 	testutil.Ok(t, a.Close())
 }

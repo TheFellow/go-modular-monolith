@@ -38,18 +38,8 @@ func (c *Commands) Update(ctx *middleware.Context, drink *models.Drink) (*models
 		return nil, errors.Internalf("missing ingredients dependency")
 	}
 
-	for _, ing := range drink.Recipe.Ingredients {
-		if _, err := c.ingredients.Get(ctx, ing.IngredientID); err != nil {
-			if ing.Optional {
-				continue
-			}
-			return nil, errors.Invalidf("ingredient %s not found: %w", ing.IngredientID.String(), err)
-		}
-		for _, sub := range ing.Substitutes {
-			if _, err := c.ingredients.Get(ctx, sub); err != nil {
-				return nil, errors.Invalidf("substitute ingredient %s not found: %w", sub.String(), err)
-			}
-		}
+	if err := c.validateRecipe(ctx, drink.Recipe); err != nil {
+		return nil, err
 	}
 
 	updated := *drink
@@ -61,7 +51,7 @@ func (c *Commands) Update(ctx *middleware.Context, drink *models.Drink) (*models
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID.EntityUID())
+	ctx.RecordEffect("drink_updated", updated.ID.EntityUID(), middleware.Change("name", existing.Name, updated.Name), middleware.Change("recipe", existing.Recipe, updated.Recipe))
 	ctx.AddEvent(events.DrinkUpdated{
 		Drink: updated,
 	})

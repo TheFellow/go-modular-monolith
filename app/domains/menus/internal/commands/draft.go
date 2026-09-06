@@ -1,13 +1,10 @@
 package commands
 
 import (
-	"time"
-
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/events"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
 func (c *Commands) Draft(ctx *middleware.Context, menu *models.Menu) (*models.Menu, error) {
@@ -21,7 +18,6 @@ func (c *Commands) Draft(ctx *middleware.Context, menu *models.Menu) (*models.Me
 
 	updated := *menu
 	updated.Status = models.MenuStatusDraft
-	updated.PublishedAt = optional.None[time.Time]()
 
 	if err := updated.Validate(); err != nil {
 		return nil, err
@@ -31,7 +27,7 @@ func (c *Commands) Draft(ctx *middleware.Context, menu *models.Menu) (*models.Me
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID.EntityUID())
+	ctx.RecordEffect("menu_drafted", updated.ID.EntityUID(), middleware.Change("status", menu.Status, updated.Status))
 	ctx.AddEvent(events.MenuDrafted{
 		Menu: updated,
 	})

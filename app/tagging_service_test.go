@@ -310,18 +310,28 @@ func TestTagDiscoveryFindsAndSummarizesActiveTargets(t *testing.T) {
 
 	drinkID, err := entity.ParseDrinkID(string(targets[1].uid.ID))
 	testutil.Ok(t, err)
+	source, err := f.App.Drinks.Get(ctx, drinkID)
+	testutil.Ok(t, err)
+	source.ID = entity.DrinkID{}
+	source.Revision = 0
+	source.Name = "Unused discovery drink"
+	unused, err := f.App.Drinks.Create(ctx, source)
+	testutil.Ok(t, err)
+	drinkID = unused.ID
+	_, err = f.App.Tags.Upsert(ctx, unused.EntityUID(), tag.Tag{Key: "common"})
+	testutil.Ok(t, err)
 	_, err = f.App.Drinks.Delete(ctx, drinkID)
 	testutil.Ok(t, err)
 	common, err := f.App.Tags.Show(ctx, tag.Tag{Key: "common"}, true)
 	testutil.Ok(t, err)
-	testutil.Equals(t, len(common), 4)
+	testutil.Equals(t, len(common), 5)
 	for _, reference := range common {
 		testutil.ErrorIf(t, reference.EntityID == drinkID.String(), "deleted drink appeared in discovery")
 	}
 	summary, err = f.App.Tags.Summary(ctx)
 	testutil.Ok(t, err)
 	testutil.Equals(t, summary[0], tagging.Summary{
-		Tag: "common", Total: 4, Ingredients: 1, Inventory: 1, Menus: 1, Orders: 1,
+		Tag: "common", Total: 5, Drinks: 1, Ingredients: 1, Inventory: 1, Menus: 1, Orders: 1,
 	})
 
 	_, err = f.App.Tags.Show(f.ActorContext("bartender"), tag.Tag{Key: "common"}, true)

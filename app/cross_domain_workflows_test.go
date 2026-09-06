@@ -82,6 +82,15 @@ func TestDiscontinuationHonorsAcceptedStockAndDisposalKeepsEvidence(t *testing.T
 	testutil.Ok(t, err)
 	testutil.Equals(t, history[len(history)-1].After, 0.0)
 }
+func TestReferencedDrinkDeletionFailsAtomically(t *testing.T) {
+	t.Parallel()
+	f, _, d, m := workflowFixture(t)
+	_, err := f.Drinks.Delete(f.OwnerContext(), d.ID)
+	testutil.ErrorIsFailedPrecondition(t, err)
+	testutil.ErrorContains(t, err, m.Name)
+	_, err = f.Drinks.Get(f.OwnerContext(), d.ID)
+	testutil.Ok(t, err)
+}
 func TestOptionalIngredientIsReservedAndConsumed(t *testing.T) {
 	t.Parallel()
 	f, _, d, m := workflowFixture(t)

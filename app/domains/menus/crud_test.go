@@ -2,7 +2,6 @@ package menus_test
 
 import (
 	"testing"
-	"time"
 
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
@@ -84,7 +83,7 @@ func TestMenus_CreateGetUpdateItemsPublishDraftDelete(t *testing.T) {
 	testutil.Ok(t, err)
 	wantDraft := wantPublished
 	wantDraft.Status = models.MenuStatusDraft
-	wantDraft.PublishedAt = optional.None[time.Time]()
+	wantDraft.PublishedAt = wantPublished.PublishedAt
 	wantDraft.Revision++
 	testutil.Equals(t, updated, &wantDraft, cmpopts.EquateEmpty())
 	got, err = f.Menus.Get(ctx, created.ID)
