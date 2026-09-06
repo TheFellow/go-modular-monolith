@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
 	"time"
 
 	cedar "github.com/cedar-policy/cedar-go"
@@ -8,6 +9,11 @@ import (
 
 type OrderRow struct {
 	ID                 string
+	Acceptance         models.AcceptanceSnapshot
+	Plan               []models.ItemSnapshot
+	Amendments         []models.AmendmentRecord
+	CancelledAt        *time.Time
+	CancellationReason string
 	Revision           uint64 `json:"-" store:"revision"`
 	MenuID             string `store:"index"`
 	Items              []OrderItemRow

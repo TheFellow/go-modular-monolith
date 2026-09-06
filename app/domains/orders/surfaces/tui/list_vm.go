@@ -659,8 +659,8 @@ func (m *ListViewModel) performComplete() tea.Cmd {
 	}
 	return func() tea.Msg {
 		updated, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
-			return m.app.Orders.Complete(ctx, &ordersmodels.Order{ID: target.ID})
-		})
+			return m.app.Orders.Complete(ctx, &ordersmodels.Order{ID: target.ID, Revision: target.Revision})
+		}, target.Tags)
 		if err != nil {
 			return CompleteErrorMsg{Err: err}
 		}
@@ -714,8 +714,8 @@ func (m *ListViewModel) performCancel() tea.Cmd {
 	}
 	return func() tea.Msg {
 		updated, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
-			return m.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: target.ID})
-		})
+			return m.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: target.ID, Revision: target.Revision})
+		}, target.Tags)
 		if err != nil {
 			return CancelErrorMsg{Err: err}
 		}

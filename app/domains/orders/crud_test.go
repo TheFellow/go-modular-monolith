@@ -51,6 +51,8 @@ func TestOrders_PlaceGetCancelAndComplete(t *testing.T) {
 	wantCancelled.Revision++
 	cancelledOrder, err = f.Orders.Cancel(ctx, &models.Order{ID: cancelledOrder.ID})
 	testutil.Ok(t, err)
+	wantCancelled.CancelledAt = cancelledOrder.CancelledAt
+	testutil.IsTrue(t, cancelledOrder.CancelledAt.IsSome())
 	testutil.Equals(t, cancelledOrder, &wantCancelled)
 
 	completedOrder := testutil.PlaceOrder(t, f, models.Order{

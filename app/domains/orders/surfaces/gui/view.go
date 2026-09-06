@@ -217,6 +217,29 @@ func (v *View) detail(s State) framework.CanvasObject {
 		fields.Add(container.NewVBox(container.NewBorder(nil, nil, nil, widget.NewLabel(meta), name), widget.NewSeparator()))
 	}
 	fields.Add(ui.DetailForm(ui.DetailField("Order total", ui.ReadonlyEntry(r.Total))))
+	preparation := []string{}
+	for _, item := range r.Order.Plan {
+		preparation = append(preparation, item.Name)
+		for _, selection := range item.Ingredients {
+			if selection.Omitted {
+				preparation = append(preparation, "Omitted optional ingredient: "+selection.OriginalID.String())
+				continue
+			}
+			preparation = append(preparation, fmt.Sprintf("%g %s %s", selection.Quantity, selection.Unit, selection.Name))
+		}
+		preparation = append(preparation, item.Steps...)
+		if item.Garnish != "" {
+			preparation = append(preparation, "Garnish: "+item.Garnish)
+		}
+	}
+	for _, amendment := range r.Order.Amendments {
+		preparation = append(preparation, "Amended "+formatTime(amendment.At)+" by "+amendment.Principal+": "+amendment.Reason)
+	}
+	fields.Add(ui.DetailForm(ui.DetailField("Approved preparation", ui.ReadonlyMultiLineEntry(strings.Join(preparation, "\n")))))
+	if at, ok := r.Order.CancelledAt.Unwrap(); ok {
+		fields.Add(ui.DetailForm(ui.DetailField("Cancelled", ui.ReadonlyEntry(formatTime(at))), ui.DetailField("Cancellation reason", ui.ReadonlyEntry(r.Order.CancellationReason))))
+	}
+
 	actions := []framework.CanvasObject{}
 	clean := !s.Submitting && !s.Confirming && !s.Dirty
 	if action, ok := s.Actions[orders.ControlComplete]; ok && action.Visible {

@@ -23,6 +23,9 @@ type OrderRow struct {
 }
 
 type OrderDetail struct {
+	Revision           uint64               `table:"-" json:"revision"`
+	CancelledAt        string               `table:"-" json:"cancelled_at,omitempty"`
+	CancellationReason string               `table:"-" json:"cancellation_reason,omitempty"`
 	ID                 string               `table:"-" json:"id"`
 	MenuID             string               `table:"-" json:"menu_id"`
 	Status             string               `table:"-" json:"status"`
@@ -40,6 +43,9 @@ type OrderItemRow struct {
 }
 
 type OrderView struct {
+	Acceptance models.AcceptanceSnapshot `json:"acceptance"`
+	Plan       []models.ItemSnapshot     `json:"plan"`
+	Amendments []models.AmendmentRecord  `json:"amendments"`
 	OrderDetail
 	Items           []OrderItemRow       `json:"items"`
 	IngredientUsage []IngredientUsageRow `json:"ingredient_usage"`
@@ -93,6 +99,10 @@ func ToOrderDetail(o *models.Order) OrderDetail {
 	if o == nil {
 		return OrderDetail{}
 	}
+	cancelledAt := ""
+	if at, ok := o.CancelledAt.Unwrap(); ok {
+		cancelledAt = formatTime(at)
+	}
 	var completed string
 	if t, ok := o.CompletedAt.Unwrap(); ok {
 		completed = formatTime(t)
@@ -102,6 +112,7 @@ func ToOrderDetail(o *models.Order) OrderDetail {
 		blocked = append(blocked, id.String())
 	}
 	return OrderDetail{
+		Revision: o.Revision, CancelledAt: cancelledAt, CancellationReason: o.CancellationReason,
 		ID:                 o.ID.String(),
 		MenuID:             o.MenuID.String(),
 		Status:             string(o.Status),
@@ -133,7 +144,7 @@ func ToOrderView(o *models.Order) OrderView {
 	for _, u := range o.IngredientUsage {
 		usage = append(usage, IngredientUsageRow{IngredientID: u.IngredientID.String(), Name: u.Name, Amount: u.Amount.String()})
 	}
-	return OrderView{OrderDetail: ToOrderDetail(o), Items: ToOrderItemRows(o.Items), IngredientUsage: usage}
+	return OrderView{Acceptance: o.Acceptance, Plan: o.Plan, Amendments: o.Amendments, OrderDetail: ToOrderDetail(o), Items: ToOrderItemRows(o.Items), IngredientUsage: usage}
 }
 
 func TemplatePlace() OrderInput {

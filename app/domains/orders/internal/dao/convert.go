@@ -11,10 +11,15 @@ import (
 )
 
 func toRow(o models.Order) OrderRow {
+	var cancelledAt *time.Time
+	if at, ok := o.CancelledAt.Unwrap(); ok {
+		cancelledAt = &at
+	}
 	var completedAt *time.Time
 	if t, ok := o.CompletedAt.Unwrap(); ok {
 		completedAt = &t
 	}
+
 	items := make([]OrderItemRow, 0, len(o.Items))
 	for _, it := range o.Items {
 		items = append(items, OrderItemRow{
@@ -33,6 +38,7 @@ func toRow(o models.Order) OrderRow {
 		blockedIngredients = append(blockedIngredients, id.String())
 	}
 	return OrderRow{
+		Acceptance: o.Acceptance, Plan: o.Plan, Amendments: o.Amendments, CancelledAt: cancelledAt, CancellationReason: o.CancellationReason,
 		ID:                 o.ID.String(),
 		Revision:           o.Revision,
 		MenuID:             o.MenuID.String(),
@@ -47,6 +53,10 @@ func toRow(o models.Order) OrderRow {
 }
 
 func toModel(r OrderRow) models.Order {
+	var cancelledAt optional.Value[time.Time]
+	if r.CancelledAt != nil {
+		cancelledAt = optional.Some(*r.CancelledAt)
+	}
 	var completedAt optional.Value[time.Time]
 	if r.CompletedAt != nil {
 		completedAt = optional.Some(*r.CompletedAt)
@@ -82,6 +92,7 @@ func toModel(r OrderRow) models.Order {
 	}
 
 	return models.Order{
+		Acceptance: r.Acceptance, Plan: r.Plan, Amendments: r.Amendments, CancelledAt: cancelledAt, CancellationReason: r.CancellationReason,
 		ID:                 models.NewOrderID(r.ID),
 		Revision:           r.Revision,
 		MenuID:             menumodels.NewMenuID(r.MenuID),

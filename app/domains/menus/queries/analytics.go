@@ -14,6 +14,7 @@ import (
 )
 
 type AnalyticsCalculator struct {
+	store        *store.Store
 	drinks       *drinksq.Queries
 	availability *availability.AvailabilityCalculator
 	costs        *CostCalculator
@@ -21,6 +22,7 @@ type AnalyticsCalculator struct {
 
 func NewAnalyticsCalculator(s *store.Store, tags tag.Repository) *AnalyticsCalculator {
 	return &AnalyticsCalculator{
+		store:        s,
 		drinks:       drinksq.New(s, tags),
 		availability: availability.New(s, tags),
 		costs:        NewCostCalculator(s, tags),
@@ -49,6 +51,16 @@ type MenuAnalytics struct {
 }
 
 func (a *AnalyticsCalculator) Analyze(ctx *middleware.Context, menu models.Menu, targetMargin float64) (MenuAnalytics, error) {
+	var result MenuAnalytics
+	err := a.store.ReadContext(ctx, func(tx *store.Tx) error {
+		var err error
+		result, err = a.analyze(ctx.WithTransaction(tx), menu, targetMargin)
+		return err
+	})
+	return result, err
+}
+
+func (a *AnalyticsCalculator) analyze(ctx *middleware.Context, menu models.Menu, targetMargin float64) (MenuAnalytics, error) {
 	items := make([]MenuItemAnalytics, 0, len(menu.Items))
 
 	var (
@@ -88,7 +100,7 @@ func (a *AnalyticsCalculator) Analyze(ctx *middleware.Context, menu models.Menu,
 		}
 
 		var margin *float64
-		if menuPrice != nil && cost.IngredientCost != nil && !cost.UnknownCost && !menuPrice.Amount.IsZero() {
+		if menuPrice != nil && cost.IngredientCost != nil && !cost.UnknownCost && !menuPrice.Amount.IsZero() && menuPrice.Currency.Code == cost.IngredientCost.Currency.Code {
 			profit, err := menuPrice.Amount.Sub(cost.IngredientCost.Amount)
 			if err == nil {
 				m, err := profit.Quo(menuPrice.Amount)

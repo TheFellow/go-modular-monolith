@@ -8,10 +8,12 @@ import (
 )
 
 type Queries struct {
+	store        *store.Store
+	tags         tag.Repository
 	dao          *dao.DAO
 	availability *availability.AvailabilityCalculator
 }
 
 func New(s *store.Store, tags tag.Repository) *Queries {
-	return &Queries{dao: dao.New(s, tags), availability: availability.New(s, tags)}
+	return &Queries{store: s, tags: tags, dao: dao.New(s, tags), availability: availability.New(s, tags)}
 }
