@@ -25,7 +25,7 @@ func (h *IngredientUpdated) Handle(ctx *middleware.HandlerContext, e ingredients
 	}
 
 	for _, drink := range drinks {
-		ctx.TouchEntity(drink.ID.EntityUID())
+		ctx.ReferenceEntity(drink.ID.EntityUID())
 	}
 
 	return nil

@@ -51,7 +51,7 @@ func TestDrinkDeletedHandlerRejectsReferencedDrink(t *testing.T) {
 	testutil.AuditTouches(t, entry, target.ID.EntityUID())
 }
 
-func TestDrinkUpdatedHandlerChangesOnlyAffectedPublishedMenuItems(t *testing.T) {
+func TestDrinkUpdatedHandlerChangesAffectedMenuItems(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
@@ -78,16 +78,17 @@ func TestDrinkUpdatedHandlerChangesOnlyAffectedPublishedMenuItems(t *testing.T) 
 	testutil.Equals(t, menuHandlerAvailability(gotAffected, survivor.ID), menumodels.AvailabilityAvailable)
 	gotDraft, err := f.Menus.Get(ctx, draftMenu.ID)
 	testutil.Ok(t, err)
-	testutil.Equals(t, gotDraft, draftMenu, cmpopts.EquateEmpty())
+	testutil.Equals(t, menuHandlerAvailability(gotDraft, target.ID), menumodels.AvailabilityUnavailable)
+	testutil.Equals(t, gotDraft.Revision, draftMenu.Revision+1)
 	gotUnrelated, err := f.Menus.Get(ctx, unrelatedMenu.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, gotUnrelated, unrelatedMenu, cmpopts.EquateEmpty())
 
 	entry := f.LatestAuditEntry(drinksauthz.ActionUpdate)
-	testutil.AuditTouches(t, entry, target.ID.EntityUID(), affectedMenu.ID.EntityUID())
+	testutil.AuditTouches(t, entry, target.ID.EntityUID(), affectedMenu.ID.EntityUID(), draftMenu.ID.EntityUID())
 }
 
-func TestStockAdjustedHandlerRecalculatesOnlyPublishedMenusUsingIngredient(t *testing.T) {
+func TestStockAdjustedHandlerRecalculatesMenusUsingIngredient(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	ctx := f.OwnerContext()
@@ -112,13 +113,14 @@ func TestStockAdjustedHandlerRecalculatesOnlyPublishedMenusUsingIngredient(t *te
 	testutil.Equals(t, menuHandlerAvailability(gotAffected, survivor.ID), menumodels.AvailabilityAvailable)
 	gotDraft, err := f.Menus.Get(ctx, draftMenu.ID)
 	testutil.Ok(t, err)
-	testutil.Equals(t, gotDraft, draftMenu, cmpopts.EquateEmpty())
+	testutil.Equals(t, menuHandlerAvailability(gotDraft, target.ID), menumodels.AvailabilityUnavailable)
+	testutil.Equals(t, gotDraft.Revision, draftMenu.Revision+1)
 	gotUnrelated, err := f.Menus.Get(ctx, unrelatedMenu.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, gotUnrelated, unrelatedMenu, cmpopts.EquateEmpty())
 
 	entry := f.LatestAuditEntry(inventoryauthz.ActionAdjust)
-	testutil.AuditTouches(t, entry, targetStock.EntityUID(), affectedMenu.ID.EntityUID())
+	testutil.AuditTouches(t, entry, targetStock.EntityUID(), affectedMenu.ID.EntityUID(), draftMenu.ID.EntityUID())
 }
 
 func TestMenuPublishedHandlerPersistsAvailabilityAndAuditsMenu(t *testing.T) {

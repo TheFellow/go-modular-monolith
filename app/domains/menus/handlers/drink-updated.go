@@ -1,60 +1,20 @@
 package handlers
 
 import (
-	drinksevents "github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/availability"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	events "github.com/TheFellow/go-modular-monolith/app/domains/drinks/events"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-type DrinkUpdated struct {
-	dao          *dao.DAO
-	availability *availability.AvailabilityCalculator
-}
+type DrinkUpdated struct{ prepared *preparedMenus }
 
 func NewDrinkUpdated(s *store.Store, tags tag.Repository) *DrinkUpdated {
-	return &DrinkUpdated{
-		dao:          dao.New(s, tags),
-		availability: availability.New(s, tags),
-	}
+	return &DrinkUpdated{prepared: newPreparedMenus(s, tags)}
 }
-
-func (h *DrinkUpdated) Handle(ctx *middleware.HandlerContext, e drinksevents.DrinkUpdated) error {
-	menus, err := h.dao.ListByDrink(ctx, e.Drink.ID)
-	if err != nil {
-		return err
-	}
-
-	changedID := e.Drink.ID.String()
-	for _, menu := range menus {
-		if menu.Status != models.MenuStatusPublished {
-			continue
-		}
-
-		changed := false
-		for i := range menu.Items {
-			if menu.Items[i].DrinkID.String() != changedID {
-				continue
-			}
-			status := h.availability.Calculate(ctx, menu.Items[i].DrinkID)
-			if menu.Items[i].Availability == status {
-				continue
-			}
-			menu.Items[i].Availability = status
-			changed = true
-		}
-
-		if !changed {
-			continue
-		}
-		if err := h.dao.Update(ctx, menu); err != nil {
-			return err
-		}
-		ctx.TouchEntity(menu.ID.EntityUID())
-	}
-
-	return nil
+func (h *DrinkUpdated) Handling(ctx *middleware.HandlerContext, _ events.DrinkUpdated) error {
+	return h.prepared.prepare(ctx)
+}
+func (h *DrinkUpdated) Handle(ctx *middleware.HandlerContext, _ events.DrinkUpdated) error {
+	return h.prepared.apply(ctx)
 }

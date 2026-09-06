@@ -23,6 +23,9 @@ func (c *Commands) AddDrink(ctx *middleware.Context, patch *models.MenuPatch) (*
 	if err != nil {
 		return nil, err
 	}
+	if patch.Revision != 0 && patch.Revision != menu.Revision {
+		return nil, errors.Conflictf("menu changed; reload before editing items")
+	}
 	if err := ensureDraftMenu(menu); err != nil {
 		return nil, err
 	}
@@ -41,11 +44,15 @@ func (c *Commands) AddDrink(ctx *middleware.Context, patch *models.MenuPatch) (*
 		}
 	}
 
+	status, err := c.availability.CalculateStrict(ctx, patch.DrinkID)
+	if err != nil {
+		return nil, err
+	}
 	updated.Items = append(updated.Items, models.MenuItem{
 		DrinkID:      patch.DrinkID,
 		DisplayName:  optional.None[string](),
 		Price:        optional.None[models.Price](),
-		Availability: c.availability.Calculate(ctx, patch.DrinkID),
+		Availability: status,
 		SortOrder:    nextSort,
 	})
 	added := updated.Items[len(updated.Items)-1]
@@ -58,7 +65,7 @@ func (c *Commands) AddDrink(ctx *middleware.Context, patch *models.MenuPatch) (*
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID.EntityUID())
+	ctx.RecordEffect("menu_item_added", updated.ID.EntityUID(), middleware.Change("drink_id", "", patch.DrinkID.String()))
 	ctx.AddEvent(events.DrinkAddedToMenu{
 		Menu: updated,
 		Item: added,

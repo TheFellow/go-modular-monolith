@@ -47,6 +47,11 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 		}
 	case drinks_events.DrinkUpdated:
 		menusHandler := menus_handlers.NewDrinkUpdated(d.store, d.tags)
+		if err := menusHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
@@ -96,6 +101,11 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 		drinksHandler := drinks_handlers.NewIngredientUpdated(d.store, d.tags)
 		inventoryHandler := inventory_handlers.NewIngredientUpdated(d.store, d.tags)
 		menusHandler := menus_handlers.NewIngredientUpdated(d.store, d.tags)
+		if err := menusHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 		if err := drinksHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
@@ -114,6 +124,11 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	case inventory_events.StockAdjusted:
 		menusHandler := menus_handlers.NewStockAdjusted(d.store, d.tags)
 		ordersHandler := orders_handlers.NewStockAdjusted(d.store, d.tags)
+		if err := menusHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
@@ -138,6 +153,11 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 		}
 	case menus_events.MenuPublished:
 		menusHandler := menus_handlers.NewMenuPublished(d.store, d.tags)
+		if err := menusHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 		if err := menusHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
@@ -146,6 +166,17 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	case orders_events.OrderCancelled:
 		inventoryHandler := inventory_handlers.NewOrderCancelled(d.store, d.tags)
 		menusHandler := menus_handlers.NewOrderCancelled(d.store, d.tags)
+		ordersHandler := orders_handlers.NewOrderCancelled(d.store, d.tags)
+		if err := menusHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := ordersHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 		if err := inventoryHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
@@ -156,9 +187,19 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 				return herr
 			}
 		}
+		if err := ordersHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 	case orders_events.OrderCompleted:
 		inventoryHandler := inventory_handlers.NewOrderCompleted(d.store, d.tags)
 		menusHandler := menus_handlers.NewOrderCompleted(d.store, d.tags)
+		if err := menusHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 		if err := inventoryHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
@@ -172,6 +213,11 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 	case orders_events.OrderPlaced:
 		inventoryHandler := inventory_handlers.NewOrderPlaced(d.store, d.tags)
 		menusHandler := menus_handlers.NewOrderPlaced(d.store, d.tags)
+		if err := menusHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 		if err := inventoryHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr

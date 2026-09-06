@@ -525,7 +525,7 @@ func (p *Presenter) Save() bool {
 			}
 			_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) {
 				return p.app.Menus.Update(ctx, &models.Menu{ID: target.ID, Revision: target.Revision, Name: name, Description: description})
-			})
+			}, target.Tags)
 			return err
 		})
 	case Tagging:
@@ -538,7 +538,10 @@ func (p *Presenter) Save() bool {
 			p.fail(err)
 			return false
 		}
-		return p.mutate(func() error { _, err := p.app.Tags.Replace(p.app.Context(), target.EntityUID(), tags); return err })
+		return p.mutate(func() error {
+			_, err := p.app.Tags.Replace(p.app.Context(), target.EntityUID(), tags, target.Tags)
+			return err
+		})
 	case Browsing, Viewing, AddingDrink, Analyzing:
 		p.fail(errors.Invalidf("no menu form is active"))
 		return false
@@ -567,8 +570,8 @@ func (p *Presenter) AddDrink(id entity.DrinkID) bool {
 	}
 	return p.mutate(func() error {
 		_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) {
-			return p.app.Menus.AddDrink(ctx, &models.MenuPatch{MenuID: target.ID, DrinkID: id})
-		})
+			return p.app.Menus.AddDrink(ctx, &models.MenuPatch{Revision: target.Revision, MenuID: target.ID, DrinkID: id})
+		}, target.Tags)
 		return err
 	})
 }
@@ -592,8 +595,8 @@ func (p *Presenter) RemoveDrink(id entity.DrinkID) {
 			}
 			p.mutate(func() error {
 				_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) {
-					return p.app.Menus.RemoveDrink(ctx, &models.MenuPatch{MenuID: target.ID, DrinkID: id})
-				})
+					return p.app.Menus.RemoveDrink(ctx, &models.MenuPatch{Revision: target.Revision, MenuID: target.ID, DrinkID: id})
+				}, target.Tags)
 				return err
 			})
 		}
@@ -639,7 +642,7 @@ func (p *Presenter) Publish() {
 				return
 			}
 			p.mutate(func() error {
-				_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) { return p.app.Menus.Publish(ctx, target) })
+				_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) { return p.app.Menus.Publish(ctx, target) }, target.Tags)
 				return err
 			})
 		}
@@ -664,7 +667,7 @@ func (p *Presenter) ReturnToDraft() {
 				return
 			}
 			p.mutate(func() error {
-				_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) { return p.app.Menus.Draft(ctx, target) })
+				_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) { return p.app.Menus.Draft(ctx, target) }, target.Tags)
 				return err
 			})
 		}

@@ -29,7 +29,11 @@ func (c *Commands) Publish(ctx *middleware.Context, menu *models.Menu) (*models.
 	updated.Status = models.MenuStatusPublished
 	updated.PublishedAt = optional.Some(now)
 	for i := range updated.Items {
-		updated.Items[i].Availability = c.availability.Calculate(ctx, updated.Items[i].DrinkID)
+		status, err := c.availability.CalculateStrict(ctx, updated.Items[i].DrinkID)
+		if err != nil {
+			return nil, err
+		}
+		updated.Items[i].Availability = status
 	}
 
 	if err := updated.Validate(); err != nil {
@@ -40,7 +44,7 @@ func (c *Commands) Publish(ctx *middleware.Context, menu *models.Menu) (*models.
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID.EntityUID())
+	ctx.RecordEffect("menu_published", updated.ID.EntityUID(), middleware.Change("status", menu.Status, updated.Status))
 	ctx.AddEvent(events.MenuPublished{
 		Menu: updated,
 	})

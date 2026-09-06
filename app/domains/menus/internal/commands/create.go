@@ -44,7 +44,7 @@ func (c *Commands) Create(ctx *middleware.Context, menu *models.Menu) (*models.M
 		return nil, err
 	}
 
-	ctx.TouchEntity(created.ID.EntityUID())
+	ctx.RecordEffect("menu_created", created.ID.EntityUID(), middleware.Change("name", "", created.Name))
 	ctx.AddEvent(events.MenuCreated{
 		Menu: created,
 	})

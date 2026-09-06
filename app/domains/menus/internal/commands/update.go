@@ -42,7 +42,7 @@ func (c *Commands) Update(ctx *middleware.Context, menu *models.Menu) (*models.M
 		return nil, err
 	}
 
-	ctx.TouchEntity(updated.ID.EntityUID())
+	ctx.RecordEffect("menu_updated", updated.ID.EntityUID(), middleware.Change("name", existing.Name, updated.Name))
 
 	return &updated, nil
 }

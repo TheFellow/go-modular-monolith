@@ -1,79 +1,20 @@
 package handlers
 
 import (
-	drinksq "github.com/TheFellow/go-modular-monolith/app/domains/drinks/queries"
-	inventoryevents "github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/availability"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/internal/dao"
-	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
+	events "github.com/TheFellow/go-modular-monolith/app/domains/inventory/events"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 )
 
-type StockAdjusted struct {
-	dao          *dao.DAO
-	drinks       *drinksq.Queries
-	availability *availability.AvailabilityCalculator
-}
+type StockAdjusted struct{ prepared *preparedMenus }
 
 func NewStockAdjusted(s *store.Store, tags tag.Repository) *StockAdjusted {
-	return &StockAdjusted{
-		dao:          dao.New(s, tags),
-		drinks:       drinksq.New(s, tags),
-		availability: availability.New(s, tags),
-	}
+	return &StockAdjusted{prepared: newPreparedMenus(s, tags)}
 }
-
-func (h *StockAdjusted) Handle(ctx *middleware.HandlerContext, e inventoryevents.StockAdjusted) error {
-	for menu, err := range h.dao.List(ctx, dao.ListFilter{Status: models.MenuStatusPublished}) {
-		if err != nil {
-			return err
-		}
-		changed := false
-		for i := range menu.Items {
-			item := menu.Items[i]
-			if !h.drinkUsesIngredient(ctx, item.DrinkID, e.Inventory.IngredientID) {
-				continue
-			}
-
-			status := h.availability.Calculate(ctx, item.DrinkID)
-			if item.Availability == status {
-				continue
-			}
-			menu.Items[i].Availability = status
-			changed = true
-		}
-
-		if !changed {
-			continue
-		}
-		if err := h.dao.Update(ctx, menu); err != nil {
-			return err
-		}
-		ctx.TouchEntity(menu.ID.EntityUID())
-	}
-
-	return nil
+func (h *StockAdjusted) Handling(ctx *middleware.HandlerContext, _ events.StockAdjusted) error {
+	return h.prepared.prepare(ctx)
 }
-
-func (h *StockAdjusted) drinkUsesIngredient(ctx *middleware.HandlerContext, drinkID entity.DrinkID, ingredientID entity.IngredientID) bool {
-	drink, err := h.drinks.Get(ctx, drinkID)
-	if err != nil {
-		return false
-	}
-
-	target := ingredientID.String()
-	for _, ri := range drink.Recipe.Ingredients {
-		if ri.IngredientID.String() == target {
-			return true
-		}
-		for _, sub := range ri.Substitutes {
-			if sub.String() == target {
-				return true
-			}
-		}
-	}
-	return false
+func (h *StockAdjusted) Handle(ctx *middleware.HandlerContext, _ events.StockAdjusted) error {
+	return h.prepared.apply(ctx)
 }
