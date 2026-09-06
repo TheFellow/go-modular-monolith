@@ -62,9 +62,8 @@ func TestDrinks_CreateGetUpdateDelete(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.ErrorIf(t, got.Recipe.Ingredients[0].IngredientID != lemon.ID, "expected lemon ingredient after update")
 
-	deleted, err := f.Drinks.Delete(ctx, created.ID)
+	_, err = f.Drinks.Delete(ctx, created.ID)
 	testutil.Ok(t, err)
-	testutil.ErrorIf(t, !deleted.DeletedAt.IsSome(), "expected DeletedAt to be set")
 
 	_, err = f.Drinks.Get(ctx, created.ID)
 	testutil.ErrorIsNotFound(t, err)

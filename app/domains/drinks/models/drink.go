@@ -1,13 +1,10 @@
 package models
 
 import (
-	"time"
-
 	drinkauthz "github.com/TheFellow/go-modular-monolith/app/domains/drinks/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -26,7 +23,6 @@ type Drink struct {
 	Recipe      Recipe
 	Description string
 	Status      Status
-	DeletedAt   optional.Value[time.Time]
 	Tags        tag.Tags
 }
 

@@ -6,7 +6,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
 func (c *Commands) Delete(ctx *middleware.Context, menu *models.Menu) (*models.Menu, error) {
@@ -21,20 +20,20 @@ func (c *Commands) Delete(ctx *middleware.Context, menu *models.Menu) (*models.M
 	if err != nil {
 		return nil, err
 	}
+
 	if err := ensureDraftMenu(existing); err != nil {
 		return nil, err
 	}
 
 	now := time.Now().UTC()
 	deleted := *existing
-	deleted.DeletedAt = optional.Some(now)
 	deleted.Status = models.MenuStatusArchived
 
-	if err := c.dao.Update(ctx, &deleted); err != nil {
+	if err := c.dao.Delete(ctx, &deleted, now); err != nil {
 		return nil, err
 	}
 
-	ctx.TouchEntity(deleted.ID.EntityUID())
+	ctx.RecordEffect("menu_deleted", deleted.ID.EntityUID(), middleware.Change("status", existing.Status, deleted.Status))
 
 	return &deleted, nil
 }

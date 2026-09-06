@@ -11,7 +11,6 @@ import (
 	pkgAuthz "github.com/TheFellow/go-modular-monolith/pkg/authz"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	cedar "github.com/cedar-policy/cedar-go"
 )
 
@@ -67,9 +66,8 @@ func (c *Commands) Retire(ctx *middleware.Context, target RetirementTarget) (*mo
 
 	now := time.Now().UTC()
 	deleted := *ingredient
-	deleted.DeletedAt = optional.Some(now)
 
-	if err := c.dao.Update(ctx, &deleted); err != nil {
+	if err := c.dao.Delete(ctx, &deleted, now); err != nil {
 		return nil, err
 	}
 

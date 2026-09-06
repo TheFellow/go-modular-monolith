@@ -43,9 +43,8 @@ func TestIngredients_CreateGetUpdateDelete(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.Equals(t, got, updated)
 
-	deleted, err := f.Ingredients.Delete(ctx, created.ID)
+	_, err = f.Ingredients.Delete(ctx, created.ID)
 	testutil.Ok(t, err)
-	testutil.IsTrue(t, deleted.DeletedAt.IsSome())
 	_, err = f.Ingredients.Get(ctx, created.ID)
 	testutil.ErrorIsNotFound(t, err)
 	count, err = f.Ingredients.Count(ctx, ingredients.ListRequest{})

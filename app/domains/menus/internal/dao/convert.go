@@ -14,10 +14,7 @@ func toRow(m menumodels.Menu) MenuRow {
 	if t, ok := m.PublishedAt.Unwrap(); ok {
 		publishedAt = &t
 	}
-	var deletedAt *time.Time
-	if t, ok := m.DeletedAt.Unwrap(); ok {
-		deletedAt = &t
-	}
+
 	items := make([]MenuItemRow, 0, len(m.Items))
 	for _, it := range m.Items {
 		var price optional.Value[money.Price]
@@ -46,7 +43,6 @@ func toRow(m menumodels.Menu) MenuRow {
 		Status:      string(m.Status),
 		CreatedAt:   m.CreatedAt,
 		PublishedAt: publishedAt,
-		DeletedAt:   deletedAt,
 	}
 }
 
@@ -56,12 +52,6 @@ func toModel(r MenuRow) menumodels.Menu {
 		publishedAt = optional.Some(*r.PublishedAt)
 	} else {
 		publishedAt = optional.None[time.Time]()
-	}
-	var deletedAt optional.Value[time.Time]
-	if r.DeletedAt != nil {
-		deletedAt = optional.Some(*r.DeletedAt)
-	} else {
-		deletedAt = optional.None[time.Time]()
 	}
 	items := make([]menumodels.MenuItem, 0, len(r.Items))
 	for _, it := range r.Items {
@@ -91,6 +81,5 @@ func toModel(r MenuRow) menumodels.Menu {
 		Status:      menumodels.MenuStatus(r.Status),
 		CreatedAt:   r.CreatedAt,
 		PublishedAt: publishedAt,
-		DeletedAt:   deletedAt,
 	}
 }

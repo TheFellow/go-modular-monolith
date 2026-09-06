@@ -29,7 +29,6 @@ type Order struct {
 	CreatedAt          time.Time
 	CompletedAt        optional.Value[time.Time]
 	Notes              string
-	DeletedAt          optional.Value[time.Time]
 	Tags               tag.Tags
 }
 

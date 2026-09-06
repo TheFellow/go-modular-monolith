@@ -7,7 +7,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
-	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 )
 
 func (c *Commands) Delete(ctx *middleware.Context, drink *models.Drink) (*models.Drink, error) {
@@ -20,13 +19,12 @@ func (c *Commands) Delete(ctx *middleware.Context, drink *models.Drink) (*models
 
 	now := time.Now().UTC()
 	deleted := *drink
-	deleted.DeletedAt = optional.Some(now)
 
-	if err := c.dao.Update(ctx, &deleted); err != nil {
+	if err := c.dao.Delete(ctx, &deleted, now); err != nil {
 		return nil, err
 	}
 
-	ctx.TouchEntity(deleted.ID.EntityUID())
+	ctx.RecordEffect("drink_deleted", deleted.ID.EntityUID(), middleware.Change("name", drink.Name, ""))
 	ctx.AddEvent(events.DrinkDeleted{
 		Drink:     deleted,
 		DeletedAt: now,
