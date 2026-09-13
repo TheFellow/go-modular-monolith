@@ -6,7 +6,8 @@ human-readable output.
 
 ## Public surface
 
-- `JSONFlag`, `TemplateFlag`, `StdinFlag`, and `FileFlag` give mutation commands consistent flags.
+- `JSONFlag()`, `TemplateFlag()`, `StdinFlag()`, and `FileFlag()` create consistent flags with
+  independent parser state for each command.
 - `ReadJSONInput[T]` requires exactly one source: `--file` or `--stdin` (which may receive a pipe).
   The composing command handles `--template` before calling the reader.
 - `WriteJSON` writes indented JSON with a trailing newline.

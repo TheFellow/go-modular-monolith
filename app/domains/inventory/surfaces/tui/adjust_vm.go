@@ -13,6 +13,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
+	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
@@ -23,6 +24,8 @@ import (
 
 // AdjustInventoryVM renders an inventory adjustment form.
 type AdjustInventoryVM struct {
+	viewport   toolkit.FormViewport
+	costUnit   *forms.SelectField
 	app        *app.Session
 	form       *forms.Form
 	row        InventoryRow
@@ -52,12 +55,12 @@ func NewAdjustInventoryVM(app *app.Session, row InventoryRow) *AdjustInventoryVM
 	}
 
 	amountField := forms.NewNumberField(
-		"Delta",
-		forms.WithPrecision(2),
+		"Delta ("+string(unitFromRow(row))+")",
 		forms.WithAllowNegative(),
 		forms.WithPlaceholder("e.g., +5.0 or -2.5"),
 	)
-	costField := forms.NewTextField("Cost per "+string(row.Inventory.CostUnit), forms.WithPlaceholder("e.g., $1.23 or EUR 1.23"))
+	costUnitField := inventoryCostUnitField(row)
+	costField := forms.NewTextField("Cost per selected unit", forms.WithPlaceholder("e.g., $1.23 or EUR 1.23"))
 	reasonField := forms.NewSelectField(
 		"Reason",
 		reasonOptions,
@@ -72,20 +75,23 @@ func NewAdjustInventoryVM(app *app.Session, row InventoryRow) *AdjustInventoryVM
 		formKeys,
 		amountField,
 		costField,
+		costUnitField,
 		reasonField,
 		tagsField,
 	)
 
 	return &AdjustInventoryVM{
-		app:    app,
-		form:   form,
-		row:    row,
-		styles: formStyles,
-		keys:   formKeys,
-		amount: amountField,
-		cost:   costField,
-		reason: reasonField,
-		tags:   tagsField,
+		viewport: toolkit.NewFormViewport(),
+		app:      app,
+		costUnit: costUnitField,
+		form:     form,
+		row:      row,
+		styles:   formStyles,
+		keys:     formKeys,
+		amount:   amountField,
+		cost:     costField,
+		reason:   reasonField,
+		tags:     tagsField,
 	}
 }
 
@@ -125,7 +131,7 @@ func (m *AdjustInventoryVM) View() string {
 
 	current := "Current: N/A"
 	if m.row.Inventory.Amount != nil {
-		current = fmt.Sprintf("Current: %.2f %s", m.row.Inventory.Amount.Value(), m.row.Inventory.Amount.Unit())
+		current = "Current: " + exactInventoryAmount(m.row.Inventory.Amount)
 	}
 	if price, ok := m.row.Inventory.CostPerUnit.Unwrap(); ok {
 		current += " at " + price.String()
@@ -134,9 +140,9 @@ func (m *AdjustInventoryVM) View() string {
 	view := strings.Join([]string{title, current, "", m.form.View()}, "\n")
 	if m.err != nil {
 		errText := m.styles.Error.Render("Error: " + m.err.Error())
-		return strings.Join([]string{errText, "", view}, "\n")
+		return m.viewport.View(strings.Join([]string{errText, "", view}, "\n"), inventoryFormFocusLine(m.form, 5, m.amount, m.cost, m.costUnit, m.reason, m.tags), "")
 	}
-	return view
+	return m.viewport.View(view, inventoryFormFocusLine(m.form, 3, m.amount, m.cost, m.costUnit, m.reason, m.tags), "")
 }
 
 // SetWidth sets the width of the form.
@@ -194,7 +200,7 @@ func (m *AdjustInventoryVM) submit() tea.Cmd {
 	}
 
 	patch := &models.Patch{
-		CostUnit:     m.row.Inventory.CostUnit,
+		CostUnit:     measurement.Unit(fmt.Sprint(m.costUnit.Value())),
 		Revision:     m.row.Inventory.Revision,
 		IngredientID: m.row.Ingredient.ID,
 		Reason:       toAdjustmentReason(m.reason.Value()),
@@ -236,11 +242,40 @@ func toFloat(value any) (float64, bool) {
 }
 
 func unitFromRow(row InventoryRow) measurement.Unit {
-	if row.Ingredient.Unit != "" {
-		return row.Ingredient.Unit
-	}
 	if row.Inventory.Amount != nil {
 		return row.Inventory.Amount.Unit()
 	}
-	return ""
+	return row.Ingredient.Unit
+}
+
+func inventoryCostUnitField(row InventoryRow) *forms.SelectField {
+	options := make([]forms.SelectOption, 0)
+	for _, unit := range measurement.AllUnits() {
+		if _, err := measurement.MustAmount(1, unitFromRow(row)).Convert(unit); err == nil {
+			options = append(options, forms.SelectOption{Label: string(unit), Value: unit})
+		}
+	}
+	field := forms.NewSelectField("Cost unit", options, forms.WithRequired())
+	unit := row.Inventory.CostUnit
+	if unit == "" {
+		unit = unitFromRow(row)
+	}
+	_ = field.SetValue(unit)
+	return field
+}
+
+func (m *AdjustInventoryVM) SetSize(width, height int) {
+	m.SetWidth(width)
+	m.viewport.SetSize(width, height)
+}
+
+func inventoryFormFocusLine(form *forms.Form, headerLines int, fields ...forms.Field) int {
+	line := headerLines
+	for _, field := range fields {
+		if field == form.FocusedField() {
+			return line
+		}
+		line += strings.Count(field.View(), "\n") + 2
+	}
+	return headerLines
 }

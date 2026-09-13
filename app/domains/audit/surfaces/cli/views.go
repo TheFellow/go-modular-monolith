@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces"
 )
 
 type AuditRow struct {
@@ -33,7 +34,7 @@ func ToAuditRow(entry *models.AuditEntry) AuditRow {
 		ID:          entry.ID.String(),
 		StartedAt:   formatTime(entry.StartedAt),
 		CompletedAt: formatTime(entry.CompletedAt),
-		Duration:    formatDuration(entry.StartedAt, entry.CompletedAt),
+		Duration:    surfaces.Duration(entry.StartedAt, entry.CompletedAt),
 		Action:      entry.Action,
 		Resource:    entry.Resource.String(),
 		Principal:   entry.Principal.String(),
@@ -41,13 +42,6 @@ func ToAuditRow(entry *models.AuditEntry) AuditRow {
 		Touches:     len(entry.Touches),
 		Error:       entry.Error,
 	}
-}
-
-func formatDuration(start, end time.Time) string {
-	if start.IsZero() || end.IsZero() || end.Before(start) {
-		return ""
-	}
-	return end.Sub(start).Round(time.Microsecond).String()
 }
 
 func ToAuditRows(entries []*models.AuditEntry) []AuditRow {

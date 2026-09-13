@@ -67,6 +67,7 @@ authorization, transaction, event, and audit pipelines against an isolated datab
 | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | Understand bounded contexts, pipelines, events, authz, and enforced boundaries | [Architecture](docs/architecture.md)                                               |
 | Trace atomic retirement, amendments, history, and concurrency decisions       | [Transactional workflows](docs/transactional-workflows.md)                         |
+| Compare cross-domain workflows and review rendered surfaces                  | [Surface parity audit](docs/surface-parity.md)                                     |
 | Use fulfillment, retirement, filters, tags, audit, IDs, or personas            | [Application features](docs/features.md)                                           |
 | Work on an executable and its composition layer                                | [CLI](main/cli/README.md), [TUI](main/tui/README.md), or [GUI](main/gui/README.md) |
 | Reuse or extend presentation mechanics                                         | [Presentation toolkits](pkg/toolkits/readme.md)                                    |

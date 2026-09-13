@@ -32,9 +32,9 @@ func TestIngredientActionProjectorAuthorization(t *testing.T) {
 			t.Parallel()
 			states, err := ingredients.NewActionProjector().Project(context.Background(), actor.principal, ingredient)
 			testutil.Ok(t, err)
-			testutil.Equals(t, len(states), 5)
+			testutil.Equals(t, len(states), 7)
 			for i, state := range states {
-				if i == 0 {
+				if i == 0 || state.ID == ingredients.ControlSubstitutions {
 					testutil.Equals(t, state.Visible, true)
 					testutil.Equals(t, state.Enabled, true)
 					continue
@@ -84,7 +84,7 @@ func TestIngredientActionStatesHaveStableJSONReadyIDs(t *testing.T) {
 	t.Parallel()
 	states, err := ingredients.NewActionProjector().Project(context.Background(), authn.Owner(), &models.Ingredient{ID: entity.NewIngredientID()})
 	testutil.Ok(t, err)
-	want := []actions.ID{ingredients.ControlList, ingredients.ControlCreate, ingredients.ControlEdit, ingredients.ControlDelete, ingredients.ControlTags}
+	want := []actions.ID{ingredients.ControlList, ingredients.ControlCreate, ingredients.ControlEdit, ingredients.ControlDelete, ingredients.ControlTags, ingredients.ControlSubstitutions, ingredients.ControlSetSubstitution}
 	got := make([]actions.ID, len(states))
 	for i := range states {
 		got[i] = states[i].ID

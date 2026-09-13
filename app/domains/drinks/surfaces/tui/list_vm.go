@@ -576,10 +576,10 @@ func (m *ListViewModel) showDeleteConfirm(drink *models.Drink) tea.Cmd {
 			return DeleteErrorMsg{Err: err}
 		}
 		menuCount := countMenusWithDrink(menusList, drink.ID)
-		message := fmt.Sprintf("Delete %q?", drink.Name)
+		message := fmt.Sprintf("Delete %q?\n\nDrinks used by menus or orders cannot be deleted.", drink.Name)
 		if menuCount > 0 {
 			message = fmt.Sprintf(
-				"Delete %q?\n\nThis drink appears on %d menu(s) and will be removed from them.",
+				"Delete %q?\n\nThis drink appears on %d menu(s) and cannot be deleted until it is removed from every menu. Order usage also prevents deletion.",
 				drink.Name,
 				menuCount,
 			)

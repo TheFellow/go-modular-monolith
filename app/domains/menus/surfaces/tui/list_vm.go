@@ -805,6 +805,7 @@ func (m *ListViewModel) showDeleteConfirm(menu *menusmodels.Menu) tea.Cmd {
 				itemCount,
 			)
 		}
+		message += "\n\nMenus used by orders cannot be deleted."
 		confirm := dialog.NewConfirmDialog(
 			"Delete Menu",
 			message,

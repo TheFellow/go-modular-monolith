@@ -45,8 +45,9 @@ func TestCommandNouns(t *testing.T) {
 	testutil.Equals(t, names, want)
 }
 
-//nolint:paralleltest // urfave CLI mutates shared package-level flag instances while parsing.
 func TestTableOutputUsesCommandWriter(t *testing.T) {
+	t.Parallel()
+
 	c, err := NewCLI()
 	testutil.Ok(t, err)
 	c.dbPath = t.TempDir() + "/writer.db"
@@ -71,7 +72,7 @@ func TestTableColumns(t *testing.T) {
 	}{
 		{"drink", drinkscli.DrinkRow{}, []string{"ID", "NAME", "CATEGORY", "GLASS", "STATUS", "INGREDIENTS", "TAGS"}},
 		{"ingredient", ingredientscli.IngredientRow{}, []string{"ID", "NAME", "CATEGORY", "UNIT", "DESCRIPTION", "TAGS"}},
-		{"inventory", inventorycli.InventoryRow{}, []string{"STATUS", "COST_UNIT", "ID", "INGREDIENT_ID", "QUANTITY", "RESERVED", "AVAILABLE", "UNIT", "COST_PER_UNIT", "LAST_UPDATED", "TAGS"}},
+		{"inventory", inventorycli.InventoryRow{}, []string{"STATUS", "REASON", "COST_UNIT", "ID", "INGREDIENT_ID", "QUANTITY", "RESERVED", "AVAILABLE", "UNIT", "COST_PER_UNIT", "LAST_UPDATED", "TAGS"}},
 		{"menu", menuscli.MenuRow{}, []string{"ID", "NAME", "STATUS", "ITEMS", "CREATED_AT", "PUBLISHED_AT", "TAGS"}},
 		{"menu item", menuscli.MenuItemRow{}, []string{"DRINK_ID", "DISPLAY_NAME", "PRICE", "FEATURED", "AVAILABILITY", "SORT_ORDER"}},
 		{"order", orderscli.OrderRow{}, []string{"ID", "MENU_ID", "STATUS", "ITEMS", "TOTAL_QUANTITY", "CREATED_AT", "COMPLETED_AT", "TAGS"}},

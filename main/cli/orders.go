@@ -8,6 +8,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	presentation "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces"
 	orderscli "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -30,10 +31,10 @@ func (c *CLI) ordersCommands() *cli.Command {
 					&cli.StringArgs{Name: "items", UsageText: "<drink-id>:<qty> [<drink-id>:<qty>...]", Max: -1},
 				},
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.JSONFlag,
-					clitoolkit.TemplateFlag,
-					clitoolkit.StdinFlag,
-					clitoolkit.FileFlag,
+					clitoolkit.JSONFlag(),
+					clitoolkit.TemplateFlag(),
+					clitoolkit.StdinFlag(),
+					clitoolkit.FileFlag(),
 					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID"},
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -110,10 +111,10 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List orders",
 				Flags: appendFilterFlags(append([]cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{
 						Name:  "status",
-						Usage: "Filter by status (pending|completed|cancelled)",
+						Usage: "Filter by status (pending|blocked|completed|cancelled)",
 						Validator: func(s string) error {
 							s = strings.TrimSpace(s)
 							if s == "" {
@@ -149,7 +150,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "get",
 				Usage: "Get an order",
 				Flags: []cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -171,14 +172,18 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if _, err := fmt.Fprintln(cmd.Writer); err != nil {
 						return err
 					}
-					return clitable.PrintTable(cmd.Writer, orderscli.ToOrderItemRows(res.Items))
+					if err := clitable.PrintTable(cmd.Writer, orderscli.ToOrderItemRows(res.Items)); err != nil {
+						return err
+					}
+					_, err = fmt.Fprintf(cmd.Writer, "\nAccepted menu: %s\n\nAccepted recipe\n%s\n\nApproved preparation\n%s\n\nIngredient usage\n%s\n\nAmendment history\n%s\n", res.Acceptance.MenuName, presentation.Snapshot(res.Acceptance.Items), presentation.Snapshot(res.Plan), presentation.Usage(res.IngredientUsage), presentation.History(res.Amendments))
+					return err
 				}),
 			},
 			{
 				Name:  "complete",
 				Usage: "Complete an order",
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -203,7 +208,7 @@ func (c *CLI) ordersCommands() *cli.Command {
 				Name:  "cancel",
 				Usage: "Cancel an order",
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "id", Usage: "Order ID", Required: true},
 					&cli.StringFlag{Name: "reason", Usage: "Reason for cancellation"},
 					&cli.Uint64Flag{Name: "revision", Usage: "Expected order revision"},

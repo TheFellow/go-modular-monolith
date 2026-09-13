@@ -36,6 +36,7 @@ const (
 	Create
 	Edit
 	Tags
+	Substitutions
 )
 
 type Form struct {
@@ -48,6 +49,10 @@ type Form struct {
 }
 
 type State struct {
+	RuleNames    map[entity.IngredientID]string
+	Rules        []models.SubstitutionRule
+	RuleForm     SubstitutionForm
+	RuleStatus   toolkit.LoadStatus
 	Status       toolkit.LoadStatus
 	Items        []models.Ingredient
 	Selected     *models.Ingredient
@@ -76,6 +81,7 @@ type Presenter struct {
 	dispatcher toolkit.Dispatcher
 	dialogs    toolkit.Dialogs
 	loads      *toolkit.LatestRequest[loadResult]
+	ruleLoads  *toolkit.LatestRequest[substitutionResult]
 	mutation   *toolkit.Submission
 
 	mu        sync.Mutex
@@ -100,6 +106,7 @@ func NewPresenter(session *app.Session, executor toolkit.Executor, dispatcher to
 		toolkit.ShowPresentation(dialogs, err)
 	}
 	p.loads = toolkit.NewLatestRequest[loadResult](executor, dispatcher)
+	p.ruleLoads = toolkit.NewLatestRequest[substitutionResult](executor, dispatcher)
 	p.mutation = toolkit.NewSubmission(executor, dispatcher)
 	return p
 }
@@ -415,7 +422,7 @@ func (p *Presenter) Submit(form Form) bool {
 			if err == nil {
 				_, err = p.app.Tags.Replace(p.app.Context(), selected.EntityUID(), desired, selected.Tags)
 			}
-		case Browse, Viewing:
+		case Browse, Viewing, Substitutions:
 			err = errors.FailedPreconditionf("ingredient form is not active")
 		}
 		return err
@@ -466,6 +473,10 @@ func (p *Presenter) RequestDelete() {
 }
 
 func (p *Presenter) RequestRetire(replacementID, replacementRatio string) {
+	p.RequestRetirement(replacementID, replacementRatio, false, "")
+}
+
+func (p *Presenter) RequestRetirement(replacementID, replacementRatio string, withdraw bool, reason string) {
 	p.mu.Lock()
 	target := p.state.Selected
 	allowed := p.actionEnabledLocked(ingredients.ControlDelete)
@@ -473,7 +484,7 @@ func (p *Presenter) RequestRetire(replacementID, replacementRatio string) {
 	if target == nil || !allowed {
 		return
 	}
-	retirement := models.Retirement{}
+	retirement := models.Retirement{Withdraw: withdraw, Reason: strings.TrimSpace(reason)}
 	replacementID = strings.TrimSpace(replacementID)
 	replacementRatio = strings.TrimSpace(replacementRatio)
 	if replacementID != "" {
@@ -506,6 +517,15 @@ func (p *Presenter) RequestRetire(replacementID, replacementRatio string) {
 			message := fmt.Sprintf("Retire %q?", target.Name)
 			if count > 0 {
 				message = fmt.Sprintf("Retire %q?\n\nThis will mark %d dependent drink(s) for review and make their menu items unavailable.", target.Name, count)
+			}
+			if retirement.HasReplacement() {
+				message = fmt.Sprintf("Retire %q and permanently replace it with %s (ratio %g)? Dependent recipes will be rewritten and reviewed for validity.", target.Name, retirement.ReplacementID, retirement.Ratio)
+			}
+			if retirement.Withdraw {
+				message += "\n\nExisting stock will be quarantined and affected accepted orders will be blocked."
+			}
+			if retirement.Reason != "" {
+				message += "\n\nReason: " + retirement.Reason
 			}
 			p.dialogs.Confirm("Retire Ingredient", message, func(confirmed bool) {
 				if confirmed {
@@ -625,6 +645,8 @@ func (p *Presenter) actionEnabledLocked(id actions.ID) bool {
 }
 
 func cloneState(state State) State {
+	state.RuleNames = maps.Clone(state.RuleNames)
+	state.Rules = append([]models.SubstitutionRule(nil), state.Rules...)
 	state.Items = append([]models.Ingredient(nil), state.Items...)
 	state.History = append([]paging.Cursor(nil), state.History...)
 	actionsCopy := make(map[actions.ID]actions.State, len(state.Actions))

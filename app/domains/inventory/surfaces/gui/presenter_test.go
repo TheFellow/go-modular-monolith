@@ -196,7 +196,7 @@ func TestPresenterValidationRetainsFormAndRejectsDuplicate(t *testing.T) {
 	p.Load()
 	executor.RunNext()
 	p.StartAdjust()
-	testutil.ErrorIf(t, p.Submit(Form{Amount: "1.234", Reason: inventorymodels.ReasonUsed}) || executor.Pending() != 0, "%v", "precision validation scheduled mutation")
+	testutil.ErrorIf(t, p.Submit(Form{Amount: "NaN", Reason: inventorymodels.ReasonUsed}) || executor.Pending() != 0, "%v", "non-finite amount scheduled mutation")
 	testutil.ErrorIf(t, p.Snapshot().Mode != Adjust || p.Snapshot().Err == nil, "form not retained: %#v", p.Snapshot())
 	testutil.ErrorIf(t, !p.Submit(Form{Amount: "1.25", Reason: inventorymodels.ReasonReceived}) || p.Submit(Form{Amount: "1.25", Reason: inventorymodels.ReasonReceived}) || executor.Pending() != 1, "%v", "duplicate was not rejected")
 }
@@ -350,7 +350,7 @@ func TestInlineTypedValidationErrorsRemainVisibleForEveryInventoryMutation(t *te
 		start func()
 		form  Form
 	}{
-		{p.StartAdjust, Form{Amount: "1.234", Reason: inventorymodels.ReasonUsed}},
+		{p.StartAdjust, Form{Amount: "NaN", Reason: inventorymodels.ReasonUsed}},
 		{p.StartSet, Form{Amount: "-1.00"}},
 		{p.StartTags, Form{Tags: "=missing-key"}},
 	}

@@ -10,6 +10,7 @@ import (
 	menusmodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	orders "github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	presentation "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
@@ -57,7 +58,9 @@ func (d *DetailViewModel) View() string {
 	lines := []string{
 		d.styles.Title.Render("Order"),
 		d.styles.Muted.Render("ID: " + order.ID.String()),
+		fmt.Sprintf("Revision: %d", order.Revision),
 		d.styles.Subtitle.Render("Menu: ") + menu.Name,
+		d.styles.Muted.Render("Menu ID: " + order.Acceptance.MenuID.String()),
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
 		d.styles.Subtitle.Render("Tags: ") + cmp.Or(order.Tags.Canonical().String(), "(none)"),
 		d.styles.Muted.Render("Created: " + formatTime(order.CreatedAt)),
@@ -81,7 +84,7 @@ func (d *DetailViewModel) View() string {
 		id    actions.ID
 		label string
 	}{
-		{orders.ControlComplete, "Complete"}, {orders.ControlCancel, "Cancel order"},
+		{orders.ControlAmend, "Amend"}, {orders.ControlComplete, "Complete"}, {orders.ControlCancel, "Cancel order"},
 	} {
 		if state, ok := d.actions[action.id]; ok && state.Visible && !state.Enabled && state.DisabledReason != "" {
 			lines = append(lines, d.styles.Muted.Render(action.label+": "+state.DisabledReason))
@@ -97,24 +100,7 @@ func (d *DetailViewModel) View() string {
 		lines = append(lines, "", d.styles.Subtitle.Render("Total: ")+total)
 	}
 
-	lines = append(lines, "", "Approved preparation")
-	for _, item := range order.Plan {
-		lines = append(lines, item.Name)
-		for _, selection := range item.Ingredients {
-			if selection.Omitted {
-				lines = append(lines, "  Omitted optional ingredient: "+selection.OriginalID.String())
-				continue
-			}
-			lines = append(lines, fmt.Sprintf("  %g %s %s", selection.Quantity, selection.Unit, selection.Name))
-		}
-		lines = append(lines, item.Steps...)
-		if item.Garnish != "" {
-			lines = append(lines, "Garnish: "+item.Garnish)
-		}
-	}
-	for _, amendment := range order.Amendments {
-		lines = append(lines, "Amended "+formatTime(amendment.At)+" by "+amendment.Principal+": "+amendment.Reason)
-	}
+	lines = append(lines, "", "Accepted recipe", presentation.Snapshot(order.Acceptance.Items), "", "Approved preparation", presentation.Snapshot(order.Plan), "", "Ingredient usage", presentation.Usage(order.IngredientUsage), "", "Amendment history", presentation.History(order.Amendments))
 	if at, ok := order.CancelledAt.Unwrap(); ok {
 		lines = append(lines, "Cancelled: "+formatTime(at), order.CancellationReason)
 	}

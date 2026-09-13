@@ -9,7 +9,7 @@ import (
 )
 
 func (c *CLI) dashboardCommand() *cli.Command {
-	return &cli.Command{Name: "status", Usage: "Show the application dashboard aggregate", Flags: []cli.Flag{clitoolkit.JSONFlag}, Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+	return &cli.Command{Name: "status", Usage: "Show the application dashboard aggregate", Flags: []cli.Flag{clitoolkit.JSONFlag()}, Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 		data, err := c.app.Dashboard(ctx)
 		if err != nil {
 			return err

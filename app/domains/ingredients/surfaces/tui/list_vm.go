@@ -40,6 +40,7 @@ const (
 	listModeConfirmingDelete
 	listModeFiltering
 	listModeRetiring
+	listModeSubstitutions
 )
 
 // ListViewModel renders the ingredients list and detail panes.
@@ -61,6 +62,7 @@ type ListViewModel struct {
 	tags      *components.TagEditor[cedar.EntityUID, tag.Tags]
 	dialog    *dialog.ConfirmDialog
 	filter    *filterVM
+	rules     *substitutionsVM
 	retire    *RetireIngredientVM
 	request   ingredients.ListRequest
 	next      paging.Cursor
@@ -108,11 +110,23 @@ func (m *ListViewModel) Init() tea.Cmd {
 func (m *ListViewModel) Interaction() tui.Interaction {
 	return tui.Interaction{
 		HandlesBack:  m.mode != listModeBrowsing,
-		CapturesText: m.mode == listModeFiltering || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging || m.mode == listModeRetiring,
+		CapturesText: m.mode == listModeFiltering || m.mode == listModeCreating || m.mode == listModeEditing || m.mode == listModeTagging || m.mode == listModeRetiring || (m.mode == listModeSubstitutions && m.rules.form != nil),
 	}
 }
 
 func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
+	if m.mode == listModeSubstitutions {
+		if size, ok := msg.(tea.WindowSizeMsg); ok {
+			m.setSize(size.Width, size.Height)
+			m.rules.setSize(size.Width, size.Height)
+			return m, nil
+		}
+		if keyMsg, ok := msg.(tea.KeyMsg); ok && key.Matches(keyMsg, m.keys.Back) && m.rules.form == nil && !m.rules.submitting {
+			m.mode, m.rules = listModeBrowsing, nil
+			return m, nil
+		}
+		return m, m.rules.update(msg)
+	}
 	switch msg := msg.(type) {
 	case tui.DataInvalidatedMsg:
 		if m.mode != listModeBrowsing || !m.actionEnabled(ingredients.ControlList) {
@@ -122,7 +136,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 		switch m.mode {
-		case listModeBrowsing:
+		case listModeBrowsing, listModeSubstitutions:
 		case listModeCreating:
 			m.create.SetWidth(m.detailWidth)
 		case listModeEditing:
@@ -134,7 +148,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		case listModeFiltering:
 			m.filter.form.SetWidth(m.detailWidth)
 		case listModeRetiring:
-			m.retire.SetWidth(m.detailWidth)
+			m.retire.SetSize(m.detailWidth, max(m.height-m.styles.DetailPane.GetVerticalFrameSize(), 1))
 		}
 		return m, nil
 	case IngredientCreatedMsg:
@@ -158,6 +172,11 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.deleteTarget = nil
 		return m, tea.Batch(m.shell.BeginLoading(), m.loadIngredients(m.request.Cursor))
 	case DeleteErrorMsg:
+		if m.mode == listModeRetiring {
+			var cmd tea.Cmd
+			m.retire, cmd = m.retire.Update(msg)
+			return m, cmd
+		}
 		m.mode = listModeBrowsing
 		m.dialog = nil
 		m.deleteTarget = nil
@@ -180,7 +199,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		switch m.mode {
-		case listModeBrowsing:
+		case listModeBrowsing, listModeSubstitutions:
 		case listModeConfirmingDelete:
 		case listModeCreating:
 			if key.Matches(msg, m.keys.Back) && !m.create.form.IsEditing() {
@@ -274,8 +293,19 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 				return m, nil
 			}
 			m.mode, m.retire = listModeRetiring, NewRetireIngredientVM(m.app, ingredient)
-			m.retire.SetWidth(m.detailWidth)
+			m.retire.SetSize(m.detailWidth, max(m.height-m.styles.DetailPane.GetVerticalFrameSize(), 1))
 			return m, m.retire.Init()
+		case key.Matches(msg, m.keys.Substitutions):
+			if !m.actionEnabled(ingredients.ControlSubstitutions) {
+				return m, nil
+			}
+			ingredient := m.selectedIngredient()
+			if ingredient == nil {
+				return m, nil
+			}
+			m.mode, m.rules = listModeSubstitutions, newSubstitutionsVM(m.app, *ingredient, m.actionEnabled(ingredients.ControlSetSubstitution))
+			m.rules.setSize(m.width, m.height)
+			return m, m.rules.load()
 		case key.Matches(msg, m.keys.Tags):
 			if !m.actionEnabled(ingredients.ControlTags) {
 				return m, nil
@@ -306,7 +336,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	}
 
 	switch m.mode {
-	case listModeBrowsing:
+	case listModeBrowsing, listModeSubstitutions:
 	case listModeConfirmingDelete:
 		var cmd tea.Cmd
 		m.dialog, cmd = m.dialog.Update(msg)
@@ -338,6 +368,9 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 }
 
 func (m *ListViewModel) View() string {
+	if m.mode == listModeSubstitutions {
+		return m.rules.view()
+	}
 	if m.mode == listModeFiltering {
 		return m.filter.View()
 	}
@@ -354,7 +387,7 @@ func (m *ListViewModel) View() string {
 
 	detailView := m.detail.View()
 	switch m.mode {
-	case listModeBrowsing, listModeConfirmingDelete:
+	case listModeBrowsing, listModeConfirmingDelete, listModeSubstitutions:
 	case listModeTagging:
 	case listModeCreating:
 		detailView = m.create.View()
@@ -368,6 +401,16 @@ func (m *ListViewModel) View() string {
 }
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
+	if m.mode == listModeSubstitutions {
+		if m.rules.form != nil {
+			return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Enter, m.formKeys.Submit, m.keys.Back}
+		}
+		bindings := []key.Binding{m.keys.Up, m.keys.Down, m.keys.Refresh, m.keys.Back}
+		if m.rules.writable {
+			bindings = append(bindings, m.keys.Create, m.keys.Edit)
+		}
+		return bindings
+	}
 	switch m.mode {
 	case listModeConfirmingDelete:
 		return []key.Binding{m.dialogKeys.Confirm, m.keys.Back, m.dialogKeys.Switch}
@@ -375,7 +418,7 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 		return []key.Binding{m.formKeys.Submit, m.keys.Back}
 	case listModeCreating, listModeEditing, listModeRetiring:
 		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit, m.keys.Back}
-	case listModeBrowsing:
+	case listModeBrowsing, listModeSubstitutions:
 		bindings := []key.Binding{}
 		if m.actionEnabled(ingredients.ControlList) {
 			bindings = append(bindings, m.keys.Up, m.keys.Down, m.shell.KeyMap().PrevPage, m.shell.KeyMap().NextPage)
@@ -391,6 +434,9 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 }
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
+	if m.mode == listModeSubstitutions {
+		return [][]key.Binding{m.ShortHelp()}
+	}
 	switch m.mode {
 	case listModeConfirmingDelete:
 		return [][]key.Binding{
@@ -404,7 +450,7 @@ func (m *ListViewModel) FullHelp() [][]key.Binding {
 			{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit},
 			{m.keys.Back},
 		}
-	case listModeBrowsing:
+	case listModeBrowsing, listModeSubstitutions:
 		navigation := []key.Binding{}
 		pagingHelp := []key.Binding{}
 		if m.actionEnabled(ingredients.ControlList) {
@@ -497,6 +543,7 @@ func (m *ListViewModel) visibleBindings() []key.Binding {
 		{ingredients.ControlDelete, m.keys.Delete},
 		{ingredients.ControlDelete, m.keys.Replace},
 		{ingredients.ControlTags, m.keys.Tags},
+		{ingredients.ControlSubstitutions, m.keys.Substitutions},
 	}
 	bindings := make([]key.Binding, 0, len(pairs))
 	for _, pair := range pairs {

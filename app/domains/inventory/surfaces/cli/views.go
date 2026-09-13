@@ -17,6 +17,7 @@ import (
 
 type InventoryRow struct {
 	Status       string               `table:"STATUS" json:"status"`
+	Reason       string               `table:"REASON" json:"reason"`
 	CostUnit     string               `table:"COST_UNIT" json:"cost_unit"`
 	Revision     uint64               `table:"-" json:"revision"`
 	ID           string               `table:"ID" json:"id"`
@@ -57,7 +58,7 @@ func ToInventoryRow(s *models.Inventory) InventoryRow {
 		costPerUnit = cost.String()
 	}
 	return InventoryRow{
-		Status: string(s.Status), CostUnit: string(s.CostUnit), Revision: s.Revision,
+		Reason: s.Reason, Status: string(s.Status), CostUnit: string(s.CostUnit), Revision: s.Revision,
 		ID:           s.ID.String(),
 		IngredientID: s.IngredientID.String(),
 		Quantity:     Quantity(s.Amount.Value()),

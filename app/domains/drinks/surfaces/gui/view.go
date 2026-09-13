@@ -114,6 +114,7 @@ type View struct {
 	list                              *ui.RowTable
 	status, formStatus, tagStatus     *widget.Label
 	detailTitle, crumbName            *widget.Label
+	recipeStatus                      *widget.Label
 	browse, formPanel, tagsPanel      *framework.Container
 	filterExpression                  *ui.SemanticEntry
 	filterBar                         *ui.FilterBar
@@ -203,6 +204,8 @@ func NewView(p *Presenter) *View {
 	v.mutationTags = ui.NewTagTokenEditor(ControlTagValues+".mutation", "")
 	v.mutationTags.Normalize = tag.UpsertCollection
 	v.formStatus = widget.NewLabel("")
+	v.recipeStatus = widget.NewLabel("")
+	v.recipeStatus.Wrapping = framework.TextWrapWord
 	v.recipeBox = container.NewVBox()
 	v.save = ui.WithIcon(ui.NewButton(ControlSave, "Save", func() { v.readForm(); p.Save() }), ui.IconSave)
 	v.cancel = ui.WithIcon(ui.NewButton(ControlCancel, "Cancel", p.Cancel), ui.IconCancel)
@@ -212,7 +215,7 @@ func NewView(p *Presenter) *View {
 		f.Recipe = append(f.Recipe, RecipeRow{Unit: measurement.UnitOz})
 		p.SetForm(f)
 	})
-	fields := container.NewVBox(field("Name", v.name), field("Category", v.category), field("Glass", v.glass), field("Description", v.description), widget.NewLabelWithStyle("Ingredients", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.recipeBox, container.NewHBox(layout.NewSpacer(), v.addIngredient), field("Steps (one per line)", v.steps), field("Garnish", v.garnish), field("Tags", v.mutationTags.Content))
+	fields := container.NewVBox(v.recipeStatus, field("Name", v.name), field("Category", v.category), field("Glass", v.glass), field("Description", v.description), widget.NewLabelWithStyle("Ingredients", framework.TextAlignLeading, framework.TextStyle{Bold: true}), v.recipeBox, container.NewHBox(layout.NewSpacer(), v.addIngredient), field("Steps (one per line)", v.steps), field("Garnish", v.garnish), field("Tags", v.mutationTags.Content))
 	v.detailTitle = widget.NewLabel("Drink")
 	v.crumbName = widget.NewLabel("")
 	back := ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack)
@@ -364,6 +367,15 @@ func (v *View) render(state State) {
 	default:
 		v.formStatus.SetText("")
 	}
+	v.recipeStatus.Hide()
+	if state.Selected != nil && state.Mode != Creating {
+		status := "Status: " + string(state.Selected.Status)
+		if state.Selected.Status == models.StatusReviewRequired {
+			status += "\nRecipe requires review because an ingredient was retired. Replace or remove retired ingredients, then save."
+		}
+		v.recipeStatus.SetText(status)
+		v.recipeStatus.Show()
+	}
 	v.tagStatus.SetText(v.formStatus.Text)
 	v.setMutableEnabled(!state.Submitting)
 	if state.Mode == Viewing {
@@ -407,7 +419,7 @@ func (v *View) render(state State) {
 	v.root.Refresh()
 }
 func (v *View) rebuildRecipe(state State) {
-	labels := optionLabels(state.Ingredients)
+	labels := recipeOptionLabels(state)
 	v.recipe = nil
 	v.recipeBox.RemoveAll()
 	for i, row := range state.Form.Recipe {
@@ -474,8 +486,9 @@ func (v *View) rebuildRecipe(state State) {
 		// A saved recipe component is prescribed as a whole. Present it as a
 		// compact line item instead of making immutable identity and measurements
 		// look like a large editable form. A newly-added blank component remains
-		// an explicit editor until the drink is saved.
-		if row.Ingredient == (entity.IngredientID{}) {
+		// an explicit editor until the drink is saved. A retired component
+		// also exposes its selector so the recipe can be repaired in place.
+		if row.Ingredient.IsZero() || (state.Mode == Editing && state.Selected != nil && state.Selected.Status == models.StatusReviewRequired && !hasIngredient(state.Ingredients, row.Ingredient)) {
 			rowFields := container.NewVBox(container.NewGridWithColumns(3, ingredient, amount, unit), optional)
 			actions := ui.NewActionSelect([]string{"Remove"}, func(choice string) {
 				if choice == "Remove" {
@@ -605,10 +618,15 @@ func (v *View) optionID(label string) entity.IngredientID {
 			return o.ID
 		}
 	}
+	for _, row := range v.presenter.State().Form.Recipe {
+		if !row.Ingredient.IsZero() && label == v.optionLabel(row.Ingredient) {
+			return row.Ingredient
+		}
+	}
 	return entity.IngredientID{}
 }
 func (v *View) updateRecipeOptions(state State) {
-	labels := optionLabels(state.Ingredients)
+	labels := recipeOptionLabels(state)
 	for i, w := range v.recipe {
 		w.ingredient.SetOptions(labels)
 		if i < len(state.Form.Recipe) && state.Form.Recipe[i].Ingredient != (entity.IngredientID{}) && w.ingredient.Selected != v.optionLabel(state.Form.Recipe[i].Ingredient) {
@@ -674,7 +692,7 @@ func (v *View) optionLabel(id entity.IngredientID) string {
 			return optionLabel(o)
 		}
 	}
-	return id.String()
+	return "Retired or missing ingredient (" + id.String() + ")"
 }
 func (v *View) ingredientName(id entity.IngredientID) string {
 	return ingredientName(v.presenter.State().Ingredients, id)
@@ -685,7 +703,24 @@ func ingredientName(options []IngredientOption, id entity.IngredientID) string {
 			return o.Name
 		}
 	}
-	return id.String()
+	return "Retired or missing ingredient (" + id.String() + ")"
+}
+func hasIngredient(options []IngredientOption, id entity.IngredientID) bool {
+	for _, option := range options {
+		if option.ID == id {
+			return true
+		}
+	}
+	return false
+}
+func recipeOptionLabels(state State) []string {
+	labels := optionLabels(state.Ingredients)
+	for _, row := range state.Form.Recipe {
+		if !row.Ingredient.IsZero() && !hasIngredient(state.Ingredients, row.Ingredient) {
+			labels = append(labels, ingredientName(state.Ingredients, row.Ingredient))
+		}
+	}
+	return labels
 }
 func optionLabel(o IngredientOption) string { return o.Name }
 func optionLabels(options []IngredientOption) []string {
@@ -729,7 +764,7 @@ func detailText(d *models.Drink, options []IngredientOption) string {
 				return o.Name
 			}
 		}
-		return id.String()
+		return "Retired or missing ingredient (" + id.String() + ")"
 	}
 	var ingredients []string
 	for _, ingredient := range d.Recipe.Ingredients {
@@ -750,5 +785,5 @@ func detailText(d *models.Drink, options []IngredientOption) string {
 	for i, step := range d.Recipe.Steps {
 		steps = append(steps, fmt.Sprintf("%d. %s", i+1, step))
 	}
-	return fmt.Sprintf("%s\n\nCategory: %s\nGlass: %s\nTags: %s\n\n%s\n\nRecipe\n%s\n\nSteps\n%s\n\nGarnish: %s", d.Name, d.Category, d.Glass, d.Tags.Canonical(), d.Description, strings.Join(ingredients, "\n"), strings.Join(steps, "\n"), d.Recipe.Garnish)
+	return fmt.Sprintf("%s\n\nCategory: %s\nGlass: %s\nStatus: %s\nTags: %s\n\n%s\n\nRecipe\n%s\n\nSteps\n%s\n\nGarnish: %s", d.Name, d.Category, d.Glass, d.Status, d.Tags.Canonical(), d.Description, strings.Join(ingredients, "\n"), strings.Join(steps, "\n"), d.Recipe.Garnish)
 }

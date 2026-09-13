@@ -118,9 +118,13 @@ retirement with its saved name, disposition, and separate cost unit; non-active 
 set or adjusted through ordinary editors. Revision tokens and the captured complete tag set protect
 combined saves from overwriting newer edits.
 
-Explicit amendment and stock quarantine/release/disposal forms are not part of the desktop yet.
-Use the [CLI](../cli/README.md#amendments-substitutions-and-stock-history) or application API; the
-desktop's normal refresh path displays their committed results.
+Ingredient details open substitution-rule management, including enabled and disabled rules and
+revision-aware editing. Retirement supports withdrawal and a recorded reason. Order details offer
+amendments and a queue for reviewing and approving selected orders atomically. Inventory details
+offer quarantine, release, disposal, and retained movement history. The list's **Receive new stock**
+action initializes inventory for an eligible ingredient. Quantity and price basis units
+are explicit in stock editors. See the [surface parity audit](../../docs/surface-parity.md) for the
+contracts and repeatable render captures.
 
 Fyne does not currently provide complete cross-platform screen-reader
 semantics for every widget. Labels, form items, visible button text, native

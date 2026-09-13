@@ -74,7 +74,7 @@ Batch input is a JSON array of `orders/models.Amendment`, including each expecte
 ]
 ```
 
-The CLI exposes single and batch amendments plus stock disposition/history commands. GUI/TUI details display accepted history, approved preparation, and amendment reasons, but do not yet have amendment or stock disposition forms. Atomic retirement together with selected amendments is exposed through `App.RetireIngredient`; separate CLI commands cannot share its transaction.
+All three surfaces expose single and batch amendments, substitution-rule management, and stock disposition/history. GUI/TUI details display accepted history, approved preparation, and amendment before/after records; their forms retain captured revisions and preserve drafts after conflicts. The [surface parity audit](surface-parity.md) describes these workflows and render checks. Atomic retirement together with selected amendments is exposed through `App.RetireIngredient`; separate surface operations cannot share its transaction.
 
 Substitution-rule creation uses revision zero. Revising or disabling an existing rule requires its current revision from `ingredients substitutions --id ...`; omitted revision does not mean unconditional replacement. Amendment batches likewise require each current order revision and reject duplicate order IDs.
 

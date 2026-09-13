@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"context"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -408,7 +409,12 @@ func (p *Presenter) publish() {
 }
 
 func cloneEntry(entry models.AuditEntry) models.AuditEntry {
-	entry.Touches = append([]cedar.EntityUID(nil), entry.Touches...)
+	entry.Touches = slices.Clone(entry.Touches)
+	entry.Participants = slices.Clone(entry.Participants)
+	entry.Effects = slices.Clone(entry.Effects)
+	for index := range entry.Effects {
+		entry.Effects[index].Changes = slices.Clone(entry.Effects[index].Changes)
+	}
 	return entry
 }
 func cloneRow(row Row) Row {
@@ -466,10 +472,4 @@ func formatTime(value time.Time) string {
 		return ""
 	}
 	return value.Format(time.RFC3339)
-}
-func formatDuration(start, completed time.Time) string {
-	if start.IsZero() || completed.IsZero() || completed.Before(start) {
-		return ""
-	}
-	return completed.Sub(start).Round(time.Microsecond).String()
 }

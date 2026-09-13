@@ -35,6 +35,10 @@ const (
 )
 
 type View struct {
+	withdraw                                           *widget.Check
+	retirementReason                                   *ui.SemanticEntry
+	rules                                              *substitutionView
+	substitutions                                      *ui.SemanticButton
 	presenter                                          *Presenter
 	root, browse, formPanel, tagsPanel                 *framework.Container
 	list                                               *ui.RowTable
@@ -99,13 +103,16 @@ func NewView(p *Presenter) *View {
 	v.listStack = container.NewStack(v.list, v.empty)
 	v.refresh = ui.WithIcon(ui.NewButton(ControlRefresh, "Refresh", p.Load), ui.IconRefresh)
 	v.create = ui.Primary(ui.WithIcon(ui.NewButton(ControlCreate, "New ingredient", p.StartCreate), ui.IconAdd))
+	v.substitutions = ui.NewButton(ControlSubstitutions, "Substitutions", p.StartSubstitutions)
 	v.tagAction = ui.WithIcon(ui.NewButton(ControlTags, "Tags", p.StartTags), ui.IconTag)
 	v.replacementID = ui.NewEntry(ControlDelete + ".replacement")
 	v.replacementID.PlaceHolder = "Optional active ingredient ID"
 	v.replacementRatio = ui.NewEntry(ControlDelete + ".ratio")
 	v.replacementRatio.PlaceHolder = "1"
+	v.withdraw = widget.NewCheck("Quarantine stock and block accepted orders", nil)
+	v.retirementReason = ui.NewEntry(ControlDelete + ".reason")
 	v.delete = ui.Destructive(ui.WithIcon(ui.NewButton(ControlDelete, "Retire", func() {
-		p.RequestRetire(v.replacementID.Text, v.replacementRatio.Text)
+		p.RequestRetirement(v.replacementID.Text, v.replacementRatio.Text, v.withdraw.Checked, v.retirementReason.Text)
 	}), ui.IconDelete))
 	v.status = widget.NewLabel("")
 	v.browse = ui.StandardListPage(ui.ListPage{Title: "Ingredients", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, v.refresh}, List: v.listStack, Status: v.status, ListRatio: .35}).(*framework.Container)
@@ -129,8 +136,8 @@ func NewView(p *Presenter) *View {
 	v.detailTitle = widget.NewLabel("Ingredient")
 	v.crumbName = widget.NewLabel("")
 	v.formStatus = widget.NewLabel("")
-	fields := ui.DetailForm(ui.DetailField("Name", v.name), ui.DetailField("Category", v.formCategory), ui.DetailField("Unit", v.formUnit), ui.DetailField("Description", v.description), ui.DetailField("Tags", v.tags.Content), ui.DetailField("Permanent replacement", v.replacementID), ui.DetailField("Replacement ratio", v.replacementRatio))
-	breadcrumb := container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Ingredients", p.ResetList), widget.NewLabel("›"), v.crumbName, v.tagAction, v.delete)
+	fields := ui.DetailForm(ui.DetailField("Name", v.name), ui.DetailField("Category", v.formCategory), ui.DetailField("Unit", v.formUnit), ui.DetailField("Description", v.description), ui.DetailField("Tags", v.tags.Content), ui.DetailField("Permanent replacement", v.replacementID), ui.DetailField("Replacement ratio", v.replacementRatio), ui.DetailField("Withdrawal", v.withdraw), ui.DetailField("Retirement reason", v.retirementReason))
+	breadcrumb := container.NewHBox(ui.WithIcon(ui.NewButton(ControlBack, "Back", p.Back), ui.IconBack), ui.NewButton(ControlBreadcrumb, "Ingredients", p.ResetList), widget.NewLabel("›"), v.crumbName, v.substitutions, v.tagAction, v.delete)
 	v.formPanel = ui.StandardFormPage(ui.FormPage{TitleLabel: v.detailTitle, Breadcrumb: breadcrumb, Fields: fields, Status: v.formStatus, Save: v.save, Cancel: v.cancel}).(*framework.Container)
 	v.tagOnly = ui.NewTagTokenEditor(ControlFormTags, "")
 	v.tagOnly.Normalize = tag.UpsertCollection
@@ -138,7 +145,8 @@ func NewView(p *Presenter) *View {
 	v.tagCancel = ui.WithIcon(ui.NewButton(ControlCancel+".tags", "Cancel", p.Cancel), ui.IconCancel)
 	v.tagStatus = widget.NewLabel("")
 	v.tagsPanel = ui.StandardFormPage(ui.FormPage{Title: "Edit ingredient tags", Subtitle: "Type a key or key=value and press Enter.", Fields: v.tagOnly.Content, Status: v.tagStatus, Save: v.tagSave, Cancel: v.tagCancel}).(*framework.Container)
-	v.root = container.NewStack(v.browse, v.formPanel, v.tagsPanel)
+	v.rules = v.newSubstitutionsPanel()
+	v.root = container.NewStack(v.browse, v.formPanel, v.tagsPanel, v.rules.panel)
 	v.name.OnChanged = func(string) { v.changed() }
 	v.formCategory.OnChanged = func(string) { v.changed() }
 	v.formUnit.OnChanged = func(string) { v.changed() }
@@ -160,15 +168,26 @@ func (v *View) ExecuteCommand(c ui.Command) bool {
 	s := v.presenter.Snapshot()
 	switch c {
 	case ui.CommandRefresh:
+		if s.Mode == Substitutions {
+			v.presenter.LoadSubstitutions()
+			return true
+		}
 		return s.Mode == Browse && ui.Trigger(v.refresh)
 	case ui.CommandNew:
 		return s.Mode == Browse && ui.Trigger(v.create)
 	case ui.CommandSave:
+		if s.Mode == Substitutions {
+			return ui.Trigger(v.rules.save)
+		}
 		if s.Mode == Tags {
 			return ui.Trigger(v.tagSave)
 		}
 		return ui.Trigger(v.save)
 	case ui.CommandCancel:
+		if s.Mode == Substitutions {
+			v.presenter.Back()
+			return true
+		}
 		if s.Mode == Tags {
 			return ui.Trigger(v.tagCancel)
 		}
@@ -204,12 +223,20 @@ func (v *View) populate(f Form) {
 	v.tags.SetCSV(f.Tags)
 	v.replacementID.SetText("")
 	v.replacementRatio.SetText("1")
+	v.withdraw.SetChecked(false)
+	v.retirementReason.SetText("")
 }
 
 func (v *View) render(s State) {
 	v.rendering = true
 	defer func() { v.rendering = false }()
 	v.state = s
+	v.renderSubstitutions(s)
+	v.substitutions.Hidden = s.Selected == nil || !s.Actions[domain.ControlSubstitutions].Visible || s.Mode == Create
+	v.substitutions.Enable()
+	if s.Dirty || s.Submitting {
+		v.substitutions.Disable()
+	}
 	v.browse.Hidden = s.Mode != Browse
 	v.formPanel.Hidden = s.Mode != Edit && s.Mode != Viewing && s.Mode != Create
 	v.tagsPanel.Hidden = s.Mode != Tags

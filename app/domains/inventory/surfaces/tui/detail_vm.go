@@ -2,9 +2,11 @@ package tui
 
 import (
 	"cmp"
+	"fmt"
 	"strings"
 	"time"
 
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
@@ -46,13 +48,17 @@ func (d *DetailViewModel) View() string {
 		d.styles.Muted.Render("Inventory ID: " + row.Inventory.ID.String()),
 		d.styles.Subtitle.Render("Tags: ") + cmp.Or(row.Inventory.Tags.Canonical().String(), "(none)"),
 		d.styles.Subtitle.Render("Category: ") + string(row.Ingredient.Category),
-		d.styles.Subtitle.Render("Unit: ") + string(row.Ingredient.Unit),
+		d.styles.Subtitle.Render("Stock unit: ") + string(row.Inventory.Amount.Unit()),
+		d.styles.Subtitle.Render("Catalog unit: ") + string(row.Ingredient.Unit),
 		"",
-		d.styles.Subtitle.Render("Quantity: ") + row.Quantity,
-		d.styles.Subtitle.Render("Reserved: ") + row.Inventory.ReservedAmount().String(),
-		d.styles.Subtitle.Render("Available: ") + row.Inventory.Available().String(),
+		d.styles.Subtitle.Render("Quantity: ") + exactInventoryAmount(row.Inventory.Amount),
+		d.styles.Subtitle.Render("Reserved: ") + exactInventoryAmount(row.Inventory.ReservedAmount()),
+		d.styles.Subtitle.Render("Available: ") + exactInventoryAmount(row.Inventory.Available()),
 		d.styles.Subtitle.Render("Cost per unit: ") + row.Cost + " / " + string(row.Inventory.CostUnit),
 		d.styles.Subtitle.Render("Status: ") + statusBadge,
+		d.styles.Subtitle.Render("Disposition: ") + cmp.Or(string(row.Inventory.Status), "active"),
+		d.styles.Subtitle.Render("Disposition reason: ") + cmp.Or(row.Inventory.Reason, "(none)"),
+		d.styles.Subtitle.Render("Revision: ") + fmt.Sprint(row.Inventory.Revision),
 		d.styles.Subtitle.Render("Last updated: ") + formatInventoryTime(row.Inventory.LastUpdated),
 	}
 
@@ -79,4 +85,11 @@ func (d *DetailViewModel) statusBadge(status string) string {
 	default:
 		return components.NewBadge(status, d.styles.Subtitle).View()
 	}
+}
+
+func exactInventoryAmount(amount measurement.Amount) string {
+	if amount == nil {
+		return "N/A"
+	}
+	return fmt.Sprintf("%g %s", amount.Value(), amount.Unit())
 }

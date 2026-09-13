@@ -477,7 +477,7 @@ func analysisText(a queries.MenuAnalytics) string {
 		lines = append(lines, fmt.Sprintf("Average margin: %.0f%%", *a.AverageMargin*100))
 	}
 	for _, i := range a.Items {
-		cost, price, margin := "n/a", "n/a", "n/a"
+		cost, price, margin := "unknown", "n/a", "n/a"
 		if i.Cost != nil && !i.CostUnknown {
 			cost = i.Cost.String()
 		}
@@ -489,7 +489,11 @@ func analysisText(a queries.MenuAnalytics) string {
 		if i.Margin != nil {
 			margin = fmt.Sprintf("%.0f%%", *i.Margin*100)
 		}
-		lines = append(lines, fmt.Sprintf("\n%s\nCost: %s\nPrice: %s\nMargin: %s\nStatus: %s", i.Name, cost, price, margin, strings.ToUpper(string(i.Availability))))
+		status := []string{strings.ToUpper(string(i.Availability))}
+		for _, sub := range i.Substitutions {
+			status = append(status, fmt.Sprintf(" (sub: %s for %s; ratio %g; quality %s)", sub.Substitute.String(), sub.Original.String(), sub.Ratio, sub.QualityImpact))
+		}
+		lines = append(lines, fmt.Sprintf("\n%s\nID: %s\nCost: %s\nPrice: %s\nMargin: %s\nStatus: %s", i.Name, i.DrinkID.String(), cost, price, margin, strings.Join(status, "")))
 	}
 	return strings.Join(lines, "\n")
 }

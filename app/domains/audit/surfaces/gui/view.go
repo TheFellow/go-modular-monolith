@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -62,7 +63,7 @@ func NewView(p *Presenter) *View {
 		if r.Entry.Success {
 			outcome = "Succeeded"
 		}
-		values := []string{ui.TableTimestamp(r.Entry.StartedAt), formatDuration(r.Entry.StartedAt, r.Entry.CompletedAt), actionLabel(r.Entry.Action), entityTypeLabel(string(r.Entry.Resource.Type)), string(r.Entry.Principal.ID), outcome, r.Entry.Error}
+		values := []string{ui.TableTimestamp(r.Entry.StartedAt), surfaces.Duration(r.Entry.StartedAt, r.Entry.CompletedAt), actionLabel(r.Entry.Action), entityTypeLabel(string(r.Entry.Resource.Type)), string(r.Entry.Principal.ID), outcome, r.Entry.Error}
 		if id.Col == len(columns)-1 {
 			index := id.Row
 			projected := r.Actions[audit.ControlView]
@@ -97,6 +98,9 @@ func NewView(p *Presenter) *View {
 	for i, label := range labels {
 		entry := ui.NewEntry(fmt.Sprintf("audit.detail.field.%d", i))
 		entry.MultiLine = label == "Error" || label == "Touched entities" || label == "Referenced entities" || label == "Effects"
+		if entry.MultiLine {
+			entry.Wrapping = framework.TextWrapWord
+		}
 		entry.OnChanged = func(string) { v.restoreDetail() }
 		v.detailFields = append(v.detailFields, entry)
 		items = append(items, ui.DetailField(label, entry))
@@ -147,11 +151,7 @@ func (v *View) populateDetail(row Row) {
 	if strings.TrimSpace(errorText) == "" {
 		errorText = "(none)"
 	}
-	touches := "(none)"
-	if len(row.Touches) > 0 {
-		touches = strings.Join(row.Touches, "\n")
-	}
-	values := []string{row.Entry.ID.String(), row.Entry.Action, row.Entry.Resource.String(), row.Entry.Principal.String(), formatTime(row.Entry.StartedAt), formatTime(row.Entry.CompletedAt), formatDuration(row.Entry.StartedAt, row.Entry.CompletedAt), strconv.FormatBool(row.Entry.Success), errorText, touches, row.Entry.WorkflowID, fmt.Sprint(row.Entry.Participants), fmt.Sprint(row.Entry.Effects)}
+	values := []string{row.Entry.ID.String(), row.Entry.Action, row.Entry.Resource.String(), row.Entry.Principal.String(), formatTime(row.Entry.StartedAt), formatTime(row.Entry.CompletedAt), surfaces.Duration(row.Entry.StartedAt, row.Entry.CompletedAt), strconv.FormatBool(row.Entry.Success), errorText, surfaces.Entities(row.Entry.Touches), surfaces.Workflow(row.Entry), surfaces.Entities(row.Entry.Participants), surfaces.Effects(row.Entry)}
 	for i, value := range values {
 		if v.detailFields[i].Text != value {
 			v.detailFields[i].SetText(value)

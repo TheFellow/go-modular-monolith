@@ -1,6 +1,7 @@
 package tui_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -48,7 +49,7 @@ func TestDetailViewModel_ShowsQuantityAndCost(t *testing.T) {
 	testutil.ErrorIf(t, !strings.Contains(view, "Orgeat"), "expected ingredient name in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, ingredient.ID.String()), "expected ingredient id in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, inv.ID.String()), "expected inventory id in view, got:\n%s", view)
-	testutil.ErrorIf(t, !strings.Contains(view, row.Quantity), "expected quantity in view, got:\n%s", view)
+	testutil.ErrorIf(t, !strings.Contains(view, fmt.Sprintf("%g %s", inv.Amount.Value(), inv.Amount.Unit())), "expected quantity in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, row.Cost), "expected cost in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "LOW"), "expected status in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Tags: counted,zone=bar"), "expected canonical tags in view, got:\n%s", view)

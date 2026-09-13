@@ -172,6 +172,10 @@ func (d *DetailViewModel) loadIngredientNames(ids []entity.IngredientID) (map[en
 	cache := make(map[entity.IngredientID]string, len(ids))
 	for _, id := range ids {
 		ingredient, err := d.app.Ingredients.Get(d.context(), id)
+		if errors.IsNotFound(err) {
+			cache[id] = "Retired or missing ingredient (" + id.String() + ")"
+			continue
+		}
 		if err != nil {
 			return nil, errors.Internalf("load ingredient %s: %w", id.String(), err)
 		}

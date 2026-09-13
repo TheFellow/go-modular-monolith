@@ -413,9 +413,9 @@ func (p *Presenter) Delete() {
 			p.fail(r.Err)
 		}
 		if r.Status == ui.Loaded {
-			message := fmt.Sprintf("Delete %q?", target.Name)
+			message := fmt.Sprintf("Delete %q?\n\nDrinks used by menus or orders cannot be deleted.", target.Name)
 			if r.Value > 0 {
-				message = fmt.Sprintf("Delete %q?\n\nThis drink appears on %d menu(s) and will be removed from them.", target.Name, r.Value)
+				message = fmt.Sprintf("Delete %q?\n\nThis drink appears on %d menu(s) and cannot be deleted until it is removed from every menu. Order usage also prevents deletion.", target.Name, r.Value)
 			}
 			p.dialogs.Confirm("Delete drink", message, func(ok bool) {
 				p.confirmingDelete = false

@@ -95,7 +95,13 @@ mixology audit list --principal owner
 mixology audit list --entity Mixology::Drink::drk-abc123
 mixology audit list --filter 'principal.contains("owner") && success'
 mixology audit history Mixology::Drink::drk-abc123
+mixology audit list --details
 ```
+
+`--details` on audit list, history, and actor activity includes workflow correlation, touched and
+referenced entities, and field-level effects. Failed activity labels these as attempted effects
+that were not committed. `--json` retains the structured response and takes precedence over
+`--details`. The TUI and GUI display the same evidence in their detail panes.
 
 ## Stateful fulfillment and retirement
 
