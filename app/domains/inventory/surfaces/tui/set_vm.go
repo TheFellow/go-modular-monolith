@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
+	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/components"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
@@ -20,6 +22,8 @@ import (
 
 // SetInventoryVM renders an inventory set form.
 type SetInventoryVM struct {
+	viewport   toolkit.FormViewport
+	costUnit   *forms.SelectField
 	app        *app.Session
 	form       *forms.Form
 	row        InventoryRow
@@ -40,16 +44,16 @@ type SetErrorMsg struct {
 // NewSetInventoryVM builds a SetInventoryVM with fields configured.
 func NewSetInventoryVM(app *app.Session, row InventoryRow) *SetInventoryVM {
 	quantityField := forms.NewNumberField(
-		"Quantity",
+		"Quantity ("+string(unitFromRow(row))+")",
 		forms.WithRequired(),
-		forms.WithPrecision(2),
 		forms.WithMin(0),
 	)
 	if row.Inventory.Amount != nil {
 		_ = quantityField.SetValue(row.Inventory.Amount.Value())
 	}
 
-	costField := forms.NewTextField("Cost per "+string(row.Inventory.CostUnit), forms.WithPlaceholder("Optional, e.g. $1.23 or EUR 1.23"))
+	costUnitField := inventoryCostUnitField(row)
+	costField := forms.NewTextField("Cost per selected unit", forms.WithPlaceholder("Optional, e.g. $1.23 or EUR 1.23"))
 	tagsField := components.NewOptionalTagsField(row.Inventory.Tags.Canonical().String())
 
 	formStyles := styles.Standard.Form
@@ -59,11 +63,14 @@ func NewSetInventoryVM(app *app.Session, row InventoryRow) *SetInventoryVM {
 		formKeys,
 		quantityField,
 		costField,
+		costUnitField,
 		tagsField,
 	)
 
 	return &SetInventoryVM{
+		viewport: toolkit.NewFormViewport(),
 		app:      app,
+		costUnit: costUnitField,
 		form:     form,
 		row:      row,
 		styles:   formStyles,
@@ -115,9 +122,9 @@ func (m *SetInventoryVM) View() string {
 	view := strings.Join([]string{title, unit, "", m.form.View()}, "\n")
 	if m.err != nil {
 		errText := m.styles.Error.Render("Error: " + m.err.Error())
-		return strings.Join([]string{errText, "", view}, "\n")
+		return m.viewport.View(strings.Join([]string{errText, "", view}, "\n"), inventoryFormFocusLine(m.form, 5, m.quantity, m.cost, m.costUnit, m.tags), "")
 	}
-	return view
+	return m.viewport.View(view, inventoryFormFocusLine(m.form, 3, m.quantity, m.cost, m.costUnit, m.tags), "")
 }
 
 // SetWidth sets the width of the form.
@@ -167,7 +174,7 @@ func (m *SetInventoryVM) submit() tea.Cmd {
 	}
 
 	update := &models.Update{
-		CostUnit:     m.row.Inventory.CostUnit,
+		CostUnit:     measurement.Unit(fmt.Sprint(m.costUnit.Value())),
 		Revision:     m.row.Inventory.Revision,
 		IngredientID: m.row.Ingredient.ID,
 		Amount:       amount,
@@ -200,4 +207,9 @@ func (m *SetInventoryVM) parseCost() (money.Price, error) {
 		return money.ParsePrice("USD 0.00")
 	}
 	return money.ParsePrice(value)
+}
+
+func (m *SetInventoryVM) SetSize(width, height int) {
+	m.SetWidth(width)
+	m.viewport.SetSize(width, height)
 }

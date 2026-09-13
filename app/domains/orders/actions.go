@@ -16,6 +16,7 @@ const (
 	ControlPlace    actions.ID = "orders.place"
 	ControlComplete actions.ID = "orders.complete"
 	ControlCancel   actions.ID = "orders.cancel"
+	ControlAmend    actions.ID = "orders.amend"
 	ControlTags     actions.ID = "orders.tags"
 )
 
@@ -49,6 +50,7 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 	declaration.Controls = append(declaration.Controls,
 		actions.Control{ID: ControlComplete, Permission: permission(ordersauthz.ActionComplete, resource), Conditions: []actions.Condition{completeCondition(selected)}},
 		actions.Control{ID: ControlCancel, Permission: permission(ordersauthz.ActionCancel, resource), Conditions: []actions.Condition{cancelCondition(selected)}},
+		actions.Control{ID: ControlAmend, Permission: permission(ordersauthz.ActionAmend, resource), Conditions: []actions.Condition{amendCondition(selected)}},
 		actions.Control{ID: ControlTags, Permission: permission(ordersauthz.ActionTag, resource)},
 	)
 	return actions.Evaluate(ctx, declaration)
@@ -83,5 +85,14 @@ func cancelCondition(order *models.Order) actions.Condition {
 		default:
 			return false, "This order cannot be cancelled in its current state.", nil
 		}
+	}
+}
+
+func amendCondition(order *models.Order) actions.Condition {
+	return func(context.Context) (bool, string, error) {
+		if order.Status == models.OrderStatusPending || order.Status == models.OrderStatusBlocked {
+			return true, "", nil
+		}
+		return false, "Only pending or blocked orders can be amended.", nil
 	}
 }

@@ -11,8 +11,10 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	orders "github.com/TheFellow/go-modular-monolith/app/domains/orders"
+	presentation "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	actionstate "github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	ui "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
 )
 
@@ -66,7 +68,10 @@ func NewView(p *Presenter) *View {
 func (v *View) Title() string                   { return "Orders" }
 func (v *View) Content() framework.CanvasObject { return v.root }
 func (v *View) Activate()                       { v.presenter.ResetList() }
-func (v *View) HasUnsavedChanges() bool         { return v.presenter.State().Dirty }
+func (v *View) HasUnsavedChanges() bool {
+	state := v.presenter.State()
+	return state.Dirty || len(state.AmendmentQueue) > 0
+}
 func (v *View) ExecuteCommand(c ui.Command) bool {
 	s := v.presenter.State()
 	switch c {
@@ -75,7 +80,7 @@ func (v *View) ExecuteCommand(c ui.Command) bool {
 	case ui.CommandNew:
 		return s.Mode == Browsing && ui.Trigger(v.create)
 	case ui.CommandSave:
-		return (s.Mode == Placing || s.Mode == Tagging) && ui.Trigger(v.save)
+		return (s.Mode == Placing || s.Mode == Tagging || s.Mode == Amending || s.Mode == ReviewingBatch) && ui.Trigger(v.save)
 	case ui.CommandCancel:
 		return s.Mode != Browsing && ui.Trigger(v.cancel)
 	}
@@ -89,6 +94,10 @@ func (v *View) render(s State) {
 		body = v.browser(s)
 	case Viewing:
 		body = v.detail(s)
+	case Amending:
+		body = v.amendmentForm(s)
+	case ReviewingBatch:
+		body = v.amendmentBatch(s)
 	case Placing, Tagging:
 		body = v.form(s)
 	}
@@ -170,7 +179,10 @@ func (v *View) browser(s State) framework.CanvasObject {
 	} else {
 		status = fmt.Sprintf("%d orders", len(s.Rows))
 	}
-	return ui.StandardListPage(ui.ListPage{Title: "Orders", Subtitle: "Browse orders and select one for complete details.", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, v.refresh}, List: list, Status: widget.NewLabel(status)})
+	batch := ui.NewButton(ControlAmendBatch, fmt.Sprintf("Review amendments (%d)", len(s.AmendmentQueue)), v.presenter.ReviewAmendments)
+	setEnabled(batch, !busy && len(s.AmendmentQueue) > 0)
+	batch.Hidden = len(s.AmendmentQueue) == 0
+	return ui.StandardListPage(ui.ListPage{Title: "Orders", Subtitle: "Browse orders and select one for complete details.", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.create, batch, v.refresh}, List: list, Status: widget.NewLabel(status)})
 }
 
 func (v *View) breadcrumb(name string) framework.CanvasObject {
@@ -195,6 +207,7 @@ func (v *View) detail(s State) framework.CanvasObject {
 	notes := ui.ReadonlyMultiLineEntry(r.Order.Notes)
 	fields := container.NewVBox(ui.DetailForm(
 		ui.DetailField("Order ID", ui.ReadonlyEntry(r.Order.ID.String())), ui.DetailField("Menu", ui.ReadonlyEntry(r.MenuName)),
+		ui.DetailField("Menu ID", ui.ReadonlyEntry(r.Order.Acceptance.MenuID.String())),
 		ui.DetailField("Status", ui.ReadonlyEntry(string(r.Order.Status))), ui.DetailField("Created", ui.ReadonlyEntry(formatTime(r.Order.CreatedAt))),
 		ui.DetailField("Completed", ui.ReadonlyEntry(completed)), ui.DetailField("Tags", ui.TagPillsCSV(r.Order.Tags.Canonical().String())),
 		ui.DetailField("Notes", notes)), widget.NewLabelWithStyle("Items", framework.TextAlignLeading, framework.TextStyle{Bold: true}))
@@ -217,31 +230,37 @@ func (v *View) detail(s State) framework.CanvasObject {
 		fields.Add(container.NewVBox(container.NewBorder(nil, nil, nil, widget.NewLabel(meta), name), widget.NewSeparator()))
 	}
 	fields.Add(ui.DetailForm(ui.DetailField("Order total", ui.ReadonlyEntry(r.Total))))
-	preparation := []string{}
-	for _, item := range r.Order.Plan {
-		preparation = append(preparation, item.Name)
-		for _, selection := range item.Ingredients {
-			if selection.Omitted {
-				preparation = append(preparation, "Omitted optional ingredient: "+selection.OriginalID.String())
-				continue
-			}
-			preparation = append(preparation, fmt.Sprintf("%g %s %s", selection.Quantity, selection.Unit, selection.Name))
-		}
-		preparation = append(preparation, item.Steps...)
-		if item.Garnish != "" {
-			preparation = append(preparation, "Garnish: "+item.Garnish)
-		}
-	}
-	for _, amendment := range r.Order.Amendments {
-		preparation = append(preparation, "Amended "+formatTime(amendment.At)+" by "+amendment.Principal+": "+amendment.Reason)
-	}
-	fields.Add(ui.DetailForm(ui.DetailField("Approved preparation", ui.ReadonlyMultiLineEntry(strings.Join(preparation, "\n")))))
+	fields.Add(ui.DetailForm(
+		ui.DetailField("Revision", ui.ReadonlyEntry(fmt.Sprint(r.Order.Revision))),
+		ui.DetailField("Accepted recipe", ui.ReadonlyMultiLineEntry(presentation.Snapshot(r.Order.Acceptance.Items))),
+		ui.DetailField("Approved preparation", ui.ReadonlyMultiLineEntry(presentation.Snapshot(r.Order.Plan))),
+		ui.DetailField("Ingredient usage", ui.ReadonlyMultiLineEntry(presentation.Usage(r.Order.IngredientUsage))),
+		ui.DetailField("Amendment history", ui.ReadonlyMultiLineEntry(presentation.History(r.Order.Amendments)))))
 	if at, ok := r.Order.CancelledAt.Unwrap(); ok {
 		fields.Add(ui.DetailForm(ui.DetailField("Cancelled", ui.ReadonlyEntry(formatTime(at))), ui.DetailField("Cancellation reason", ui.ReadonlyEntry(r.Order.CancellationReason))))
 	}
 
 	actions := []framework.CanvasObject{}
 	clean := !s.Submitting && !s.Confirming && !s.Dirty
+	if action, ok := s.Actions[orders.ControlAmend]; ok && action.Visible {
+		button := ui.NewButton(ControlAmend, "Amend", v.presenter.StartAmend)
+		setEnabled(button, clean && action.Enabled)
+		actions = append(actions, button)
+	}
+	if action, ok := s.Actions[orders.ControlCancel]; ok && action.Visible && action.Enabled {
+		reason := ui.NewEntry(ControlCancellationReason)
+		reason.SetPlaceHolder("Optional cancellation reason")
+		reason.SetText(s.CancellationReason)
+		reason.OnChanged = v.presenter.SetCancellationReason
+		setEnabled(reason, clean)
+		fields.Objects = append([]framework.CanvasObject{ui.DetailField("Cancellation reason", reason)}, fields.Objects...)
+	}
+	for _, id := range []actionstate.ID{orders.ControlAmend, orders.ControlComplete, orders.ControlCancel} {
+		state := s.Actions[id]
+		if state.Visible && !state.Enabled && state.DisabledReason != "" {
+			fields.Add(widget.NewLabel(state.DisabledReason))
+		}
+	}
 	if action, ok := s.Actions[orders.ControlComplete]; ok && action.Visible {
 		button := ui.NewButton(ControlComplete, "Complete", v.presenter.ConfirmComplete)
 		setEnabled(button, clean && action.Enabled)

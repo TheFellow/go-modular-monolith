@@ -13,6 +13,7 @@ import (
 	ingredientmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil/tuitest"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
@@ -353,4 +354,53 @@ func TestRecipeViewportTracksHighlightedIngredientAndSubstituteCandidatesAt80x24
 	}
 	driver.RequireText("Picker > Candidate 00", "Substitutes")
 	testutil.ErrorIf(t, program.vm.viewport.YOffset() >= substituteStart+1, "%v", "substitute candidate did not scroll viewport back")
+}
+
+func TestRetiredRecipeEditorPreservesIdentityAndRepairsThroughUpdate(t *testing.T) {
+	f := testutil.NewFixture(t)
+	retired := testutil.CreateIngredient(t, f, ingredientmodels.Ingredient{Name: "Retired", Category: ingredientmodels.CategorySpirit, Unit: measurement.UnitOz})
+	replacement := testutil.CreateIngredient(t, f, ingredientmodels.Ingredient{Name: "Replacement", Category: ingredientmodels.CategorySpirit, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, models.Drink{Name: "Repair", Category: models.DrinkCategoryCocktail, Glass: models.GlassTypeCoupe, Recipe: models.Recipe{Ingredients: []models.RecipeIngredient{{IngredientID: retired.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)}}, Steps: []string{"Stir"}}})
+	_, err := f.Ingredients.Retire(f.OwnerContext(), retired.ID, ingredientmodels.Retirement{})
+	testutil.Ok(t, err)
+	drink, err = f.Drinks.Get(f.OwnerContext(), drink.ID)
+	testutil.Ok(t, err)
+	vm := NewEditDrinkVM(f.App, drink)
+	vm.recipe.Update(vm.recipe.Init()())
+	testutil.StringContains(t, vm.recipe.View(), "Retired or missing ingredient")
+	testutil.StringContains(t, vm.recipe.View(), retired.ID.String())
+	testutil.Equals(t, vm.recipe.rows[0].ingredient, retired.ID)
+	vm.recipe.Focus()
+	vm.recipe.rows[0].ingredientQuery.SetValue(replacement.Name)
+	vm.recipe.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	cmd := vm.submit()
+	testutil.NotNil(t, cmd)
+	result := cmd()
+	updated, ok := result.(DrinkUpdatedMsg)
+	testutil.Equals(t, ok, true)
+	testutil.NotNil(t, updated.Drink)
+	testutil.Equals(t, updated.Drink.Status, models.StatusActive)
+	testutil.Equals(t, updated.Drink.Recipe.Ingredients[0].IngredientID, replacement.ID)
+	testutil.Equals(t, updated.Drink.Recipe.Steps, []string{"Stir"})
+}
+
+func TestDeleteConfirmationExplainsMenuVeto(t *testing.T) {
+	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, ingredientmodels.Ingredient{Name: "Base", Category: ingredientmodels.CategorySpirit, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, models.Drink{Name: "Keep me", Category: models.DrinkCategoryCocktail, Recipe: models.Recipe{Ingredients: []models.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)}}, Steps: []string{"Stir"}}})
+	testutil.CreateMenu(t, f, "Curated", testutil.WithDrink(drink))
+	vm := NewListViewModel(f.App)
+	msg := vm.showDeleteConfirm(drink)()
+	vm.Update(msg)
+	vm.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
+	testutil.StringContains(t, vm.dialog.View(), "cannot be deleted until it is removed")
+	testutil.StringContains(t, vm.dialog.View(), "from every menu. Order usage also prevents deletion.")
+	vm.deleteTarget = drink
+	result := vm.performDelete()()
+	failure, ok := result.(DeleteErrorMsg)
+	testutil.Equals(t, ok, true)
+	testutil.ErrorIsFailedPrecondition(t, failure.Err)
+	presented := errors.ToTUIError(failure.Err)
+	testutil.Equals(t, presented.Style, errors.TUIStyleWarning)
+	testutil.StringContains(t, presented.Message, "Curated")
 }

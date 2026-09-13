@@ -1,9 +1,11 @@
 package tui_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
+	"github.com/TheFellow/go-modular-monolith/app"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	drinkstui "github.com/TheFellow/go-modular-monolith/app/domains/drinks/surfaces/tui"
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
@@ -139,4 +141,33 @@ func TestDetailViewModel_BatchFetchesIngredients(t *testing.T) {
 	testutil.ErrorIf(t, !strings.Contains(view, "Lime Juice"), "expected Lime Juice in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Tequila"), "expected Tequila in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, "Salt"), "expected Salt in view, got:\n%s", view)
+}
+
+func TestDetailRetiredIngredientPreservesRecipeAndInstructions(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	retired := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Retired base", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{Name: "Review me", Category: drinksmodels.DrinkCategoryCocktail, Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: retired.ID, Amount: measurement.MustAmount(2, measurement.UnitOz)}}, Steps: []string{"Stir gently"}, Garnish: "Orange twist"}})
+	_, err := f.Ingredients.Retire(f.OwnerContext(), retired.ID, ingredientsmodels.Retirement{})
+	testutil.Ok(t, err)
+	drink, err = f.Drinks.Get(f.OwnerContext(), drink.ID)
+	testutil.Ok(t, err)
+	detail := drinkstui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles](), f.App)
+	detail.SetDrink(optional.Some(*drink))
+	for _, want := range []string{"Status: review_required", "Recipe requires review", "Retired or missing ingredient", retired.ID.String(), "2.00 oz", "Stir gently", "Orange twist"} {
+		testutil.StringContains(t, detail.View(), want)
+	}
+}
+
+func TestDetailDoesNotLabelQueryFailureAsRetirement(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ingredient := testutil.CreateIngredient(t, f, ingredientsmodels.Ingredient{Name: "Private", Category: ingredientsmodels.CategorySpirit, Unit: measurement.UnitOz})
+	drink := testutil.CreateDrink(t, f, drinksmodels.Drink{Name: "Private recipe", Category: drinksmodels.DrinkCategoryCocktail, Recipe: drinksmodels.Recipe{Ingredients: []drinksmodels.RecipeIngredient{{IngredientID: ingredient.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)}}, Steps: []string{"Stir"}}})
+	ctx, cancel := context.WithCancel(f.ActorContext("owner"))
+	cancel()
+	detail := drinkstui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles](), app.NewSession(ctx, f.App.App))
+	detail.SetDrink(optional.Some(*drink))
+	testutil.StringContains(t, detail.View(), "Error:")
+	testutil.ErrorIf(t, strings.Contains(detail.View(), "Retired or missing ingredient"), "query failure shown as retirement: %s", detail.View())
 }

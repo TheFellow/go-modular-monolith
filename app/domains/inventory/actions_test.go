@@ -28,7 +28,7 @@ func TestInventoryActionProjectorUsesStableIndependentCapabilities(t *testing.T)
 	}}
 	states, err := projector.Project(context.Background(), authn.Owner(), stock)
 	testutil.Ok(t, err)
-	want := []actions.ID{inventory.ControlList, inventory.ControlAdjust, inventory.ControlSet, inventory.ControlTags}
+	want := []actions.ID{inventory.ControlList, inventory.ControlCreate, inventory.ControlAdjust, inventory.ControlSet, inventory.ControlTags, inventory.ControlQuarantine, inventory.ControlRelease, inventory.ControlDispose, inventory.ControlHistory}
 	got := make([]actions.ID, len(states))
 	byID := map[actions.ID]actions.State{}
 	for i, state := range states {
@@ -49,7 +49,7 @@ func TestInventoryActionProjectorSelectionAndEvaluatorFailure(t *testing.T) {
 	t.Parallel()
 	states, err := inventory.NewActionProjector().Project(context.Background(), authn.Owner(), nil)
 	testutil.Ok(t, err)
-	testutil.Equals(t, states, []actions.State{{ID: inventory.ControlList, Visible: true, Enabled: true}})
+	testutil.Equals(t, states, []actions.State{{ID: inventory.ControlList, Visible: true, Enabled: true}, {ID: inventory.ControlCreate, Visible: true, Enabled: true}})
 	want := errors.New("policy evaluator unavailable")
 	projector := inventory.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return want }}
 	_, err = projector.Project(context.Background(), authn.Owner(), testStock())
@@ -58,4 +58,37 @@ func TestInventoryActionProjectorSelectionAndEvaluatorFailure(t *testing.T) {
 
 func testStock() *models.Inventory {
 	return &models.Inventory{ID: entity.NewInventoryID(), IngredientID: entity.NewIngredientID(), Amount: measurement.MustAmount(1, measurement.UnitOz)}
+}
+
+func TestInventoryLifecycleProjectionMatchesDisposition(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		status                       models.Status
+		quarantine, release, dispose bool
+	}{
+		{models.StatusActive, true, false, false},
+		{models.StatusDiscontinued, true, false, true},
+		{models.StatusQuarantined, false, true, true},
+		{models.StatusDisposed, false, false, false},
+	} {
+		t.Run(string(tc.status), func(t *testing.T) {
+			t.Parallel()
+			stock := testStock()
+			stock.Status = tc.status
+			projector := inventory.ActionProjector{Authorize: func(context.Context, cedar.EntityUID, cedar.EntityUID, cedar.Entity) error { return nil }}
+			states, err := projector.Project(context.Background(), authn.Owner(), stock)
+			testutil.Ok(t, err)
+			enabled := map[actions.ID]bool{}
+			for _, state := range states {
+				enabled[state.ID] = state.Enabled
+				if state.Visible && !state.Enabled {
+					testutil.ErrorIf(t, state.DisabledReason == "", "disabled action missing reason: %s", state.ID)
+				}
+			}
+			testutil.Equals(t, enabled[inventory.ControlQuarantine], tc.quarantine)
+			testutil.Equals(t, enabled[inventory.ControlRelease], tc.release)
+			testutil.Equals(t, enabled[inventory.ControlDispose], tc.dispose)
+			testutil.Equals(t, enabled[inventory.ControlHistory], true)
+		})
+	}
 }

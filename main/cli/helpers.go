@@ -164,9 +164,12 @@ func printNextCursor(w io.Writer, cursor paging.Cursor) error {
 	return err
 }
 
-var (
-	CostsFlag        cli.Flag = &cli.BoolFlag{Name: "costs", Usage: "Include cost/margin analytics"}
-	TargetMarginFlag cli.Flag = &cli.Float64Flag{
+func costsFlag() cli.Flag {
+	return &cli.BoolFlag{Name: "costs", Usage: "Include cost/margin analytics"}
+}
+
+func targetMarginFlag() cli.Flag {
+	return &cli.Float64Flag{
 		Name: "target-margin", Usage: "Target margin for suggested prices (0-1)", Value: 0.7,
 		Validator: func(value float64) error {
 			if math.IsNaN(value) || math.IsInf(value, 0) || value <= 0 || value >= 1 {
@@ -175,7 +178,7 @@ var (
 			return nil
 		},
 	}
-)
+}
 
 func newTabWriter(output io.Writer) *tabwriter.Writer {
 	return tabwriter.NewWriter(output, 0, 0, 2, ' ', 0)

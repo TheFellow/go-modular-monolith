@@ -10,7 +10,7 @@ import (
 )
 
 func (c *CLI) orderAmendCommand() *cli.Command {
-	return &cli.Command{Name: "amend", Usage: "Approve an ingredient replacement without changing original order acceptance", Flags: []cli.Flag{&cli.StringFlag{Name: "id", Required: true}, &cli.StringFlag{Name: "ingredient-id", Required: true}, &cli.StringFlag{Name: "replacement-id", Required: true}, &cli.Float64Flag{Name: "ratio", Value: 1}, &cli.StringFlag{Name: "reason", Required: true}, &cli.Uint64Flag{Name: "revision", Usage: "Expected order revision (defaults to the currently loaded order)"}, toolkit.JSONFlag}, Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+	return &cli.Command{Name: "amend", Usage: "Approve an ingredient replacement without changing original order acceptance", Flags: []cli.Flag{&cli.StringFlag{Name: "id", Required: true}, &cli.StringFlag{Name: "ingredient-id", Required: true}, &cli.StringFlag{Name: "replacement-id", Required: true}, &cli.Float64Flag{Name: "ratio", Value: 1}, &cli.StringFlag{Name: "reason", Required: true}, &cli.Uint64Flag{Name: "revision", Usage: "Expected order revision (defaults to the currently loaded order)"}, toolkit.JSONFlag()}, Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 		id, err := entity.ParseOrderID(cmd.String("id"))
 		if err != nil {
 			return err
@@ -40,7 +40,7 @@ func (c *CLI) orderAmendCommand() *cli.Command {
 }
 
 func (c *CLI) orderAmendBatchCommand() *cli.Command {
-	return &cli.Command{Name: "amend-batch", Usage: "Atomically approve a JSON array of order amendments with expected revisions", Flags: []cli.Flag{toolkit.FileFlag, toolkit.StdinFlag}, Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
+	return &cli.Command{Name: "amend-batch", Usage: "Atomically approve a JSON array of order amendments with expected revisions", Flags: []cli.Flag{toolkit.FileFlag(), toolkit.StdinFlag()}, Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 		requests, err := toolkit.ReadJSONInput[[]ordersmodels.Amendment](cmd)
 		if err != nil {
 			return err

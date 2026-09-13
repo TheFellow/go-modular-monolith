@@ -33,7 +33,7 @@ func (c *CLI) tagsCommands() *cli.Command {
 				UsageText: "mixology tags show [--json] <key[=value]>\n   or: mixology tags show [--json] --key <key>",
 				Arguments: []cli.Argument{&cli.StringArg{Name: "tag", UsageText: "<key[=value]>"}},
 				Flags: []cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "key", Usage: "Match every value for this tag key"},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -69,7 +69,7 @@ func (c *CLI) tagsCommands() *cli.Command {
 			{
 				Name:  "summary",
 				Usage: "Summarize active tag usage",
-				Flags: []cli.Flag{clitoolkit.JSONFlag},
+				Flags: []cli.Flag{clitoolkit.JSONFlag()},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					rows, err := c.app.Tags.Summary(ctx)
 					if err != nil {

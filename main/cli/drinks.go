@@ -24,7 +24,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List drinks",
 				Flags: appendFilterFlags(append([]cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "name", Usage: "Filter by exact name match"},
 					&cli.StringFlag{
 						Name:    "category",
@@ -75,7 +75,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 				Name:  "get",
 				Usage: "Get a drink by ID",
 				Flags: []cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "id", Usage: "Drink ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -99,10 +99,10 @@ func (c *CLI) drinksCommands() *cli.Command {
 				Name:  "create",
 				Usage: "Create a new drink",
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.TemplateFlag,
-					clitoolkit.StdinFlag,
-					clitoolkit.FileFlag,
-					clitoolkit.JSONFlag,
+					clitoolkit.TemplateFlag(),
+					clitoolkit.StdinFlag(),
+					clitoolkit.FileFlag(),
+					clitoolkit.JSONFlag(),
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
@@ -133,10 +133,10 @@ func (c *CLI) drinksCommands() *cli.Command {
 				Name:  "update",
 				Usage: "Update a drink",
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.TemplateFlag,
-					clitoolkit.StdinFlag,
-					clitoolkit.FileFlag,
-					clitoolkit.JSONFlag,
+					clitoolkit.TemplateFlag(),
+					clitoolkit.StdinFlag(),
+					clitoolkit.FileFlag(),
+					clitoolkit.JSONFlag(),
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
@@ -167,7 +167,7 @@ func (c *CLI) drinksCommands() *cli.Command {
 				Name:  "delete",
 				Usage: "Delete a drink by ID",
 				Flags: []cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "id", Usage: "Drink ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {

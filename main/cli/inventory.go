@@ -31,7 +31,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List stock levels",
 				Flags: appendFilterFlags(append([]cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.Float64Flag{
 						Name:  "low-stock",
 						Usage: "Show items with amount <= threshold (per item unit)",
@@ -68,7 +68,7 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Name:  "get",
 				Usage: "Get stock for an ingredient",
 				Flags: []cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "ingredient-id", Usage: "Ingredient ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -92,10 +92,10 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Name:  "adjust",
 				Usage: "Patch stock quantity and/or cost",
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.JSONFlag,
-					clitoolkit.TemplateFlag,
-					clitoolkit.StdinFlag,
-					clitoolkit.FileFlag,
+					clitoolkit.JSONFlag(),
+					clitoolkit.TemplateFlag(),
+					clitoolkit.StdinFlag(),
+					clitoolkit.FileFlag(),
 					&cli.StringFlag{Name: "ingredient-id", Usage: "Ingredient ID"},
 					&cli.Uint64Flag{Name: "revision", Usage: "Expected stock revision"},
 					&cli.StringFlag{Name: "delta", Usage: "Delta (+/-) in ingredient unit"},
@@ -253,10 +253,10 @@ func (c *CLI) inventoryCommands() *cli.Command {
 				Name:  "set",
 				Usage: "Set stock quantity",
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.JSONFlag,
-					clitoolkit.TemplateFlag,
-					clitoolkit.StdinFlag,
-					clitoolkit.FileFlag,
+					clitoolkit.JSONFlag(),
+					clitoolkit.TemplateFlag(),
+					clitoolkit.StdinFlag(),
+					clitoolkit.FileFlag(),
 					&cli.StringFlag{Name: "ingredient-id", Usage: "Ingredient ID"},
 					&cli.Uint64Flag{Name: "revision", Usage: "Expected stock revision"},
 					&cli.Float64Flag{Name: "quantity", Usage: "Quantity in ingredient unit"},

@@ -18,8 +18,10 @@ const (
 	ControlEdit   actions.ID = "ingredients.edit"
 	ControlRetire actions.ID = "ingredients.retire"
 	// ControlDelete preserves source compatibility for presentation adapters.
-	ControlDelete            = ControlRetire
-	ControlTags   actions.ID = "ingredients.tags"
+	ControlDelete                     = ControlRetire
+	ControlTags            actions.ID = "ingredients.tags"
+	ControlSubstitutions   actions.ID = "ingredients.substitutions"
+	ControlSetSubstitution actions.ID = "ingredients.substitutions.set"
 )
 
 // ActionProjector produces framework-neutral ingredient control state.
@@ -61,6 +63,8 @@ func (p ActionProjector) Project(ctx context.Context, principal cedar.EntityUID,
 		actions.Control{ID: ControlEdit, Permission: permission(ingredientauthz.ActionUpdate, resource)},
 		actions.Control{ID: ControlRetire, Permission: permission(ingredientauthz.ActionRetire, resource)},
 		actions.Control{ID: ControlTags, Permission: permission(ingredientauthz.ActionTag, resource)},
+		actions.Control{ID: ControlSubstitutions, Permission: permission(ingredientauthz.ActionGet, resource)},
+		actions.Control{ID: ControlSetSubstitution, Permission: permission(ingredientauthz.ActionUpdate, resource)},
 	)
 	return actions.Evaluate(ctx, declaration)
 }

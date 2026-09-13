@@ -11,12 +11,22 @@ import (
 	urfave "github.com/urfave/cli/v3"
 )
 
-var (
-	JSONFlag     urfave.Flag = &urfave.BoolFlag{Name: "json", Usage: "Output JSON"}
-	TemplateFlag urfave.Flag = &urfave.BoolFlag{Name: "template", Usage: "Print JSON template and exit"}
-	StdinFlag    urfave.Flag = &urfave.BoolFlag{Name: "stdin", Usage: "Read JSON from stdin"}
-	FileFlag     urfave.Flag = &urfave.StringFlag{Name: "file", Usage: "Read JSON from file"}
-)
+// Flag factories give each command its own mutable parser state.
+func JSONFlag() urfave.Flag {
+	return &urfave.BoolFlag{Name: "json", Usage: "Output JSON"}
+}
+
+func TemplateFlag() urfave.Flag {
+	return &urfave.BoolFlag{Name: "template", Usage: "Print JSON template and exit"}
+}
+
+func StdinFlag() urfave.Flag {
+	return &urfave.BoolFlag{Name: "stdin", Usage: "Read JSON from stdin"}
+}
+
+func FileFlag() urfave.Flag {
+	return &urfave.StringFlag{Name: "file", Usage: "Read JSON from file"}
+}
 
 func WriteJSON(w io.Writer, v any) error {
 	b, err := json.MarshalIndent(v, "", "  ")

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
 	orders "github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	presentation "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -32,6 +34,8 @@ const (
 	Viewing
 	Placing
 	Tagging
+	Amending
+	ReviewingBatch
 )
 
 type Filter struct {
@@ -75,6 +79,9 @@ type Row struct {
 	Total    string
 }
 type State struct {
+	Amendment                                         presentation.AmendmentForm
+	AmendmentQueue                                    []models.Amendment
+	CancellationReason                                string
 	Mode                                              Mode
 	Loading, CatalogLoading, Submitting, Confirming   bool
 	Rows                                              []Row
@@ -313,6 +320,7 @@ func (p *Presenter) Select(index int) {
 		row := cloneRow(p.state.Rows[index])
 		p.state.Selected = &row
 		p.state.Mode = Viewing
+		p.state.CancellationReason = ""
 	}
 	p.permissions()
 	p.publish()
@@ -647,6 +655,9 @@ func (p *Presenter) confirm(title string, status models.OrderStatus) {
 	if target.Status != models.OrderStatusPending && !canCancelBlocked {
 		return
 	}
+	if status == models.OrderStatusCancelled {
+		target.CancellationReason = p.state.CancellationReason
+	}
 	p.confirmTarget = cloneOrder(&target)
 	p.state.Confirming = true
 	p.publish()
@@ -858,6 +869,15 @@ func cloneOrder(in *models.Order) *models.Order {
 	}
 	out := *in
 	out.Items = append([]models.OrderItem(nil), in.Items...)
+	out.Acceptance.Items = cloneSnapshots(in.Acceptance.Items)
+	out.Plan = cloneSnapshots(in.Plan)
+	out.Amendments = slices.Clone(in.Amendments)
+	for i := range out.Amendments {
+		out.Amendments[i].Before = cloneSnapshots(in.Amendments[i].Before)
+		out.Amendments[i].After = cloneSnapshots(in.Amendments[i].After)
+	}
+	out.IngredientUsage = slices.Clone(in.IngredientUsage)
+	out.BlockedIngredients = slices.Clone(in.BlockedIngredients)
 	out.Tags = append(tag.Tags(nil), in.Tags...)
 	return &out
 }
@@ -889,6 +909,8 @@ func cloneState(in State) State {
 	}
 	out.History = append([]paging.Cursor(nil), in.History...)
 	out.Form = cloneForm(in.Form)
+	out.Amendment = in.Amendment.Clone()
+	out.AmendmentQueue = cloneAmendments(in.AmendmentQueue)
 	out.Menus = append([]MenuOption(nil), in.Menus...)
 	out.Drinks = append([]DrinkOption(nil), in.Drinks...)
 	out.Actions = make(map[actions.ID]actions.State, len(in.Actions))
@@ -907,4 +929,13 @@ func formatTime(value time.Time) string {
 		return ""
 	}
 	return value.Format(time.RFC3339)
+}
+
+func cloneSnapshots(in []models.ItemSnapshot) []models.ItemSnapshot {
+	out := slices.Clone(in)
+	for i := range out {
+		out[i].Ingredients = slices.Clone(in[i].Ingredients)
+		out[i].Steps = slices.Clone(in[i].Steps)
+	}
+	return out
 }

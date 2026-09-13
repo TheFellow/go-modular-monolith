@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventory "github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	inventorypresentation "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
@@ -38,6 +40,11 @@ const (
 	Adjust
 	Set
 	Tags
+	Quarantine
+	Release
+	Dispose
+	MovementHistory
+	SelectingIngredient
 )
 
 type StockMode uint8
@@ -60,32 +67,38 @@ type Row struct {
 }
 
 type Form struct {
+	CostUnit           measurement.Unit
 	Amount, Cost, Tags string
+	DispositionReason  string
 	Reason             inventorymodels.AdjustmentReason
 	ReplaceTags        bool
 }
 
 type State struct {
-	Status       toolkit.LoadStatus
-	Rows         []Row
-	Selected     *Row
-	Expression   string
-	Stock        StockMode
-	LowStock     float64
-	Limit        int
-	Cursor, Next paging.Cursor
-	History      []paging.Cursor
-	Mode         Mode
-	Form         Form
-	Err          error
-	Submitting   bool
-	Dirty        bool
-	CanAdjust    bool
-	CanSet       bool
-	CanTag       bool
-	CanList      bool
-	Actions      map[actions.ID]actions.State
-	FormInstance uint64
+	Candidates      []models.Ingredient
+	CandidateStatus toolkit.LoadStatus
+	Creating        bool
+	Status          toolkit.LoadStatus
+	Rows            []Row
+	Selected        *Row
+	Expression      string
+	Stock           StockMode
+	LowStock        float64
+	Limit           int
+	Cursor, Next    paging.Cursor
+	History         []paging.Cursor
+	Movements       []inventorymodels.Movement
+	Mode            Mode
+	Form            Form
+	Err             error
+	Submitting      bool
+	Dirty           bool
+	CanAdjust       bool
+	CanSet          bool
+	CanTag          bool
+	CanList         bool
+	Actions         map[actions.ID]actions.State
+	FormInstance    uint64
 }
 
 type loadResult struct {
@@ -94,15 +107,17 @@ type loadResult struct {
 }
 
 type Presenter struct {
-	app       *app.Session
-	dialogs   toolkit.Dialogs
-	load      *toolkit.LatestRequest[loadResult]
-	submit    *toolkit.Submission
-	mu        sync.Mutex
-	state     State
-	changed   func(State)
-	projector inventory.ActionProjector
-	sort      toolkit.TableSort
+	candidates *toolkit.LatestRequest[[]models.Ingredient]
+	app        *app.Session
+	dialogs    toolkit.Dialogs
+	load       *toolkit.LatestRequest[loadResult]
+	movements  *toolkit.LatestRequest[[]inventorymodels.Movement]
+	submit     *toolkit.Submission
+	mu         sync.Mutex
+	state      State
+	changed    func(State)
+	projector  inventory.ActionProjector
+	sort       toolkit.TableSort
 }
 
 func NewPresenter(session *app.Session, executor toolkit.Executor, dispatcher toolkit.Dispatcher, dialogs ...toolkit.Dialogs) *Presenter {
@@ -113,6 +128,8 @@ func NewPresenter(session *app.Session, executor toolkit.Executor, dispatcher to
 	}
 	p.load = toolkit.NewLatestRequest[loadResult](executor, dispatcher)
 	p.submit = toolkit.NewSubmission(executor, dispatcher)
+	p.movements = toolkit.NewLatestRequest[[]inventorymodels.Movement](executor, dispatcher)
+	p.candidates = toolkit.NewLatestRequest[[]models.Ingredient](executor, dispatcher)
 	if err := p.permissionsLocked(); err != nil {
 		p.state.Err = toolkit.PresentError(err)
 		toolkit.ShowPresentation(p.dialogs, err)
@@ -188,12 +205,20 @@ func (p *Presenter) loadPage(appendPage bool) {
 			}
 			p.sortRowsLocked()
 			p.state.Next = result.Value.next
-			p.state.Selected = findRow(p.state.Rows, selected)
-			// Keep a latent selection for command compatibility; Browse still renders
-			// only the collection until the actor explicitly selects a table row.
-			if p.state.Selected == nil && len(p.state.Rows) > 0 {
-				value := p.state.Rows[0]
-				p.state.Selected = &value
+			// A form owns the target and revision captured when it opened. A list
+			// refresh may finish later, including while receiving stock whose row
+			// does not exist yet, but must never replace that command target.
+			if p.state.Mode == Browse || p.state.Mode == Viewing {
+				p.state.Selected = findRow(p.state.Rows, selected)
+				// Keep a latent selection for command compatibility; Browse still renders
+				// only the collection until the actor explicitly selects a table row.
+				if p.state.Selected == nil && len(p.state.Rows) > 0 {
+					value := p.state.Rows[0]
+					p.state.Selected = &value
+				}
+			}
+			if err := p.permissionsLocked(); err != nil {
+				p.state.Err = toolkit.PresentError(err)
 			}
 		}
 		p.publishLocked()
@@ -317,7 +342,17 @@ func (p *Presenter) Select(id entity.InventoryID) {
 }
 
 // Back returns to the exact filtered and paged list state used to open detail.
-func (p *Presenter) Back() { p.leaveDetail(false) }
+func (p *Presenter) Back() {
+	p.mu.Lock()
+	if p.state.Mode == MovementHistory {
+		p.state.Mode, p.state.Err = Viewing, nil
+		p.publishLocked()
+		p.mu.Unlock()
+		return
+	}
+	p.mu.Unlock()
+	p.leaveDetail(false)
+}
 
 // ResetList returns to an unfiltered first page for navigation and breadcrumbs.
 func (p *Presenter) ResetList() { p.leaveDetail(true) }
@@ -337,6 +372,7 @@ func (p *Presenter) leaveDetail(reset bool) {
 			p.state.Cursor, p.state.Next, p.state.History = "", "", nil
 		}
 		p.state.Mode, p.state.Dirty, p.state.Err = Browse, false, nil
+		p.state.Creating = false
 		p.publishLocked()
 		p.mu.Unlock()
 		if reset {
@@ -376,9 +412,12 @@ func (p *Presenter) permissionsLocked() error {
 	return nil
 }
 
-func (p *Presenter) StartAdjust() { p.start(Adjust) }
-func (p *Presenter) StartSet()    { p.start(Set) }
-func (p *Presenter) StartTags()   { p.start(Tags) }
+func (p *Presenter) StartQuarantine() { p.start(Quarantine) }
+func (p *Presenter) StartRelease()    { p.start(Release) }
+func (p *Presenter) StartDispose()    { p.start(Dispose) }
+func (p *Presenter) StartAdjust()     { p.start(Adjust) }
+func (p *Presenter) StartSet()        { p.start(Set) }
+func (p *Presenter) StartTags()       { p.start(Tags) }
 func (p *Presenter) start(mode Mode) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -390,32 +429,35 @@ func (p *Presenter) start(mode Mode) {
 		p.publishLocked()
 		return
 	}
-	allowed := (mode == Adjust && actionEnabled(p.state.Actions, inventory.ControlAdjust)) || (mode == Set && actionEnabled(p.state.Actions, inventory.ControlSet)) || (mode == Tags && actionEnabled(p.state.Actions, inventory.ControlTags))
+	allowed := actionEnabled(p.state.Actions, controlForMode(mode)) && !p.state.Submitting
 	if !allowed {
 		return
 	}
-	p.state.Mode, p.state.Err, p.state.Dirty = mode, nil, false
+	p.state.Mode, p.state.Err, p.state.Dirty = mode, nil, p.state.Creating
 	p.state.FormInstance++
-	p.state.Form = Form{Tags: p.state.Selected.Inventory.Tags.Canonical().String(), ReplaceTags: mode != Tags}
+	p.state.Form = Form{Tags: p.state.Selected.Inventory.Tags.Canonical().String(), ReplaceTags: mode != Tags, CostUnit: p.state.Selected.Inventory.CostUnit}
 	switch mode {
 	case Set:
-		p.state.Form.Amount = fmt.Sprintf("%.2f", p.state.Selected.Inventory.Amount.Value())
+		p.state.Form.Amount = strconv.FormatFloat(p.state.Selected.Inventory.Amount.Value(), 'f', -1, 64)
 		if price, ok := p.state.Selected.Inventory.CostPerUnit.Unwrap(); ok {
 			cents, _ := price.Cents()
 			p.state.Form.Cost = fmt.Sprintf("%.2f", float64(cents)/100)
 		}
 	case Tags:
 		p.state.Form.Tags = p.state.Selected.Inventory.Tags.Canonical().String()
-	case Browse, Viewing, Adjust:
+	case Browse, Viewing, Adjust, Quarantine, Release, Dispose, MovementHistory, SelectingIngredient:
 	}
 	p.publishLocked()
 }
 func (p *Presenter) Cancel() {
 	p.mu.Lock()
 	if !p.state.Submitting {
-		if p.state.Mode == Adjust || p.state.Mode == Set || p.state.Mode == Tags {
+		if isMutationMode(p.state.Mode) || p.state.Mode == SelectingIngredient {
 			mode := p.state.Mode
 			p.state.Mode = Viewing
+			if p.state.Creating {
+				p.state.Mode, p.state.Creating, p.state.Selected = Browse, false, nil
+			}
 			p.state.Form = Form{}
 			p.state.Dirty, p.state.Err = false, nil
 			p.state.FormInstance++
@@ -428,12 +470,12 @@ func (p *Presenter) Cancel() {
 
 func (p *Presenter) SetForm(form Form) {
 	p.mu.Lock()
-	if p.state.Mode != Adjust && p.state.Mode != Set && p.state.Mode != Tags {
+	if !isMutationMode(p.state.Mode) {
 		p.mu.Unlock()
 		return
 	}
 	baseline := p.formForModeLocked(p.state.Mode)
-	p.state.Form, p.state.Dirty = form, !reflect.DeepEqual(form, baseline)
+	p.state.Form, p.state.Dirty = form, p.state.Creating || !reflect.DeepEqual(form, baseline)
 	p.publishLocked()
 	p.mu.Unlock()
 }
@@ -442,9 +484,9 @@ func (p *Presenter) formForModeLocked(mode Mode) Form {
 	if p.state.Selected == nil {
 		return Form{}
 	}
-	f := Form{Tags: p.state.Selected.Inventory.Tags.Canonical().String(), ReplaceTags: mode != Tags}
+	f := Form{Tags: p.state.Selected.Inventory.Tags.Canonical().String(), ReplaceTags: mode != Tags, CostUnit: p.state.Selected.Inventory.CostUnit}
 	if mode == Set {
-		f.Amount = fmt.Sprintf("%.2f", p.state.Selected.Inventory.Amount.Value())
+		f.Amount = strconv.FormatFloat(p.state.Selected.Inventory.Amount.Value(), 'f', -1, 64)
 		if price, ok := p.state.Selected.Inventory.CostPerUnit.Unwrap(); ok {
 			cents, _ := price.Cents()
 			f.Cost = fmt.Sprintf("%.2f", float64(cents)/100)
@@ -463,7 +505,21 @@ func (p *Presenter) Submit(form Form) bool {
 		p.mu.Unlock()
 		return false
 	}
-	validated, err := validate(mode, form, selected.Ingredient.Unit, selected.Inventory.CostPerUnit)
+	if p.state.Submitting || !isMutationMode(mode) {
+		p.mu.Unlock()
+		return false
+	}
+	if err := p.permissionsLocked(); err != nil {
+		p.state.Err = toolkit.PresentError(err)
+		p.publishLocked()
+		p.mu.Unlock()
+		return false
+	}
+	if !actionEnabled(p.state.Actions, controlForMode(mode)) {
+		p.mu.Unlock()
+		return false
+	}
+	validated, err := validate(mode, form, selected.Inventory.Amount.Unit(), selected.Inventory.CostPerUnit)
 	if err != nil {
 		p.state.Err = toolkit.PresentError(err)
 		p.publishLocked()
@@ -474,6 +530,7 @@ func (p *Presenter) Submit(form Form) bool {
 	p.state.Submitting = true
 	p.publishLocked()
 	p.mu.Unlock()
+	var savedStock *inventorymodels.Inventory
 	accepted := p.submit.Submit(func() error {
 		var desired *tag.Tags
 		if form.ReplaceTags {
@@ -482,17 +539,22 @@ func (p *Presenter) Submit(form Form) bool {
 		switch mode {
 		case Adjust:
 			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
-				return p.app.Inventory.Adjust(ctx, &inventorymodels.Patch{CostUnit: selected.Inventory.CostUnit, Revision: selected.Inventory.Revision, IngredientID: selected.Ingredient.ID, Reason: form.Reason, Delta: validated.amount, CostPerUnit: validated.cost})
+				return p.app.Inventory.Adjust(ctx, &inventorymodels.Patch{CostUnit: cmp.Or(form.CostUnit, selected.Inventory.CostUnit), Revision: selected.Inventory.Revision, IngredientID: selected.Ingredient.ID, Reason: form.Reason, Delta: validated.amount, CostPerUnit: validated.cost})
 			}, selected.Inventory.Tags)
 		case Set:
 			amount, _ := validated.amount.Unwrap()
 			cost, _ := validated.cost.Unwrap()
-			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
-				return p.app.Inventory.Set(ctx, &inventorymodels.Update{CostUnit: selected.Inventory.CostUnit, Revision: selected.Inventory.Revision, IngredientID: selected.Ingredient.ID, Amount: amount, CostPerUnit: cost})
+			savedStock, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
+				return p.app.Inventory.Set(ctx, &inventorymodels.Update{CostUnit: cmp.Or(form.CostUnit, selected.Inventory.CostUnit), Revision: selected.Inventory.Revision, IngredientID: selected.Ingredient.ID, Amount: amount, CostPerUnit: cost})
 			}, selected.Inventory.Tags)
+		case Quarantine, Release:
+			_, err = p.app.Inventory.Disposition(p.app.Context(), inventorymodels.Disposition{IngredientID: selected.Inventory.IngredientID, Revision: selected.Inventory.Revision, Quarantine: mode == Quarantine, Reason: form.DispositionReason})
+		case Dispose:
+			amount, _ := validated.amount.Unwrap()
+			_, err = p.app.Inventory.Dispose(p.app.Context(), inventorymodels.Disposal{IngredientID: selected.Inventory.IngredientID, Revision: selected.Inventory.Revision, Amount: amount, Reason: form.DispositionReason})
 		case Tags:
 			_, err = p.app.Tags.Replace(p.app.Context(), selected.Inventory.EntityUID(), validated.tags, selected.Inventory.Tags)
-		case Browse, Viewing:
+		case Browse, Viewing, MovementHistory, SelectingIngredient:
 			err = errors.Invalidf("inventory form is not active")
 		}
 		return err
@@ -501,7 +563,11 @@ func (p *Presenter) Submit(form Form) bool {
 		p.state.Submitting = false
 		p.state.Err = toolkit.PresentError(err)
 		if err == nil {
-			p.state.Mode, p.state.Dirty = Viewing, false
+			p.state.Mode, p.state.Dirty, p.state.Creating = Viewing, false, false
+			if savedStock != nil {
+				row := makeRow(*savedStock, selected.Ingredient, p.state.LowStock)
+				p.state.Selected = &row
+			}
 		}
 		p.publishLocked()
 		p.mu.Unlock()
@@ -527,6 +593,24 @@ type validatedForm struct {
 
 func validate(mode Mode, form Form, unit measurement.Unit, existingCost optional.Value[money.Price]) (validatedForm, error) {
 	var out validatedForm
+	if mode == Quarantine || mode == Release || mode == Dispose {
+		if strings.TrimSpace(form.DispositionReason) == "" {
+			return out, errors.Invalidf("a disposition reason is required")
+		}
+		if mode != Dispose {
+			return out, nil
+		}
+		value, err := strconv.ParseFloat(strings.TrimSpace(form.Amount), 64)
+		if err != nil {
+			return out, errors.Invalidf("invalid quantity")
+		}
+		if value <= 0 || math.IsInf(value, 0) || math.IsNaN(value) {
+			return out, errors.Invalidf("positive disposal amount is required")
+		}
+		amount, err := measurement.NewAmount(value, unit)
+		out.amount = optional.Some(amount)
+		return out, err
+	}
 	if mode == Tags || form.ReplaceTags {
 		tags, err := tag.ParseCollection(form.Tags)
 		out.tags = tags
@@ -542,9 +626,12 @@ func validate(mode Mode, form Form, unit measurement.Unit, existingCost optional
 		return out, errors.Invalidf("amount is required")
 	}
 	if amountText != "" {
-		value, err := parsePrecision2(amountText, "amount")
+		value, err := strconv.ParseFloat(amountText, 64)
 		if err != nil {
-			return out, err
+			return out, errors.Invalidf("invalid amount")
+		}
+		if math.IsNaN(value) || math.IsInf(value, 0) {
+			return out, errors.Invalidf("amount must be finite")
 		}
 		if mode == Set && value < 0 {
 			return out, errors.Invalidf("quantity must be >= 0")
@@ -647,10 +734,12 @@ func findRow(rows []Row, id entity.InventoryID) *Row {
 }
 func cloneState(state State) State {
 	state.Rows = append([]Row(nil), state.Rows...)
+	state.Candidates = append([]models.Ingredient(nil), state.Candidates...)
 	for i := range state.Rows {
 		state.Rows[i].Actions = cloneActions(state.Rows[i].Actions)
 	}
 	state.History = append([]paging.Cursor(nil), state.History...)
+	state.Movements = append([]inventorymodels.Movement(nil), state.Movements...)
 	state.Actions = cloneActions(state.Actions)
 	if state.Selected != nil {
 		v := *state.Selected
@@ -682,4 +771,92 @@ func (p *Presenter) publishLocked() {
 	if p.changed != nil {
 		p.changed(cloneState(p.state))
 	}
+}
+
+func isMutationMode(mode Mode) bool {
+	return mode == Adjust || mode == Set || mode == Tags || mode == Quarantine || mode == Release || mode == Dispose
+}
+func controlForMode(mode Mode) actions.ID {
+	return map[Mode]actions.ID{Adjust: inventory.ControlAdjust, Set: inventory.ControlSet, Tags: inventory.ControlTags, Quarantine: inventory.ControlQuarantine, Release: inventory.ControlRelease, Dispose: inventory.ControlDispose}[mode]
+}
+
+func (p *Presenter) ShowHistory() {
+	p.mu.Lock()
+	if p.state.Selected == nil || p.state.Submitting || p.state.Dirty {
+		p.mu.Unlock()
+		return
+	}
+	if err := p.permissionsLocked(); err != nil {
+		p.state.Err = toolkit.PresentError(err)
+		p.publishLocked()
+		p.mu.Unlock()
+		return
+	}
+	if !actionEnabled(p.state.Actions, inventory.ControlHistory) {
+		p.mu.Unlock()
+		return
+	}
+	id := p.state.Selected.Inventory.IngredientID
+	p.state.Mode, p.state.Movements, p.state.Err = MovementHistory, nil, nil
+	p.publishLocked()
+	p.mu.Unlock()
+	p.movements.LoadContext(p.app.Context(), func(ctx context.Context) ([]inventorymodels.Movement, error) {
+		return p.app.Inventory.History(p.app.ContextFrom(ctx), id)
+	}, func(result toolkit.LoadState[[]inventorymodels.Movement]) {
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		if p.state.Mode != MovementHistory || p.state.Selected == nil || p.state.Selected.Inventory.IngredientID != id {
+			return
+		}
+		p.state.Err = toolkit.PresentError(result.Err)
+		if result.Status == toolkit.Loaded {
+			p.state.Movements = result.Value
+		}
+		p.publishLocked()
+	})
+}
+
+func (p *Presenter) StartNew() {
+	p.mu.Lock()
+	if p.state.Mode != Browse || p.state.Submitting || !actionEnabled(p.state.Actions, inventory.ControlCreate) {
+		p.mu.Unlock()
+		return
+	}
+	p.state.Mode, p.state.Creating, p.state.Err, p.state.Candidates = SelectingIngredient, true, nil, nil
+	p.publishLocked()
+	p.mu.Unlock()
+	p.candidates.LoadContext(p.app.Context(), func(ctx context.Context) ([]models.Ingredient, error) {
+		return inventorypresentation.StockingCandidates(app.NewSession(p.app.ContextFrom(ctx), p.app.App), p.projector)
+	}, func(result toolkit.LoadState[[]models.Ingredient]) {
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		if p.state.Mode != SelectingIngredient {
+			return
+		}
+		p.state.CandidateStatus, p.state.Err = result.Status, toolkit.PresentError(result.Err)
+		if result.Status == toolkit.Loaded {
+			p.state.Candidates = result.Value
+		}
+		p.publishLocked()
+	})
+}
+
+func (p *Presenter) SelectIngredient(id entity.IngredientID) {
+	p.mu.Lock()
+	if p.state.Mode != SelectingIngredient || p.state.Submitting {
+		p.mu.Unlock()
+		return
+	}
+	for _, ingredient := range p.state.Candidates {
+		if ingredient.ID != id {
+			continue
+		}
+		stock := inventorymodels.Inventory{IngredientID: id, IngredientName: ingredient.Name, Status: inventorymodels.StatusActive, Amount: measurement.MustAmount(0, ingredient.Unit), CostUnit: ingredient.Unit}
+		row := makeRow(stock, ingredient, p.state.LowStock)
+		p.state.Selected = &row
+		p.mu.Unlock()
+		p.start(Set)
+		return
+	}
+	p.mu.Unlock()
 }

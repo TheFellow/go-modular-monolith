@@ -2,13 +2,12 @@ package tui
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
-	"github.com/cedar-policy/cedar-go"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -47,6 +46,7 @@ func (d *DetailViewModel) View() string {
 		d.styles.Subtitle.Render("Resource: ") + entry.Resource.String(),
 		d.styles.Muted.Render("Started: " + formatTime(entry.StartedAt)),
 		d.styles.Muted.Render("Completed: " + formatTime(entry.CompletedAt)),
+		d.styles.Muted.Render("Duration: " + surfaces.Duration(entry.StartedAt, entry.CompletedAt)),
 		d.styles.Subtitle.Render("Success: ") + fmt.Sprintf("%t", entry.Success),
 	}
 
@@ -54,42 +54,15 @@ func (d *DetailViewModel) View() string {
 		lines = append(lines, "", d.styles.Subtitle.Render("Error"), entry.Error)
 	}
 
-	touched := touchedEntities(entry.Touches)
-	lines = append(lines, "", d.styles.Subtitle.Render("Touched Entities"))
-	lines = append(lines, touched...)
-
-	if entry.WorkflowID != "" {
-		lines = append(lines, "Workflow: "+entry.WorkflowID)
-	}
-	lines = append(lines, "", "Referenced entities")
-	lines = append(lines, touchedEntities(entry.Participants)...)
-	for _, effect := range entry.Effects {
-		lines = append(lines, effect.Kind+": "+effect.Resource.String())
-		for _, change := range effect.Changes {
-			lines = append(lines, "  "+change.Field+": "+change.Before+" → "+change.After)
-		}
-	}
+	lines = append(lines,
+		"", d.styles.Subtitle.Render("Touched entities"), surfaces.Entities(entry.Touches),
+		"", d.styles.Subtitle.Render("Workflow: ")+surfaces.Workflow(entry),
+		"", d.styles.Subtitle.Render("Referenced entities"), surfaces.Entities(entry.Participants),
+		"", d.styles.Subtitle.Render("Effects"), surfaces.Effects(entry),
+	)
 	content := strings.Join(lines, "\n")
 	if d.width > 0 {
 		content = lipgloss.NewStyle().Width(d.width).Render(content)
 	}
 	return content
-}
-
-func touchedEntities(entities []cedar.EntityUID) []string {
-	if len(entities) == 0 {
-		return []string{"(none)"}
-	}
-
-	sorted := make([]string, 0, len(entities))
-	for _, uid := range entities {
-		sorted = append(sorted, uid.String())
-	}
-	sort.Strings(sorted)
-
-	lines := make([]string, 0, len(sorted))
-	for _, uid := range sorted {
-		lines = append(lines, "- "+uid)
-	}
-	return lines
 }

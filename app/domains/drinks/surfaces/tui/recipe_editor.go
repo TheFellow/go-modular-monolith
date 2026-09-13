@@ -610,6 +610,9 @@ func (e *RecipeEditor) ingredientText(row recipeRowEditor) string {
 	if option, ok := e.option(row.ingredient); ok {
 		return option.Name
 	}
+	if !row.ingredient.IsZero() {
+		return "Retired or missing ingredient (" + row.ingredient.String() + ")"
+	}
 	return "Search and press enter to select…"
 }
 func (e *RecipeEditor) selectedNames(ids []entity.IngredientID) string {
@@ -617,6 +620,8 @@ func (e *RecipeEditor) selectedNames(ids []entity.IngredientID) string {
 	for _, id := range ids {
 		if option, ok := e.option(id); ok {
 			names = append(names, option.Name)
+		} else {
+			names = append(names, "Retired or missing ingredient ("+id.String()+")")
 		}
 	}
 	if len(names) == 0 {

@@ -614,6 +614,7 @@ func (p *Presenter) Delete() {
 	if len(target.Items) > 0 {
 		message += fmt.Sprintf("\n\nThis also removes %d menu item(s).", len(target.Items))
 	}
+	message += "\n\nMenus used by orders cannot be deleted."
 	p.dialogs.Confirm("Delete menu", message, func(ok bool) {
 		p.confirming = false
 		p.state.Confirming = false

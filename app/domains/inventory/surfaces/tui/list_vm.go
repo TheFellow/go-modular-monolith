@@ -14,6 +14,7 @@ import (
 	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	inventory "github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
+	inventorypresentation "github.com/TheFellow/go-modular-monolith/app/domains/inventory/surfaces"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
@@ -47,40 +48,50 @@ const (
 	listModeSetting
 	listModeTagging
 	listModeFiltering
+	listModeLifecycle
+	listModeHistory
+	listModeStocking
 )
 
 // ListViewModel renders the inventory list and detail panes.
 type ListViewModel struct {
-	app    *app.Session
-	styles tui.ListViewStyles
-	keys   listViewKeys
+	stocking        *stockingVM
+	stockingToken   uint64
+	selectAfterLoad entity.InventoryID
+	app             *app.Session
+	styles          tui.ListViewStyles
+	keys            listViewKeys
 
 	formStyles forms.FormStyles
 	formKeys   forms.FormKeys
 
-	rows        []InventoryRow
-	table       table.Model
-	detail      *DetailViewModel
-	detailPane  tui.DetailViewport
-	projector   inventory.ActionProjector
-	actions     map[actions.ID]actions.State
-	mode        listMode
-	adjust      *AdjustInventoryVM
-	set         *SetInventoryVM
-	tags        *components.TagEditor[cedar.EntityUID, tag.Tags]
-	filter      *filterVM
-	request     inventory.ListRequest
-	next        paging.Cursor
-	history     []paging.Cursor
-	loadToken   uint64
-	spinner     tui.Spinner
-	loading     bool
-	err         error
-	actionErr   error
-	width       int
-	height      int
-	listWidth   int
-	detailWidth int
+	rows         []InventoryRow
+	table        table.Model
+	detail       *DetailViewModel
+	detailPane   tui.DetailViewport
+	projector    inventory.ActionProjector
+	actions      map[actions.ID]actions.State
+	mode         listMode
+	adjust       *AdjustInventoryVM
+	set          *SetInventoryVM
+	tags         *components.TagEditor[cedar.EntityUID, tag.Tags]
+	filter       *filterVM
+	lifecycle    *lifecycleVM
+	movements    []inventorymodels.Movement
+	historyErr   error
+	historyToken uint64
+	request      inventory.ListRequest
+	next         paging.Cursor
+	history      []paging.Cursor
+	loadToken    uint64
+	spinner      tui.Spinner
+	loading      bool
+	err          error
+	actionErr    error
+	width        int
+	height       int
+	listWidth    int
+	detailWidth  int
 }
 
 func NewListViewModel(app *app.Session) *ListViewModel {
@@ -120,7 +131,7 @@ func (m *ListViewModel) Init() tea.Cmd {
 func (m *ListViewModel) Interaction() tui.Interaction {
 	return tui.Interaction{
 		HandlesBack:  m.mode != listModeBrowsing,
-		CapturesText: m.mode == listModeAdjusting || m.mode == listModeSetting || m.mode == listModeTagging || m.mode == listModeFiltering,
+		CapturesText: m.mode == listModeAdjusting || m.mode == listModeSetting || m.mode == listModeTagging || m.mode == listModeFiltering || m.mode == listModeLifecycle || m.mode == listModeStocking,
 	}
 }
 
@@ -137,22 +148,43 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		switch m.mode {
 		case listModeBrowsing:
 		case listModeAdjusting:
-			m.adjust.SetWidth(m.detailWidth)
+			m.adjust.SetSize(m.detailWidth, max(m.height-2, 1))
 		case listModeSetting:
-			m.set.SetWidth(m.detailWidth)
+			m.set.SetSize(m.detailWidth, max(m.height-2, 1))
 		case listModeTagging:
 			m.tags.SetWidth(m.width)
+		case listModeHistory:
+		case listModeStocking:
+			m.stocking.form.SetWidth(m.detailWidth)
+		case listModeLifecycle:
+			m.lifecycle.form.SetWidth(m.detailWidth)
+			m.lifecycle.viewport.SetSize(m.detailWidth, max(m.height-2, 1))
 		case listModeFiltering:
 			m.filter.form.SetWidth(m.detailWidth)
 		}
 		return m, nil
+	case stockingLoadedMsg:
+		if msg.Token != m.stockingToken || m.mode != listModeStocking {
+			return m, nil
+		}
+		m.stocking = newStockingVM(msg.Candidates)
+		m.stocking.err = msg.Err
+		m.stocking.form.SetWidth(m.detailWidth)
+		return m, m.stocking.form.Init()
+	case historyLoadedMsg:
+		if msg.Token == m.historyToken && m.mode == listModeHistory {
+			m.movements, m.historyErr = msg.Movements, msg.Err
+		}
+		return m, nil
 	case InventoryAdjustedMsg:
+		m.lifecycle = nil
 		m.mode = listModeBrowsing
 		m.adjust = nil
 		m.loading = true
 		m.err = nil
 		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
 	case InventorySetMsg:
+		m.selectAfterLoad = msg.Inventory.ID
 		m.mode = listModeBrowsing
 		m.set = nil
 		m.loading = true
@@ -165,7 +197,40 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		m.mode, m.tags, m.loading, m.err = listModeBrowsing, nil, true, nil
 		return m, tea.Batch(m.spinner.Init(), m.loadInventory())
 	case tea.KeyMsg:
+		if m.mode == listModeStocking {
+			if key.Matches(msg, m.keys.Back) && !m.stocking.form.IsEditing() {
+				m.mode, m.stocking = listModeBrowsing, nil
+				return m, nil
+			}
+			if key.Matches(msg, m.formKeys.Submit) {
+				ingredient, ok := m.stocking.selected()
+				if !ok || m.stocking.loading {
+					return m, nil
+				}
+				row := InventoryRow{Ingredient: ingredient, Inventory: inventorymodels.Inventory{IngredientID: ingredient.ID, IngredientName: ingredient.Name, Status: inventorymodels.StatusActive, Amount: measurement.MustAmount(0, ingredient.Unit), CostUnit: ingredient.Unit}}
+				m.mode, m.set, m.stocking = listModeSetting, NewSetInventoryVM(m.app, row), nil
+				m.set.SetSize(m.detailWidth, max(m.height-2, 1))
+				return m, m.set.Init()
+			}
+			return m, m.stocking.Update(msg)
+		}
+		if m.mode == listModeHistory {
+			if key.Matches(msg, m.keys.Back) {
+				m.mode = listModeBrowsing
+				return m, nil
+			}
+			m.detailPane.Update(msg)
+			return m, nil
+		}
+		if m.mode == listModeLifecycle {
+			if key.Matches(msg, m.keys.Back) && !m.lifecycle.form.IsEditing() && !m.lifecycle.submitting {
+				m.mode, m.lifecycle = listModeBrowsing, nil
+				return m, nil
+			}
+			return m, m.lifecycle.Update(msg)
+		}
 		switch m.mode {
+		case listModeLifecycle, listModeHistory, listModeStocking:
 		case listModeBrowsing:
 		case listModeAdjusting:
 			if key.Matches(msg, m.keys.Back) && !m.adjust.form.IsEditing() {
@@ -206,6 +271,19 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 			break
 		}
 		switch {
+		case key.Matches(msg, m.keys.Create):
+			if !m.actionEnabled(inventory.ControlCreate) {
+				return m, nil
+			}
+			m.mode, m.stocking = listModeStocking, newStockingVM(nil)
+			m.stocking.loading = true
+			m.stocking.form.SetWidth(m.detailWidth)
+			m.stockingToken++
+			token := m.stockingToken
+			return m, func() tea.Msg {
+				candidates, err := inventorypresentation.StockingCandidates(m.app, m.projector)
+				return stockingLoadedMsg{Candidates: candidates, Err: err, Token: token}
+			}
 		case key.Matches(msg, m.keys.Refresh):
 			if !m.actionEnabled(inventory.ControlList) {
 				return m, nil
@@ -228,6 +306,27 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 			i := len(m.history) - 1
 			m.request.Cursor, m.history, m.loading = m.history[i], m.history[:i], true
 			return m, tea.Batch(m.spinner.Init(), m.loadInventory())
+		case key.Matches(msg, m.keys.Quarantine):
+			return m, m.startLifecycle(inventory.ControlQuarantine)
+		case key.Matches(msg, m.keys.Release):
+			return m, m.startLifecycle(inventory.ControlRelease)
+		case key.Matches(msg, m.keys.Dispose):
+			return m, m.startLifecycle(inventory.ControlDispose)
+		case key.Matches(msg, m.keys.History):
+			if !m.actionEnabled(inventory.ControlHistory) {
+				return m, nil
+			}
+			row, ok := m.selectedRow()
+			if !ok {
+				return m, nil
+			}
+			m.mode, m.movements, m.historyErr = listModeHistory, nil, nil
+			m.historyToken++
+			token := m.historyToken
+			return m, func() tea.Msg {
+				movements, err := m.app.Inventory.History(m.context(), row.Inventory.IngredientID)
+				return historyLoadedMsg{Movements: movements, Err: err, Token: token}
+			}
 		case key.Matches(msg, m.keys.Adjust):
 			if !m.actionEnabled(inventory.ControlAdjust) {
 				return m, nil
@@ -255,6 +354,10 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 		}
 		m.next = msg.Next
 		selected := selectedInventoryID(m.selectedRow())
+		if !m.selectAfterLoad.IsZero() {
+			selected = m.selectAfterLoad
+			m.selectAfterLoad = entity.InventoryID{}
+		}
 		m.rows = msg.Rows
 		m.table.SetRows(buildInventoryTableRows(msg.Rows, m.styles, len(m.table.Columns()) == 6))
 		m.selectInventory(selected)
@@ -264,6 +367,12 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 	}
 
 	switch m.mode {
+	case listModeStocking:
+		return m, m.stocking.Update(msg)
+	case listModeLifecycle:
+		return m, m.lifecycle.Update(msg)
+	case listModeHistory:
+		return m, nil
 	case listModeBrowsing:
 	case listModeAdjusting:
 		var cmd tea.Cmd
@@ -316,10 +425,25 @@ func (m *ListViewModel) View() string {
 	}
 	listView = m.styles.ListPane.Width(tui.PaneStyleWidth(m.styles.ListPane, m.listWidth)).Render(listView)
 
-	detailView := m.detailPane.View(m.detail.View())
+	detailLines := []string{m.detail.View()}
+	disabledReasons := map[string]bool{}
+	for _, id := range []actions.ID{inventory.ControlAdjust, inventory.ControlSet, inventory.ControlQuarantine, inventory.ControlRelease, inventory.ControlDispose} {
+		state := m.actions[id]
+		if state.Visible && !state.Enabled && !disabledReasons[state.DisabledReason] {
+			disabledReasons[state.DisabledReason] = true
+			detailLines = append(detailLines, state.DisabledReason)
+		}
+	}
+	detailView := m.detailPane.View(strings.Join(detailLines, "\n"))
 	switch m.mode {
 	case listModeBrowsing:
 	case listModeTagging:
+	case listModeStocking:
+		detailView = m.stocking.View()
+	case listModeLifecycle:
+		detailView = m.lifecycle.View()
+	case listModeHistory:
+		detailView = m.detailPane.View(inventoryHistoryView(m.movements, m.historyErr))
 	case listModeAdjusting:
 		detailView = m.adjust.View()
 	case listModeSetting:
@@ -333,9 +457,11 @@ func (m *ListViewModel) View() string {
 
 func (m *ListViewModel) ShortHelp() []key.Binding {
 	switch m.mode {
+	case listModeHistory:
+		return []key.Binding{tui.DetailScrollHelp, m.keys.Back}
 	case listModeTagging:
 		return []key.Binding{m.formKeys.Submit, m.keys.Back}
-	case listModeAdjusting, listModeSetting:
+	case listModeAdjusting, listModeSetting, listModeLifecycle, listModeStocking:
 		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit, m.keys.Back}
 	case listModeBrowsing:
 		base := []key.Binding{m.keys.Back}
@@ -351,9 +477,11 @@ func (m *ListViewModel) ShortHelp() []key.Binding {
 
 func (m *ListViewModel) FullHelp() [][]key.Binding {
 	switch m.mode {
+	case listModeHistory:
+		return [][]key.Binding{{tui.DetailScrollHelp, m.keys.Back}}
 	case listModeTagging:
 		return [][]key.Binding{{m.formKeys.Submit, m.keys.Back}}
-	case listModeAdjusting, listModeSetting:
+	case listModeAdjusting, listModeSetting, listModeLifecycle, listModeStocking:
 		return [][]key.Binding{
 			{m.keys.Up, m.keys.Down, m.keys.Edit, m.keys.Enter, m.formKeys.Submit},
 			{m.keys.Back},
@@ -461,7 +589,7 @@ func (m *ListViewModel) startAdjust() tea.Cmd {
 	}
 	m.mode = listModeAdjusting
 	m.adjust = NewAdjustInventoryVM(m.app, row)
-	m.adjust.SetWidth(m.detailWidth)
+	m.adjust.SetSize(m.detailWidth, max(m.height-2, 1))
 	return m.adjust.Init()
 }
 
@@ -472,7 +600,7 @@ func (m *ListViewModel) startSet() tea.Cmd {
 	}
 	m.mode = listModeSetting
 	m.set = NewSetInventoryVM(m.app, row)
-	m.set.SetWidth(m.detailWidth)
+	m.set.SetSize(m.detailWidth, max(m.height-2, 1))
 	return m.set.Init()
 }
 
@@ -599,6 +727,8 @@ func (m *ListViewModel) visibleActionBindings() []key.Binding {
 		id      actions.ID
 		binding key.Binding
 	}{
+		{inventory.ControlCreate, m.keys.Create},
+		{inventory.ControlQuarantine, m.keys.Quarantine}, {inventory.ControlRelease, m.keys.Release}, {inventory.ControlDispose, m.keys.Dispose}, {inventory.ControlHistory, m.keys.History},
 		{inventory.ControlAdjust, m.keys.Adjust}, {inventory.ControlSet, m.keys.Set}, {inventory.ControlTags, m.keys.Tags},
 	}
 	out := make([]key.Binding, 0, len(pairs))
@@ -703,4 +833,19 @@ func stockStatus(amount measurement.Amount, thresholds ...float64) string {
 		return "LOW"
 	}
 	return "OK"
+}
+
+func (m *ListViewModel) startLifecycle(action actions.ID) tea.Cmd {
+	m.syncActions()
+	if !m.actionEnabled(action) {
+		return nil
+	}
+	row, ok := m.selectedRow()
+	if !ok {
+		return nil
+	}
+	m.mode, m.lifecycle = listModeLifecycle, newLifecycleVM(m.app, row, action)
+	m.lifecycle.form.SetWidth(m.detailWidth)
+	m.lifecycle.viewport.SetSize(m.detailWidth, max(m.height-2, 1))
+	return m.lifecycle.form.Init()
 }

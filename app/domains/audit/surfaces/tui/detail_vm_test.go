@@ -7,6 +7,8 @@ import (
 
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	audittui "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/tui"
+	ingredientsauthz "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/authz"
+	ingredientsmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
@@ -42,6 +44,7 @@ func TestDetailViewModel_ShowsEntryData(t *testing.T) {
 	testutil.ErrorIf(t, !strings.Contains(view, entry.Resource.String()), "expected resource in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, start.Format(time.RFC3339)), "expected start time in view, got:\n%s", view)
 	testutil.ErrorIf(t, !strings.Contains(view, end.Format(time.RFC3339)), "expected completed time in view, got:\n%s", view)
+	testutil.StringContains(t, view, "Duration: 2s")
 	testutil.ErrorIf(t, !strings.Contains(view, "Success: true"), "expected success in view, got:\n%s", view)
 }
 
@@ -92,4 +95,31 @@ func TestDetailViewModel_SetSize(t *testing.T) {
 
 	view := detail.View()
 	testutil.StringNonEmpty(t, view, "expected non-empty view after resizing")
+}
+
+func TestDetailViewModelExplainsAttemptedEffectsAndEmptySections(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	ingredient := createIngredient(t, f)
+	_, err := f.Ingredients.Retire(f.OwnerContext(), ingredient.ID, ingredientsmodels.Retirement{Reason: "discontinued"})
+	testutil.Ok(t, err)
+	entry := auditEntryFor(t, f, ingredientsauthz.ActionRetire, ingredient.ID.EntityUID())
+	detail := audittui.NewDetailViewModel(tuitest.DefaultListViewStyles[tui.ListViewStyles]())
+	detail.SetEntry(optional.Some(entry))
+	view := detail.View()
+	testutil.StringContains(t, view, "Effects\nCommitted effects")
+	testutil.StringContains(t, view, "Before: ")
+	testutil.StringContains(t, view, "After: ")
+	// The same persisted explanation must never imply a commit after rollback.
+	entry.Success = false
+	detail.SetEntry(optional.Some(entry))
+	testutil.StringContains(t, detail.View(), "Effects\nAttempted effects (not committed)")
+	entry.Effects = nil
+	entry.Participants = nil
+	entry.WorkflowID = ""
+	detail.SetEntry(optional.Some(entry))
+	view = detail.View()
+	testutil.StringContains(t, view, "Workflow: (none)")
+	testutil.StringContains(t, view, "Referenced entities\n(none)")
+	testutil.StringContains(t, view, "Effects\n(none)")
 }

@@ -27,7 +27,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List ingredients",
 				Flags: appendFilterFlags(append([]cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{
 						Name:      "category",
 						Aliases:   []string{"c"},
@@ -63,7 +63,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Name:  "get",
 				Usage: "Get an ingredient by ID",
 				Flags: []cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "id", Usage: "Ingredient ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -90,10 +90,10 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 					&cli.StringArgs{Name: "name", UsageText: "Ingredient name", Max: 1},
 				},
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.JSONFlag,
-					clitoolkit.TemplateFlag,
-					clitoolkit.StdinFlag,
-					clitoolkit.FileFlag,
+					clitoolkit.JSONFlag(),
+					clitoolkit.TemplateFlag(),
+					clitoolkit.StdinFlag(),
+					clitoolkit.FileFlag(),
 					&cli.StringFlag{
 						Name:      "category",
 						Aliases:   []string{"c"},
@@ -169,10 +169,10 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Name:  "update",
 				Usage: "Update an ingredient",
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.JSONFlag,
-					clitoolkit.TemplateFlag,
-					clitoolkit.StdinFlag,
-					clitoolkit.FileFlag,
+					clitoolkit.JSONFlag(),
+					clitoolkit.TemplateFlag(),
+					clitoolkit.StdinFlag(),
+					clitoolkit.FileFlag(),
 					&cli.StringFlag{Name: "id", Usage: "Ingredient ID"},
 					&cli.StringFlag{
 						Name:    "name",
@@ -266,7 +266,7 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 				Aliases: []string{"delete"},
 				Usage:   "Retire an ingredient and mark dependent drinks for review",
 				Flags: []cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "id", Usage: "Ingredient ID", Required: true},
 					&cli.StringFlag{Name: "replacement-id", Usage: "Explicit permanent replacement ingredient ID"},
 					&cli.Float64Flag{Name: "replacement-ratio", Usage: "Replacement quantity ratio (defaults to 1)"},

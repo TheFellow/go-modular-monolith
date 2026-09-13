@@ -127,6 +127,10 @@ Editors retain the entity revision and original tag set. `Session.TagReplacer(or
 captures the expected complete set for generic tag editors; combined changes pass it through
 `RunTaggedMutation`. A conflict leaves the newer persisted state intact.
 
-The TUI has retirement and ordinary order controls; explicit amendment, quarantine, release, and
-disposal are currently exposed through the [CLI](../cli/README.md#amendments-substitutions-and-stock-history)
-and application API. Their results appear in the TUI after refresh.
+Ingredient substitution rules are available with `s`; select a rule to revise, disable, or re-enable
+it, or create a new rule with `c`. Retirement includes withdrawal and a recorded reason.
+Orders use `a` to amend, `Ctrl+B` to queue an amendment, and `b` to review the atomic batch.
+Inventory uses `c` to receive stock for an ingredient without inventory, `x` to quarantine,
+`u` to release, `d` to dispose, and `h` for movement history.
+Forms retain the revision they opened with; conflicts preserve the draft for explicit reconciliation.
+See the [surface parity audit](../../docs/surface-parity.md) for contracts and repeatable render captures.

@@ -8,21 +8,27 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
+	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keys"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/styles"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // RetireIngredientVM captures an optional explicit permanent replacement.
-// Leaving both fields blank performs a normal retirement and exposes the
+// Leaving the replacement blank performs a normal retirement and exposes the
 // resulting degraded state for review.
 type RetireIngredientVM struct {
+	viewport           toolkit.FormViewport
+	width              int
 	app                *app.Session
 	ingredient         *models.Ingredient
 	form               *forms.Form
 	replacement, ratio *forms.TextField
+	reason             *forms.TextField
+	withdraw           *forms.SelectField
 	styles             forms.FormStyles
 	keys               forms.FormKeys
 	err                error
@@ -30,17 +36,34 @@ type RetireIngredientVM struct {
 }
 
 func NewRetireIngredientVM(application *app.Session, ingredient *models.Ingredient) *RetireIngredientVM {
-	replacement := forms.NewTextField("Permanent replacement ingredient ID (optional)")
-	ratio := forms.NewTextField("Replacement ratio (defaults to 1)", forms.WithInitialValue("1"))
+	replacement := forms.NewTextField("Replacement ID (optional)")
+	ratio := forms.NewTextField("Ratio (default 1)", forms.WithInitialValue("1"))
+	reason := forms.NewTextField("Reason")
+	withdraw := forms.NewSelectField("Existing stock", []forms.SelectOption{{Label: "Discontinue future use", Value: false}, {Label: "Withdraw stock", Value: true}})
 	formStyles, formKeys := styles.Standard.Form, keys.Standard.Form
-	return &RetireIngredientVM{app: application, ingredient: ingredient, form: forms.New(formStyles, formKeys, replacement, ratio), replacement: replacement, ratio: ratio, styles: formStyles, keys: formKeys}
+	return &RetireIngredientVM{viewport: toolkit.NewFormViewport(), app: application, ingredient: ingredient, form: forms.New(formStyles, formKeys, replacement, ratio, withdraw, reason), reason: reason, withdraw: withdraw, replacement: replacement, ratio: ratio, styles: formStyles, keys: formKeys}
 }
 
-func (m *RetireIngredientVM) Init() tea.Cmd      { return m.form.Init() }
-func (m *RetireIngredientVM) SetWidth(width int) { m.form.SetWidth(width) }
-func (m *RetireIngredientVM) IsEditing() bool    { return m.form.IsEditing() }
+func (m *RetireIngredientVM) Init() tea.Cmd { return m.form.Init() }
+func (m *RetireIngredientVM) SetWidth(width int) {
+	m.width = width
+	m.form.SetWidth(max(width-2, 1))
+	m.viewport.SetWidth(width)
+}
+func (m *RetireIngredientVM) SetSize(width, height int) {
+	m.SetWidth(width)
+	m.viewport.SetSize(width, height)
+}
+func (m *RetireIngredientVM) IsEditing() bool { return m.form.IsEditing() }
 
 func (m *RetireIngredientVM) Update(msg tea.Msg) (*RetireIngredientVM, tea.Cmd) {
+	if failure, ok := msg.(DeleteErrorMsg); ok {
+		m.err, m.submitting = failure.Err, false
+		return m, nil
+	}
+	if m.submitting {
+		return m, nil
+	}
 	if typed, ok := msg.(tea.KeyMsg); ok && key.Matches(typed, m.keys.Submit) {
 		return m, m.submit()
 	}
@@ -50,18 +73,37 @@ func (m *RetireIngredientVM) Update(msg tea.Msg) (*RetireIngredientVM, tea.Cmd) 
 }
 
 func (m *RetireIngredientVM) View() string {
-	content := "Retire Ingredient\n\n" + m.form.View() + "\n\nLeave replacement blank to retire into review/degraded state."
-	if m.err != nil {
-		return m.styles.Error.Render("Error: "+m.err.Error()) + "\n\n" + content
+	lines := []string{"Retire Ingredient", "", m.form.View(), "", "No replacement: drinks need review."}
+	if withdraw, _ := m.withdraw.Value().(bool); withdraw {
+		lines = append(lines, "Withdrawal quarantines stock", "and blocks accepted orders.")
 	}
-	return content
+	focusLine := 2
+	for _, field := range []forms.Field{m.replacement, m.ratio, m.withdraw, m.reason} {
+		if field == m.form.FocusedField() {
+			break
+		}
+		focusLine += strings.Count(field.View(), "\n") + 2
+	}
+	if m.err != nil {
+		lines = append(lines, m.styles.Error.Render("Error: "+m.err.Error()))
+		focusLine = strings.Count(strings.Join(lines, "\n"), "\n")
+	}
+	if m.submitting {
+		lines = append(lines, "Retiring…")
+	}
+	content := strings.Join(lines, "\n")
+	if m.width > 0 {
+		content = lipgloss.NewStyle().Width(m.width).Render(content)
+	}
+	return m.viewport.View(content, focusLine, "ctrl+s retire · esc back")
 }
 
 func (m *RetireIngredientVM) submit() tea.Cmd {
 	if m.submitting || m.ingredient == nil {
 		return nil
 	}
-	retirement := models.Retirement{}
+	withdraw, _ := m.withdraw.Value().(bool)
+	retirement := models.Retirement{Withdraw: withdraw, Reason: strings.TrimSpace(toString(m.reason.Value()))}
 	replacement := strings.TrimSpace(toString(m.replacement.Value()))
 	if replacement != "" {
 		id, err := entity.ParseIngredientID(replacement)

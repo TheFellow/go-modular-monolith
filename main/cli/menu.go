@@ -24,7 +24,7 @@ func (c *CLI) menuCommands() *cli.Command {
 			{
 				Name:  "readiness",
 				Usage: "Report publication blockers and operational warnings",
-				Flags: []cli.Flag{clitoolkit.JSONFlag, &cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true}},
+				Flags: []cli.Flag{clitoolkit.JSONFlag(), &cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true}},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					menuID, err := entity.ParseMenuID(cmd.String("id"))
 					if err != nil {
@@ -53,9 +53,9 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "list",
 				Usage: "List menus",
 				Flags: appendFilterFlags(append([]cli.Flag{
-					clitoolkit.JSONFlag,
-					CostsFlag,
-					TargetMarginFlag,
+					clitoolkit.JSONFlag(),
+					costsFlag(),
+					targetMarginFlag(),
 					&cli.StringFlag{
 						Name:  "status",
 						Usage: "Filter by status (draft|published|archived)",
@@ -118,9 +118,9 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "show",
 				Usage: "Show a menu",
 				Flags: []cli.Flag{
-					clitoolkit.JSONFlag,
-					CostsFlag,
-					TargetMarginFlag,
+					clitoolkit.JSONFlag(),
+					costsFlag(),
+					targetMarginFlag(),
 					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -164,7 +164,7 @@ func (c *CLI) menuCommands() *cli.Command {
 								return err
 							}
 							for _, item := range an.Items {
-								cost := "n/a"
+								cost := "unknown"
 								if item.Cost != nil && !item.CostUnknown {
 									cost = item.Cost.String()
 								}
@@ -181,13 +181,12 @@ func (c *CLI) menuCommands() *cli.Command {
 									margin = fmt.Sprintf("%.0f%%", *item.Margin*100)
 								}
 
-								status := string(item.Availability)
-								if len(item.Substitutions) > 0 {
-									sub := item.Substitutions[0]
-									status += fmt.Sprintf(" (sub: %s for %s)", sub.Substitute.String(), sub.Original.String())
+								status := []string{strings.ToUpper(string(item.Availability))}
+								for _, sub := range item.Substitutions {
+									status = append(status, fmt.Sprintf(" (sub: %s for %s; ratio %g; quality %s)", sub.Substitute.String(), sub.Original.String(), sub.Ratio, sub.QualityImpact))
 								}
 
-								if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", item.DrinkID.String(), item.Name, cost, price, margin, strings.ToUpper(status)); err != nil {
+								if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", item.DrinkID.String(), item.Name, cost, price, margin, strings.Join(status, "")); err != nil {
 									return err
 								}
 							}
@@ -231,10 +230,10 @@ func (c *CLI) menuCommands() *cli.Command {
 					&cli.StringArgs{Name: "name", UsageText: "Menu name", Max: 1},
 				},
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.JSONFlag,
-					clitoolkit.TemplateFlag,
-					clitoolkit.StdinFlag,
-					clitoolkit.FileFlag,
+					clitoolkit.JSONFlag(),
+					clitoolkit.TemplateFlag(),
+					clitoolkit.StdinFlag(),
+					clitoolkit.FileFlag(),
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
 					if cmd.Bool("template") {
@@ -278,10 +277,10 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "update",
 				Usage: "Rename a draft menu or update its non-empty description",
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.JSONFlag,
-					clitoolkit.TemplateFlag,
-					clitoolkit.StdinFlag,
-					clitoolkit.FileFlag,
+					clitoolkit.JSONFlag(),
+					clitoolkit.TemplateFlag(),
+					clitoolkit.StdinFlag(),
+					clitoolkit.FileFlag(),
 					&cli.StringFlag{Name: "id", Usage: "Menu ID"},
 					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Usage: "New name"},
 					&cli.StringFlag{Name: "description", Aliases: []string{"d"}, Usage: "New non-empty description (blank preserves the current description)"},
@@ -344,7 +343,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "delete",
 				Usage: "Delete a draft menu",
 				Flags: []cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
 				},
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -367,7 +366,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "add-drink",
 				Usage: "Add a drink to a menu",
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
 					&cli.StringFlag{Name: "drink-id", Usage: "Drink ID", Required: true},
 				}),
@@ -401,7 +400,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "remove-drink",
 				Usage: "Remove a drink from a menu",
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "menu-id", Usage: "Menu ID", Required: true},
 					&cli.StringFlag{Name: "drink-id", Usage: "Drink ID", Required: true},
 				}),
@@ -435,7 +434,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "publish",
 				Usage: "Publish a menu",
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {
@@ -462,7 +461,7 @@ func (c *CLI) menuCommands() *cli.Command {
 				Name:  "draft",
 				Usage: "Return a published menu to draft status",
 				Flags: appendTagsFlag([]cli.Flag{
-					clitoolkit.JSONFlag,
+					clitoolkit.JSONFlag(),
 					&cli.StringFlag{Name: "id", Usage: "Menu ID", Required: true},
 				}),
 				Action: c.action(func(ctx *middleware.Context, cmd *cli.Command) error {

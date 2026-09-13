@@ -9,6 +9,7 @@ import (
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
+	"github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces"
 	auditcli "github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces/cli"
 	"github.com/TheFellow/go-modular-monolith/pkg/authn"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -84,7 +85,8 @@ func (c *CLI) auditCommands() *cli.Command {
 
 func auditListFlags() []cli.Flag {
 	return append([]cli.Flag{
-		clitoolkit.JSONFlag,
+		clitoolkit.JSONFlag(),
+		&cli.BoolFlag{Name: "details", Usage: "Show workflow, touched and referenced entities, and effects"},
 		&cli.StringFlag{
 			Name:  "entity",
 			Usage: "Filter by entity (Type::id)",
@@ -110,6 +112,8 @@ func auditListFlags() []cli.Flag {
 
 func auditHistoryFlags() []cli.Flag {
 	return append([]cli.Flag{
+		clitoolkit.JSONFlag(),
+		&cli.BoolFlag{Name: "details", Usage: "Show workflow, touched and referenced entities, and effects"},
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "Filter by start time (RFC3339 or YYYY-MM-DD)",
@@ -131,6 +135,11 @@ func (c *CLI) printAuditList(ctx *middleware.Context, cmd *cli.Command, req audi
 	}
 	if err := printAuditEntries(cmd.Writer, page.Items); err != nil {
 		return err
+	}
+	if cmd.Bool("details") {
+		if err := printAuditDetails(cmd.Writer, page.Items); err != nil {
+			return err
+		}
 	}
 	return printNextCursor(cmd.Writer, page.Next)
 }
@@ -232,4 +241,16 @@ func parseEntityUID(value string) (cedar.EntityUID, error) {
 
 func printAuditEntries(output io.Writer, entries []*auditmodels.AuditEntry) error {
 	return clitable.PrintTable(output, auditcli.ToAuditRows(entries))
+}
+
+func printAuditDetails(output io.Writer, entries []*auditmodels.AuditEntry) error {
+	for _, entry := range entries {
+		if entry == nil {
+			continue
+		}
+		if _, err := fmt.Fprintf(output, "\nAudit entry: %s\nWorkflow: %s\nTouched entities\n%s\nReferenced entities\n%s\nEffects\n%s\n", entry.ID.String(), surfaces.Workflow(*entry), surfaces.Entities(entry.Touches), surfaces.Entities(entry.Participants), surfaces.Effects(*entry)); err != nil {
+			return err
+		}
+	}
+	return nil
 }

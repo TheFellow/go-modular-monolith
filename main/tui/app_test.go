@@ -200,7 +200,7 @@ func TestDomainModalOwnsKeysThatAreBrowsingShortcuts(t *testing.T) {
 		{name: "ingredient create", activate: "c", collision: "t", expected: "Name", setup: tagViewScenarios()[1]},
 		{name: "inventory adjust", activate: "a", collision: "t", expected: "Adjust: Gin", setup: tagViewScenarios()[2]},
 		{name: "menu create", activate: "c", collision: "t", expected: "Name", setup: tagViewScenarios()[3]},
-		{name: "order cancel", activate: "x", collision: "t", expected: "Complete tags (optional)", setup: tagViewScenarios()[4]},
+		{name: "order cancel", activate: "x", collision: "t", expected: "Cancellation reason (optional)", setup: tagViewScenarios()[4]},
 	}
 
 	for _, scenario := range scenarios {
@@ -215,6 +215,11 @@ func TestDomainModalOwnsKeysThatAreBrowsingShortcuts(t *testing.T) {
 			model = updateViewSettled(t, model, keyRunes(scenario.collision))
 			testutil.StringContains(t, model.View(), scenario.expected)
 			testutil.ErrorIf(t, strings.Contains(model.View(), "Manage tags"), "browsing shortcut escaped the active modal:\n%s", model.View())
+			if scenario.name == "order cancel" {
+				model = updateViewSettled(t, model, keyRunes("able service ended"))
+				testutil.StringContains(t, model.View(), "table service ended")
+				testutil.Equals(t, model.Interaction().CapturesText, true)
+			}
 		})
 	}
 }

@@ -7,10 +7,11 @@ import (
 
 type listViewKeys struct {
 	keys.ListViewKeys
-	Tags    key.Binding
-	Replace key.Binding
+	Substitutions key.Binding
+	Tags          key.Binding
+	Replace       key.Binding
 }
 
 func newListViewKeys() listViewKeys {
-	return listViewKeys{ListViewKeys: keys.Standard.ListView, Tags: keys.NewBinding("t", "manage tags", "t"), Replace: keys.NewBinding("R", "retire with replacement", "R")}
+	return listViewKeys{Substitutions: keys.NewBinding("s", "substitutions", "s"), ListViewKeys: keys.Standard.ListView, Tags: keys.NewBinding("t", "manage tags", "t"), Replace: keys.NewBinding("R", "retire with replacement", "R")}
 }

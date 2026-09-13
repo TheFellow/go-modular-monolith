@@ -45,6 +45,7 @@ func TestActionProjectorPendingLifecycle(t *testing.T) {
 		got := actionMap(states)
 		testutil.Equals(t, got[orders.ControlComplete].Enabled, status == models.OrderStatusPending)
 		testutil.Equals(t, got[orders.ControlCancel].Enabled, status == models.OrderStatusPending || status == models.OrderStatusBlocked)
+		testutil.Equals(t, got[orders.ControlAmend].Enabled, status == models.OrderStatusPending || status == models.OrderStatusBlocked)
 	}
 }
 

@@ -224,12 +224,11 @@ func analysisText(analysis queries.MenuAnalytics) string {
 		if item.Margin != nil {
 			margin = fmt.Sprintf("%.0f%%", *item.Margin*100)
 		}
-		status := strings.ToUpper(string(item.Availability))
-		if len(item.Substitutions) > 0 {
-			sub := item.Substitutions[0]
-			status += fmt.Sprintf(" (sub: %s for %s)", sub.Substitute.String(), sub.Original.String())
+		status := []string{strings.ToUpper(string(item.Availability))}
+		for _, sub := range item.Substitutions {
+			status = append(status, fmt.Sprintf(" (sub: %s for %s; ratio %g; quality %s)", sub.Substitute.String(), sub.Original.String(), sub.Ratio, sub.QualityImpact))
 		}
-		lines = append(lines, fmt.Sprintf("\n%s\nID: %s\nCost: %s\nPrice: %s\nMargin: %s\nStatus: %s", item.Name, item.DrinkID.String(), cost, price, margin, status))
+		lines = append(lines, fmt.Sprintf("\n%s\nID: %s\nCost: %s\nPrice: %s\nMargin: %s\nStatus: %s", item.Name, item.DrinkID.String(), cost, price, margin, strings.Join(status, "")))
 	}
 	return strings.Join(lines, "\n")
 }

@@ -2,15 +2,26 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
+	drinkmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
+	ingredientmodels "github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
+	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	menucli "github.com/TheFellow/go-modular-monolith/app/domains/menus/surfaces/cli"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/currency"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
+	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
+	"github.com/urfave/cli/v3"
 )
 
 func TestMenusCLIUpdateDeleteLifecycleAndCrossInvocationVisibility(t *testing.T) {
@@ -154,4 +165,34 @@ func requireAuditAction(t *testing.T, output, action string) {
 		}
 	}
 	testutil.Fail(t, "audit action %q not found in %s", action, output)
+}
+
+func TestMenusCLIShowsEveryAppliedSubstitution(t *testing.T) {
+	f := testutil.NewFixture(t)
+	recipe := drinkmodels.Recipe{Steps: []string{"Stir"}}
+	var expected []string
+	for i := range 2 {
+		original := testutil.CreateIngredient(t, f, ingredientmodels.Ingredient{Name: fmt.Sprintf("Original %d", i), Category: ingredientmodels.CategorySpirit, Unit: measurement.UnitOz})
+		substitute := testutil.CreateIngredient(t, f, ingredientmodels.Ingredient{Name: fmt.Sprintf("Substitute %d", i), Category: ingredientmodels.CategorySpirit, Unit: measurement.UnitOz})
+		ratio := float64(i + 1)
+		_, err := f.Ingredients.SetSubstitution(f.OwnerContext(), &ingredientmodels.SubstitutionRule{IngredientID: original.ID, SubstituteID: substitute.ID, Ratio: ratio, QualityImpact: ingredientmodels.QualitySimilar})
+		testutil.Ok(t, err)
+		testutil.SetInventory(t, f, inventorymodels.Update{IngredientID: substitute.ID, Amount: measurement.MustAmount(20, measurement.UnitOz), CostPerUnit: money.NewPriceFromCents(100, currency.USD)})
+		recipe.Ingredients = append(recipe.Ingredients, drinkmodels.RecipeIngredient{IngredientID: original.ID, Amount: measurement.MustAmount(1, measurement.UnitOz)})
+		expected = append(expected, fmt.Sprintf("sub: %s for %s; ratio %g; quality similar", substitute.ID.String(), original.ID.String(), ratio))
+	}
+	drink := testutil.CreateDrink(t, f, drinkmodels.Drink{Name: "Two substitutions", Category: drinkmodels.DrinkCategoryCocktail, Recipe: recipe})
+	menu := testutil.CreateMenu(t, f, "Substitution analysis", testutil.WithDrink(drink))
+	var output bytes.Buffer
+	c := &CLI{app: f.App.App}
+	command := c.menuCommands()
+	command.Writer = &output
+	command.Before = func(ctx context.Context, _ *cli.Command) (context.Context, error) {
+		return middleware.NewContext(ctx), nil
+	}
+	testutil.Ok(t, command.Run(f.OwnerContext(), []string{"menus", "show", "--id", menu.ID.String(), "--costs"}))
+	for _, want := range expected {
+		testutil.StringContains(t, output.String(), want)
+	}
+	testutil.StringContains(t, output.String(), drink.ID.String())
 }
