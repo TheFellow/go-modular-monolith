@@ -388,9 +388,9 @@ func (p *Presenter) Save() bool {
 	}
 	return p.mutate(func() error {
 		if mode == Creating {
-			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Drink, error) { return p.app.Drinks.Create(ctx, drink) })
+			_, err = p.app.Drinks.Create(p.app.Context(), drink, tag.Replace(desired))
 		} else {
-			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Drink, error) { return p.app.Drinks.Update(ctx, drink) }, drink.Tags)
+			_, err = p.app.Drinks.Update(p.app.Context(), drink, tag.Replace(desired, drink.Tags))
 		}
 		return err
 	})

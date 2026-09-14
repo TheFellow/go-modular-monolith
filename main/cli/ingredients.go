@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
-	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"strings"
+
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
@@ -150,8 +152,8 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						}
 					}
 
-					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*models.Ingredient, error) {
-						return c.app.Ingredients.Create(ctx, input)
+					res, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*models.Ingredient, error) {
+						return c.app.Ingredients.Create(ctx, input, edit)
 					})
 					if err != nil {
 						return err
@@ -246,8 +248,8 @@ func (c *CLI) ingredientsCommands() *cli.Command {
 						}
 					}
 
-					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*models.Ingredient, error) {
-						return c.app.Ingredients.Update(ctx, input)
+					res, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*models.Ingredient, error) {
+						return c.app.Ingredients.Update(ctx, input, edit)
 					})
 					if err != nil {
 						return err

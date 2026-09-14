@@ -18,14 +18,6 @@ func Duration(start, completed time.Time) string {
 	return completed.Sub(start).Round(time.Microsecond).String()
 }
 
-// Workflow describes the correlation ID, including its absence in older entries.
-func Workflow(entry models.AuditEntry) string {
-	if entry.WorkflowID == "" {
-		return "(none)"
-	}
-	return entry.WorkflowID
-}
-
 // Entities gives references a stable, readable order without changing the entry.
 func Entities(entities []cedar.EntityUID) string {
 	if len(entities) == 0 {

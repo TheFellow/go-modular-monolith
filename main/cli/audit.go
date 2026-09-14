@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"io"
 	"strings"
 	"time"
+
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	auditmodels "github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
@@ -248,7 +249,7 @@ func printAuditDetails(output io.Writer, entries []*auditmodels.AuditEntry) erro
 		if entry == nil {
 			continue
 		}
-		if _, err := fmt.Fprintf(output, "\nAudit entry: %s\nWorkflow: %s\nTouched entities\n%s\nReferenced entities\n%s\nEffects\n%s\n", entry.ID.String(), surfaces.Workflow(*entry), surfaces.Entities(entry.Touches), surfaces.Entities(entry.Participants), surfaces.Effects(*entry)); err != nil {
+		if _, err := fmt.Fprintf(output, "\nAudit entry: %s\nTouched entities\n%s\nReferenced entities\n%s\nEffects\n%s\n", entry.ID.String(), surfaces.Entities(entry.Touches), surfaces.Entities(entry.Participants), surfaces.Effects(*entry)); err != nil {
 			return err
 		}
 	}

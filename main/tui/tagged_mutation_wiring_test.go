@@ -10,7 +10,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
-func TestTUIMutationWorkflowsUseAtomicTagComposition(t *testing.T) {
+func TestTUIMutationWorkflowsPassTagsToOwningCommand(t *testing.T) {
 	t.Parallel()
 	type workflow struct{ domain, file, function, action, callback string }
 	workflows := []workflow{
@@ -50,22 +50,22 @@ func TestTUIMutationWorkflowsUseAtomicTagComposition(t *testing.T) {
 				if !ok {
 					return true
 				}
-				pkg, appCall := selector.X.(*ast.Ident)
-				if appCall && pkg.Name == "app" && selector.Sel.Name == "RunTaggedMutation" {
-					calls++
+				if selector.Sel.Name == workflow.callback {
 					for _, arg := range call.Args {
-						ast.Inspect(arg, func(node ast.Node) bool {
-							invoked, found := node.(*ast.SelectorExpr)
-							if found && invoked.Sel.Name == workflow.callback {
-								callbacks++
-							}
-							return true
-						})
+						edit, ok := arg.(*ast.CallExpr)
+						if !ok {
+							continue
+						}
+						selected, ok := edit.Fun.(*ast.SelectorExpr)
+						if ok && selected.Sel.Name == "Replace" {
+							calls++
+							callbacks++
+						}
 					}
 				}
 				return true
 			})
 		}
-		testutil.ErrorIf(t, calls != 1 || callbacks != 1, "%s %s wiring has %d atomic tagged mutations around %d %s callbacks, want 1 and 1", workflow.domain, workflow.action, calls, callbacks, workflow.callback)
+		testutil.ErrorIf(t, calls != 1 || callbacks != 1, "%s %s wiring has %d domain commands with tags for %d %s callbacks, want 1 and 1", workflow.domain, workflow.action, calls, callbacks, workflow.callback)
 	}
 }

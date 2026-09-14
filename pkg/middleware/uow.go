@@ -20,6 +20,9 @@ func UnitOfWork(s *store.Store) Middleware {
 		}
 
 		return s.Write(ctx, func(tx *store.Tx) error {
+			if err := tx.ClaimCommand(); err != nil {
+				return err
+			}
 			txCtx := ctx.WithTransaction(tx)
 			return next(txCtx)
 		})

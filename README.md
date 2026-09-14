@@ -11,7 +11,7 @@ The sample is intentionally stateful rather than a collection of isolated CRUD s
 reserve Inventory, stock changes can block Orders and degrade draft and published Menus, and
 ingredient retirement updates future recipes while retaining stock and accepted order history.
 Explicit amendments change an order's approved fulfillment without rewriting its original
-acceptance. Stateful handlers prepare dependent changes before writing, so the entire workflow and
+acceptance. Stateful handlers prepare dependent changes before writing, so the command, its reactions, and
 its audit evidence commit together without depending on sibling handler order.
 
 ## Five-minute start
@@ -66,7 +66,7 @@ authorization, transaction, event, and audit pipelines against an isolated datab
 | If you want to…                                                                | Start here                                                                         |
 | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | Understand bounded contexts, pipelines, events, authz, and enforced boundaries | [Architecture](docs/architecture.md)                                               |
-| Trace atomic retirement, amendments, history, and concurrency decisions       | [Transactional workflows](docs/transactional-workflows.md)                         |
+| Trace command ownership, amendments, history, and concurrency decisions       | [Transactional commands](docs/transactional-workflows.md)                         |
 | Compare cross-domain workflows and review rendered surfaces                  | [Surface parity audit](docs/surface-parity.md)                                     |
 | Use fulfillment, retirement, filters, tags, audit, IDs, or personas            | [Application features](docs/features.md)                                           |
 | Work on an executable and its composition layer                                | [CLI](main/cli/README.md), [TUI](main/tui/README.md), or [GUI](main/gui/README.md) |

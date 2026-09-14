@@ -148,3 +148,13 @@ specs:
     rules:
       forbid:
         - "app/domains/*"
+
+  # Commands collaborate through public queries and their own events. A domain
+  # facade would re-enter another command pipeline and violate mutation ownership.
+  - name: commands-no-modules
+    packages:
+      include:
+        - "app/domains/*/internal/commands/**"
+    rules:
+      forbid:
+        - "app/domains/*"

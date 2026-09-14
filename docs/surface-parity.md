@@ -21,11 +21,11 @@ catalog deletion, audit effects, and optimistic concurrency.
 | Initial stock receipt | `inventory set` for a new ingredient | Receive new stock from the inventory list; a concurrent first receipt cannot be overwritten. |
 | Catalog constraints | Domain dependency errors | The same command constraints, with retirement-aware recipe details and accurate deletion feedback. |
 | Menu readiness and analysis | `menus readiness` / `show --costs` | Publication blockers, degraded published menus, and substitution details in analysis. |
-| Transaction evidence | Audit `--details` / `--json` | Workflow correlation, referenced entities, and labeled field changes; failed effects are identified as attempts. |
+| Transaction evidence | Audit `--details` / `--json` | Command activity, referenced entities, and labeled field changes; failed effects are identified as attempts. |
 
-The combined retirement-and-amendment transaction remains available through `App.RetireIngredient`.
-Separate surface operations do not imply a shared transaction. Order amendment batches use
-`App.AmendOrders` and retain each selected order's expected revision.
+Order amendment batches call `Orders.AmendBatch` and retain every selected order's expected
+revision. Catalog retirement calls `Ingredients.Retire` separately. Tagged forms pass `tag.Edit`
+to the owning command; Tagging's leaf reaction shares that command's transaction and activity.
 
 ## Review captures
 

@@ -2,6 +2,9 @@ package tui
 
 import (
 	"fmt"
+	"slices"
+	"strings"
+
 	presentation "github.com/TheFellow/go-modular-monolith/app/domains/orders/surfaces"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
@@ -9,8 +12,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/forms"
-	"slices"
-	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	orders "github.com/TheFellow/go-modular-monolith/app/domains/orders"
@@ -317,7 +318,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 				requests := slices.Clone(m.amendmentQueue)
 				m.mutating = true
 				return m, func() tea.Msg {
-					_, err := m.app.AmendOrders(m.context(), requests)
+					_, err := m.app.Orders.AmendBatch(m.context(), requests)
 					return amendmentsSavedMsg{err: err, batch: true}
 				}
 			}
@@ -788,9 +789,7 @@ func (m *ListViewModel) performComplete() tea.Cmd {
 		return func() tea.Msg { return CompleteErrorMsg{Err: err} }
 	}
 	return func() tea.Msg {
-		updated, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
-			return m.app.Orders.Complete(ctx, &ordersmodels.Order{ID: target.ID, Revision: target.Revision})
-		}, target.Tags)
+		updated, err := m.app.Orders.Complete(m.context(), &ordersmodels.Order{ID: target.ID, Revision: target.Revision}, tag.Replace(desired, target.Tags))
 		if err != nil {
 			return CompleteErrorMsg{Err: err}
 		}
@@ -848,9 +847,7 @@ func (m *ListViewModel) performCancel() tea.Cmd {
 		return func() tea.Msg { return CancelErrorMsg{Err: err} }
 	}
 	return func() tea.Msg {
-		updated, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
-			return m.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: target.ID, Revision: target.Revision, CancellationReason: target.CancellationReason})
-		}, target.Tags)
+		updated, err := m.app.Orders.Cancel(m.context(), &ordersmodels.Order{ID: target.ID, Revision: target.Revision, CancellationReason: target.CancellationReason}, tag.Replace(desired, target.Tags))
 		if err != nil {
 			return CancelErrorMsg{Err: err}
 		}

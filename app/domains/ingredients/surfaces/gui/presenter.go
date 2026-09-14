@@ -22,7 +22,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	toolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/gui"
@@ -403,16 +402,12 @@ func (p *Presenter) Submit(form Form) bool {
 		}
 		switch mode {
 		case Create:
-			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Ingredient, error) {
-				return p.app.Ingredients.Create(ctx, &models.Ingredient{Name: strings.TrimSpace(form.Name), Category: category, Unit: unit, Description: strings.TrimSpace(form.Description)})
-			})
+			_, err = p.app.Ingredients.Create(p.app.Context(), &models.Ingredient{Name: strings.TrimSpace(form.Name), Category: category, Unit: unit, Description: strings.TrimSpace(form.Description)}, tag.Replace(desired))
 		case Edit:
 			if selected == nil {
 				return errors.Invalidf("ingredient is required")
 			}
-			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Ingredient, error) {
-				return p.app.Ingredients.Update(ctx, &models.Ingredient{ID: selected.ID, Revision: selected.Revision, Name: strings.TrimSpace(form.Name), Category: category, Unit: unit, Description: strings.TrimSpace(form.Description)})
-			}, selected.Tags)
+			_, err = p.app.Ingredients.Update(p.app.Context(), &models.Ingredient{ID: selected.ID, Revision: selected.Revision, Name: strings.TrimSpace(form.Name), Category: category, Unit: unit, Description: strings.TrimSpace(form.Description)}, tag.Replace(desired, selected.Tags))
 		case Tags:
 			if selected == nil {
 				return errors.Invalidf("ingredient is required")

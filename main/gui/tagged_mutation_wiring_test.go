@@ -11,9 +11,9 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
-// TestFyneMutationWorkflowsUseAtomicTagComposition is an executable wiring
+// TestFyneMutationWorkflowsPassTagsToOwningCommand is an executable wiring
 // contract for the fifteen mutation paths exposed with complete-set tags.
-func TestFyneMutationWorkflowsUseAtomicTagComposition(t *testing.T) {
+func TestFyneMutationWorkflowsPassTagsToOwningCommand(t *testing.T) {
 	t.Parallel()
 	type workflow struct {
 		domain, method string
@@ -52,17 +52,17 @@ func TestFyneMutationWorkflowsUseAtomicTagComposition(t *testing.T) {
 				if !ok {
 					return true
 				}
-				pkg, appCall := selector.X.(*ast.Ident)
-				if appCall && pkg.Name == "app" && selector.Sel.Name == "RunTaggedMutation" {
-					calls++
+				if slices.Contains(workflow.callbacks, selector.Sel.Name) {
 					for _, arg := range call.Args {
-						ast.Inspect(arg, func(node ast.Node) bool {
-							invoked, found := node.(*ast.SelectorExpr)
-							if found && slices.Contains(workflow.callbacks, invoked.Sel.Name) {
-								callbacks = append(callbacks, invoked.Sel.Name)
-							}
-							return true
-						})
+						edit, ok := arg.(*ast.CallExpr)
+						if !ok {
+							continue
+						}
+						selected, ok := edit.Fun.(*ast.SelectorExpr)
+						if ok && selected.Sel.Name == "Replace" {
+							calls++
+							callbacks = append(callbacks, selector.Sel.Name)
+						}
 					}
 				}
 				return true
@@ -71,7 +71,7 @@ func TestFyneMutationWorkflowsUseAtomicTagComposition(t *testing.T) {
 		slices.Sort(callbacks)
 		expected := slices.Clone(workflow.callbacks)
 		slices.Sort(expected)
-		testutil.ErrorIf(t, calls != len(expected) || !slices.Equal(callbacks, expected), "%s.%s wires %d atomic tagged mutations around %v, want %v", workflow.domain, workflow.method, calls, callbacks, expected)
+		testutil.ErrorIf(t, calls != len(expected) || !slices.Equal(callbacks, expected), "%s.%s wires %d domain commands with tags for %v, want %v", workflow.domain, workflow.method, calls, callbacks, expected)
 		total += calls
 	}
 	testutil.Equals(t, total, 15)

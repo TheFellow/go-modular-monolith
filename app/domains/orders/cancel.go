@@ -3,11 +3,12 @@ package orders
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (m *Module) Cancel(ctx *middleware.Context, order *models.Order) (*models.Order, error) {
+func (m *Module) Cancel(ctx *middleware.Context, order *models.Order, edits ...tag.Edit) (*models.Order, error) {
 	if order == nil {
 		return nil, errors.Invalidf("order is required")
 	}
@@ -25,6 +26,6 @@ func (m *Module) Cancel(ctx *middleware.Context, order *models.Order) (*models.O
 			}
 			return loaded, nil
 		},
-		m.commands.Cancel,
+		withTags(edits, m.commands.Cancel),
 	)
 }

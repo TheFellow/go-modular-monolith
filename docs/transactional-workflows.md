@@ -1,4 +1,4 @@
-# Transactional domain workflows
+# Domain-owned transactional commands
 
 This document records the implemented decisions from the [cross-domain review](cross-domain-mutation-review.md). These changes target a freshly seeded teaching database; there is no data migration or invented historical backfill.
 
@@ -21,19 +21,21 @@ Menu projections currently scan active draft and published menus. This deliberat
 | 7 | Explicit amendments preserve acceptance and agreed prices. The current plan and append-only amendment records retain actor, reason, quantities, ratios, and optional approved preparation changes. Terminal orders cannot be amended. Selected batches are atomic. |
 | 8 | Discontinuation honors existing reservations while excluding stock from new service. Withdrawal quarantines stock and blocks affected orders. Release restores eligibility according to whether the ingredient remains active. Disposal records physical loss; quantity, identity, tags, and movement history remain. |
 | 9 | Drink removal is blocked by any active menu or historical order usage. Menu removal is blocked by order usage. Errors identify dependencies and corrective action; no force option. Redrafting retains the previous publication timestamp. |
-| 10 | Audit distinguishes changed entities, referenced participants, and domain-authored before/after effects. Composed commands share a workflow ID. A failed outer workflow rolls back child successes and persists its attempted effects as one failed activity. Cancellation includes terminal time and optional reason. |
+| 10 | Audit distinguishes changed entities, referenced participants, and domain-authored before/after effects. Each command has one activity covering its own writes and all leaf reactions. Failure rolls back those writes and records the attempted effects after rollback. Cancellation includes terminal time and optional reason. |
 | 11 | Recipe and substitute references must exist and be dimensionally compatible. Units/categories and finite positive recipe amounts/ratios are validated. Retirement that empties a recipe leaves it requiring review. |
 | 12 | Authoritative readiness, fulfillment and persisted menu projections propagate dependency errors. Presentation-only fallback remains explicitly separate. |
 | 13 | Costing and fulfillment use the same whole-recipe stock allocation planner. Omitted optionals cost nothing; margin calculations require matching currencies. |
-| 14 | Every SQL update/delete requires a revision and compares it in SQL. Full stock sets require the expected revision. GUI/TUI edits carry captured revisions and expected complete tag sets, including composed edits. ID-only transitions load and CAS current state; supplied transition revisions must match. |
+| 14 | Every SQL update/delete requires a revision and compares it in SQL. Full stock sets require the expected revision. GUI/TUI edits carry captured revisions and expected complete tag sets, including tagged edits. ID-only transitions load and CAS current state; supplied transition revisions must match. |
 | 15 | A shortage blocks every affected open order. Replenishment, cancellation, amendment release and quarantine release reconcile that policy; no priority allocation. |
 | 16 | Optional ingredients are included when stock permits, snapshotted, reserved and consumed. The planner can omit an optional to fulfill a required ingredient. Omission is retained in acceptance; it never silently consumes stock. |
 
-## Explicit workflows
+## Explicit commands
 
 `Orders.Amend` accepts an order ID, expected revision, reason, and explicit replacements. A replacement's `OriginalID` identifies an ingredient in the current approved plan, including a substitute already selected at acceptance or by an earlier amendment. Ratios multiply the current selected quantity. Optional `Preparation` changes replace instructions/garnish for selected drink lines. Unspecified instructions remain as previously approved. An ID-only recipe substitute candidate cannot express a new quantity ratio: a non-1 permanent replacement affecting such a candidate is blocked with the dependent drink ID until that candidate is explicitly revised. This avoids silently using the wrong replacement quantity.
 
-`App.AmendOrders` validates the selection's revisions before applying any changes, then commits every selected amendment or none. `App.RetireIngredient` composes that explicit selection with catalog retirement and its recipe/menu/stock reactions. Unselected orders retain their accepted plans and follow the chosen discontinuation or withdrawal policy. Amendment never implies customer consent; the operator supplies the approved selection and reason.
+`Orders.AmendBatch` validates and authorizes the complete selection before planning changes. It projects reservation changes while planning each selection, then emits one `OrdersAmended` event. Inventory applies reservations, Orders reconciles released shortages, and Menus prepares availability from the complete reservation delta. The batch commits every selected amendment or none, with one command activity.
+
+Retirement belongs to `Ingredients.Retire`. To amend accepted plans before retiring an ingredient, explicitly submit the approved amendment batch, then retire the ingredient as a separate command. Each operation has its own transaction and audit activity. A failed retirement leaves an already approved amendment intact. Unselected orders retain their accepted plans and follow the chosen discontinuation or withdrawal policy. Amendment never implies customer consent; the operator supplies the approved selection and reason.
 
 Independent CLI examples (replace identifiers and revisions with values read from your database):
 
@@ -74,14 +76,22 @@ Batch input is a JSON array of `orders/models.Amendment`, including each expecte
 ]
 ```
 
-All three surfaces expose single and batch amendments, substitution-rule management, and stock disposition/history. GUI/TUI details display accepted history, approved preparation, and amendment before/after records; their forms retain captured revisions and preserve drafts after conflicts. The [surface parity audit](surface-parity.md) describes these workflows and render checks. Atomic retirement together with selected amendments is exposed through `App.RetireIngredient`; separate surface operations cannot share its transaction.
+All three surfaces expose single and batch amendments, substitution-rule management, and stock disposition/history. GUI/TUI details display accepted history, approved preparation, and amendment before/after records; their forms retain captured revisions and preserve drafts after conflicts. The [surface parity audit](surface-parity.md) describes these workflows and render checks. Amendment batches and catalog retirement are separate domain commands on every surface.
 
 Substitution-rule creation uses revision zero. Revising or disabling an existing rule requires its current revision from `ingredients substitutions --id ...`; omitted revision does not mean unconditional replacement. Amendment batches likewise require each current order revision and reject duplicate order IDs.
 
 Cost values are always interpreted with `CostUnit`, independently of display quantity. A new explicit price defaults to the catalog unit unless a cost unit is supplied. Retaining a price also retains its basis. Stock and lifecycle commands accept explicit revision tokens; CLI operations that omit them load the current token immediately before writing.
 
-Application compositions should use `middleware.RunWorkflow` as their outer boundary. If passed a caller-owned transaction, it participates in that transaction; the caller owns rollback and post-rollback failure recording. Successful child audit records never commit independently of business writes.
+## Tagged edits and command ownership
+
+Pass an optional `tag.Edit` directly to the consuming domain command, for example `Ingredients.Update(ctx, ingredient, tag.Replace(&desired, expected))`. A nil desired set preserves tags; a non-nil empty set clears them. The domain emits its own `TagsReplaced` event with its tag/untag authorization actions. Tagging checks expected state and authorizes before/after tag sets during `Handling`, then upserts/removes associations during `Handle`. The result, domain writes, tag writes, and successful audit activity share one command transaction. A tag veto rolls back all effects.
+
+`RunWorkflow`, `RunTaggedMutation`, `App.AmendOrders`, and `App.RetireIngredient` have been removed. Do not replace them with another outer transaction or command callback loop. Add a domain-owned command when a business operation spans multiple entities; have consuming domains publish facts and cross-cutting domains react as leaves. The middleware rejects a command invoked inside a command, query, or handler context, including contexts reconstructed from those parents.
+
+The old workflow correlation field is no longer written or displayed. Existing audit JSON remains readable; unknown historical fields are ignored. Tagging's moved persistence model retains its original storage identity so existing associations remain visible. A caller that injects a transaction for low-level testing still owns its rollback and failure recording.
 
 ## Verification
 
 Integration regressions cover retirement and cancellation handler permutations, reservation recovery, canonical unit changes, renamed substitution identities, immutable acceptance, approved preparation changes, optional stock accounting, stale stock/tag editors, selected-batch failure, late rollback, quarantine/release, retained disposal history, and deletion vetoes. Architecture checks require revision fields on every registered domain record. Store tests exercise stale update and delete rejection across independent database connections.
+
+A SQL transaction can be claimed by only one command. Supplying the same transaction to a second command is rejected even after the first command returns or through a fresh context. This prevents recreating an outer workflow with sequential module calls. Queries and leaf persistence share the owning command's transaction.

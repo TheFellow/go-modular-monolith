@@ -64,7 +64,7 @@ ctx := middleware.NewContext(
 
 `WithTransaction` derives a context that participates in an existing SQLite transaction. The
 caller retains commit and rollback ownership. It is mainly used by `UnitOfWork`, application-level
-composition, and transaction-focused tests; ordinary domain code should accept the context it is
+transaction-focused tests; ordinary domain code should accept the context it is
 given. See the [store guide](../store/README.md#transactions) for the full lifecycle.
 
 Event handlers receive `HandlerContext`, a deliberately smaller `store.Context`. It preserves the
@@ -86,7 +86,7 @@ Domain modules enter through generic methods on their configured `Pipeline`:
 
 Command inputs and results, `Query` results, and `PageQuery` items satisfy `CedarEntity`;
 `QueryResource` instead accepts a separate `cedar.Entity`, so its request and result can be any
-type. `LoadCommandActions` supports the one workflow whose policy requirements depend on its exact
+type. `LoadCommandActions` supports operations whose policy requirements depend on the exact
 transition; returning no actions is an internal error. Prefer `Command` when input is already
 available and `LoadCommand` when current persisted state is the trusted authorization resource.
 The `LoadCommand` loader runs inside the same command transaction as the handler, event dispatch,
@@ -126,25 +126,18 @@ the touch set. `middleware.Change(field, before, after)` formats effect values a
 ignored. On failure, effects describe attempted changes, not committed state. Commands should add
 only events owned by their domain.
 
-## Composing commands
+## One owning command
 
-Use `RunWorkflow` at an application composition boundary when several module calls must commit
-together. It takes the operation context, store, workflow name, activity recorder, and a callback
-receiving the shared transactional context. Each child command retains its own action and audit
-record, while all child activities share a workflow ID. A successful workflow commits those child
-records with the business writes; it does not add a separate success summary.
+Each business mutation enters exactly one command pipeline. The command's domain owns the input,
+authorization, writes, and events; leaf handlers own their domain's reactions. The chain rejects
+commands called inside an active command, query, or handler context. Reconstructing a context
+preserves this restriction. Queries remain usable inside commands.
 
-If the callback fails, all child writes and success activities roll back. The outer boundary then
-records one failed workflow activity containing attempted touches, participants, and effects.
-Failure recording uses an uncancelled context, and a recorder failure is returned alongside the
-original error rather than swallowed.
-
-`RunWorkflow` participates directly when its input already carries a transaction. In that case,
-the caller owns commit, rollback, and failure recording; an outer `RunWorkflow` can provide that
-ownership. A raw `Store.Write` around several commands does not add workflow correlation or
-post-rollback audit recording by itself. See
-[`App.AmendOrders` and `App.RetireIngredient`](../../app/amend_orders.go) and
-[`RunTaggedMutation`](../../app/tagged_mutation.go) for application compositions.
+Use `Orders.AmendBatch` for a selected order amendment: one command, one aggregate event, one
+activity. Pass `tag.Edit` to an owning domain command for an atomic tagged edit. Its domain event
+lets Tagging prepare authorization and concurrency checks, then persist its own associations.
+A failed reaction rolls back every effect and records the owning command's failed activity.
+There is no outer workflow transaction or child-command audit correlation.
 
 ## Paging and authorization
 
@@ -169,3 +162,5 @@ Focused checks:
 go test ./pkg/middleware ./pkg/dispatcher ./pkg/store
 go test ./app/domains/...
 ```
+
+A SQL transaction can be claimed by only one command. Supplying the same transaction to a second command is rejected even after the first command returns or through a fresh context. This prevents recreating an outer workflow with sequential module calls. Queries and leaf persistence share the owning command's transaction.

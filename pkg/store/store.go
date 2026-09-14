@@ -9,10 +9,12 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/telemetry"
+
 	// Register the CGO-free SQLite database/sql driver.
 	_ "modernc.org/sqlite"
 )
@@ -28,10 +30,20 @@ type sqlExecutor interface {
 }
 
 type Tx struct {
-	tx    sqlExecutor
-	sqlTx *sql.Tx
-	conn  *sql.Conn
-	ctx   context.Context
+	commandClaimed atomic.Bool
+	tx             sqlExecutor
+	sqlTx          *sql.Tx
+	conn           *sql.Conn
+	ctx            context.Context
+}
+
+// ClaimCommand assigns this transaction to one command. Leaf writes share the
+// transaction; a second command cannot turn it into an application workflow.
+func (tx *Tx) ClaimCommand() error {
+	if !tx.commandClaimed.CompareAndSwap(false, true) {
+		return errors.FailedPreconditionf("transaction already belongs to a command; use a domain event reaction")
+	}
+	return nil
 }
 
 func Open(ctx context.Context, path string) (*Store, error) {
@@ -190,7 +202,12 @@ func safeName(s string) string {
 
 func sqlStringLiteral(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
 
-func modelName(t reflect.Type) string { return t.PkgPath() + "." + t.Name() }
+func modelName(t reflect.Type) string {
+	if named, ok := reflect.Zero(t).Interface().(interface{ StoreModelName() string }); ok {
+		return named.StoreModelName()
+	}
+	return t.PkgPath() + "." + t.Name()
+}
 
 func (s *Store) Close() error { return s.db.Close() }
 

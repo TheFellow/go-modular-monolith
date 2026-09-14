@@ -14,11 +14,11 @@ queries, persistence, Cedar policies, events, and transport adapters. Compositio
 | Menus       | curation and publication                             | Drinks, Ingredients, Inventory        | created, drink added/removed, published, drafted, deleted |
 | Orders      | acceptance snapshots, fulfillment plans, amendments, lifecycle | Menus, Drinks, Ingredients, Inventory | placed, amended, completed, cancelled       |
 | Audit       | append-only activities                               | —                                     | —                                                |
-| Tagging     | polymorphic associations and authorized tag workflow | domain-owned target loaders           | —                                                |
+| Tagging     | polymorphic associations and authorized tag operations | domain-owned target loaders           | —                                                |
 
 Synchronous collaboration uses public query contracts. Reactive collaboration consumes another
 domain's public event; a command may emit only events owned by its own domain. Taggable domains
-depend on a narrow repository port and register loaders with the tagging workflow, so tagging never
+depend on a narrow repository port and register loaders with Tagging, so tagging never
 reaches into private persistence.
 
 The graph is intentionally reciprocal without creating package cycles. Orders query catalog and
@@ -43,8 +43,9 @@ effects. Invalid registration fails immediately.
 
 Presentation follows a second set of vertical boundaries documented under
 [domain surfaces](../app/domains/readme.md#presentation-surfaces). Reusable framework code lives in
-the [toolkits](../pkg/toolkits/readme.md). Process and route composition live in `main`; reusable
-transactional workflows such as selected-order amendment and ingredient retirement live in `app`.
+the [toolkits](../pkg/toolkits/readme.md). Process and route composition live in `main`;
+mutation boundaries live in the consuming domain. Orders owns selected-batch amendment; Ingredients
+owns catalog retirement. `app` wires modules and does not coordinate command transactions.
 Domain action projectors bridge those boundaries: they combine Cedar authorization with durable
 domain prerequisites and return framework-neutral control state for GUI, TUI, and future web
 adapters. Each concrete view then composes transient state such as dirty forms or requests in
@@ -58,11 +59,12 @@ recording. Authorization evaluates both the loaded input and resulting state, al
 constrain transitions. Domain mutation, leaf handlers, and successful audit entry share one
 transaction. On failure that transaction rolls back, then the failed attempt is audited separately.
 
-`middleware.RunWorkflow` extends this boundary to several public module calls. Child activities
-retain their actions and share a workflow ID. A failure rolls back all child successes and records
-one failed workflow activity containing attempted effects. When a caller supplies a transaction,
-that caller owns commit, rollback, and failure recording. Audit effects explain domain changes;
-they are not a replayable event log.
+Exactly one command owns each mutation and its audit activity. Commands cannot call other commands,
+including through a query or event handler. Read-only queries remain available to the active
+command. Multi-entity changes such as `Orders.AmendBatch` are one domain command with an aggregate
+event. Tag edits are explicit inputs to the consuming command; Tagging validates and authorizes
+that domain's event in `Handling` and persists associations in `Handle`. Audit effects explain
+domain changes; they are not a replayable event log.
 
 Queries share logging and metrics. A get authorizes its returned Cedar entity. A list authorizes
 each result and silently removes permission denials; evaluation/infrastructure failures still fail
@@ -149,3 +151,5 @@ Typed errors are transport-neutral: one immutable kind maps to HTTP, gRPC, CLI, 
 while separating diagnostic detail from safe presentation text.
 
 See [Transactional domain workflows](transactional-workflows.md) for the complete mutation contracts and verification strategy.
+
+A SQL transaction can be claimed by only one command. Supplying the same transaction to a second command is rejected even after the first command returns or through a fresh context. This prevents recreating an outer workflow with sequential module calls. Queries and leaf persistence share the owning command's transaction.

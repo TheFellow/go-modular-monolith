@@ -1,8 +1,9 @@
 package tui
 
 import (
-	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"strings"
+
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
@@ -199,9 +200,7 @@ func (m *CreateDrinkVM) submit() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		created, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Drink, error) {
-			return m.app.Drinks.Create(ctx, drink)
-		})
+		created, err := m.app.Drinks.Create(m.context(), drink, tag.Replace(desired))
 		if err != nil {
 			return CreateErrorMsg{Err: err}
 		}

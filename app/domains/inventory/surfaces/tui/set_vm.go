@@ -2,9 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
@@ -184,9 +185,7 @@ func (m *SetInventoryVM) submit() tea.Cmd {
 	m.submitting = true
 
 	return func() tea.Msg {
-		updated, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Inventory, error) {
-			return m.app.Inventory.Set(ctx, update)
-		}, m.row.Inventory.Tags)
+		updated, err := m.app.Inventory.Set(m.context(), update, tag.Replace(desired, m.row.Inventory.Tags))
 		if err != nil {
 			return SetErrorMsg{Err: err}
 		}

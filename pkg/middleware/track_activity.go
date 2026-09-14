@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/log"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
@@ -22,10 +23,6 @@ func TrackActivity(s *store.Store, recordActivity func(*Context, middlewareevent
 
 		activity := middlewareevents.NewActivity(op.Action, cedar.EntityUID{}, ctx.Principal())
 		ctx.activity = activity
-		if ctx.workflow != nil {
-			activity.WorkflowID = ctx.workflow.id
-			ctx.workflow.activities = append(ctx.workflow.activities, activity)
-		}
 
 		err := next(ctx)
 		// The command pipeline finalizes successful activities inside UnitOfWork.

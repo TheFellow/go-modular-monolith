@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
-	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"strings"
+
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/drinks"
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
@@ -114,8 +116,8 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return err
 					}
 
-					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*drinksmodels.Drink, error) {
-						return c.app.Drinks.Create(ctx, &created)
+					res, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*drinksmodels.Drink, error) {
+						return c.app.Drinks.Create(ctx, &created, edit)
 					})
 					if err != nil {
 						return err
@@ -148,8 +150,8 @@ func (c *CLI) drinksCommands() *cli.Command {
 						return err
 					}
 
-					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*drinksmodels.Drink, error) {
-						return c.app.Drinks.Update(ctx, &updated)
+					res, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*drinksmodels.Drink, error) {
+						return c.app.Drinks.Update(ctx, &updated, edit)
 					})
 					if err != nil {
 						return err

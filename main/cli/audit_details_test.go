@@ -19,7 +19,6 @@ func TestAuditDetailsAvailableAcrossListHistoryAndActor(t *testing.T) {
 	for _, args := range [][]string{{"audit", "list"}, {"audit", "history", "Mixology::Ingredient::" + id}, {"audit", "actor", "owner"}} {
 		result := cli.Run(append(args, "--details")...)
 		testutil.Ok(t, result.Err)
-		testutil.StringContains(t, result.Stdout, "Workflow: ")
 		testutil.StringContains(t, result.Stdout, "Referenced entities")
 		testutil.StringContains(t, result.Stdout, "Committed effects")
 		testutil.StringContains(t, result.Stdout, "Before: ")

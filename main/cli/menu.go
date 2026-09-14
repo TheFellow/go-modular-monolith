@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
-	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"strings"
+
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus"
 	menumodels "github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
@@ -258,8 +260,8 @@ func (c *CLI) menuCommands() *cli.Command {
 						input = &menumodels.Menu{Name: args[0]}
 					}
 
-					created, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*menumodels.Menu, error) {
-						return c.app.Menus.Create(ctx, input)
+					created, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*menumodels.Menu, error) {
+						return c.app.Menus.Create(ctx, input, edit)
 					})
 					if err != nil {
 						return err
@@ -326,8 +328,8 @@ func (c *CLI) menuCommands() *cli.Command {
 						}
 					}
 
-					updated, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*menumodels.Menu, error) {
-						return c.app.Menus.Update(ctx, input)
+					updated, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*menumodels.Menu, error) {
+						return c.app.Menus.Update(ctx, input, edit)
 					})
 					if err != nil {
 						return err
@@ -379,10 +381,10 @@ func (c *CLI) menuCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					updated, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*menumodels.Menu, error) {
+					updated, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*menumodels.Menu, error) {
 						return c.app.Menus.AddDrink(ctx, &menumodels.MenuPatch{
 							MenuID: menuID, DrinkID: drinkID,
-						})
+						}, edit)
 					})
 					if err != nil {
 						return err
@@ -413,10 +415,10 @@ func (c *CLI) menuCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					updated, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*menumodels.Menu, error) {
+					updated, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*menumodels.Menu, error) {
 						return c.app.Menus.RemoveDrink(ctx, &menumodels.MenuPatch{
 							MenuID: menuID, DrinkID: drinkID,
-						})
+						}, edit)
 					})
 					if err != nil {
 						return err
@@ -442,8 +444,8 @@ func (c *CLI) menuCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					published, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*menumodels.Menu, error) {
-						return c.app.Menus.Publish(ctx, &menumodels.Menu{ID: menuID})
+					published, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*menumodels.Menu, error) {
+						return c.app.Menus.Publish(ctx, &menumodels.Menu{ID: menuID}, edit)
 					})
 					if err != nil {
 						return err
@@ -469,8 +471,8 @@ func (c *CLI) menuCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					drafted, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*menumodels.Menu, error) {
-						return c.app.Menus.Draft(ctx, &menumodels.Menu{ID: menuID})
+					drafted, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*menumodels.Menu, error) {
+						return c.app.Menus.Draft(ctx, &menumodels.Menu{ID: menuID}, edit)
 					})
 					if err != nil {
 						return err

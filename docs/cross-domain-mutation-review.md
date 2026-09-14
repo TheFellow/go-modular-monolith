@@ -1,5 +1,7 @@
 # Cross-domain mutation review
 
+The baseline recommendation in #10 to add an outer workflow was subsequently rejected. The current implementation removes command orchestration: consuming domains own commands, cross-cutting domains react through `Handling`/`Handle`, and one command activity survives failure. See the current contract linked above for migration details.
+
 Reviewed 2026-09-06 against `bc52eb8`. The findings below preserve the original baseline review. User decisions and implemented behavior are recorded in [Transactional domain workflows](transactional-workflows.md). In particular, the original extra-phase suggestion in #4 was rejected: implementation uses the existing stateful `Handling`/`Handle` protocol. Schema changes use fresh seed data with no migration. Evidence links are pinned to the reviewed commit so they remain accurate after the implementation changes below.
 
 ## Baseline findings (superseded by the workflow record)
@@ -157,11 +159,11 @@ The following map covers the baseline mutation families across all seven context
 
    **Evidence:** [AuditEntry](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/audit/models/entry.go), [activity middleware](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/pkg/middleware/track_activity.go), [tagged composition](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/tagged_mutation.go), [rollback test](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/tagged_mutation_test.go), [menu retirement touch condition](https://github.com/TheFellow/go-modular-monolith/blob/bc52eb81ad35c8f1a3863312aefc1f574ee46493/app/domains/menus/handlers/ingredient-deleted.go).
 
-   **Fix:** let the outer workflow own post-rollback failure recording; distinguish attempted participants from committed effects; correlate child activities to one workflow. Preserve atomic success auditing. Capture cancellation time and reason, retirement/replacement reason and identity, and reservation/disposal facts as domain data where operationally needed.
+   **Original recommendation (rejected):** let an outer workflow own post-rollback failure recording and correlate child activities. The replacement is one consuming-domain command and leaf event reactions, with attempted participants and committed effects distinguished in that command's activity. Preserve atomic success auditing. Capture cancellation time and reason, retirement/replacement reason and identity, and reservation/disposal facts as domain data where operationally needed.
 
    **Options:** **A — typed effect summaries with before/after values and correlation (recommended):** explains cross-domain decisions without replacing domain storage. **B — full entity snapshots/diffs on every write:** broad forensic detail; larger storage and schema evolution burden. **C — event sourcing:** reconstructable history if designed correctly; substantial architecture change, unnecessary for this teaching goal. Decide whether pure dependency reads belong in a separate participant list instead of the changed-entity list.
 
-   **Tests:** tag authorization failure after domain success, failure in last cross-domain reaction, audit-write/commit failure behavior, one correlated workflow, exact changed and referenced entities, and preserved successful history after soft deletion.
+   **Tests:** tag authorization failure after domain success, failure in last cross-domain reaction, audit-write/commit failure behavior, one owning command activity, exact changed and referenced entities, and preserved successful history after soft deletion.
 
 11. **Validate semantic compatibility at write boundaries — Fix, M.**
 

@@ -45,7 +45,7 @@ func (c *CLI) orderAmendBatchCommand() *cli.Command {
 		if err != nil {
 			return err
 		}
-		result, err := c.app.AmendOrders(ctx, requests)
+		result, err := c.app.Orders.AmendBatch(ctx, requests)
 		if err != nil {
 			return err
 		}

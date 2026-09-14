@@ -1,8 +1,9 @@
 package models
 
 import (
-	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"time"
+
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 
 	auditauthz "github.com/TheFellow/go-modular-monolith/app/domains/audit/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
@@ -13,7 +14,6 @@ const AuditEntryEntityType = entity.TypeAuditEntry
 
 type AuditEntry struct {
 	ID           entity.AuditEntryID
-	WorkflowID   string
 	Effects      []middlewareevents.Effect
 	Participants []cedar.EntityUID
 

@@ -9,7 +9,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
@@ -48,27 +47,17 @@ func appendTagsFlag(flags []cli.Flag) []cli.Flag {
 	return append(flags, tagsFlag())
 }
 
-// runTaggedMutation keeps a domain mutation and its optional complete tag-set
-// replacement in one caller-owned transaction. Parsing happens first so bad
-// input cannot execute the domain mutation. An omitted flag preserves tags;
-// an explicitly empty flag replaces them with the empty set.
-func runTaggedMutation[T app.TaggableEntity](
-	c *CLI,
-	ctx *middleware.Context,
-	cmd *cli.Command,
-	mutate func(*middleware.Context) (T, error),
-) (T, error) {
+// withTagInput parses optional tag input before invoking one domain command.
+func withTagInput[T any](ctx *middleware.Context, cmd *cli.Command, mutate func(*middleware.Context, tag.Edit) (T, error)) (T, error) {
 	var zero T
 	if !cmd.IsSet("tags") {
-		return mutate(ctx)
+		return mutate(ctx, tag.Edit{})
 	}
-
 	desired, err := tag.ParseCollection(cmd.String("tags"))
 	if err != nil {
 		return zero, err
 	}
-
-	return app.RunTaggedMutation(c.app, ctx, &desired, mutate)
+	return mutate(ctx, tag.Replace(&desired))
 }
 
 func filterAction[T any](c *CLI, schema appfilter.Schema[T], fn func(*middleware.Context, *cli.Command) error) cli.ActionFunc {

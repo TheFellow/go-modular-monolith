@@ -13,7 +13,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui"
 	"github.com/TheFellow/go-modular-monolith/pkg/toolkits/tui/keyname"
@@ -297,9 +296,7 @@ func (v *placeVM) submit() tea.Cmd {
 	workflow := v.workflow
 	session := v.session
 	return func() tea.Msg {
-		placed, err := app.RunTaggedMutation(session.App, session.Context(), desired, func(ctx *middleware.Context) (*models.Order, error) {
-			return session.Orders.Place(ctx, order)
-		})
+		placed, err := session.Orders.Place(session.Context(), order, tag.Replace(desired))
 		return orderPlacedMsg{workflow: workflow, order: placed, err: err}
 	}
 }
