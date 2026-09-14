@@ -124,8 +124,8 @@ with disposition and cost basis shown separately from display quantity. Set/adju
 disabled for non-active stock.
 
 Editors retain the entity revision and original tag set. `Session.TagReplacer(originalTags)`
-captures the expected complete set for generic tag editors; combined changes pass it through
-`RunTaggedMutation`. A conflict leaves the newer persisted state intact.
+captures the expected complete set for generic tag editors; tagged changes pass `tag.Replace(desired, originalTags)`
+directly to the owning domain command. A conflict leaves the newer persisted state intact.
 
 Ingredient substitution rules are available with `s`; select a rule to revise, disable, or re-enable
 it, or create a new rule with `c`. Retirement includes withdrawal and a recorded reason.

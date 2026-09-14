@@ -23,7 +23,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/money"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/optional"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
@@ -538,15 +537,11 @@ func (p *Presenter) Submit(form Form) bool {
 		}
 		switch mode {
 		case Adjust:
-			_, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
-				return p.app.Inventory.Adjust(ctx, &inventorymodels.Patch{CostUnit: cmp.Or(form.CostUnit, selected.Inventory.CostUnit), Revision: selected.Inventory.Revision, IngredientID: selected.Ingredient.ID, Reason: form.Reason, Delta: validated.amount, CostPerUnit: validated.cost})
-			}, selected.Inventory.Tags)
+			_, err = p.app.Inventory.Adjust(p.app.Context(), &inventorymodels.Patch{CostUnit: cmp.Or(form.CostUnit, selected.Inventory.CostUnit), Revision: selected.Inventory.Revision, IngredientID: selected.Ingredient.ID, Reason: form.Reason, Delta: validated.amount, CostPerUnit: validated.cost}, tag.Replace(desired, selected.Inventory.Tags))
 		case Set:
 			amount, _ := validated.amount.Unwrap()
 			cost, _ := validated.cost.Unwrap()
-			savedStock, err = app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
-				return p.app.Inventory.Set(ctx, &inventorymodels.Update{CostUnit: cmp.Or(form.CostUnit, selected.Inventory.CostUnit), Revision: selected.Inventory.Revision, IngredientID: selected.Ingredient.ID, Amount: amount, CostPerUnit: cost})
-			}, selected.Inventory.Tags)
+			savedStock, err = p.app.Inventory.Set(p.app.Context(), &inventorymodels.Update{CostUnit: cmp.Or(form.CostUnit, selected.Inventory.CostUnit), Revision: selected.Inventory.Revision, IngredientID: selected.Ingredient.ID, Amount: amount, CostPerUnit: cost}, tag.Replace(desired, selected.Inventory.Tags))
 		case Quarantine, Release:
 			_, err = p.app.Inventory.Disposition(p.app.Context(), inventorymodels.Disposition{IngredientID: selected.Inventory.IngredientID, Revision: selected.Inventory.Revision, Quarantine: mode == Quarantine, Reason: form.DispositionReason})
 		case Dispose:

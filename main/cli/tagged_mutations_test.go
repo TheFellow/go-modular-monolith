@@ -21,7 +21,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
-	cedar "github.com/cedar-policy/cedar-go"
 	"github.com/urfave/cli/v3"
 )
 
@@ -161,16 +160,6 @@ func TestDomainMutationTagsFilterAcrossEveryOperationalDomain(t *testing.T) {
 	}
 }
 
-type rejectedTagTarget struct {
-	tags tag.Tags
-}
-
-func (e *rejectedTagTarget) EntityUID() cedar.EntityUID {
-	return cedar.NewEntityUID("Unsupported", "target")
-}
-
-func (e *rejectedTagTarget) SetTags(tags tag.Tags) { e.tags = tags }
-
 func TestTaggedMutationRollsBackWhenTagReplacementFails(t *testing.T) {
 	t.Parallel()
 	parent := authn.ToContext(context.Background(), authn.Owner())
@@ -188,14 +177,12 @@ func TestTaggedMutationRollsBackWhenTagReplacementFails(t *testing.T) {
 	auditBefore, err := a.Audit.Count(ctx, audit.ListRequest{})
 	testutil.Ok(t, err)
 
-	c := &CLI{app: a}
 	command := &cli.Command{Flags: []cli.Flag{tagsFlag()}}
 	testutil.Ok(t, command.Set("tags", "region=east"))
-	_, err = runTaggedMutation(c, ctx, command, func(txCtx *middleware.Context) (*rejectedTagTarget, error) {
-		_, updateErr := a.Ingredients.Update(txCtx, &models.Ingredient{
-			ID: created.ID, Revision: created.Revision, Name: "After", Category: models.CategorySpirit, Unit: "oz",
-		})
-		return &rejectedTagTarget{}, updateErr
+	_, err = withTagInput(ctx, command, func(ctx *middleware.Context, edit tag.Edit) (*models.Ingredient, error) {
+		expected := tag.Tags{{Key: "stale"}}
+		edit.Expected = &expected
+		return a.Ingredients.Update(ctx, &models.Ingredient{ID: created.ID, Revision: created.Revision, Name: "After", Category: models.CategorySpirit, Unit: "oz"}, edit)
 	})
 	testutil.ErrorIf(t, err == nil, "expected tag replacement to fail")
 

@@ -542,9 +542,7 @@ func (m *ListViewModel) Update(msg tea.Msg) (tui.ViewModel, tea.Cmd) {
 			m.drinkPicker.saving = true
 			workflowID := m.workflowID
 			return m, func() tea.Msg {
-				_, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*menusmodels.Menu, error) {
-					return m.app.Menus.AddDrink(ctx, &menusmodels.MenuPatch{Revision: menu.Revision, MenuID: menu.ID, DrinkID: choice.id})
-				}, menu.Tags)
+				_, err := m.app.Menus.AddDrink(m.context(), &menusmodels.MenuPatch{Revision: menu.Revision, MenuID: menu.ID, DrinkID: choice.id}, tag.Replace(desired, menu.Tags))
 				return drinkAddedMsg{workflowID: workflowID, err: err}
 			}
 		}
@@ -865,9 +863,7 @@ func (m *ListViewModel) performPublish() tea.Cmd {
 		return func() tea.Msg { return PublishErrorMsg{Err: err} }
 	}
 	return func() tea.Msg {
-		published, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*menusmodels.Menu, error) {
-			return m.app.Menus.Publish(ctx, &menusmodels.Menu{ID: target.ID, Revision: target.Revision})
-		}, target.Tags)
+		published, err := m.app.Menus.Publish(m.context(), &menusmodels.Menu{ID: target.ID, Revision: target.Revision}, tag.Replace(desired, target.Tags))
 		if err != nil {
 			return PublishErrorMsg{Err: err}
 		}
@@ -911,9 +907,7 @@ func (m *ListViewModel) performDraft() tea.Cmd {
 		return func() tea.Msg { return DraftErrorMsg{Err: err} }
 	}
 	return func() tea.Msg {
-		drafted, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*menusmodels.Menu, error) {
-			return m.app.Menus.Draft(ctx, &menusmodels.Menu{ID: target.ID, Revision: target.Revision})
-		}, target.Tags)
+		drafted, err := m.app.Menus.Draft(m.context(), &menusmodels.Menu{ID: target.ID, Revision: target.Revision}, tag.Replace(desired, target.Tags))
 		if err != nil {
 			return DraftErrorMsg{Err: err}
 		}
@@ -1012,9 +1006,7 @@ func (m *ListViewModel) performRemoveDrink() tea.Cmd {
 	}
 	workflowID := m.workflowID
 	return func() tea.Msg {
-		_, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*menusmodels.Menu, error) {
-			return m.app.Menus.RemoveDrink(ctx, &menusmodels.MenuPatch{Revision: menu.Revision, MenuID: menuID, DrinkID: drinkID})
-		}, menu.Tags)
+		_, err := m.app.Menus.RemoveDrink(m.context(), &menusmodels.MenuPatch{Revision: menu.Revision, MenuID: menuID, DrinkID: drinkID}, tag.Replace(desired, menu.Tags))
 		return drinkRemovedMsg{workflowID: workflowID, err: err}
 	}
 }

@@ -1,7 +1,10 @@
 package app_test
 
 import (
-	"github.com/TheFellow/go-modular-monolith/app"
+	"slices"
+	"testing"
+	"time"
+
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	dh "github.com/TheFellow/go-modular-monolith/app/domains/drinks/handlers"
 	dm "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
@@ -18,12 +21,8 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/measurement"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
-	"slices"
-	"testing"
-	"time"
 )
 
 func TestRetirementPreparationIsIndependentOfEveryHandlerOrder(t *testing.T) {
@@ -108,7 +107,7 @@ func TestFailedSelectedAmendmentsRollBackAllEffectsAndPersistFailure(t *testing.
 	}
 	before, err := f.App.Audit.Count(ctx, audit.ListRequest{})
 	testutil.Ok(t, err)
-	_, err = f.App.RetireIngredient(ctx, i.ID, im.Retirement{ReplacementID: replacement.ID}, []om.Amendment{request(a), request(b)})
+	_, err = f.Orders.AmendBatch(ctx, []om.Amendment{request(a), request(b)})
 	testutil.ErrorIsFailedPrecondition(t, err)
 	got, err := f.Orders.Get(ctx, a.ID)
 	testutil.Ok(t, err)
@@ -125,27 +124,28 @@ func TestFailedSelectedAmendmentsRollBackAllEffectsAndPersistFailure(t *testing.
 	testutil.Ok(t, err)
 	failed := page.Items[0]
 	for _, entry := range page.Items {
-		if !entry.Success && entry.WorkflowID != "" {
+		if !entry.Success {
 			failed = entry
 			break
 		}
 	}
 	testutil.IsFalse(t, failed.Success)
-	testutil.IsTrue(t, failed.WorkflowID != "")
 	testutil.IsTrue(t, len(failed.Effects) > 0)
 	testutil.IsTrue(t, slices.Contains(failed.Touches, a.ID.EntityUID()))
 }
 
-func TestAtomicRetirementAmendmentKeepsAcceptanceAndApprovedPreparation(t *testing.T) {
+func TestExplicitAmendmentThenRetirementKeepsAcceptanceAndApprovedPreparation(t *testing.T) {
 	t.Parallel()
 	f, i, d, m := workflowFixture(t)
 	ctx := f.OwnerContext()
 	order := workflowOrder(t, f, d, m)
 	replacement := testutil.CreateIngredient(t, f, im.Ingredient{Name: "Approved", Category: i.Category, Unit: i.Unit})
 	testutil.SetInventory(t, f, workflowStock(replacement, 10))
-	results, err := f.App.RetireIngredient(ctx, i.ID, im.Retirement{ReplacementID: replacement.ID, Ratio: .5, Reason: "retire original"}, []om.Amendment{{OrderID: order.ID, Revision: order.Revision, Reason: "customer approved", Replacements: []om.Replacement{{OriginalID: i.ID, ReplacementID: replacement.ID, Ratio: .5}}, Preparation: []om.PreparationAmendment{{DrinkID: d.ID, Steps: []string{"Revised instructions"}}}}})
+	results, err := f.Orders.AmendBatch(ctx, []om.Amendment{{OrderID: order.ID, Revision: order.Revision, Reason: "customer approved", Replacements: []om.Replacement{{OriginalID: i.ID, ReplacementID: replacement.ID, Ratio: .5}}, Preparation: []om.PreparationAmendment{{DrinkID: d.ID, Steps: []string{"Revised instructions"}}}}})
 	testutil.Ok(t, err)
 	testutil.Equals(t, len(results), 1)
+	_, err = f.Ingredients.Retire(ctx, i.ID, im.Retirement{ReplacementID: replacement.ID, Ratio: .5, Reason: "retire original"})
+	testutil.Ok(t, err)
 	current, err := f.Orders.Get(ctx, order.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, current.Acceptance, order.Acceptance)
@@ -217,36 +217,13 @@ func TestComposedEditorRejectsStaleTagsAndRollsBackDomainUpdate(t *testing.T) {
 	_, err := f.App.Tags.Upsert(ctx, i.EntityUID(), tag.Tag{Key: "concurrent"})
 	testutil.Ok(t, err)
 	desired := tag.Tags{{Key: "stale"}}
-	_, err = app.RunTaggedMutation(f.App.App, ctx, &desired, func(ctx *middleware.Context) (*im.Ingredient, error) {
-		updated := *i
-		updated.Name = "Must roll back"
-		return f.Ingredients.Update(ctx, &updated)
-	}, expected)
+	updated := *i
+	updated.Name = "Must roll back"
+	_, err = f.Ingredients.Update(ctx, &updated, tag.Replace(&desired, expected))
 	testutil.ErrorIsConflict(t, err)
 	current, err := f.Ingredients.Get(ctx, i.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, current.Name, i.Name)
-}
-
-func TestLateWorkflowFailureRollsBackEveryDomain(t *testing.T) {
-	t.Parallel()
-	f, i, d, m := workflowFixture(t)
-	ctx := f.OwnerContext()
-	order := workflowOrder(t, f, d, m)
-	err := middleware.RunWorkflow(ctx, f.Store, "rollback_probe", audit.NewWriter(f.Store).RecordActivity, func(ctx *middleware.Context) error {
-		if _, err := f.Orders.Complete(ctx, order); err != nil {
-			return err
-		}
-		return errors.FailedPreconditionf("late workflow rejection")
-	})
-	testutil.ErrorIsFailedPrecondition(t, err)
-	got, err := f.Orders.Get(ctx, order.ID)
-	testutil.Ok(t, err)
-	testutil.Equals(t, got, order)
-	stock, err := f.Inventory.Get(ctx, i.ID)
-	testutil.Ok(t, err)
-	testutil.Equals(t, stock.Amount.Value(), 10.0)
-	testutil.Equals(t, stock.ReservedAmount().Value(), 2.0)
 }
 
 func TestRecipeRejectsIncompatibleRequiredOptionalAndSubstituteReferences(t *testing.T) {

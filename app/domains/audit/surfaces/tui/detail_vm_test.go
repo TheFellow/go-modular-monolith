@@ -116,10 +116,8 @@ func TestDetailViewModelExplainsAttemptedEffectsAndEmptySections(t *testing.T) {
 	testutil.StringContains(t, detail.View(), "Effects\nAttempted effects (not committed)")
 	entry.Effects = nil
 	entry.Participants = nil
-	entry.WorkflowID = ""
 	detail.SetEntry(optional.Some(entry))
 	view = detail.View()
-	testutil.StringContains(t, view, "Workflow: (none)")
 	testutil.StringContains(t, view, "Referenced entities\n(none)")
 	testutil.StringContains(t, view, "Effects\n(none)")
 }

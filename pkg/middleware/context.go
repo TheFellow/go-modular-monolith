@@ -11,7 +11,6 @@ import (
 )
 
 type Context struct {
-	workflow *workflowState
 	context.Context
 	events    []any
 	principal cedar.EntityUID

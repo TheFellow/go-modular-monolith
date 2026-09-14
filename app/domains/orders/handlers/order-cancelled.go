@@ -11,6 +11,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/store"
+	"math"
 	"slices"
 	"strings"
 )
@@ -47,7 +48,16 @@ func (h *OrderCancelled) Handling(ctx *middleware.HandlerContext, e events.Order
 			return err
 		}
 		if shortage {
-			continue
+			// Canonical volume conversion and aggregate subtraction can leave a
+			// rounding remainder when stock exactly covers the remaining commitments.
+			// Match the tolerance used when validating reservation quantities.
+			remaining, err := reserved.Convert(stock.Amount.Unit())
+			if err != nil {
+				return err
+			}
+			if math.Abs(remaining.Value()-stock.Amount.Value()) > 1e-8 {
+				continue
+			}
 		}
 		peers, err := h.dao.ListByIngredient(ctx, usage.IngredientID)
 		if err != nil {

@@ -49,6 +49,10 @@ func Register(ctx context.Context, s *store.Store) {
 }
 ```
 
+Record identities default to the Go package path and type name. A relocated row can implement
+`StoreModelName() string` to retain its previous persisted identity. Tagging uses this when moving
+its association row into `internal/dao`, preserving existing records, revisions, and indexes.
+
 For a compound invariant, name all fields on one tag, for example
 `store:"unique=EntityType+EntityID+Key"`. These are database constraints, not check-then-insert
 conventions, so competing writers cannot violate them.

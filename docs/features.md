@@ -85,9 +85,10 @@ field-level before/after text; they explain business intent rather than represen
 snapshot. Successful activities commit with the write. Rejected attempts record attempted effects
 after rollback; those effects must not be interpreted as committed changes.
 
-Composed workflows correlate child activities with a workflow ID. If an outer workflow fails,
-child successes roll back and one failed workflow activity is retained. A caller supplying its own
-transaction is responsible for rollback and post-rollback failure recording.
+Each mutation has one owning command and one audit activity, including selected amendment batches
+and edits with tags. Leaf event handlers contribute effects to that activity. A failed reaction
+rolls back the mutation and records one failed attempt. A caller supplying a transaction for
+low-level testing is responsible for rollback and post-rollback failure recording.
 
 ```sh
 mixology audit list --limit 20
@@ -98,7 +99,7 @@ mixology audit history Mixology::Drink::drk-abc123
 mixology audit list --details
 ```
 
-`--details` on audit list, history, and actor activity includes workflow correlation, touched and
+`--details` on audit list, history, and actor activity includes touched and
 referenced entities, and field-level effects. Failed activity labels these as attempted effects
 that were not committed. `--json` retains the structured response and takes precedence over
 `--details`. The TUI and GUI display the same evidence in their detail panes.

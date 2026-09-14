@@ -12,6 +12,7 @@ import (
 	menus_handlers "github.com/TheFellow/go-modular-monolith/app/domains/menus/handlers"
 	orders_events "github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
 	orders_handlers "github.com/TheFellow/go-modular-monolith/app/domains/orders/handlers"
+	tagging_handlers "github.com/TheFellow/go-modular-monolith/app/domains/tagging/handlers"
 	middleware "github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
@@ -53,6 +54,18 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 			}
 		}
 		if err := menusHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+	case drinks_events.TagsReplaced:
+		taggingHandler := tagging_handlers.NewDrinksTagsReplaced(d.store, d.tags)
+		if err := taggingHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := taggingHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
@@ -121,6 +134,18 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 				return herr
 			}
 		}
+	case ingredients_events.TagsReplaced:
+		taggingHandler := tagging_handlers.NewIngredientsTagsReplaced(d.store, d.tags)
+		if err := taggingHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := taggingHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
 	case inventory_events.StockAdjusted:
 		menusHandler := menus_handlers.NewStockAdjusted(d.store, d.tags)
 		ordersHandler := orders_handlers.NewStockAdjusted(d.store, d.tags)
@@ -135,6 +160,18 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 			}
 		}
 		if err := ordersHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+	case inventory_events.TagsReplaced:
+		taggingHandler := tagging_handlers.NewInventoryTagsReplaced(d.store, d.tags)
+		if err := taggingHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := taggingHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
@@ -159,6 +196,18 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 			}
 		}
 		if err := menusHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+	case menus_events.TagsReplaced:
+		taggingHandler := tagging_handlers.NewMenusTagsReplaced(d.store, d.tags)
+		if err := taggingHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := taggingHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}
@@ -253,6 +302,52 @@ func (d *Dispatcher) Dispatch(ctx *middleware.Context, event any) error {
 			}
 		}
 		if err := menusHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+	case orders_events.OrdersAmended:
+		inventoryHandler := inventory_handlers.NewOrdersAmended(d.store, d.tags)
+		menusHandler := menus_handlers.NewOrdersAmended(d.store, d.tags)
+		ordersHandler := orders_handlers.NewOrdersAmended(d.store, d.tags)
+		if err := inventoryHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := menusHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := ordersHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := inventoryHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := menusHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := ordersHandler.Handle(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+	case orders_events.TagsReplaced:
+		taggingHandler := tagging_handlers.NewOrdersTagsReplaced(d.store, d.tags)
+		if err := taggingHandler.Handling(hctx, e); err != nil {
+			if herr := d.handlerError(ctx, e, err); herr != nil {
+				return herr
+			}
+		}
+		if err := taggingHandler.Handle(hctx, e); err != nil {
 			if herr := d.handlerError(ctx, e, err); herr != nil {
 				return herr
 			}

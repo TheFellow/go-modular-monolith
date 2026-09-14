@@ -22,7 +22,6 @@ import (
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/paging"
 	"github.com/TheFellow/go-modular-monolith/pkg/presentation/actions"
 	"github.com/TheFellow/go-modular-monolith/pkg/set"
@@ -515,17 +514,13 @@ func (p *Presenter) Save() bool {
 		}
 		return p.mutate(func() error {
 			if mode == Creating {
-				_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) {
-					return p.app.Menus.Create(ctx, &models.Menu{Name: name, Description: description})
-				})
+				_, err := p.app.Menus.Create(p.app.Context(), &models.Menu{Name: name, Description: description}, tag.Replace(desired))
 				return err
 			}
 			if target == nil {
 				return errors.Invalidf("menu not selected")
 			}
-			_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) {
-				return p.app.Menus.Update(ctx, &models.Menu{ID: target.ID, Revision: target.Revision, Name: name, Description: description})
-			}, target.Tags)
+			_, err := p.app.Menus.Update(p.app.Context(), &models.Menu{ID: target.ID, Revision: target.Revision, Name: name, Description: description}, tag.Replace(desired, target.Tags))
 			return err
 		})
 	case Tagging:
@@ -569,9 +564,7 @@ func (p *Presenter) AddDrink(id entity.DrinkID) bool {
 		}
 	}
 	return p.mutate(func() error {
-		_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) {
-			return p.app.Menus.AddDrink(ctx, &models.MenuPatch{Revision: target.Revision, MenuID: target.ID, DrinkID: id})
-		}, target.Tags)
+		_, err := p.app.Menus.AddDrink(p.app.Context(), &models.MenuPatch{Revision: target.Revision, MenuID: target.ID, DrinkID: id}, tag.Replace(desired, target.Tags))
 		return err
 	})
 }
@@ -594,9 +587,7 @@ func (p *Presenter) RemoveDrink(id entity.DrinkID) {
 				return
 			}
 			p.mutate(func() error {
-				_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) {
-					return p.app.Menus.RemoveDrink(ctx, &models.MenuPatch{Revision: target.Revision, MenuID: target.ID, DrinkID: id})
-				}, target.Tags)
+				_, err := p.app.Menus.RemoveDrink(p.app.Context(), &models.MenuPatch{Revision: target.Revision, MenuID: target.ID, DrinkID: id}, tag.Replace(desired, target.Tags))
 				return err
 			})
 		}
@@ -643,7 +634,7 @@ func (p *Presenter) Publish() {
 				return
 			}
 			p.mutate(func() error {
-				_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) { return p.app.Menus.Publish(ctx, target) }, target.Tags)
+				_, err := p.app.Menus.Publish(p.app.Context(), target, tag.Replace(desired, target.Tags))
 				return err
 			})
 		}
@@ -668,7 +659,7 @@ func (p *Presenter) ReturnToDraft() {
 				return
 			}
 			p.mutate(func() error {
-				_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Menu, error) { return p.app.Menus.Draft(ctx, target) }, target.Tags)
+				_, err := p.app.Menus.Draft(p.app.Context(), target, tag.Replace(desired, target.Tags))
 				return err
 			})
 		}

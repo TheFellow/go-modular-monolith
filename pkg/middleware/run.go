@@ -173,7 +173,11 @@ func (p *Pipeline) loadCommand[In CedarEntity, Out CedarEntity](
 		out = res
 		return nil
 	})
-	return out, err
+	if err != nil {
+		var zero Out
+		return zero, err
+	}
+	return out, nil
 }
 
 func authorizeCommandActions[In CedarEntity, Out CedarEntity](

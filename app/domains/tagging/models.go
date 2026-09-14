@@ -1,14 +1,5 @@
 package tagging
 
-type entityTagRow struct {
-	ID         uint64
-	Revision   uint64 `json:"-" store:"revision"`
-	EntityType string `store:"unique=EntityType+EntityID+Key"`
-	EntityID   string
-	Key        string `store:"index"`
-	Value      string
-}
-
 // Reference identifies an active entity carrying a tag.
 type Reference struct {
 	EntityType string `json:"entity_type" table:"ENTITY TYPE"`

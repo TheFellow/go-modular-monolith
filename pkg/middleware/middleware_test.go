@@ -187,7 +187,7 @@ func TestChainExecute_IsolatesLogsAndActivityWhenContextIsReused(t *testing.T) {
 	testutil.Equals(t, strings.Count(queryLine, `"resource"`), 0)
 }
 
-func TestChainExecute_IsolatesEventsWithCallerTransaction(t *testing.T) {
+func TestChainExecute_RejectsSecondCommandInCallerTransaction(t *testing.T) {
 	t.Parallel()
 
 	baseCtx, s := newTransactionTestStore(t)
@@ -209,7 +209,7 @@ func TestChainExecute_IsolatesEventsWithCallerTransaction(t *testing.T) {
 		middleware.DispatchEvents(dispatcher),
 	)
 
-	for _, operation := range []struct {
+	for i, operation := range []struct {
 		action cedar.EntityUID
 		event  testEvent
 	}{
@@ -227,13 +227,16 @@ func TestChainExecute_IsolatesEventsWithCallerTransaction(t *testing.T) {
 			ctx.AddEvent(operation.event)
 			return nil
 		})
-		testutil.Ok(t, err)
+		if i == 0 {
+			testutil.Ok(t, err)
+		} else {
+			testutil.ErrorIsFailedPrecondition(t, err)
+		}
 		testutil.Equals(t, len(shared.Events()), 0)
 	}
 
 	testutil.Equals(t, dispatcher.dispatched, []any{
 		testEvent{Name: "created"},
-		testEvent{Name: "updated"},
 	})
 	testutil.Ok(t, s.Rollback(tx))
 	tx = nil

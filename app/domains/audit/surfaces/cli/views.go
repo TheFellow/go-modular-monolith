@@ -1,16 +1,16 @@
 package cli
 
 import (
+	"time"
+
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	cedar "github.com/cedar-policy/cedar-go"
-	"time"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit/surfaces"
 )
 
 type AuditRow struct {
-	WorkflowID   string                    `table:"-" json:"workflow_id,omitempty"`
 	Effects      []middlewareevents.Effect `table:"-" json:"effects"`
 	Participants []cedar.EntityUID         `table:"-" json:"participants"`
 	ID           string                    `table:"ID" json:"id"`
@@ -29,8 +29,7 @@ func ToAuditRow(entry *models.AuditEntry) AuditRow {
 	if entry == nil {
 		return AuditRow{}
 	}
-	return AuditRow{
-		WorkflowID: entry.WorkflowID, Effects: entry.Effects, Participants: entry.Participants,
+	return AuditRow{Effects: entry.Effects, Participants: entry.Participants,
 		ID:          entry.ID.String(),
 		StartedAt:   formatTime(entry.StartedAt),
 		CompletedAt: formatTime(entry.CompletedAt),

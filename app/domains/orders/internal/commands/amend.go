@@ -2,6 +2,12 @@ package commands
 
 import (
 	"fmt"
+	"math"
+	"slices"
+	"sort"
+	"strings"
+	"time"
+
 	drinksmodels "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders/events"
@@ -11,14 +17,18 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
-	"math"
-	"slices"
-	"sort"
-	"strings"
-	"time"
 )
 
 func (c *Commands) Amend(ctx *middleware.Context, order *models.Order, request models.Amendment) (*models.Order, error) {
+	updated, err := c.amend(ctx, order, request, nil)
+	if err != nil {
+		return nil, err
+	}
+	ctx.AddEvent(events.OrderAmended{Before: *order, Order: *updated, Reason: request.Reason})
+	return updated, nil
+}
+
+func (c *Commands) amend(ctx *middleware.Context, order *models.Order, request models.Amendment, prior []events.OrderAmended) (*models.Order, error) {
 	if request.Revision == 0 || request.Revision != order.Revision {
 		return nil, errors.Conflictf("order changed; reload before amending")
 	}
@@ -72,19 +82,49 @@ func (c *Commands) Amend(ctx *middleware.Context, order *models.Order, request m
 	if len(used) != len(replacements) {
 		return nil, errors.Invalidf("every replacement must refer to an ingredient in the current order plan")
 	}
-	stocks := []*inventorymodels.Inventory{}
+
+	// Project earlier selections without persisting another domain's reservations.
+	stocksByID := map[entity.IngredientID]*inventorymodels.Inventory{}
+	adjust := func(usage models.IngredientUsage, release bool) error {
+		stock := stocksByID[usage.IngredientID]
+		if stock == nil {
+			var err error
+			stock, err = c.inventory.Get(ctx, usage.IngredientID)
+			if err != nil {
+				return err
+			}
+			stocksByID[usage.IngredientID] = stock
+		}
+		var err error
+		if release {
+			stock.Reserved, err = stock.ReservedAmount().Sub(usage.Amount)
+		} else {
+			stock.Reserved, err = stock.ReservedAmount().Add(usage.Amount)
+		}
+		return err
+	}
+	for _, change := range prior {
+		for _, usage := range change.Before.IngredientUsage {
+			if err := adjust(usage, true); err != nil {
+				return nil, err
+			}
+		}
+		for _, usage := range change.Order.IngredientUsage {
+			if err := adjust(usage, false); err != nil {
+				return nil, err
+			}
+		}
+	}
 	for _, usage := range order.IngredientUsage {
-		stock, err := c.inventory.Get(ctx, usage.IngredientID)
-		if err != nil {
+		if err := adjust(usage, true); err != nil {
 			return nil, err
 		}
-		stock.Reserved, err = stock.ReservedAmount().Sub(usage.Amount)
-		if err != nil {
-			return nil, err
-		}
-		if stock.Status == inventorymodels.StatusDiscontinued {
+		if stock := stocksByID[usage.IngredientID]; stock.Status == inventorymodels.StatusDiscontinued {
 			stock.Status = inventorymodels.StatusActive
 		}
+	}
+	stocks := make([]*inventorymodels.Inventory, 0, len(stocksByID))
+	for _, stock := range stocksByID {
 		stocks = append(stocks, stock)
 	}
 	picks, ok, err := c.menus.FulfillWithReservations(ctx, requirements, stocks)
@@ -168,6 +208,5 @@ func (c *Commands) Amend(ctx *middleware.Context, order *models.Order, request m
 		return nil, err
 	}
 	ctx.RecordEffect("order_amended", updated.ID.EntityUID(), middlewareevents.Change{Field: "reason", After: request.Reason}, middlewareevents.Change{Field: "plan", Before: fmt.Sprint(order.Plan), After: fmt.Sprint(updated.Plan)})
-	ctx.AddEvent(events.OrderAmended{Before: *order, Order: updated, Reason: request.Reason})
 	return &updated, nil
 }

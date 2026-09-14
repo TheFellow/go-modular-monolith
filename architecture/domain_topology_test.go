@@ -2,13 +2,14 @@ package architecture_test
 
 import (
 	"fmt"
-	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
 type domainProfile struct {
@@ -29,8 +30,9 @@ var (
 		surfacePackages:  []string{"cli", "gui", "tui"},
 	}
 	taggingDomain = domainProfile{
-		rootPackages:    []string{"authz", "surfaces"},
-		surfacePackages: []string{"gui"},
+		rootPackages:     []string{"authz", "handlers", "internal", "surfaces"},
+		internalPackages: []string{"dao"},
+		surfacePackages:  []string{"gui"},
 	}
 )
 

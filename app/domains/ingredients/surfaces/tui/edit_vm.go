@@ -1,9 +1,10 @@
 package tui
 
 import (
+	"strings"
+
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
-	"strings"
 
 	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
@@ -182,9 +183,7 @@ func (m *EditIngredientVM) submit() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		ingredient, err := app.RunTaggedMutation(m.app.App, m.context(), desired, func(ctx *middleware.Context) (*models.Ingredient, error) {
-			return m.app.Ingredients.Update(ctx, updated)
-		}, m.ingredient.Tags)
+		ingredient, err := m.app.Ingredients.Update(m.context(), updated, tag.Replace(desired, m.ingredient.Tags))
 		if err != nil {
 			return UpdateErrorMsg{Err: err}
 		}

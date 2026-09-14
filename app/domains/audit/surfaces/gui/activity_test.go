@@ -2,9 +2,10 @@
 package gui
 
 import (
-	framework "fyne.io/fyne/v2"
 	"strings"
 	"testing"
+
+	framework "fyne.io/fyne/v2"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	dm "github.com/TheFellow/go-modular-monolith/app/domains/drinks/models"
@@ -18,7 +19,7 @@ import (
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
 )
 
-func TestAuditDetailShowsCommittedAndRolledBackWorkflowEffects(t *testing.T) {
+func TestAuditDetailShowsCommittedAndRolledBackBatchEffects(t *testing.T) {
 	for _, success := range []bool{false, true} {
 		name := "failed"
 		if success {
@@ -44,7 +45,7 @@ func TestAuditDetailShowsCommittedAndRolledBackWorkflowEffects(t *testing.T) {
 				order := testutil.PlaceOrder(t, f, om.Order{MenuID: menu.ID, Items: []om.OrderItem{{DrinkID: drink.ID, Quantity: 1}}})
 				amendments = append(amendments, om.Amendment{OrderID: order.ID, Revision: order.Revision, Reason: "approved", Replacements: []om.Replacement{{OriginalID: original.ID, ReplacementID: replacement.ID, Ratio: 1}}})
 			}
-			_, err := f.App.RetireIngredient(f.OwnerContext(), original.ID, im.Retirement{ReplacementID: replacement.ID}, amendments)
+			_, err := f.Orders.AmendBatch(f.OwnerContext(), amendments)
 			if success {
 				testutil.Ok(t, err)
 			} else {
@@ -62,28 +63,27 @@ func TestAuditDetailShowsCommittedAndRolledBackWorkflowEffects(t *testing.T) {
 			view.Activate()
 			index := -1
 			for i, row := range presenter.State().Rows {
-				if row.Entry.WorkflowID != "" {
+				if strings.Contains(row.Entry.Action, "amend") {
 					index = i
 					break
 				}
 			}
-			testutil.ErrorIf(t, index < 0, "workflow audit missing in %d entries", len(page.Items))
+			testutil.ErrorIf(t, index < 0, "batch audit missing in %d entries", len(page.Items))
 			presenter.Select(index)
 			state := presenter.State()
 			entry := state.Selected.Entry
 			testutil.Equals(t, entry.Success, success)
-			testutil.Equals(t, view.detailFields[10].Text, entry.WorkflowID)
-			testutil.ErrorIf(t, len(entry.Participants) == 0, "workflow references missing")
+			testutil.ErrorIf(t, len(entry.Participants) == 0, "batch references missing")
 			for _, participant := range entry.Participants {
-				testutil.StringContains(t, view.detailFields[11].Text, participant.String())
+				testutil.StringContains(t, view.detailFields[10].Text, participant.String())
 			}
 			heading := "Attempted effects (not committed)"
 			if success {
 				heading = "Committed effects"
 			}
-			testutil.StringContains(t, view.detailFields[12].Text, heading)
-			testutil.StringContains(t, view.detailFields[12].Text, "Before: ")
-			testutil.StringContains(t, view.detailFields[12].Text, "After: ")
+			testutil.StringContains(t, view.detailFields[11].Text, heading)
+			testutil.StringContains(t, view.detailFields[11].Text, "Before: ")
+			testutil.StringContains(t, view.detailFields[11].Text, "After: ")
 			testutil.ErrorIf(t, len(entry.Effects) == 0 || len(entry.Participants) == 0 || len(entry.Effects[0].Changes) == 0, "incomplete activity: %+v", entry)
 			for _, snapshot := range []*Row{&state.Rows[index], state.Selected} {
 				snapshot.Entry.Participants[0] = entity.NewIngredientID().EntityUID()
@@ -92,7 +92,7 @@ func TestAuditDetailShowsCommittedAndRolledBackWorkflowEffects(t *testing.T) {
 			}
 			fresh := presenter.State()
 			testutil.Equals(t, fresh.Rows[index].Entry.Effects[0].Kind, fresh.Selected.Entry.Effects[0].Kind)
-			testutil.ErrorIf(t, strings.Contains(view.detailFields[12].Text, "corrupt"), "rendered detail aliases snapshot")
+			testutil.ErrorIf(t, strings.Contains(view.detailFields[11].Text, "corrupt"), "rendered detail aliases snapshot")
 			testutil.NotEquals(t, fresh.Selected.Entry.Effects[0].Kind, "corrupt")
 			testutil.NotEquals(t, fresh.Selected.Entry.Effects[0].Changes[0].Before, "corrupt")
 			testutil.Equals(t, fresh.Selected.Entry.Participants, page.Items[index].Participants)

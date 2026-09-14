@@ -580,9 +580,7 @@ func (p *Presenter) SavePlace() bool {
 		return false
 	}
 	return p.mutate(func() error {
-		_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Order, error) {
-			return p.app.Orders.Place(ctx, &models.Order{MenuID: form.MenuID, Items: items, Notes: strings.TrimSpace(form.Notes)})
-		})
+		_, err := p.app.Orders.Place(p.app.Context(), &models.Order{MenuID: form.MenuID, Items: items, Notes: strings.TrimSpace(form.Notes)}, tag.Replace(desired))
 		return err
 	}, true)
 }
@@ -676,10 +674,10 @@ func (p *Presenter) confirm(title string, status models.OrderStatus) {
 		}
 		p.mutate(func() error {
 			if status == models.OrderStatusCompleted {
-				_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Order, error) { return p.app.Orders.Complete(ctx, stable) }, stable.Tags)
+				_, err := p.app.Orders.Complete(p.app.Context(), stable, tag.Replace(desired, stable.Tags))
 				return err
 			}
-			_, err := app.RunTaggedMutation(p.app.App, p.app.Context(), desired, func(ctx *middleware.Context) (*models.Order, error) { return p.app.Orders.Cancel(ctx, stable) }, stable.Tags)
+			_, err := p.app.Orders.Cancel(p.app.Context(), stable, tag.Replace(desired, stable.Tags))
 			return err
 		}, false)
 	})

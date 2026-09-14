@@ -93,7 +93,7 @@ func NewView(p *Presenter) *View {
 	v.browse = ui.StandardListPage(ui.ListPage{Title: "Audit", Filters: bar.Content, CollectionActions: []framework.CanvasObject{v.refresh}, List: v.listStack, Status: v.status}).(*framework.Container)
 
 	v.detailTitle, v.crumbName, v.detailStatus = widget.NewLabel("Audit activity"), widget.NewLabel(""), widget.NewLabel("")
-	labels := []string{"ID", "Action", "Entity", "Actor", "Started", "Completed", "Duration", "Success", "Error", "Touched entities", "Workflow", "Referenced entities", "Effects"}
+	labels := []string{"ID", "Action", "Entity", "Actor", "Started", "Completed", "Duration", "Success", "Error", "Touched entities", "Referenced entities", "Effects"}
 	items := make([]framework.CanvasObject, 0, len(labels))
 	for i, label := range labels {
 		entry := ui.NewEntry(fmt.Sprintf("audit.detail.field.%d", i))
@@ -151,7 +151,7 @@ func (v *View) populateDetail(row Row) {
 	if strings.TrimSpace(errorText) == "" {
 		errorText = "(none)"
 	}
-	values := []string{row.Entry.ID.String(), row.Entry.Action, row.Entry.Resource.String(), row.Entry.Principal.String(), formatTime(row.Entry.StartedAt), formatTime(row.Entry.CompletedAt), surfaces.Duration(row.Entry.StartedAt, row.Entry.CompletedAt), strconv.FormatBool(row.Entry.Success), errorText, surfaces.Entities(row.Entry.Touches), surfaces.Workflow(row.Entry), surfaces.Entities(row.Entry.Participants), surfaces.Effects(row.Entry)}
+	values := []string{row.Entry.ID.String(), row.Entry.Action, row.Entry.Resource.String(), row.Entry.Principal.String(), formatTime(row.Entry.StartedAt), formatTime(row.Entry.CompletedAt), surfaces.Duration(row.Entry.StartedAt, row.Entry.CompletedAt), strconv.FormatBool(row.Entry.Success), errorText, surfaces.Entities(row.Entry.Touches), surfaces.Entities(row.Entry.Participants), surfaces.Effects(row.Entry)}
 	for i, value := range values {
 		if v.detailFields[i].Text != value {
 			v.detailFields[i].SetText(value)

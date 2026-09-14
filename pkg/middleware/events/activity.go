@@ -8,7 +8,6 @@ import (
 )
 
 type Activity struct {
-	WorkflowID   string
 	Effects      []Effect
 	Participants []cedar.EntityUID
 	Action       cedar.EntityUID

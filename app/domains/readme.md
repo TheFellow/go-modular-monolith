@@ -14,8 +14,7 @@ explicit disposition, and Orders owns immutable acceptance plus the current appr
 amendment history. These contracts preserve historical meaning without querying today's catalog
 to reconstruct yesterday's order.
 
-Cross-domain workflows belong in `app` and compose public module operations inside
-`middleware.RunWorkflow`. Reactive handlers write only their own context; when sibling mutations
+Mutations belong to one consuming domain command. Cross-cutting domains react to its events. Reactive handlers write only their own context; when sibling mutations
 could affect a read, calculate the intended result in `Handling` and persist it in `Handle`.
 See [transactional workflows](../../docs/transactional-workflows.md) for the concrete contracts.
 
@@ -42,4 +41,4 @@ can round-trip the version they read. Surfaces transport that value but do not c
 it; private DAO rows mark it with `store:"revision"`, and the store owns the atomic conflict check.
 An editor replacing the whole tag set must also pass the captured original tags: tag changes do
 not advance the owning entity's revision. TUI tag editors use `Session.TagReplacer(originalTags)`;
-composed edits pass the expected set to `RunTaggedMutation`.
+tagged edits pass `tag.Replace(desired, originalTags)` directly to the owning domain command.

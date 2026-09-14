@@ -3,11 +3,12 @@ package menus
 import (
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/authz"
 	"github.com/TheFellow/go-modular-monolith/app/domains/menus/models"
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
 	"github.com/TheFellow/go-modular-monolith/pkg/errors"
 	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 )
 
-func (m *Module) Publish(ctx *middleware.Context, menu *models.Menu) (*models.Menu, error) {
+func (m *Module) Publish(ctx *middleware.Context, menu *models.Menu, edits ...tag.Edit) (*models.Menu, error) {
 	if menu == nil {
 		return nil, errors.Invalidf("menu is required")
 	}
@@ -22,6 +23,6 @@ func (m *Module) Publish(ctx *middleware.Context, menu *models.Menu) (*models.Me
 			}
 			return loaded, nil
 		},
-		m.commands.Publish,
+		withTags(edits, m.commands.Publish),
 	)
 }

@@ -1,9 +1,11 @@
 package tagging
 
 import (
-	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 	"sort"
 	"strings"
+
+	"github.com/TheFellow/go-modular-monolith/app/domains/tagging/internal/dao"
+	middlewareevents "github.com/TheFellow/go-modular-monolith/pkg/middleware/events"
 
 	taggingauthz "github.com/TheFellow/go-modular-monolith/app/domains/tagging/authz"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
@@ -190,7 +192,7 @@ func (m *Module) Show(ctx *middleware.Context, value tag.Tag, exact bool) ([]Ref
 	}
 	return m.pipeline.QueryResource(ctx, taggingauthz.ActionShow, resource.CedarEntity(), value,
 		func(queryCtx store.Context, _ tag.Tag) ([]Reference, error) {
-			associations, err := m.repository.find(queryCtx, value, exact)
+			associations, err := m.repository.Find(queryCtx, value, exact)
 			if err != nil {
 				return nil, err
 			}
@@ -201,24 +203,24 @@ func (m *Module) Show(ctx *middleware.Context, value tag.Tag, exact bool) ([]Ref
 			refs := make([]Reference, 0, len(active))
 			names := make(map[cedar.EntityUID]string)
 			for _, association := range active {
-				name, ok := names[association.target]
+				name, ok := names[association.Target]
 				if !ok {
-					registration, resolveErr := m.registry.resolve(association.target.Type)
+					registration, resolveErr := m.registry.resolve(association.Target.Type)
 					if resolveErr != nil {
 						return nil, resolveErr
 					}
-					state, loadErr := loadState(queryCtx, registration, association.target)
+					state, loadErr := loadState(queryCtx, registration, association.Target)
 					if loadErr != nil {
 						return nil, loadErr
 					}
 					name = state.name
-					names[association.target] = name
+					names[association.Target] = name
 				}
 				refs = append(refs, Reference{
-					EntityType: entityTypeName(association.target.Type),
+					EntityType: entityTypeName(association.Target.Type),
 					EntityName: name,
-					EntityID:   string(association.target.ID),
-					Tag:        association.tag.String(),
+					EntityID:   string(association.Target.ID),
+					Tag:        association.Tag.String(),
 				})
 			}
 			return refs, nil
@@ -232,7 +234,7 @@ func (m *Module) Summary(ctx *middleware.Context) ([]Summary, error) {
 	}
 	return m.pipeline.QueryResource(ctx, taggingauthz.ActionSummary, resource.CedarEntity(), struct{}{},
 		func(queryCtx store.Context, _ struct{}) ([]Summary, error) {
-			associations, err := m.repository.all(queryCtx)
+			associations, err := m.repository.All(queryCtx)
 			if err != nil {
 				return nil, err
 			}
@@ -242,14 +244,14 @@ func (m *Module) Summary(ctx *middleware.Context) ([]Summary, error) {
 			}
 			byTag := make(map[string]*Summary)
 			for _, association := range active {
-				canonical := association.tag.String()
+				canonical := association.Tag.String()
 				row := byTag[canonical]
 				if row == nil {
 					row = &Summary{Tag: canonical}
 					byTag[canonical] = row
 				}
 				row.Total++
-				switch association.target.Type {
+				switch association.Target.Type {
 				case entity.TypeDrink:
 					row.Drinks++
 				case entity.TypeIngredient:
@@ -276,15 +278,15 @@ func (m *Module) Summary(ctx *middleware.Context) ([]Summary, error) {
 		})
 }
 
-func (m *Module) activeAssociations(ctx store.Context, associations []association) ([]association, error) {
+func (m *Module) activeAssociations(ctx store.Context, associations []dao.Association) ([]dao.Association, error) {
 	idsByType := make(map[cedar.EntityType][]cedar.String)
 	var seen set.Set[cedar.EntityUID]
 	for _, association := range associations {
-		if seen.Contains(association.target) {
+		if seen.Contains(association.Target) {
 			continue
 		}
-		seen.Add(association.target)
-		idsByType[association.target.Type] = append(idsByType[association.target.Type], association.target.ID)
+		seen.Add(association.Target)
+		idsByType[association.Target.Type] = append(idsByType[association.Target.Type], association.Target.ID)
 	}
 	activeByType := make(map[cedar.EntityType]set.Set[cedar.String], len(idsByType))
 	for entityType, ids := range idsByType {
@@ -298,9 +300,9 @@ func (m *Module) activeAssociations(ctx store.Context, associations []associatio
 		}
 		activeByType[entityType] = active
 	}
-	result := make([]association, 0, len(associations))
+	result := make([]dao.Association, 0, len(associations))
 	for _, association := range associations {
-		if activeByType[association.target.Type].Contains(association.target.ID) {
+		if activeByType[association.Target.Type].Contains(association.Target.ID) {
 			result = append(result, association)
 		}
 	}
@@ -325,7 +327,7 @@ func entityTypeName(value cedar.EntityType) string {
 }
 
 func (m *Module) resolve(target cedar.EntityUID) (Target, error) {
-	if err := validateTarget(target); err != nil {
+	if err := dao.ValidateTarget(target); err != nil {
 		return Target{}, err
 	}
 	return m.registry.resolve(target.Type)

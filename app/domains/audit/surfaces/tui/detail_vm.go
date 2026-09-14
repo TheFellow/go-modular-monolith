@@ -56,7 +56,6 @@ func (d *DetailViewModel) View() string {
 
 	lines = append(lines,
 		"", d.styles.Subtitle.Render("Touched entities"), surfaces.Entities(entry.Touches),
-		"", d.styles.Subtitle.Render("Workflow: ")+surfaces.Workflow(entry),
 		"", d.styles.Subtitle.Render("Referenced entities"), surfaces.Entities(entry.Participants),
 		"", d.styles.Subtitle.Render("Effects"), surfaces.Effects(entry),
 	)

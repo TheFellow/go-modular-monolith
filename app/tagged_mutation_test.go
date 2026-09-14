@@ -3,106 +3,91 @@ package app_test
 import (
 	"testing"
 
-	"github.com/TheFellow/go-modular-monolith/app"
 	"github.com/TheFellow/go-modular-monolith/app/domains/audit"
 	"github.com/TheFellow/go-modular-monolith/app/domains/ingredients/models"
-	"github.com/TheFellow/go-modular-monolith/app/kernel/entity"
 	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
-	"github.com/TheFellow/go-modular-monolith/pkg/middleware"
 	"github.com/TheFellow/go-modular-monolith/pkg/testutil"
-	cedar "github.com/cedar-policy/cedar-go"
 )
 
-type taggedIngredient struct {
-	ID   entity.IngredientID
-	Tags tag.Tags
-}
-
-func (i *taggedIngredient) EntityUID() cedar.EntityUID { return i.ID.EntityUID() }
-func (i *taggedIngredient) SetTags(values tag.Tags)    { i.Tags = values }
-
-func TestRunTaggedMutationCommitsDomainAndCompleteTagSetTogether(t *testing.T) {
+func TestDomainCommandCommitsTagsAndOneActivity(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	desired := tag.Tags{{Key: "region", Value: "west"}, {Key: "featured"}}
-
-	result, err := app.RunTaggedMutation(f.App.App, f.OwnerContext(), &desired, func(ctx *middleware.Context) (*taggedIngredient, error) {
-		created, err := f.App.Ingredients.Create(ctx, &models.Ingredient{Name: "Atomic", Category: models.CategorySpirit, Unit: "oz"})
-		if err != nil {
-			return nil, err
-		}
-		return &taggedIngredient{ID: created.ID}, nil
-	})
+	before, err := f.Audit.Count(f.OwnerContext(), audit.ListRequest{})
+	testutil.Ok(t, err)
+	result, err := f.Ingredients.Create(f.OwnerContext(), &models.Ingredient{Name: "Atomic", Category: models.CategorySpirit, Unit: "oz"}, tag.Replace(&desired))
 	testutil.Ok(t, err)
 	testutil.Equals(t, result.Tags, desired.Sorted())
-	persisted, err := f.App.Ingredients.Get(f.OwnerContext(), result.ID)
+	persisted, err := f.Ingredients.Get(f.OwnerContext(), result.ID)
 	testutil.Ok(t, err)
 	testutil.Equals(t, persisted.Tags, desired.Sorted())
+	after, err := f.Audit.Count(f.OwnerContext(), audit.ListRequest{})
+	testutil.Ok(t, err)
+	testutil.Equals(t, after, before+1)
+	page, err := f.Audit.List(f.OwnerContext(), audit.ListRequest{})
+	testutil.Ok(t, err)
+	entry := page.Items[0]
+	testutil.IsTrue(t, entry.Success)
+	testutil.StringContains(t, entry.Action, "create")
+	testutil.Equals(t, len(entry.Effects), 2)
 }
-
-func TestRunTaggedMutationRejectsInvalidTagsBeforeMutation(t *testing.T) {
+func TestDomainCommandRejectsInvalidTags(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
 	invalid := tag.Tags{{Key: "region"}, {Key: "region", Value: "east"}}
-	called := false
-
-	_, err := app.RunTaggedMutation(f.App.App, f.OwnerContext(), &invalid, func(*middleware.Context) (*taggedIngredient, error) {
-		called = true
-		return &taggedIngredient{}, nil
-	})
-	testutil.ErrorIf(t, err == nil, "expected invalid tags")
-	testutil.Equals(t, called, false)
+	result, err := f.Ingredients.Create(f.OwnerContext(), &models.Ingredient{Name: "Invalid", Category: models.CategorySpirit, Unit: "oz"}, tag.Replace(&invalid))
+	testutil.ErrorIsInvalid(t, err)
+	testutil.IsTrue(t, result == nil)
 }
-
-func TestRunTaggedMutationRollsBackDomainMutationWhenTagReplacementFails(t *testing.T) {
+func TestDomainCommandRollsBackOnStaleTagsAndRecordsOneFailure(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
-	created, err := f.App.Ingredients.Create(f.OwnerContext(), &models.Ingredient{Name: "Before", Category: models.CategorySpirit, Unit: "oz"})
-	testutil.Ok(t, err)
-	auditBefore, err := f.App.Audit.Count(f.OwnerContext(), audit.ListRequest{})
-	testutil.Ok(t, err)
+	created := testutil.CreateIngredient(t, f, models.Ingredient{Name: "Before", Category: models.CategorySpirit, Unit: "oz"})
 	desired := tag.Tags{{Key: "region", Value: "east"}}
-
-	_, err = app.RunTaggedMutation(f.App.App, f.OwnerContext(), &desired, func(ctx *middleware.Context) (*taggedIngredient, error) {
-		_, updateErr := f.App.Ingredients.Update(ctx, &models.Ingredient{ID: created.ID, Revision: created.Revision, Name: "After", Category: models.CategorySpirit, Unit: "oz"})
-		// A syntactically valid but nonexistent target forces replacement failure.
-		return &taggedIngredient{ID: entity.NewIngredientID()}, updateErr
-	})
-	testutil.ErrorIf(t, err == nil, "expected tag replacement failure")
-	persisted, err := f.App.Ingredients.Get(f.OwnerContext(), created.ID)
+	before, err := f.Audit.Count(f.OwnerContext(), audit.ListRequest{})
 	testutil.Ok(t, err)
-	testutil.Equals(t, persisted.Name, "Before")
-	auditAfter, err := f.App.Audit.Count(f.OwnerContext(), audit.ListRequest{})
+	updated := *created
+	updated.Name = "After"
+	result, err := f.Ingredients.Update(f.OwnerContext(), &updated, tag.Replace(&desired, tag.Tags{{Key: "stale"}}))
+	testutil.ErrorIsConflict(t, err)
+	testutil.IsTrue(t, result == nil)
+	persisted, err := f.Ingredients.Get(f.OwnerContext(), created.ID)
 	testutil.Ok(t, err)
-	testutil.Equals(t, auditAfter, auditBefore+1)
+	testutil.Equals(t, persisted, created)
+	after, err := f.Audit.Count(f.OwnerContext(), audit.ListRequest{})
+	testutil.Ok(t, err)
+	testutil.Equals(t, after, before+1)
 }
-
-func TestRunTaggedMutationParticipatesInCallerTransaction(t *testing.T) {
+func TestDomainCommandTagsParticipateInCallerRollback(t *testing.T) {
 	t.Parallel()
 	f := testutil.NewFixture(t)
+	tx, err := f.Store.Begin(f.OwnerContext(), true)
+	testutil.Ok(t, err)
+	defer func() { _ = f.Store.Rollback(tx) }()
 	desired := tag.Tags{{Key: "region", Value: "west"}}
-	tx, err := f.App.Store.Begin(f.OwnerContext(), true)
+	result, err := f.Ingredients.Create(f.OwnerContext().WithTransaction(tx), &models.Ingredient{Name: "Rollback", Category: models.CategorySpirit, Unit: "oz"}, tag.Replace(&desired))
 	testutil.Ok(t, err)
-	rolledBack := false
-	t.Cleanup(func() {
-		if !rolledBack {
-			_ = f.App.Store.Rollback(tx)
-		}
-	})
-	txCtx := f.OwnerContext().WithTransaction(tx)
+	testutil.Ok(t, f.Store.Rollback(tx))
+	_, err = f.Ingredients.Get(f.OwnerContext(), result.ID)
+	testutil.ErrorIsNotFound(t, err)
+}
 
-	result, err := app.RunTaggedMutation(f.App.App, txCtx, &desired, func(ctx *middleware.Context) (*taggedIngredient, error) {
-		created, createErr := f.App.Ingredients.Create(ctx, &models.Ingredient{Name: "Outer transaction", Category: models.CategorySpirit, Unit: "oz"})
-		if createErr != nil {
-			return nil, createErr
-		}
-		return &taggedIngredient{ID: created.ID}, nil
-	})
+func TestCallerTransactionCannotComposeMultipleCommands(t *testing.T) {
+	t.Parallel()
+	f := testutil.NewFixture(t)
+	tx, err := f.Store.Begin(f.OwnerContext(), true)
 	testutil.Ok(t, err)
-	testutil.Equals(t, result.Tags, desired)
-	testutil.Ok(t, f.App.Store.Rollback(tx))
-	rolledBack = true
-
-	_, err = f.App.Ingredients.Get(f.OwnerContext(), result.ID)
-	testutil.ErrorIf(t, err == nil, "caller rollback must remove the domain mutation and tags")
+	defer func() { _ = f.Store.Rollback(tx) }()
+	ctx := f.OwnerContext().WithTransaction(tx)
+	created, err := f.Ingredients.Create(ctx, &models.Ingredient{Name: "One command", Category: models.CategorySpirit, Unit: "oz"})
+	testutil.Ok(t, err)
+	result, err := f.App.Tags.Upsert(ctx, created.EntityUID(), tag.Tag{Key: "second-command"})
+	testutil.ErrorIsFailedPrecondition(t, err)
+	testutil.IsFalse(t, result.Changed)
+	// A fresh middleware context around the same transaction cannot bypass ownership.
+	_, err = f.Ingredients.Create(f.OwnerContext().WithTransaction(tx), &models.Ingredient{Name: "Second", Category: models.CategorySpirit, Unit: "oz"})
+	testutil.ErrorIsFailedPrecondition(t, err)
+	persisted, err := f.Ingredients.Get(ctx, created.ID)
+	testutil.Ok(t, err)
+	testutil.Equals(t, len(persisted.Tags), 0)
 }

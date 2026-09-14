@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
-	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"strconv"
 	"strings"
+
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/inventory"
 	inventorymodels "github.com/TheFellow/go-modular-monolith/app/domains/inventory/models"
@@ -231,11 +233,11 @@ func (c *CLI) inventoryCommands() *cli.Command {
 						}
 					}
 
-					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
+					res, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*inventorymodels.Inventory, error) {
 						if cmd.IsSet("revision") {
 							patch.Revision = cmd.Uint64("revision")
 						}
-						return c.app.Inventory.Adjust(ctx, patch)
+						return c.app.Inventory.Adjust(ctx, patch, edit)
 					})
 					if err != nil {
 						return err
@@ -363,8 +365,8 @@ func (c *CLI) inventoryCommands() *cli.Command {
 					if cmd.IsSet("revision") {
 						update.Revision = cmd.Uint64("revision")
 					}
-					res, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*inventorymodels.Inventory, error) {
-						return c.app.Inventory.Set(ctx, update)
+					res, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*inventorymodels.Inventory, error) {
+						return c.app.Inventory.Set(ctx, update, edit)
 					})
 					if err != nil {
 						return err

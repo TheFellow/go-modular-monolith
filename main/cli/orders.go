@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
-	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 	"strconv"
 	"strings"
+
+	"github.com/TheFellow/go-modular-monolith/app/kernel/tag"
+	clitoolkit "github.com/TheFellow/go-modular-monolith/pkg/toolkits/cli"
 
 	"github.com/TheFellow/go-modular-monolith/app/domains/orders"
 	ordersmodels "github.com/TheFellow/go-modular-monolith/app/domains/orders/models"
@@ -92,8 +94,8 @@ func (c *CLI) ordersCommands() *cli.Command {
 						}
 					}
 
-					created, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
-						return c.app.Orders.Place(ctx, input)
+					created, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*ordersmodels.Order, error) {
+						return c.app.Orders.Place(ctx, input, edit)
 					})
 					if err != nil {
 						return err
@@ -191,8 +193,8 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					updated, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
-						return c.app.Orders.Complete(ctx, &ordersmodels.Order{ID: orderID})
+					updated, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*ordersmodels.Order, error) {
+						return c.app.Orders.Complete(ctx, &ordersmodels.Order{ID: orderID}, edit)
 					})
 					if err != nil {
 						return err
@@ -218,8 +220,8 @@ func (c *CLI) ordersCommands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					updated, err := runTaggedMutation(c, ctx, cmd, func(ctx *middleware.Context) (*ordersmodels.Order, error) {
-						return c.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: orderID, Revision: cmd.Uint64("revision"), CancellationReason: cmd.String("reason")})
+					updated, err := withTagInput(ctx, cmd, func(ctx *middleware.Context, edit tag.Edit) (*ordersmodels.Order, error) {
+						return c.app.Orders.Cancel(ctx, &ordersmodels.Order{ID: orderID, Revision: cmd.Uint64("revision"), CancellationReason: cmd.String("reason")}, edit)
 					})
 					if err != nil {
 						return err

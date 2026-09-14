@@ -72,9 +72,9 @@ it originally read. Rule revisions and amendment-batch revisions are explicit. A
 ingredient ID identifies the ingredient in the current plan, which may already differ from the
 original acceptance after an earlier substitution or amendment.
 
-The CLI exposes retirement and amendment batches as separate commands. To retire an ingredient and
-amend selected orders in one transaction, call `App.RetireIngredient`; running two CLI invocations
-does not create an atomic workflow. See the [workflow examples and batch shape](../../docs/transactional-workflows.md#explicit-workflows).
+The CLI exposes retirement and amendment batches as separate domain commands. Submit an approved
+`Orders.AmendBatch` before `Ingredients.Retire` when plans must change first. Each has its own
+transaction and audit activity. See the [command examples and batch shape](../../docs/transactional-workflows.md#explicit-commands).
 
 ## Adding a command
 

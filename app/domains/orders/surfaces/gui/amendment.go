@@ -79,7 +79,7 @@ func (p *Presenter) SaveAmendmentBatch() bool {
 	requests := slices.Clone(p.state.AmendmentQueue)
 	p.state.Submitting, p.state.Err = true, nil
 	p.publish()
-	return p.submit.Submit(func() error { _, err := p.app.AmendOrders(p.app.Context(), requests); return err }, func(err error) {
+	return p.submit.Submit(func() error { _, err := p.app.Orders.AmendBatch(p.app.Context(), requests); return err }, func(err error) {
 		p.state.Submitting, p.state.Err = false, ui.PresentError(err)
 		if err == nil {
 			p.state.AmendmentQueue, p.state.Mode = nil, Browsing
