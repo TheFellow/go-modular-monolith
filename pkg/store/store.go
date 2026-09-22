@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -21,7 +22,10 @@ import (
 
 // Store owns an embedded SQLite database. SQLite's WAL and busy timeout allow
 // independent application processes on the same host to safely share it.
-type Store struct{ db *sql.DB }
+type Store struct {
+	db     *sql.DB
+	models sync.Map
+}
 
 type sqlExecutor interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
@@ -30,6 +34,7 @@ type sqlExecutor interface {
 }
 
 type Tx struct {
+	store          *Store
 	commandClaimed atomic.Bool
 	tx             sqlExecutor
 	sqlTx          *sql.Tx
@@ -114,6 +119,13 @@ func (s *Store) migrate(ctx context.Context) error {
 			_, _ = conn.ExecContext(context.WithoutCancel(ctx), "ROLLBACK")
 		}
 	}()
+	var legacy int
+	if err := conn.QueryRowContext(ctx, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='records'").Scan(&legacy); err != nil {
+		return err
+	}
+	if legacy != 0 {
+		return errors.FailedPreconditionf("legacy document database is unsupported; close all application processes, remove the SQLite database and its -wal/-shm files (or use a fresh database path), and rebuild sample data")
+	}
 	if _, err := conn.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
   version INTEGER PRIMARY KEY,
   applied_at TEXT NOT NULL
@@ -146,61 +158,74 @@ func (s *Store) migrate(ctx context.Context) error {
 	return nil
 }
 
-var schemaMigrations = []string{`
-CREATE TABLE records (
-  model TEXT NOT NULL,
-  id TEXT NOT NULL,
-  data TEXT NOT NULL CHECK(json_valid(data)),
-  PRIMARY KEY(model, id)
-)`, `
-ALTER TABLE records ADD COLUMN revision INTEGER NOT NULL DEFAULT 1 CHECK(revision > 0)
-`}
+var schemaMigrations = []string{`CREATE TABLE store_schema (version INTEGER PRIMARY KEY CHECK(version = 1)); INSERT INTO store_schema VALUES (1)`}
 
-// Register installs indexes declared by store tags on a domain's private row
-// type. It is idempotent and safe when several processes start concurrently.
+// Register creates the relational tables and declared indexes for each model.
+// Invalid model definitions are programmer errors and panic at application startup.
 func (s *Store) Register(ctx context.Context, models ...any) {
 	for _, model := range models {
-		t := reflect.TypeOf(model)
-		if t.Kind() == reflect.Pointer {
-			t = t.Elem()
+		typ := reflect.TypeOf(model)
+		if typ.Kind() == reflect.Pointer {
+			typ = typ.Elem()
 		}
-		name := modelName(t)
-		for f := range t.Fields() {
-			tag := f.Tag.Get("store")
-			if tag == "" || tag == "revision" {
-				continue
+		schema, err := buildSchema(typ)
+		if err != nil {
+			panic(err)
+		}
+		err = s.Write(ctx, func(tx *Tx) error {
+			if err := schema.create(ctx, tx.tx); err != nil {
+				return err
 			}
-			unique := strings.Contains(tag, "unique")
-			columns := []string{f.Name}
-			if p := strings.Index(tag, "unique="); p >= 0 {
-				columns = strings.Split(strings.TrimPrefix(tag[p:], "unique="), "+")
-			}
-			parts := make([]string, 0, len(columns))
-			for _, c := range columns {
-				expression := fmt.Sprintf("json_extract(data, '$.%s')", c)
-				if indexedField, ok := t.FieldByName(c); ok && (indexedField.Type == reflect.TypeFor[time.Time]() || (indexedField.Type.Kind() == reflect.Pointer && indexedField.Type.Elem() == reflect.TypeFor[time.Time]())) {
-					expression = "julianday(" + expression + ")"
+			for field := range typ.Fields() {
+				for tag := range strings.SplitSeq(field.Tag.Get("store"), ",") {
+					if tag == "" || tag == "revision" {
+						continue
+					}
+					kind, fields, explicit := strings.Cut(tag, "=")
+					if kind != "unique" && kind != "index" {
+						return fmt.Errorf("unknown store tag %q", tag)
+					}
+					names := []string{field.Name}
+					if explicit {
+						names = strings.Split(fields, "+")
+					}
+					columns := make([]string, len(names))
+					for i, name := range names {
+						column := snake(name)
+						found := false
+						for _, c := range schema.columns {
+							if c.name == column {
+								found = true
+								break
+							}
+						}
+						if !found {
+							return fmt.Errorf("unknown index column %s", name)
+						}
+						columns[i] = queryFieldExpression(schema, name)
+					}
+					unique := ""
+					if kind == "unique" {
+						unique = "UNIQUE "
+					}
+					stmt := "CREATE " + unique + "INDEX IF NOT EXISTS " + safeName("idx_"+schema.name+"_"+strings.Join(names, "_")) + " ON " + safeName(schema.name) + "(" + strings.Join(columns, ",") + ")"
+					if _, err := tx.tx.ExecContext(ctx, stmt); err != nil {
+						return err
+					}
 				}
-				parts = append(parts, expression)
 			}
-			kind := "INDEX"
-			if unique {
-				kind = "UNIQUE INDEX"
-			}
-			indexName := safeName("idx_" + name + "_" + strings.Join(columns, "_"))
-			stmt := fmt.Sprintf("CREATE %s IF NOT EXISTS %s ON records(%s) WHERE model = %s", kind, indexName, strings.Join(parts, ", "), sqlStringLiteral(name))
-			if _, err := s.db.ExecContext(ctx, stmt); err != nil {
-				panic(err)
-			}
+			return nil
+		})
+		if err != nil {
+			panic(err)
 		}
+		s.models.Store(typ, schema)
 	}
 }
 
 func safeName(s string) string {
 	return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
 }
-
-func sqlStringLiteral(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
 
 func modelName(t reflect.Type) string {
 	if named, ok := reflect.Zero(t).Interface().(interface{ StoreModelName() string }); ok {
@@ -230,6 +255,7 @@ func (s *Store) Begin(ctx context.Context, writable bool) (*Tx, error) {
 		}
 		out = &Tx{tx: tx, sqlTx: tx, ctx: ctx}
 	}
+	out.store = s
 	registerTransaction(out)
 	return out, nil
 }

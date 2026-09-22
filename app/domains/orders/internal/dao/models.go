@@ -15,11 +15,11 @@ type OrderRow struct {
 	CancelledAt        *time.Time
 	CancellationReason string
 	Revision           uint64 `json:"-" store:"revision"`
-	MenuID             string `store:"index"`
+	MenuID             string `store:"index=MenuID+ID"`
 	Items              []OrderItemRow
 	IngredientUsage    []IngredientUsageRow
 	BlockedIngredients []string
-	Status             string    `store:"index"`
+	Status             string    `store:"index=Status+ID"`
 	CreatedAt          time.Time `store:"index"`
 	CompletedAt        *time.Time
 	Notes              string
@@ -38,3 +38,5 @@ type OrderItemRow struct {
 	Quantity int
 	Notes    string
 }
+
+func (OrderRow) StoreModelName() string { return "orders" }

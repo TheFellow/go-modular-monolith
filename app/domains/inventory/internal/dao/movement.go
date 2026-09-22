@@ -12,7 +12,7 @@ import (
 type MovementRow struct {
 	ID          string
 	Revision    uint64    `json:"-" store:"revision"`
-	InventoryID string    `store:"index"`
+	InventoryID string    `store:"index=InventoryID+At+ID"`
 	At          time.Time `store:"index"`
 	Movement    models.Movement
 }
@@ -40,3 +40,5 @@ func (d *DAO) History(ctx store.Context, id entity.InventoryID) ([]models.Moveme
 	})
 	return result, err
 }
+
+func (MovementRow) StoreModelName() string { return "inventory_movements" }

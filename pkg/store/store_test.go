@@ -3,9 +3,10 @@ package store
 import (
 	"context"
 	"database/sql"
+	"os"
 	"path/filepath"
-	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -41,6 +42,8 @@ func TestOptimisticRevisionRejectsStaleUpdate(t *testing.T) {
 	testutil.ErrorIf(t, err != nil, "open second store: %v", err)
 	defer func() { _ = second.Close() }()
 
+	first.Register(ctx, revisionedRecord{})
+	second.Register(ctx, revisionedRecord{})
 	record := revisionedRecord{ID: 1, Name: "original"}
 	err = first.Write(ctx, func(tx *Tx) error { return tx.Insert(&record) })
 	testutil.ErrorIf(t, err != nil || record.Revision != 1, "insert revision = %d, err = %v", record.Revision, err)
@@ -113,28 +116,40 @@ func TestMigrationVersionBookkeepingAndFutureVersion(t *testing.T) {
 	testutil.ErrorIf(t, err == nil, "opening a future schema version unexpectedly succeeded")
 }
 
-func TestRevisionMigrationUpgradesExistingRows(t *testing.T) {
+func TestDocumentDatabaseRequiresExplicitReset(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	path := filepath.Join(t.TempDir(), "revision-upgrade.db")
+	path := filepath.Join(t.TempDir(), "legacy.db")
 	legacy, err := sql.Open("sqlite", path)
-	testutil.ErrorIf(t, err != nil, "open legacy database: %v", err)
-	_, err = legacy.ExecContext(ctx, `CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)`)
-	testutil.ErrorIf(t, err != nil, "create legacy migration ledger: %v", err)
-	_, err = legacy.ExecContext(ctx, `CREATE TABLE records (model TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL CHECK(json_valid(data)), PRIMARY KEY(model, id))`)
-	testutil.ErrorIf(t, err != nil, "create legacy records: %v", err)
-	_, err = legacy.ExecContext(ctx, `INSERT INTO schema_migrations(version, applied_at) VALUES (1, 'legacy')`)
-	testutil.ErrorIf(t, err != nil, "record legacy migration: %v", err)
-	_, err = legacy.ExecContext(ctx, `INSERT INTO records(model,id,data) VALUES (?, '1', '{"ID":1,"Name":"legacy"}')`, modelName(reflect.TypeFor[revisionedRecord]()))
-	testutil.ErrorIf(t, err != nil, "insert legacy row: %v", err)
-	testutil.ErrorIf(t, legacy.Close() != nil, "close legacy database")
-
-	upgraded, err := Open(ctx, path)
-	testutil.ErrorIf(t, err != nil, "upgrade database: %v", err)
-	defer func() { _ = upgraded.Close() }()
-	record := revisionedRecord{ID: 1}
-	err = upgraded.Read(ctx, func(tx *Tx) error { return tx.Get(&record) })
-	testutil.ErrorIf(t, err != nil || record.Name != "legacy" || record.Revision != 1, "upgraded row = %#v, err = %v", record, err)
+	ok(t, err)
+	_, err = legacy.ExecContext(ctx, `CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);
+ CREATE TABLE records (model TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL CHECK(json_valid(data)), PRIMARY KEY(model, id));
+ INSERT INTO schema_migrations(version, applied_at) VALUES (1, 'legacy');
+ INSERT INTO records(model,id,data) VALUES ('legacy', '1', '{"ID":1}')`)
+	ok(t, err)
+	ok(t, legacy.Close())
+	reopened, err := Open(ctx, path)
+	if reopened != nil {
+		_ = reopened.Close()
+	}
+	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "rebuild") {
+		testutil.ErrorIf(t, true, "legacy database must fail with rebuild guidance, got %v", err)
+	}
+	legacy, err = sql.Open("sqlite", path)
+	ok(t, err)
+	var count int
+	ok(t, legacy.QueryRowContext(ctx, "SELECT COUNT(*) FROM records").Scan(&count))
+	if count != 1 {
+		testutil.ErrorIf(t, true, "failed open modified legacy data: %d rows", count)
+	}
+	ok(t, legacy.Close())
+	ok(t, os.Remove(path))
+	fresh, err := Open(ctx, path)
+	ok(t, err)
+	defer func() { _ = fresh.Close() }()
+	fresh.Register(ctx, revisionedRecord{})
+	record := revisionedRecord{ID: 1, Name: "rebuilt"}
+	ok(t, fresh.Write(ctx, func(tx *Tx) error { return tx.Insert(&record) }))
 }
 
 func TestConcurrentMigrationInitialization(t *testing.T) {
@@ -163,12 +178,6 @@ func TestConcurrentMigrationInitialization(t *testing.T) {
 	var count int
 	err = s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM schema_migrations").Scan(&count)
 	testutil.ErrorIf(t, err != nil || count != len(schemaMigrations), "migration count = %d, err = %v", count, err)
-}
-
-func TestSQLStringLiteral(t *testing.T) {
-	t.Parallel()
-	got := sqlStringLiteral("owner's.model")
-	testutil.ErrorIf(t, got != "'owner''s.model'", "literal = %s", got)
 }
 
 func TestIndependentStoresShareOneDatabase(t *testing.T) {

@@ -20,6 +20,7 @@ func TestChangeMonitorSignalsCommittedWritesAndIgnoresRollback(t *testing.T) {
 	testutil.ErrorIf(t, err != nil, "open writer: %v", err)
 	defer func() { _ = writer.Close() }()
 
+	writer.Register(ctx, revisionedRecord{})
 	monitor, err := reader.MonitorChanges(ctx, 10*time.Millisecond)
 	testutil.ErrorIf(t, err != nil, "monitor changes: %v", err)
 	defer monitor.Close()

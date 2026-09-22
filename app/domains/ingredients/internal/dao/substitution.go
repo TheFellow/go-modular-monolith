@@ -9,7 +9,7 @@ import (
 type SubstitutionRow struct {
 	ID           string
 	Revision     uint64 `json:"-" store:"revision"`
-	IngredientID string `store:"index"`
+	IngredientID string `store:"index=IngredientID+ID"`
 	Rule         models.SubstitutionRule
 }
 
@@ -47,3 +47,5 @@ func (d *DAO) SubstitutionsFor(ctx store.Context, id entity.IngredientID, includ
 	})
 	return result, err
 }
+
+func (SubstitutionRow) StoreModelName() string { return "ingredient_substitutions" }

@@ -14,7 +14,7 @@ type MenuRow struct {
 	Name        string `store:"unique"`
 	Description string
 	Items       []MenuItemRow
-	Status      string    `store:"index"`
+	Status      string    `store:"index=Status+ID"`
 	CreatedAt   time.Time `store:"index"`
 	PublishedAt *time.Time
 	DeletedAt   *time.Time
@@ -28,3 +28,5 @@ type MenuItemRow struct {
 	Availability string
 	SortOrder    int
 }
+
+func (MenuRow) StoreModelName() string { return "menus" }

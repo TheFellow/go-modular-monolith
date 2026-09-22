@@ -49,3 +49,16 @@ func TestZeroValueIsNone(t *testing.T) {
 	testutil.IsFalse(t, ok)
 	testutil.Equals(t, got, 0)
 }
+
+func TestSet(t *testing.T) {
+	t.Parallel()
+	var value optional.Value[int]
+	value.Set(42)
+	got, present := value.Unwrap()
+	testutil.IsTrue(t, present)
+	testutil.Equals(t, got, 42)
+	value.Set(0)
+	got, present = value.Unwrap()
+	testutil.IsTrue(t, present)
+	testutil.Equals(t, got, 0)
+}

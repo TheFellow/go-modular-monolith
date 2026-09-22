@@ -19,6 +19,7 @@ func TestRelocatedModelPreservesExistingRecordsAndRevisions(t *testing.T) {
 	s, err := Open(ctx, filepath.Join(t.TempDir(), "relocated.db"))
 	testutil.ErrorIf(t, err != nil, "unexpected error: %v", err)
 	defer func() { _ = s.Close() }()
+	s.Register(ctx, revisionedRecord{})
 	original := revisionedRecord{ID: 1, Name: "before"}
 	ok(t, s.Write(ctx, func(tx *Tx) error { return tx.Insert(&original) }))
 	s.Register(ctx, relocatedRecord{})

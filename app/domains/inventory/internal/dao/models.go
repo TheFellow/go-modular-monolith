@@ -12,7 +12,7 @@ type StockRow struct {
 	Status         string
 	Reason         string
 	Revision       uint64 `json:"-" store:"revision"`
-	InventoryID    string `store:"index"`
+	InventoryID    string `store:"unique"`
 	Quantity       float64
 	DisplayUnit    string
 	CostUnit       string
@@ -31,3 +31,7 @@ type ReservationRow struct {
 	Quantity     float64
 	Unit         string
 }
+
+func (StockRow) StoreModelName() string { return "inventory_stock" }
+
+func (ReservationRow) StoreModelName() string { return "inventory_reservations" }

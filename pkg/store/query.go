@@ -1,8 +1,8 @@
 package store
 
 import (
+	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"iter"
 	"reflect"
@@ -59,8 +59,6 @@ func setRevision(v reflect.Value, revision uint64) error {
 	return nil
 }
 
-func idString(id reflect.Value) string { return fmt.Sprint(id.Interface()) }
-
 func (t *Tx) Insert(values ...any) error {
 	for _, value := range values {
 		if err := t.insert(value); err != nil {
@@ -70,47 +68,76 @@ func (t *Tx) Insert(values ...any) error {
 	return nil
 }
 
+// mutate makes each aggregate write atomic even when its caller handles an error.
+func (t *Tx) mutate(fn func() error) error {
+	if _, err := t.tx.ExecContext(t.ctx, "SAVEPOINT store_mutation"); err != nil {
+		return err
+	}
+	if err := fn(); err != nil {
+		_, _ = t.tx.ExecContext(context.WithoutCancel(t.ctx), "ROLLBACK TO store_mutation")
+		_, _ = t.tx.ExecContext(context.WithoutCancel(t.ctx), "RELEASE store_mutation")
+		if isUniqueConstraint(err) {
+			return errors.Conflictf("unique constraint: %w", err)
+		}
+		return err
+	}
+	_, err := t.tx.ExecContext(t.ctx, "RELEASE store_mutation")
+	return err
+}
 func (t *Tx) insert(value any) error {
 	v, typ, id, err := rowInfo(value)
 	if err != nil {
 		return err
 	}
-	if id.IsZero() && id.CanSet() && ((id.Kind() >= reflect.Uint && id.Kind() <= reflect.Uint64) || (id.Kind() >= reflect.Int && id.Kind() <= reflect.Int64)) {
-		var maxID sql.NullInt64
-		err = t.tx.QueryRowContext(t.ctx, "SELECT max(CAST(json_extract(data, '$."+typ.Field(0).Name+"') AS INTEGER)) FROM records WHERE model = ?", modelName(typ)).Scan(&maxID)
-		if err != nil {
-			return err
-		}
-		if id.Kind() >= reflect.Uint && id.Kind() <= reflect.Uint64 {
-			id.SetUint(uint64(maxID.Int64 + 1))
-		} else {
-			id.SetInt(maxID.Int64 + 1)
-		}
-	}
-	if id.IsZero() {
-		return errors.Invalidf("record ID is required")
-	}
-	if revision, ok, revisionErr := revisionValue(v); revisionErr != nil {
-		return revisionErr
-	} else if ok && revision != 0 {
-		return errors.Invalidf("new record revision must be zero")
-	}
-	data, err := json.Marshal(v.Interface())
+	schema, err := t.schema(typ)
 	if err != nil {
 		return err
 	}
-	_, err = t.tx.ExecContext(t.ctx, "INSERT INTO records(model,id,data,revision) VALUES(?,?,?,1)", modelName(typ), idString(id), string(data))
-	if err != nil && isUniqueConstraint(err) {
-		return errors.Conflictf("unique constraint: %w", err)
+	if revision, ok, err := revisionValue(v); err != nil {
+		return err
+	} else if ok && revision != 0 {
+		return errors.Invalidf("new record revision must be zero")
 	}
-	if err == nil {
-		err = setRevision(v, 1)
+	err = t.mutate(func() error {
+		if id.IsZero() && ((id.Kind() >= reflect.Uint && id.Kind() <= reflect.Uint64) || (id.Kind() >= reflect.Int && id.Kind() <= reflect.Int64)) {
+			var maxID sql.NullInt64
+			if err := t.tx.QueryRowContext(t.ctx, "SELECT MAX("+safeName(schema.primary)+") FROM "+safeName(schema.name)).Scan(&maxID); err != nil {
+				return err
+			}
+			if id.Kind() >= reflect.Uint && id.Kind() <= reflect.Uint64 {
+				id.SetUint(uint64(maxID.Int64 + 1))
+			} else {
+				id.SetInt(maxID.Int64 + 1)
+			}
+		}
+		if id.IsZero() {
+			return errors.Invalidf("record ID is required")
+		}
+		values := []any{}
+		children := []collectionValue{}
+		if err := schema.root.encode(v, &values, &children); err != nil {
+			return err
+		}
+		names := []string{}
+		for _, c := range schema.columns {
+			names = append(names, safeName(c.name))
+		}
+		if _, err := t.tx.ExecContext(t.ctx, "INSERT INTO "+safeName(schema.name)+" ("+strings.Join(names, ",")+") VALUES ("+placeholders(len(values))+")", values...); err != nil {
+			return err
+		}
+		return t.saveChildren(id.Interface(), children)
+	})
+	if err != nil {
+		return err
 	}
-	return err
+	return setRevision(v, 1)
 }
-
 func (t *Tx) Update(value any) error {
 	v, typ, id, err := rowInfo(value)
+	if err != nil {
+		return err
+	}
+	schema, err := t.schema(typ)
 	if err != nil {
 		return err
 	}
@@ -124,57 +151,89 @@ func (t *Tx) Update(value any) error {
 	if !ok || revision == 0 {
 		return errors.Invalidf("record revision is required for update")
 	}
-	data, err := json.Marshal(reflect.ValueOf(value).Elem().Interface())
-	if err != nil {
-		return err
-	}
-	r, err := t.tx.ExecContext(t.ctx, "UPDATE records SET data=?, revision=revision+1 WHERE model=? AND id=? AND revision=?", string(data), modelName(typ), idString(id), revision)
-	if err != nil {
-		if isUniqueConstraint(err) {
-			return errors.Conflictf("unique constraint: %w", err)
+	err = t.mutate(func() error {
+		values := []any{}
+		children := []collectionValue{}
+		if err := schema.root.encode(v, &values, &children); err != nil {
+			return err
 		}
-		return err
-	}
-	n, _ := r.RowsAffected()
-	if n == 0 {
-		var current uint64
-		err := t.tx.QueryRowContext(t.ctx, "SELECT revision FROM records WHERE model=? AND id=?", modelName(typ), idString(id)).Scan(&current)
-		if errors.Is(err, sql.ErrNoRows) {
-			return errors.NotFoundf("record absent")
+		assigns := []string{`"__revision"="__revision"+1`}
+		for _, c := range schema.columns {
+			assigns = append(assigns, safeName(c.name)+"=?")
 		}
+		values = append(values, id.Interface(), revision)
+		result, err := t.tx.ExecContext(t.ctx, "UPDATE "+safeName(schema.name)+" SET "+strings.Join(assigns, ",")+" WHERE "+safeName(schema.primary)+"=? AND __revision=?", values...)
 		if err != nil {
 			return err
 		}
-		return errors.Conflictf("record changed: expected revision %d, current revision %d", revision, current)
-	}
-	return setRevision(v, revision+1)
-}
-
-func (t *Tx) Get(value any) error {
-	_, typ, id, err := rowInfo(value)
+		count, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if count == 0 {
+			return t.stale(schema, id.Interface(), revision)
+		}
+		return t.saveChildren(id.Interface(), children)
+	})
 	if err != nil {
 		return err
 	}
-	if id.IsZero() {
-		return errors.Invalidf("record ID is required")
-	}
-	var data string
-	var revision uint64
-	err = t.tx.QueryRowContext(t.ctx, "SELECT data,revision FROM records WHERE model=? AND id=?", modelName(typ), idString(id)).Scan(&data, &revision)
+	return setRevision(v, revision+1)
+}
+func (t *Tx) stale(schema *tableSchema, id any, revision uint64) error {
+	var current uint64
+	err := t.tx.QueryRowContext(t.ctx, "SELECT __revision FROM "+safeName(schema.name)+" WHERE "+safeName(schema.primary)+"=?", id).Scan(&current)
 	if errors.Is(err, sql.ErrNoRows) {
 		return errors.NotFoundf("record absent")
 	}
 	if err != nil {
 		return err
 	}
-	if err := json.Unmarshal([]byte(data), value); err != nil {
+	return errors.Conflictf("record changed: expected revision %d, current revision %d", revision, current)
+}
+func (t *Tx) Get(value any) error {
+	v, typ, id, err := rowInfo(value)
+	if err != nil {
 		return err
 	}
-	return setRevision(reflect.ValueOf(value).Elem(), revision)
+	schema, err := t.schema(typ)
+	if err != nil {
+		return err
+	}
+	if id.IsZero() {
+		return errors.Invalidf("record ID is required")
+	}
+	raw, err := scanRaw(t.tx.QueryRowContext(t.ctx, "SELECT "+schema.selection()+" FROM "+safeName(schema.name)+" WHERE "+safeName(schema.primary)+"=?", id.Interface()), len(schema.columns)+1)
+	if errors.Is(err, sql.ErrNoRows) {
+		return errors.NotFoundf("record absent")
+	}
+	if err != nil {
+		return err
+	}
+	loaded := reflect.New(typ).Elem()
+	if err := t.hydrate(schema, loaded, raw); err != nil {
+		return err
+	}
+	v.Set(loaded)
+	return nil
 }
-
+func (t *Tx) hydrate(schema *tableSchema, v reflect.Value, raw []any) error {
+	pos := 1
+	children := []collectionValue{}
+	if err := schema.root.decode(v, raw, &pos, &children); err != nil {
+		return err
+	}
+	if err := t.loadChildren(v.Field(0).Interface(), children); err != nil {
+		return err
+	}
+	return setRevision(v, uint64(raw[0].(int64)))
+}
 func (t *Tx) Delete(value any) error {
 	v, typ, id, err := rowInfo(value)
+	if err != nil {
+		return err
+	}
+	schema, err := t.schema(typ)
 	if err != nil {
 		return err
 	}
@@ -188,21 +247,16 @@ func (t *Tx) Delete(value any) error {
 	if !ok || revision == 0 {
 		return errors.Invalidf("record revision is required for delete")
 	}
-	r, err := t.tx.ExecContext(t.ctx, "DELETE FROM records WHERE model=? AND id=? AND revision=?", modelName(typ), idString(id), revision)
+	result, err := t.tx.ExecContext(t.ctx, "DELETE FROM "+safeName(schema.name)+" WHERE "+safeName(schema.primary)+"=? AND __revision=?", id.Interface(), revision)
 	if err != nil {
 		return err
 	}
-	n, _ := r.RowsAffected()
-	if n == 0 {
-		var current uint64
-		err := t.tx.QueryRowContext(t.ctx, "SELECT revision FROM records WHERE model=? AND id=?", modelName(typ), idString(id)).Scan(&current)
-		if errors.Is(err, sql.ErrNoRows) {
-			return errors.NotFoundf("record absent")
-		}
-		if err != nil {
-			return err
-		}
-		return errors.Conflictf("record changed: expected revision %d, current revision %d", revision, current)
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return t.stale(schema, id.Interface(), revision)
 	}
 	return nil
 }
@@ -272,7 +326,7 @@ func (q *Query[T]) SortDesc(f ...string) *Query[T] {
 func firstField[T any]() string { var z T; return reflect.TypeOf(z).Field(0).Name }
 func normalize(v any) any {
 	if value, ok := asTime(v); ok {
-		return value.UTC().Format(time.RFC3339Nano)
+		return value.UTC().Format(timestampLayout)
 	}
 	rv := reflect.ValueOf(v)
 	if rv.IsValid() && rv.Kind() == reflect.String {
@@ -290,25 +344,50 @@ func asTime(v any) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-func queryFieldExpression(typ reflect.Type, name string) (string, bool) {
-	expression := "json_extract(data, '$." + name + "')"
-	field, ok := typ.FieldByName(name)
-	timeField := ok && (field.Type == reflect.TypeFor[time.Time]() || (field.Type.Kind() == reflect.Pointer && field.Type.Elem() == reflect.TypeFor[time.Time]()))
-	if timeField {
-		expression = "julianday(" + expression + ")"
+func queryFieldExpression(schema *tableSchema, name string) string {
+	field, ok := schema.root.typ.FieldByName(name)
+	if !ok {
+		return ""
 	}
-	return expression, timeField
+	if field.Tag.Get("store") == "revision" {
+		return safeName("__revision")
+	}
+	column := snake(name)
+	for _, c := range schema.columns {
+		if c.name == column {
+			if field.Type.Kind() == reflect.Pointer {
+				return "CASE WHEN " + safeName(column+"__present") + " THEN " + safeName(column) + " END"
+			}
+			if _, ok := field.Type.MethodByName("Unwrap"); ok {
+				return "CASE WHEN " + safeName(column+"__present") + " THEN " + safeName(column) + " END"
+			}
+			return safeName(column)
+		}
+	}
+	return ""
 }
 
 func (q *Query[T]) sql() (string, []any) {
 	var z T
 	typ := reflect.TypeOf(z)
-	name := modelName(typ)
+	schema, err := q.tx.schema(typ)
+	if err != nil {
+		return "", nil
+	}
 	b := strings.Builder{}
-	b.WriteString("SELECT data,revision FROM records WHERE model=?")
-	args := []any{name}
+	b.WriteString("SELECT " + schema.selection() + " FROM " + safeName(schema.name) + " WHERE 1=1")
+	args := []any{}
 	for _, p := range q.predicates {
-		path, timeField := queryFieldExpression(typ, p.field)
+		path := queryFieldExpression(schema, p.field)
+		if path == "" {
+			return "", nil
+		}
+		if len(p.values) == 0 {
+			if p.op == "=" {
+				b.WriteString(" AND 0")
+			}
+			continue
+		}
 		if len(p.values) > 1 {
 			b.WriteString(" AND " + path)
 			if p.op == "!=" {
@@ -319,19 +398,13 @@ func (q *Query[T]) sql() (string, []any) {
 				if i > 0 {
 					b.WriteByte(',')
 				}
-				if timeField {
-					b.WriteString("julianday(?)")
-				} else {
-					b.WriteByte('?')
-				}
+				b.WriteByte('?')
 				args = append(args, normalize(v))
 			}
 			b.WriteByte(')')
 		} else if len(p.values) == 1 {
 			placeholder := "?"
-			if timeField {
-				placeholder = "julianday(?)"
-			}
+
 			b.WriteString(" AND " + path + " " + p.op + " " + placeholder)
 			args = append(args, normalize(p.values[0]))
 		}
@@ -342,7 +415,10 @@ func (q *Query[T]) sql() (string, []any) {
 			if i > 0 {
 				b.WriteByte(',')
 			}
-			expression, _ := queryFieldExpression(typ, o.field)
+			expression := queryFieldExpression(schema, o.field)
+			if expression == "" {
+				return "", nil
+			}
 			b.WriteString(expression)
 			if o.desc {
 				b.WriteString(" DESC")
@@ -353,38 +429,50 @@ func (q *Query[T]) sql() (string, []any) {
 }
 
 func (q *Query[T]) List() ([]T, error) {
+	schema, err := q.tx.schema(reflect.TypeFor[T]())
+	if err != nil {
+		return nil, err
+	}
 	stmt, args := q.sql()
+	if stmt == "" {
+		return nil, errors.Invalidf("unknown or unsupported query field")
+	}
 	rows, err := q.tx.tx.QueryContext(q.tx.ctx, stmt, args...)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
-	out := []T{}
+	all := [][]any{}
 	for rows.Next() {
-		var data string
-		var revision uint64
-		if err := rows.Scan(&data, &revision); err != nil {
+		raw, err := scanRaw(rows, len(schema.columns)+1)
+		if err != nil {
+			_ = rows.Close()
 			return nil, err
 		}
-		var v T
-		if err := json.Unmarshal([]byte(data), &v); err != nil {
+		all = append(all, raw)
+	}
+	err = rows.Err()
+	_ = rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	out := []T{}
+	for _, raw := range all {
+		var value T
+		if err := q.tx.hydrate(schema, reflect.ValueOf(&value).Elem(), raw); err != nil {
 			return nil, err
 		}
-		if err := setRevision(reflect.ValueOf(&v).Elem(), revision); err != nil {
-			return nil, err
-		}
-		ok := true
+		include := true
 		for _, fn := range q.residual {
-			if !fn(v) {
-				ok = false
+			if !fn(value) {
+				include = false
 				break
 			}
 		}
-		if ok {
-			out = append(out, v)
+		if include {
+			out = append(out, value)
 		}
 	}
-	return out, rows.Err()
+	return out, nil
 }
 func (q *Query[T]) Get() (T, error) {
 	var zero T

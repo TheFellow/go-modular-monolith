@@ -32,9 +32,9 @@ CLI, TUI, and GUI processes on the same machine may use that local file concurre
 serializes writes and waits up to 10 seconds for a busy writer. The GUI and TUI automatically
 re-query after another connection commits; stale edits are rejected with an optimistic-concurrency
 conflict rather than overwriting newer data.
-These domain changes require a freshly seeded teaching database, including when upgrading from an
-older SQLite checkout. There is no migration or historical backfill for canonical stock units and
-order acceptance snapshots. Use a new `MIXOLOGY_DB` path and run the seeder; see the
+SQLite uses relational entity tables, typed columns, and owned child tables with foreign keys.
+The previous SQLite document schema is rejected and requires a freshly seeded teaching database.
+There is no data migration or historical backfill. Use a new `MIXOLOGY_DB` path and run the seeder; see the
 [data reset policy](docs/development.md#teaching-data-and-schema-changes).
 Interactive entrypoints also share actor, logging, and metrics options; run any entrypoint with `--help` for the full
 set. The desktop client has additional [native prerequisites](main/gui/README.md#run-from-source).

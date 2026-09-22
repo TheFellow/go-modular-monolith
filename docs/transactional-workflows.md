@@ -88,7 +88,7 @@ Pass an optional `tag.Edit` directly to the consuming domain command, for exampl
 
 `RunWorkflow`, `RunTaggedMutation`, `App.AmendOrders`, and `App.RetireIngredient` have been removed. Do not replace them with another outer transaction or command callback loop. Add a domain-owned command when a business operation spans multiple entities; have consuming domains publish facts and cross-cutting domains react as leaves. The middleware rejects a command invoked inside a command, query, or handler context, including contexts reconstructed from those parents.
 
-The old workflow correlation field is no longer written or displayed. Existing audit JSON remains readable; unknown historical fields are ignored. Tagging's moved persistence model retains its original storage identity so existing associations remain visible. A caller that injects a transaction for low-level testing still owns its rollback and failure recording.
+The old workflow correlation field is no longer written or displayed. Audit effects and tag associations use the relational schema; previous document databases require fresh seed data. A caller that injects a transaction for low-level testing still owns its rollback and failure recording.
 
 ## Verification
 
