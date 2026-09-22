@@ -11,14 +11,15 @@ module tool, and the Go linter version is pinned in CI and the command below.
 
 ## Teaching data and schema changes
 
-Canonical inventory quantities, persisted substitution rules, and order acceptance snapshots
-require fresh teaching data. No domain-data migration or historical backfill is provided. Existing
-store bootstrap migrations do not convert older domain JSON records to these new contracts.
+The relational SQLite schema requires fresh teaching data. Each entity has a named table,
+scalar fields use typed columns, and nested collections use child tables with foreign keys.
+The previous SQLite document database is rejected with a reset instruction. No data migration
+or historical backfill is provided.
 
 Choose a new local database path to keep an older database intact:
 
 ```sh
-export MIXOLOGY_DB=./data/workflows-demo.db
+export MIXOLOGY_DB=./data/relational-demo.db
 go run ./main/seed
 go run ./main/cli inventory list
 ```

@@ -10,8 +10,8 @@ type DrinkRow struct {
 	ID          string
 	Revision    uint64 `json:"-" store:"revision"`
 	Name        string `store:"unique"`
-	Category    string `store:"index"`
-	Glass       string `store:"index"`
+	Category    string `store:"index=Category+ID"`
+	Glass       string `store:"index=Glass+ID"`
 	Recipe      RecipeRow
 	Description string
 	Status      string `store:"index"`
@@ -31,3 +31,5 @@ type RecipeIngredientRow struct {
 	Optional     bool
 	Substitutes  []cedar.EntityUID
 }
+
+func (DrinkRow) StoreModelName() string { return "drinks" }

@@ -14,13 +14,13 @@ type AuditEntryRow struct {
 	Participants []cedar.EntityUID
 	Revision     uint64 `json:"-" store:"revision"`
 
-	Action string `store:"index"`
+	Action string `store:"index=Action+ID"`
 
 	ResourceType string `store:"index"`
 	ResourceID   string `store:"index"`
 
-	PrincipalType string `store:"index"`
-	PrincipalID   string `store:"index"`
+	PrincipalType string `store:"index=PrincipalType+PrincipalID+ID"`
+	PrincipalID   string
 
 	Touches []cedar.EntityUID
 
@@ -30,3 +30,5 @@ type AuditEntryRow struct {
 	Success bool `store:"index"`
 	Error   string
 }
+
+func (AuditEntryRow) StoreModelName() string { return "audit_entries" }

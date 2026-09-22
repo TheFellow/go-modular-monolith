@@ -26,3 +26,9 @@ func (v Value[T]) IsNone() bool { return !v.valid }
 func (v Value[T]) Unwrap() (T, bool) {
 	return v.value, v.valid
 }
+
+// Set replaces the optional with a present value, including T's zero value.
+func (v *Value[T]) Set(value T) {
+	v.value = value
+	v.valid = true
+}

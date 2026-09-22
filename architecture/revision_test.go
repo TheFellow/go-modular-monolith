@@ -14,7 +14,7 @@ import (
 )
 
 // Each registered domain record carries the expected revision consumed by the
-// store's mandatory SQL compare-and-swap. Nested JSON values are not records.
+// store's mandatory SQL compare-and-swap. Owned child rows share their aggregate root's revision.
 func TestRegisteredDomainRecordsHaveOptimisticRevisions(t *testing.T) {
 	t.Parallel()
 	root := filepath.Join(repositoryRoot(t), "app", "domains")

@@ -5,11 +5,8 @@ type entityTagRow struct {
 	Revision   uint64 `json:"-" store:"revision"`
 	EntityType string `store:"unique=EntityType+EntityID+Key"`
 	EntityID   string
-	Key        string `store:"index"`
+	Key        string `store:"index=Key+Value+EntityType+EntityID"`
 	Value      string
 }
 
-// StoreModelName preserves the identity used before persistence moved into dao.
-func (entityTagRow) StoreModelName() string {
-	return "github.com/TheFellow/go-modular-monolith/app/domains/tagging.entityTagRow"
-}
+func (entityTagRow) StoreModelName() string { return "entity_tags" }
